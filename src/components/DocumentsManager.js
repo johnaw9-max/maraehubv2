@@ -29,7 +29,7 @@ export default function DocumentsManager() {
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef();
 
-  useEffect(() => { fetchDocs(); }, []);
+  useEffect(() => { fetchDocs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchDocs() {
     setLoading(true);
