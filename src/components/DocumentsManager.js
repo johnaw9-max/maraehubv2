@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
 
 const EXT_ICONS = { pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', png: '🖼️', jpg: '🖼️', jpeg: '🖼️' };
-const EXT_COLORS = { pdf: '#a63020', docx: '#1a4a8a', doc: '#1a4a8a', xlsx: '#2d6e57', xls: '#2d6e57' };
+
 
 const CAT_COLORS = {
   'Governance': { bg: '#e8f4ef', color: '#1a4a3a' },
