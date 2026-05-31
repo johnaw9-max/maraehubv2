@@ -4,12 +4,14 @@ import Header from '../components/Header';
 import BookingsManager from '../components/BookingsManager';
 import ProjectsManager from '../components/ProjectsManager';
 import AssetsManager from '../components/AssetsManager';
+import DocumentsManager from '../components/DocumentsManager';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'bookings', label: 'Bookings' },
   { key: 'projects', label: 'Projects' },
   { key: 'assets', label: 'Assets' },
+  { key: 'documents', label: 'Documents' },
 ];
 
 export default function TrusteeDashboard({ profile, onLogout }) {
@@ -130,6 +132,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'bookings' && <BookingsManager isTrustee={true} />}
         {activeTab === 'projects' && <ProjectsManager />}
         {activeTab === 'assets' && <AssetsManager />}
+        {activeTab === 'documents' && <DocumentsManager />}
       </div>
 
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>
