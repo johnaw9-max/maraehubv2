@@ -6,7 +6,7 @@ export default function BookingsManager({ isTrustee, userId }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
-  useEffect(() => { fetchBookings(); }, [filter]);
+  useEffect(() => { fetchBookings(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchBookings() {
     setLoading(true);
