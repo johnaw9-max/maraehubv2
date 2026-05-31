@@ -5,10 +5,14 @@ import BookingsManager from '../components/BookingsManager';
 import ProjectsManager from '../components/ProjectsManager';
 import AssetsManager from '../components/AssetsManager';
 import DocumentsManager from '../components/DocumentsManager';
+import NoticeboardManager from '../components/NoticeboardManager';
+import CalendarView from '../components/CalendarView';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'bookings', label: 'Bookings' },
+  { key: 'calendar', label: 'Calendar' },
+  { key: 'noticeboard', label: 'Noticeboard' },
   { key: 'projects', label: 'Projects' },
   { key: 'assets', label: 'Assets' },
   { key: 'documents', label: 'Documents' },
@@ -130,6 +134,8 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         )}
 
         {activeTab === 'bookings' && <BookingsManager isTrustee={true} />}
+        {activeTab === 'calendar' && <CalendarView isTrustee={true} />}
+        {activeTab === 'noticeboard' && <NoticeboardManager isTrustee={true} profile={profile} />}
         {activeTab === 'projects' && <ProjectsManager />}
         {activeTab === 'assets' && <AssetsManager />}
         {activeTab === 'documents' && <DocumentsManager />}
