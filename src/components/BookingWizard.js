@@ -16,7 +16,9 @@ const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen /
 export default function BookingWizard({ profile, onBooked }) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
+  const [conflictMsg, setConflictMsg] = useState('');
   const [refNum, setRefNum] = useState('');
 
   const [form, setForm] = useState({
@@ -40,9 +42,57 @@ export default function BookingWizard({ profile, onBooked }) {
     }));
   }
 
+  async function checkAvailability() {
+    if (!form.startDate) return true;
+    setChecking(true);
+    setConflictMsg('');
+    const start = form.startDate;
+    const end = form.endDate || form.startDate;
+
+    // Check existing approved bookings
+    const { data: bookings } = await supabase
+      .from('bookings')
+      .select('start_date, end_date, occasion')
+      .eq('status', 'approved')
+      .or(`start_date.lte.${end},end_date.gte.${start}`);
+
+    // Check blocked dates
+    const { data: blocked } = await supabase
+      .from('blocked_dates')
+      .select('from_date, to_date, reason')
+      .lte('from_date', end)
+      .gte('to_date', start);
+
+    setChecking(false);
+
+    if (blocked && blocked.length > 0) {
+      const b = blocked[0];
+      setConflictMsg(`🚫 The marae is unavailable on these dates — ${b.reason || 'blocked by the committee'}. Please select different dates.`);
+      return false;
+    }
+
+    if (bookings && bookings.length > 0) {
+      const b = bookings[0];
+      setConflictMsg(`🚫 The marae is already booked for a ${b.occasion} on these dates. Please apply for another date.`);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function goToStep3() {
+    const available = await checkAvailability();
+    if (available) setStep(3);
+  }
+
   async function handleSubmit() {
     setSubmitting(true);
     setError('');
+
+    // Final conflict check before submitting
+    const available = await checkAvailability();
+    if (!available) { setSubmitting(false); return; }
+
     const ref = 'MH-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
 
     const { error } = await supabase.from('bookings').insert({
@@ -74,6 +124,7 @@ export default function BookingWizard({ profile, onBooked }) {
     setForm({ occasion: '', startDate: '', endDate: '', guests: 50, overnight: false, facilities: [], notes: '' });
     setRefNum('');
     setError('');
+    setConflictMsg('');
   }
 
   function formatDate(d) {
@@ -120,16 +171,12 @@ export default function BookingWizard({ profile, onBooked }) {
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginBottom: 28 }}>
             {OCCASIONS.map(o => (
-              <div
-                key={o.val}
-                onClick={() => setField('occasion', o.val)}
+              <div key={o.val} onClick={() => setField('occasion', o.val)}
                 style={{
                   background: form.occasion === o.val ? '#eaf4f0' : 'var(--surface)',
                   border: `2px solid ${form.occasion === o.val ? 'var(--brand)' : 'var(--border)'}`,
-                  borderRadius: 12, padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
-                  transition: 'all 0.15s'
-                }}
-              >
+                  borderRadius: 12, padding: '20px 16px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.15s'
+                }}>
                 <div style={{ fontSize: 28, marginBottom: 10 }}>{o.icon}</div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{o.val}</div>
                 <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>{o.sub}</div>
@@ -151,19 +198,28 @@ export default function BookingWizard({ profile, onBooked }) {
             <div className="grid-2" style={{ marginBottom: 16 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Start Date</label>
-                <input type="date" className="form-input" value={form.startDate} onChange={e => setField('startDate', e.target.value)} />
+                <input type="date" className="form-input" value={form.startDate}
+                  onChange={e => { setField('startDate', e.target.value); setConflictMsg(''); }} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">End Date</label>
-                <input type="date" className="form-input" value={form.endDate} onChange={e => setField('endDate', e.target.value)} />
+                <input type="date" className="form-input" value={form.endDate}
+                  onChange={e => { setField('endDate', e.target.value); setConflictMsg(''); }} />
               </div>
             </div>
+
+            {/* CONFLICT MESSAGE */}
+            {conflictMsg && (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Date Not Available</div>
+                <div style={{ fontSize: 13, color: 'var(--text2)' }}>{conflictMsg}</div>
+              </div>
+            )}
 
             <div style={{ marginBottom: 16 }}>
               <label className="form-label">Expected Guests: <strong>{form.guests}</strong></label>
               <input type="range" min="10" max="400" step="10" value={form.guests}
-                onChange={e => setField('guests', e.target.value)}
-                style={{ width: '100%' }} />
+                onChange={e => setField('guests', e.target.value)} style={{ width: '100%' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
                 <span>10</span><span>400</span>
               </div>
@@ -201,8 +257,10 @@ export default function BookingWizard({ profile, onBooked }) {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button className="btn-secondary" onClick={() => setStep(1)}>← Back</button>
-            <button className="btn-primary" onClick={() => setStep(3)}>Next: Review →</button>
+            <button className="btn-secondary" onClick={() => { setStep(1); setConflictMsg(''); }}>← Back</button>
+            <button className="btn-primary" onClick={goToStep3} disabled={checking}>
+              {checking ? 'Checking availability...' : 'Next: Review →'}
+            </button>
           </div>
         </>
       )}
@@ -213,8 +271,7 @@ export default function BookingWizard({ profile, onBooked }) {
           <div className="panel" style={{ marginBottom: 16 }}>
             <label className="form-label">Additional Notes / Tikanga Considerations</label>
             <textarea className="form-input" rows={4} placeholder="Any special requirements or questions for the committee..."
-              value={form.notes} onChange={e => setField('notes', e.target.value)}
-              style={{ resize: 'vertical' }} />
+              value={form.notes} onChange={e => setField('notes', e.target.value)} style={{ resize: 'vertical' }} />
           </div>
 
           <div style={{ background: 'var(--brand)', borderRadius: 12, padding: '20px 24px', marginBottom: 20 }}>
@@ -235,6 +292,13 @@ export default function BookingWizard({ profile, onBooked }) {
               ))}
             </div>
           </div>
+
+          {conflictMsg && (
+            <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', marginBottom: 4 }}>Date Not Available</div>
+              <div style={{ fontSize: 13, color: 'var(--text2)' }}>{conflictMsg}</div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button className="btn-secondary" onClick={() => setStep(2)}>← Back</button>
