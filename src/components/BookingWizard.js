@@ -49,12 +49,13 @@ export default function BookingWizard({ profile, onBooked }) {
     const start = form.startDate;
     const end = form.endDate || form.startDate;
 
-    // Check existing approved bookings
+    // Check existing approved bookings for date overlap
     const { data: bookings } = await supabase
       .from('bookings')
       .select('start_date, end_date, occasion')
       .eq('status', 'approved')
-      .or(`start_date.lte.${end},end_date.gte.${start}`);
+      .lte('start_date', end)
+      .gte('end_date', start);
 
     // Check blocked dates
     const { data: blocked } = await supabase
