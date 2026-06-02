@@ -15,6 +15,7 @@ export default function AssetsManager() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
+  const [editReminderId, setEditReminderId] = useState(null);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [reminderForm, setReminderForm] = useState(EMPTY_REMINDER);
@@ -86,18 +87,25 @@ export default function AssetsManager() {
   function openReminders(asset) { setSelectedAsset(asset); }
   function closeReminders() { setSelectedAsset(null); }
 
-  function openAddReminder() { setReminderForm(EMPTY_REMINDER); setError(''); setShowReminderModal(true); }
+  function openAddReminder() { setReminderForm(EMPTY_REMINDER); setEditReminderId(null); setError(''); setShowReminderModal(true); }
+
+  function openEditReminder(r) {
+    setReminderForm({ type: r.type, due_date: r.due_date, recurring: r.recurring, notes: r.notes || '' });
+    setEditReminderId(r.id); setError(''); setShowReminderModal(true);
+  }
 
   async function handleSaveReminder() {
     if (!reminderForm.type.trim() || !reminderForm.due_date) { setError('Service type and date are required'); return; }
     setSaving(true); setError('');
-    const { error } = await supabase.from('service_reminders').insert({
-      asset_id: selectedAsset.id,
+    const payload = {
       type: reminderForm.type.trim(),
       due_date: reminderForm.due_date,
       recurring: reminderForm.recurring,
       notes: reminderForm.notes.trim(),
-    });
+    };
+    const { error } = editReminderId
+      ? await supabase.from('service_reminders').update(payload).eq('id', editReminderId)
+      : await supabase.from('service_reminders').insert({ ...payload, asset_id: selectedAsset.id });
     if (error) { setError(error.message); setSaving(false); return; }
     setShowReminderModal(false); setSaving(false); fetchAll();
   }
@@ -164,7 +172,10 @@ export default function AssetsManager() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{r.type}</div>
-                    <button onClick={() => handleDeleteReminder(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14 }}>✕</button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => openEditReminder(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 13 }}>✏️</button>
+                      <button onClick={() => handleDeleteReminder(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14 }}>✕</button>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 12, flexWrap: 'wrap', marginBottom: r.notes ? 6 : 0 }}>
                     <span style={{ fontWeight: 600, color: status === 'overdue' ? 'var(--danger)' : status === 'due-soon' ? 'var(--warning)' : 'var(--success)' }}>
@@ -188,7 +199,7 @@ export default function AssetsManager() {
         {showReminderModal && (
           <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowReminderModal(false)}>
             <div className="modal">
-              <div className="modal-title">Add Service Reminder</div>
+              <div className="modal-title">{editReminderId ? 'Edit Service Reminder' : 'Add Service Reminder'}</div>
               {error && <div className="alert alert-error">{error}</div>}
               <div className="form-group">
                 <label className="form-label">Service Type *</label>
@@ -217,7 +228,7 @@ export default function AssetsManager() {
               </div>
               <div className="modal-actions">
                 <button className="btn-secondary" onClick={() => setShowReminderModal(false)}>Cancel</button>
-                <button className="btn-primary" onClick={handleSaveReminder} disabled={saving}>{saving ? 'Saving...' : 'Save Reminder'}</button>
+                <button className="btn-primary" onClick={handleSaveReminder} disabled={saving}>{saving ? 'Saving...' : editReminderId ? 'Save Changes' : 'Save Reminder'}</button>
               </div>
             </div>
           </div>
