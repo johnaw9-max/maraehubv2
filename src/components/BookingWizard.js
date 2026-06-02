@@ -53,28 +53,34 @@ export default function BookingWizard({ profile, onBooked }) {
     const { data: bookings } = await supabase
       .from('bookings')
       .select('start_date, end_date, occasion')
-      .eq('status', 'approved')
-      .lte('start_date', end)
-      .gte('end_date', start);
+      .eq('status', 'approved');
 
     // Check blocked dates
     const { data: blocked } = await supabase
       .from('blocked_dates')
-      .select('from_date, to_date, reason')
-      .lte('from_date', end)
-      .gte('to_date', start);
+      .select('from_date, to_date, reason');
 
     setChecking(false);
 
-    if (blocked && blocked.length > 0) {
-      const b = blocked[0];
-      setConflictMsg(`🚫 The marae is unavailable on these dates — ${b.reason || 'blocked by the committee'}. Please select different dates.`);
+    // Manual overlap check for bookings
+    const conflictBooking = (bookings || []).find(b => {
+      const bStart = b.start_date;
+      const bEnd = b.end_date || b.start_date;
+      return bStart && bEnd && start <= bEnd && end >= bStart;
+    });
+
+    // Manual overlap check for blocked dates
+    const conflictBlock = (blocked || []).find(b => {
+      return b.from_date && b.to_date && start <= b.to_date && end >= b.from_date;
+    });
+
+    if (conflictBlock) {
+      setConflictMsg(`🚫 The marae is unavailable on these dates — ${conflictBlock.reason || 'blocked by the committee'}. Please select different dates.`);
       return false;
     }
 
-    if (bookings && bookings.length > 0) {
-      const b = bookings[0];
-      setConflictMsg(`🚫 The marae is already booked for a ${b.occasion} on these dates. Please apply for another date.`);
+    if (conflictBooking) {
+      setConflictMsg(`🚫 The marae is already booked for a ${conflictBooking.occasion} on these dates. Please apply for another date.`);
       return false;
     }
 
