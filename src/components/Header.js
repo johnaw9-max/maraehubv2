@@ -1,6 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Header({ profile, onLogout, activeTab, setActiveTab, tabs }) {
+  const [maraeName, setMaraeName] = useState('Te Marae o Tainui');
+  const [maraeLocation, setMaraeLocation] = useState('Manurewa, Auckland');
+
+  useEffect(() => {
+    supabase.from('marae_settings').select('marae_name, location').limit(1).single()
+      .then(({ data }) => {
+        if (data) {
+          if (data.marae_name) setMaraeName(data.marae_name);
+          if (data.location) setMaraeLocation(data.location);
+        }
+      });
+  }, []);
+
   const initials = profile?.full_name
     ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase()
     : '?';
@@ -17,8 +31,8 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
         </div>
         <div className="header-right">
           <div>
-            <div className="marae-name">Te Marae o Tainui</div>
-            <div className="marae-loc">Manurewa, Auckland</div>
+            <div className="marae-name">{maraeName}</div>
+            <div className="marae-loc">{maraeLocation}</div>
           </div>
           <div className="avatar">{initials}</div>
           <div className="role-badge" style={{ textTransform: 'capitalize' }}>{profile?.role}</div>
