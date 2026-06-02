@@ -4,6 +4,8 @@ import BookingWizard from '../components/BookingWizard';
 import BookingsManager from '../components/BookingsManager';
 import NoticeboardManager from '../components/NoticeboardManager';
 import CalendarView from '../components/CalendarView';
+import FeedbackButton from '../components/FeedbackButton';
+import HelpMenu from '../components/HelpMenu';
 
 const TABS = [
   { key: 'noticeboard', label: 'Noticeboard' },
@@ -29,6 +31,8 @@ export default function CommunityPortal({ profile, onLogout }) {
         )}
       </div>
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>
+      <FeedbackButton profile={profile} />
+      <HelpMenu role="community" />
     </div>
   );
 }
