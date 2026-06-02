@@ -9,6 +9,8 @@ import NoticeboardManager from '../components/NoticeboardManager';
 import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import UserManager from '../components/UserManager';
+import FeedbackButton from '../components/FeedbackButton';
+import HelpMenu from '../components/HelpMenu';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -148,6 +150,8 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       </div>
 
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>
+      <FeedbackButton profile={profile} />
+      <HelpMenu role="trustee" />
     </div>
   );
 }
