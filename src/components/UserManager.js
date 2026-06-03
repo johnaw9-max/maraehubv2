@@ -59,7 +59,33 @@ useEffect(() => { fetchUsers(); }, []); // eslint-disable-line react-hooks/exhau
           full_name: form.full_name.trim(),
           email: form.email.trim(),
           role: form.role,
-        }
+        }}
+      setSuccess(form.full_name + ' has been added. They can now log in.');
+    }
+
+    setShowForm(false); setEditId(null); setSaving(false); fetchUsers();
+  }
+
+  async function handleUpdateRole(id, newRole) {
+    await supabase.from('profiles').update({ role: newRole }).eq('id', id);
+    fetchUsers();
+  }
+
+  async function handleDelete(id, name) {
+    if (!window.confirm('Remove ' + name + ' from MaraeHub?')) return;
+    await supabase.from('profiles').delete().eq('id', id);
+    fetchUsers();
+  }
+
+  function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  function formatDate(d) {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  const trustees = users.filter(u => u.role === 'trustee');
+  const community = users.filter(u => u.role === 'community');
 function UserCard({ u, isTrustee }) {
     const initials = u.full_name ? u.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
     const roleStyle = isTrustee ? ROLE_COLORS.trustee : ROLE_COLORS.community;
