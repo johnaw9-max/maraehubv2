@@ -10,6 +10,7 @@ export default function UserManager() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'community' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +25,25 @@ export default function UserManager() {
     setLoading(false);
   }
 
-  async function handleAddUser() {
+  function openEdit(u) {
+    setForm({ full_name: u.full_name || '', email: u.email || '', password: '', role: u.role });
+    setEditId(u.id); setError(''); setSuccess(''); setShowForm(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!form.full_name.trim()) { setError('Full name is required'); return; }
+    setSaving(true); setError(''); setSuccess('');
+    const { error } = await supabase.from('profiles').update({
+      full_name: form.full_name.trim(),
+      role: form.role,
+    }).eq('id', editId);
+    if (error) { setError(error.message); setSaving(false); return; }
+    setSuccess(`✓ ${form.full_name}'s details have been updated.`);
+    setShowForm(false); setEditId(null);
+    setSaving(false); fetchUsers();
+  }
+
+
     if (!form.full_name.trim()) { setError('Full name is required'); return; }
     if (!form.email.trim()) { setError('Email is required'); return; }
     if (!form.password || form.password.length < 6) { setError('Password must be at least 6 characters'); return; }
@@ -97,7 +116,7 @@ export default function UserManager() {
           <h2 style={{ fontSize: 22 }}>User Management</h2>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Add and manage trustees and community members</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowForm(true); setError(''); setSuccess(''); }}>
+        <button className="btn-primary" onClick={() => { setShowForm(true); setEditId(null); setError(''); setSuccess(''); setForm({ full_name: '', email: '', password: '', role: 'community' }); }}>
           + Add User
         </button>
       </div>
@@ -107,7 +126,7 @@ export default function UserManager() {
 
       {showForm && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Add New User</div>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16 }}>{editId ? 'Edit User' : 'Add New User'}</div>
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Full Name *</label>
@@ -121,18 +140,24 @@ export default function UserManager() {
               </select>
             </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Email *</label>
-            <input type="email" className="form-input" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="e.g. hemi@email.com" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Temporary Password *</label>
-            <input type="password" className="form-input" value={form.password} onChange={e => setField('password', e.target.value)} placeholder="Min 6 characters" />
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user — they can change it after logging in</div>
-          </div>
+          {!editId && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Email *</label>
+                <input type="email" className="form-input" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="e.g. hemi@email.com" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Temporary Password *</label>
+                <input type="password" className="form-input" value={form.password} onChange={e => setField('password', e.target.value)} placeholder="Min 6 characters" />
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user — they can change it after logging in</div>
+              </div>
+            </>
+          )}
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn-primary" onClick={handleAddUser} disabled={saving}>{saving ? 'Adding...' : 'Add User'}</button>
+            <button className="btn-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
+            <button className="btn-primary" onClick={editId ? handleSaveEdit : handleAddUser} disabled={saving}>
+              {saving ? 'Saving...' : editId ? 'Save Changes' : 'Add User'}
+            </button>
           </div>
         </div>
       )}
@@ -158,6 +183,10 @@ export default function UserManager() {
                   </div>
                   <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: ROLE_COLORS.trustee.bg, color: ROLE_COLORS.trustee.color }}>Trustee</span>
                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => openEdit(u)}
+                      style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
+                      Edit
+                    </button>
                     <button onClick={() => handleUpdateRole(u.id, 'community')}
                       style={{ fontSize: 11, color: 'var(--text2)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
                       Make Community
@@ -191,6 +220,10 @@ export default function UserManager() {
                   </div>
                   <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: ROLE_COLORS.community.bg, color: ROLE_COLORS.community.color }}>Community</span>
                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => openEdit(u)}
+                      style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
+                      Edit
+                    </button>
                     <button onClick={() => handleUpdateRole(u.id, 'trustee')}
                       style={{ fontSize: 11, color: 'var(--text2)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
                       Make Trustee
