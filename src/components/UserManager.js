@@ -60,3 +60,97 @@ useEffect(() => { fetchUsers(); }, []); // eslint-disable-line react-hooks/exhau
           email: form.email.trim(),
           role: form.role,
         }
+function UserCard({ u, isTrustee }) {
+    const initials = u.full_name ? u.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+    const roleStyle = isTrustee ? ROLE_COLORS.trustee : ROLE_COLORS.community;
+    return (
+      <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', background: isTrustee ? 'var(--brand)' : 'var(--info)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14, color: '#fff', flexShrink: 0 }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>{u.full_name || '—'}</div>
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{u.email} · Added {formatDate(u.created_at)}</div>
+        </div>
+        <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: roleStyle.bg, color: roleStyle.color }}>
+          {isTrustee ? 'Trustee' : 'Community'}
+        </span>
+        <div style={{ display: 'flex', gap: 6 }}>
+return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontSize: 22 }}>User Management</h2>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Add and manage trustees and community members</p>
+        </div>
+        <button className="btn-primary" onClick={openAdd}>+ Add User</button>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success">{success}</div>}
+
+      {showForm && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+            {editId ? 'Edit User' : 'Add New User'}
+          </div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Full Name *</label>
+              <input className="form-input" value={form.full_name} onChange={e => setField('full_name', e.target.value)} placeholder="e.g. Hemi Walker" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Role</label>
+              <select className="form-input" value={form.role} onChange={e => setField('role', e.target.value)}>
+                <option value="community">Community Member</option>
+                <option value="trustee">Trustee</option>
+              </select>
+            </div>
+          </div>
+          {!editId && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Email *</label>
+                <input type="email" className="form-input" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="e.g. hemi@email.com" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Temporary Password *</label>
+                <input type="password" className="form-input" value={form.password} onChange={e => setField('password', e.target.value)} placeholder="Min 6 characters" />
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user — they can change it after logging in</div>
+              </div>
+            </>
+          )}
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
+            <button className="btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : editId ? 'Save Changes' : 'Add User'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? <div className="loading">Loading users...</div> : (
+        <>
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Trustees ({trustees.length})
+            </div>
+            {trustees.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--text3)', padding: '12px 0' }}>No trustees yet</div>
+              : trustees.map(u => <UserCard key={u.id} u={u} isTrustee={true} />)
+            }
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Community Members ({community.length})
+            </div>
+            {community.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--text3)', padding: '12px 0' }}>No community members yet</div>
+              : community.map(u => <UserCard key={u.id} u={u} isTrustee={false} />)
+            }
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
