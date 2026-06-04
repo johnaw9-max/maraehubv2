@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // updated
 import { supabase } from '../lib/supabase';
  
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
