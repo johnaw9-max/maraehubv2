@@ -28,11 +28,34 @@ const TABS = [
   { key: 'settings', label: 'Settings' },
 ];
 
+function avg(arr) {
+  const valid = arr.filter(n => n != null && n > 0);
+  if (!valid.length) return null;
+  return valid.reduce((s, n) => s + n, 0) / valid.length;
+}
+
+function StarBar({ label, value }) {
+  if (!value) return null;
+  const pct = (value / 5) * 100;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+      <div style={{ fontSize: 12, color: 'var(--text2)', width: 90, flexShrink: 0 }}>{label}</div>
+      <div style={{ flex: 1, height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#f4a400', borderRadius: 3 }} />
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: '#f4a400', width: 28, textAlign: 'right' }}>
+        {value.toFixed(1)}
+      </div>
+    </div>
+  );
+}
+
 export default function TrusteeDashboard({ profile, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({ bookings: 0, projects: 0, assets: 0, pending: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
+  const [feedbackStats, setFeedbackStats] = useState({ total: 0, avgOverall: null, avgCleanliness: null, avgFacilities: null, recent: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,11 +64,12 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   async function fetchDashboardData() {
     setLoading(true);
-    const [bookingsRes, projectsRes, assetsRes, pendingRes] = await Promise.all([
+    const [bookingsRes, projectsRes, assetsRes, pendingRes, feedbackRes] = await Promise.all([
       supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
       supabase.from('projects').select('*').order('created_at', { ascending: false }).limit(3),
       supabase.from('assets').select('id'),
       supabase.from('bookings').select('id').eq('status', 'pending'),
+      supabase.from('booking_feedback').select('rating_overall, rating_cleanliness, rating_facilities, experience, created_at').order('created_at', { ascending: false }),
     ]);
 
     setRecentBookings(bookingsRes.data || []);
@@ -56,6 +80,16 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       assets: (assetsRes.data || []).length,
       pending: (pendingRes.data || []).length,
     });
+
+    const fb = feedbackRes.data || [];
+    setFeedbackStats({
+      total: fb.length,
+      avgOverall: avg(fb.map(f => f.rating_overall)),
+      avgCleanliness: avg(fb.map(f => f.rating_cleanliness)),
+      avgFacilities: avg(fb.map(f => f.rating_facilities)),
+      recent: fb.filter(f => f.experience).slice(0, 4),
+    });
+
     setLoading(false);
   }
 
@@ -81,17 +115,12 @@ export default function TrusteeDashboard({ profile, onLogout }) {
             {/* STAT TILES */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {[
-                { label: 'Pending Bookings', val: stats.pending, icon: '📅', color: '#fdf0dc', iconColor: 'var(--warning)', action: () => setActiveTab('bookings') },
-                { label: 'Active Projects', val: stats.projects, icon: '📋', color: '#e8eef8', iconColor: 'var(--info)', action: () => setActiveTab('projects') },
-                { label: 'Assets Tracked', val: stats.assets, icon: '🏗️', color: '#f0ecf8', iconColor: '#6b42a8', action: () => setActiveTab('assets') },
-                { label: 'Total Bookings', val: stats.bookings, icon: '📊', color: '#e8f4ef', iconColor: 'var(--success)', action: null },
+                { label: 'Pending Bookings', val: stats.pending, icon: '📅', color: '#fdf0dc', action: () => setActiveTab('bookings') },
+                { label: 'Active Projects', val: stats.projects, icon: '📋', color: '#e8eef8', action: () => setActiveTab('projects') },
+                { label: 'Assets Tracked', val: stats.assets, icon: '🏗️', color: '#f0ecf8', action: () => setActiveTab('assets') },
+                { label: 'Total Bookings', val: stats.bookings, icon: '📊', color: '#e8f4ef', action: null },
               ].map((tile, i) => (
-                <div
-                  key={i}
-                  className="panel"
-                  style={{ textAlign: 'center', cursor: tile.action ? 'pointer' : 'default' }}
-                  onClick={tile.action}
-                >
+                <div key={i} className="panel" style={{ textAlign: 'center', cursor: tile.action ? 'pointer' : 'default' }} onClick={tile.action}>
                   <div style={{ width: 40, height: 40, borderRadius: 10, background: tile.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, margin: '0 auto 10px' }}>{tile.icon}</div>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 600 }}>{tile.val}</div>
                   <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{tile.label}</div>
@@ -99,7 +128,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
               ))}
             </div>
 
-            {/* RECENT BOOKINGS */}
+            {/* RECENT BOOKINGS + PROJECTS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
               <div className="panel">
                 <div className="panel-header">
@@ -139,6 +168,62 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* FEEDBACK REPORTS */}
+            <div className="panel">
+              <div className="panel-header" style={{ marginBottom: 16 }}>
+                <div className="panel-title">Community Feedback Reports</div>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>{feedbackStats.total} response{feedbackStats.total !== 1 ? 's' : ''}</span>
+              </div>
+
+              {loading ? <div className="loading">Loading...</div> : feedbackStats.total === 0 ? (
+                <div className="empty-state" style={{ padding: '12px 0' }}>
+                  <div className="emoji">⭐</div>
+                  <div>No feedback received yet</div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                  {/* RATINGS */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 12 }}>Average Ratings</div>
+                    {feedbackStats.avgOverall && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 700, color: '#f4a400', lineHeight: 1 }}>
+                          {feedbackStats.avgOverall.toFixed(1)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 18, color: '#f4a400', letterSpacing: 2 }}>
+                            {'★'.repeat(Math.round(feedbackStats.avgOverall))}{'☆'.repeat(5 - Math.round(feedbackStats.avgOverall))}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)' }}>Overall rating</div>
+                        </div>
+                      </div>
+                    )}
+                    <StarBar label="Cleanliness" value={feedbackStats.avgCleanliness} />
+                    <StarBar label="Facilities" value={feedbackStats.avgFacilities} />
+                  </div>
+
+                  {/* RECENT COMMENTS */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 12 }}>Recent Comments</div>
+                    {feedbackStats.recent.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--text3)' }}>No comments yet</div>
+                    ) : feedbackStats.recent.map((f, i) => (
+                      <div key={i} style={{ padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6, border: '1px solid var(--border)', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                          {[1,2,3,4,5].map(n => (
+                            <span key={n} style={{ fontSize: 11, color: n <= f.rating_overall ? '#f4a400' : '#ddd' }}>★</span>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.5 }}>
+                          "{f.experience.length > 120 ? f.experience.slice(0, 120) + '…' : f.experience}"
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
