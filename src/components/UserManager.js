@@ -1,3 +1,4 @@
+// MaraeHub User Management - v2
 import React,{useState,useEffect}from'react';
 import{supabase}from'../lib/supabase';
 const RC={trustee:{bg:'#e8f4ef',color:'#1a4a3a'},community:{bg:'#e8eef8',color:'#1a4a8a'}};
