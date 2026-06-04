@@ -28,20 +28,81 @@ const TABS = [
   { key: 'settings', label: 'Settings' },
 ];
 
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+
 function avg(arr) {
   const valid = arr.filter(n => n != null && n > 0);
   if (!valid.length) return null;
   return valid.reduce((s, n) => s + n, 0) / valid.length;
 }
 
+function fmtMoney(n) {
+  if (!n) return '$0';
+  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `$${(n / 1000).toFixed(0)}k`;
+  return `$${n}`;
+}
+
+// ─── KPI BAR ──────────────────────────────────────────────────────────────────
+
+function KpiBar({ tiles, loading, count }) {
+  const n = loading ? (count || 5) : tiles.length;
+
+  if (loading) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 12, marginBottom: 20 }}>
+        {Array.from({ length: n }).map((_, i) => (
+          <div key={i} className="panel" style={{ height: 92, background: 'var(--surface2)', opacity: 0.5 }} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${tiles.length}, 1fr)`, gap: 12, marginBottom: 20 }}>
+      {tiles.map((t, i) => {
+        const isText = typeof t.value === 'string' && isNaN(parseFloat(t.value.replace('%', '')));
+        const valLen = String(t.value).length;
+        const fontSize = isText
+          ? (valLen > 12 ? 10 : valLen > 8 ? 12 : valLen > 5 ? 14 : 18)
+          : 22;
+        return (
+          <div key={i} className="panel" style={{ textAlign: 'center', padding: '14px 10px' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: t.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, margin: '0 auto 8px' }}>
+              {t.icon}
+            </div>
+            <div style={{
+              fontFamily: isText ? 'DM Sans, sans-serif' : 'Playfair Display, serif',
+              fontSize,
+              fontWeight: 600,
+              color: t.valueColor || 'var(--text1)',
+              lineHeight: 1.2,
+              marginBottom: 4,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {t.value}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, lineHeight: 1.3 }}>
+              {t.label}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── DASHBOARD STAR BAR ───────────────────────────────────────────────────────
+
 function StarBar({ label, value }) {
   if (!value) return null;
-  const pct = (value / 5) * 100;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
       <div style={{ fontSize: 12, color: 'var(--text2)', width: 90, flexShrink: 0 }}>{label}</div>
       <div style={{ flex: 1, height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#f4a400', borderRadius: 3 }} />
+        <div style={{ height: '100%', width: `${(value / 5) * 100}%`, background: '#f4a400', borderRadius: 3 }} />
       </div>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#f4a400', width: 28, textAlign: 'right' }}>
         {value.toFixed(1)}
@@ -50,17 +111,31 @@ function StarBar({ label, value }) {
   );
 }
 
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
+
 export default function TrusteeDashboard({ profile, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Dashboard state
   const [stats, setStats] = useState({ bookings: 0, projects: 0, assets: 0, pending: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
   const [feedbackStats, setFeedbackStats] = useState({ total: 0, avgOverall: null, avgCleanliness: null, avgFacilities: null, recent: [] });
   const [loading, setLoading] = useState(true);
 
+  // Per-tab KPI state
+  const [kpis, setKpis] = useState({});
+  const [kpiLoading, setKpiLoading] = useState({});
+
   useEffect(() => {
-    if (activeTab === 'dashboard') fetchDashboardData();
-  }, [activeTab]);
+    if (activeTab === 'dashboard') {
+      fetchDashboardData();
+    } else {
+      fetchTabKpis(activeTab);
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── DASHBOARD FETCH ────────────────────────────────────────────────────────
 
   async function fetchDashboardData() {
     setLoading(true);
@@ -71,7 +146,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       supabase.from('bookings').select('id').eq('status', 'pending'),
       supabase.from('booking_feedback').select('rating_overall, rating_cleanliness, rating_facilities, experience, created_at').order('created_at', { ascending: false }),
     ]);
-
     setRecentBookings(bookingsRes.data || []);
     setRecentProjects(projectsRes.data || []);
     setStats({
@@ -80,7 +154,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       assets: (assetsRes.data || []).length,
       pending: (pendingRes.data || []).length,
     });
-
     const fb = feedbackRes.data || [];
     setFeedbackStats({
       total: fb.length,
@@ -89,8 +162,217 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       avgFacilities: avg(fb.map(f => f.rating_facilities)),
       recent: fb.filter(f => f.experience).slice(0, 4),
     });
-
     setLoading(false);
+  }
+
+  // ── TAB KPI FETCHES ────────────────────────────────────────────────────────
+
+  async function fetchTabKpis(tab) {
+    setKpiLoading(prev => ({ ...prev, [tab]: true }));
+    let tiles = [];
+
+    if (tab === 'bookings') {
+      const { data } = await supabase.from('bookings').select('status, guests, occasion');
+      const rows = data || [];
+      const total = rows.length;
+      const approved = rows.filter(b => b.status === 'approved').length;
+      const pending = rows.filter(b => b.status === 'pending').length;
+      const decided = rows.filter(b => b.status !== 'pending').length;
+      const approvalRate = decided > 0 ? Math.round((approved / decided) * 100) : 0;
+      const avgGuests = total > 0 ? Math.round(rows.reduce((s, b) => s + (b.guests || 0), 0) / total) : 0;
+      const occMap = {};
+      rows.forEach(b => { if (b.occasion) occMap[b.occasion] = (occMap[b.occasion] || 0) + 1; });
+      const busiest = Object.entries(occMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+      const busiestLabel = busiest.length > 13 ? busiest.slice(0, 13) + '…' : busiest;
+
+      tiles = [
+        { label: 'Total Bookings', value: total, icon: '📅', bg: '#e8eef8' },
+        {
+          label: 'Approval Rate', value: decided > 0 ? `${approvalRate}%` : '—', icon: '✅', bg: '#e8f4ef',
+          valueColor: approvalRate >= 70 ? 'var(--brand)' : approvalRate >= 40 ? 'var(--warning)' : 'var(--danger)',
+        },
+        {
+          label: 'Pending', value: pending, icon: '⏳',
+          bg: pending > 0 ? '#fdf0dc' : '#f5f5f5',
+          valueColor: pending > 0 ? 'var(--warning)' : 'var(--text3)',
+        },
+        { label: 'Avg Guests', value: avgGuests || '—', icon: '👥', bg: '#f0ecf8' },
+        { label: 'Top Occasion', value: busiestLabel, icon: '🎉', bg: '#fdf4e8' },
+      ];
+    }
+
+    if (tab === 'projects') {
+      const { data } = await supabase.from('projects').select('status, progress, due_date');
+      const rows = data || [];
+      const total = rows.length;
+      const completed = rows.filter(p => p.status === 'completed').length;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      const overdue = rows.filter(p => p.due_date && new Date(p.due_date) < now && p.status !== 'completed').length;
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const dueThisMonth = rows.filter(p => {
+        if (!p.due_date || p.status === 'completed') return false;
+        const d = new Date(p.due_date);
+        return d >= firstOfMonth && d <= lastOfMonth;
+      }).length;
+      const avgProgressVal = total > 0 ? Math.round(rows.reduce((s, p) => s + (p.progress || 0), 0) / total) : 0;
+
+      tiles = [
+        { label: 'Total Projects', value: total, icon: '📋', bg: '#e8eef8' },
+        {
+          label: 'Completion Rate', value: total > 0 ? `${completionRate}%` : '—', icon: '🏁', bg: '#e8f4ef',
+          valueColor: completionRate >= 50 ? 'var(--brand)' : 'var(--text2)',
+        },
+        {
+          label: 'Overdue', value: overdue, icon: '⚠️',
+          bg: overdue > 0 ? '#faeae7' : '#f5f5f5',
+          valueColor: overdue > 0 ? 'var(--danger)' : 'var(--text3)',
+        },
+        {
+          label: 'Due This Month', value: dueThisMonth, icon: '📆',
+          bg: dueThisMonth > 0 ? '#fdf0dc' : '#f5f5f5',
+          valueColor: dueThisMonth > 0 ? 'var(--warning)' : 'var(--text3)',
+        },
+        { label: 'Avg Progress', value: total > 0 ? `${avgProgressVal}%` : '—', icon: '📊', bg: '#f0ecf8' },
+      ];
+    }
+
+    if (tab === 'assets') {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
+      const [assetRes, reminderRes] = await Promise.all([
+        supabase.from('assets').select('id, condition'),
+        supabase.from('service_reminders').select('asset_id, due_date'),
+      ]);
+      const assets = assetRes.data || [];
+      const reminders = reminderRes.data || [];
+      const total = assets.length;
+      const poor = assets.filter(a => a.condition === 'poor').length;
+      const overdueReminders = reminders.filter(r => new Date(r.due_date + 'T12:00:00') < today).length;
+      const dueSoon = reminders.filter(r => {
+        const d = new Date(r.due_date + 'T12:00:00');
+        return d >= today && d <= in30;
+      }).length;
+      const assetsWithOverdue = new Set(
+        reminders.filter(r => new Date(r.due_date + 'T12:00:00') < today).map(r => r.asset_id)
+      );
+      const complianceRate = total > 0 ? Math.round(((total - assetsWithOverdue.size) / total) * 100) : 100;
+
+      tiles = [
+        { label: 'Total Assets', value: total, icon: '🏗️', bg: '#e8eef8' },
+        {
+          label: 'Poor Condition', value: poor, icon: '⚠️',
+          bg: poor > 0 ? '#faeae7' : '#f5f5f5',
+          valueColor: poor > 0 ? 'var(--danger)' : 'var(--text3)',
+        },
+        {
+          label: 'Overdue Services', value: overdueReminders, icon: '🔴',
+          bg: overdueReminders > 0 ? '#faeae7' : '#f5f5f5',
+          valueColor: overdueReminders > 0 ? 'var(--danger)' : 'var(--text3)',
+        },
+        {
+          label: 'Due in 30 Days', value: dueSoon, icon: '🔔',
+          bg: dueSoon > 0 ? '#fdf0dc' : '#f5f5f5',
+          valueColor: dueSoon > 0 ? 'var(--warning)' : 'var(--text3)',
+        },
+        {
+          label: 'Compliance', value: `${complianceRate}%`, icon: '🛡️', bg: '#e8f4ef',
+          valueColor: complianceRate >= 80 ? 'var(--brand)' : complianceRate >= 60 ? 'var(--warning)' : 'var(--danger)',
+        },
+      ];
+    }
+
+    if (tab === 'grants') {
+      const { data } = await supabase.from('grants').select('status, amount, deadline');
+      const rows = data || [];
+      const total = rows.length;
+      const approvedRows = rows.filter(g => g.status === 'approved');
+      const approvedTotal = approvedRows.reduce((s, g) => s + (g.amount || 0), 0);
+      const decided = rows.filter(g => ['approved', 'declined'].includes(g.status)).length;
+      const successRate = decided > 0 ? Math.round((approvedRows.length / decided) * 100) : 0;
+      const active = rows.filter(g => ['researching', 'in-progress', 'submitted'].includes(g.status)).length;
+      const today = new Date();
+      const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
+      const urgentDeadlines = rows.filter(g => {
+        if (!g.deadline || ['approved', 'declined'].includes(g.status)) return false;
+        const d = new Date(g.deadline);
+        return d >= today && d <= in14;
+      }).length;
+
+      tiles = [
+        { label: 'Total Grants', value: total, icon: '💰', bg: '#e8eef8' },
+        { label: 'Approved Funding', value: fmtMoney(approvedTotal), icon: '✅', bg: '#e8f4ef', valueColor: 'var(--brand)' },
+        {
+          label: 'Success Rate', value: decided > 0 ? `${successRate}%` : '—', icon: '🏆',
+          bg: successRate >= 50 ? '#e8f4ef' : '#f5f5f5',
+          valueColor: successRate >= 50 ? 'var(--brand)' : 'var(--text3)',
+        },
+        {
+          label: 'Active Applications', value: active, icon: '📝', bg: '#f0ecf8',
+          valueColor: active > 0 ? '#6b42a8' : 'var(--text3)',
+        },
+        {
+          label: 'Urgent Deadlines', value: urgentDeadlines, icon: '🔔',
+          bg: urgentDeadlines > 0 ? '#fdf0dc' : '#f5f5f5',
+          valueColor: urgentDeadlines > 0 ? 'var(--warning)' : 'var(--text3)',
+        },
+      ];
+    }
+
+    if (tab === 'users') {
+      const { data } = await supabase.from('profiles').select('role');
+      const rows = data || [];
+      const total = rows.length;
+      const trustees = rows.filter(u => u.role === 'trustee').length;
+      const community = rows.filter(u => u.role === 'community').length;
+      const trusteeRatio = total > 0 ? Math.round((trustees / total) * 100) : 0;
+
+      tiles = [
+        { label: 'Total Users', value: total, icon: '👥', bg: '#e8eef8' },
+        { label: 'Trustees', value: trustees, icon: '🏛️', bg: '#e8f4ef', valueColor: 'var(--brand)' },
+        { label: 'Community', value: community, icon: '🌿', bg: '#f0ecf8', valueColor: '#6b42a8' },
+        { label: 'Trustee Ratio', value: total > 0 ? `${trusteeRatio}%` : '—', icon: '📊', bg: '#fdf0dc' },
+      ];
+    }
+
+    if (tab === 'minutes') {
+      const [meetRes, resRes, actRes] = await Promise.all([
+        supabase.from('meetings').select('id'),
+        supabase.from('resolutions').select('status'),
+        supabase.from('meeting_actions').select('status, due_date'),
+      ]);
+      const meetings = meetRes.data || [];
+      const resolutions = resRes.data || [];
+      const actions = actRes.data || [];
+      const totalMeetings = meetings.length;
+      const openRes = resolutions.filter(r => !['Completed', 'Cancelled'].includes(r.status)).length;
+      const openActs = actions.filter(a => a.status !== 'Completed').length;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const overdueActs = actions.filter(a => a.due_date && new Date(a.due_date) < today && a.status !== 'Completed').length;
+
+      tiles = [
+        { label: 'Total Meetings', value: totalMeetings, icon: '📋', bg: '#e8eef8' },
+        {
+          label: 'Open Resolutions', value: openRes, icon: '📜',
+          bg: openRes > 0 ? '#fdf0dc' : '#f5f5f5',
+          valueColor: openRes > 0 ? 'var(--warning)' : 'var(--text3)',
+        },
+        {
+          label: 'Open Actions', value: openActs, icon: '✅',
+          bg: openActs > 0 ? '#fdf0dc' : '#e8f4ef',
+          valueColor: openActs > 0 ? 'var(--warning)' : 'var(--brand)',
+        },
+        {
+          label: 'Overdue Actions', value: overdueActs, icon: '⚠️',
+          bg: overdueActs > 0 ? '#faeae7' : '#f5f5f5',
+          valueColor: overdueActs > 0 ? 'var(--danger)' : 'var(--text3)',
+        },
+      ];
+    }
+
+    setKpis(prev => ({ ...prev, [tab]: tiles }));
+    setKpiLoading(prev => ({ ...prev, [tab]: false }));
   }
 
   function formatDate(d) {
@@ -98,11 +380,15 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     return new Date(d).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  // ── RENDER ─────────────────────────────────────────────────────────────────
+
   return (
     <div>
       <Header profile={profile} onLogout={onLogout} activeTab={activeTab} setActiveTab={setActiveTab} tabs={TABS} />
 
       <div className="main">
+
+        {/* ── DASHBOARD ──────────────────────────────────────────────────── */}
         {activeTab === 'dashboard' && (
           <>
             <div style={{ marginBottom: 24 }}>
@@ -112,7 +398,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
               </p>
             </div>
 
-            {/* STAT TILES */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
               {[
                 { label: 'Pending Bookings', val: stats.pending, icon: '📅', color: '#fdf0dc', action: () => setActiveTab('bookings') },
@@ -128,7 +413,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
               ))}
             </div>
 
-            {/* RECENT BOOKINGS + PROJECTS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
               <div className="panel">
                 <div className="panel-header">
@@ -170,13 +454,11 @@ export default function TrusteeDashboard({ profile, onLogout }) {
               </div>
             </div>
 
-            {/* FEEDBACK REPORTS */}
             <div className="panel">
               <div className="panel-header" style={{ marginBottom: 16 }}>
                 <div className="panel-title">Community Feedback Reports</div>
                 <span style={{ fontSize: 12, color: 'var(--text3)' }}>{feedbackStats.total} response{feedbackStats.total !== 1 ? 's' : ''}</span>
               </div>
-
               {loading ? <div className="loading">Loading...</div> : feedbackStats.total === 0 ? (
                 <div className="empty-state" style={{ padding: '12px 0' }}>
                   <div className="emoji">⭐</div>
@@ -184,7 +466,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                  {/* RATINGS */}
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 12 }}>Average Ratings</div>
                     {feedbackStats.avgOverall && (
@@ -203,8 +484,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                     <StarBar label="Cleanliness" value={feedbackStats.avgCleanliness} />
                     <StarBar label="Facilities" value={feedbackStats.avgFacilities} />
                   </div>
-
-                  {/* RECENT COMMENTS */}
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 12 }}>Recent Comments</div>
                     {feedbackStats.recent.length === 0 ? (
@@ -228,15 +507,59 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {activeTab === 'bookings' && <BookingsManager isTrustee={true} />}
+        {/* ── BOOKINGS ───────────────────────────────────────────────────── */}
+        {activeTab === 'bookings' && (
+          <>
+            <KpiBar tiles={kpis.bookings || []} loading={kpiLoading.bookings} count={5} />
+            <BookingsManager isTrustee={true} />
+          </>
+        )}
+
         {activeTab === 'calendar' && <CalendarView isTrustee={true} />}
         {activeTab === 'noticeboard' && <NoticeboardManager isTrustee={true} profile={profile} />}
-        {activeTab === 'minutes' && <CommitteeMinutes />}
-        {activeTab === 'projects' && <ProjectsManager />}
-        {activeTab === 'assets' && <AssetsManager />}
+
+        {/* ── MINUTES ────────────────────────────────────────────────────── */}
+        {activeTab === 'minutes' && (
+          <>
+            <KpiBar tiles={kpis.minutes || []} loading={kpiLoading.minutes} count={4} />
+            <CommitteeMinutes />
+          </>
+        )}
+
+        {/* ── PROJECTS ───────────────────────────────────────────────────── */}
+        {activeTab === 'projects' && (
+          <>
+            <KpiBar tiles={kpis.projects || []} loading={kpiLoading.projects} count={5} />
+            <ProjectsManager />
+          </>
+        )}
+
+        {/* ── ASSETS ─────────────────────────────────────────────────────── */}
+        {activeTab === 'assets' && (
+          <>
+            <KpiBar tiles={kpis.assets || []} loading={kpiLoading.assets} count={5} />
+            <AssetsManager />
+          </>
+        )}
+
         {activeTab === 'documents' && <DocumentsManager />}
-        {activeTab === 'grants' && <GrantsTracker />}
-        {activeTab === 'users' && <UserManager />}
+
+        {/* ── GRANTS ─────────────────────────────────────────────────────── */}
+        {activeTab === 'grants' && (
+          <>
+            <KpiBar tiles={kpis.grants || []} loading={kpiLoading.grants} count={5} />
+            <GrantsTracker />
+          </>
+        )}
+
+        {/* ── USERS ──────────────────────────────────────────────────────── */}
+        {activeTab === 'users' && (
+          <>
+            <KpiBar tiles={kpis.users || []} loading={kpiLoading.users} count={4} />
+            <UserManager />
+          </>
+        )}
+
         {activeTab === 'settings' && <MaraeSettings />}
       </div>
 
