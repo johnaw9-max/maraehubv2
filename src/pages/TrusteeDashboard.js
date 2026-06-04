@@ -6,6 +6,7 @@ import ProjectsManager from '../components/ProjectsManager';
 import AssetsManager from '../components/AssetsManager';
 import DocumentsManager from '../components/DocumentsManager';
 import NoticeboardManager from '../components/NoticeboardManager';
+import CommitteeMinutes from '../components/CommitteeMinutes';
 import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import UserManager from '../components/UserManager';
@@ -18,6 +19,7 @@ const TABS = [
   { key: 'bookings', label: 'Bookings' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'noticeboard', label: 'Noticeboard' },
+  { key: 'minutes', label: 'Minutes' },
   { key: 'projects', label: 'Projects' },
   { key: 'assets', label: 'Assets' },
   { key: 'documents', label: 'Documents' },
@@ -144,6 +146,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'bookings' && <BookingsManager isTrustee={true} />}
         {activeTab === 'calendar' && <CalendarView isTrustee={true} />}
         {activeTab === 'noticeboard' && <NoticeboardManager isTrustee={true} profile={profile} />}
+        {activeTab === 'minutes' && <CommitteeMinutes />}
         {activeTab === 'projects' && <ProjectsManager />}
         {activeTab === 'assets' && <AssetsManager />}
         {activeTab === 'documents' && <DocumentsManager />}
