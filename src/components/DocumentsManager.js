@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-
+ 
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
-
+ 
 const EXT_ICONS = { pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', png: '🖼️', jpg: '🖼️', jpeg: '🖼️' };
-
-
+ 
+ 
 const CAT_COLORS = {
   'Governance': { bg: '#e8f4ef', color: '#1a4a3a' },
   'Finance': { bg: '#fdf0dc', color: '#c8902a' },
@@ -14,9 +14,9 @@ const CAT_COLORS = {
   'Policies': { bg: '#f0ecf8', color: '#6b42a8' },
   'Other': { bg: '#f5f0e8', color: '#4a4438' },
 };
-
+ 
 const EMPTY_FORM = { title: '', category: 'Governance', notes: '' };
-
+ 
 export default function DocumentsManager() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,9 +28,9 @@ export default function DocumentsManager() {
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef();
-
+ 
   useEffect(() => { fetchDocs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+ 
   async function fetchDocs() {
     setLoading(true);
     const { data } = await supabase
@@ -40,68 +40,68 @@ export default function DocumentsManager() {
     setDocs(data || []);
     setLoading(false);
   }
-
+ 
   function getExt(filename) {
     return filename ? filename.split('.').pop().toLowerCase() : '';
   }
-
+ 
   function formatSize(bytes) {
     if (!bytes) return '—';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
-
+ 
   function formatDate(d) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
   }
-
+ 
   function handleFileSelect(f) {
     if (!f) return;
     setFile(f);
     if (!form.title) setForm(prev => ({ ...prev, title: f.name.replace(/\.[^.]+$/, '') }));
   }
-
+ 
   function handleDrop(e) {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files[0];
     if (f) handleFileSelect(f);
   }
-
+ 
   async function handleUpload() {
     if (!form.title.trim()) { setError('Please enter a document title'); return; }
     setUploading(true);
     setError('');
-
+ 
     let file_url = null;
     let file_name = null;
     let file_size = null;
     let file_type = null;
-
+ 
     if (file) {
       const ext = getExt(file.name);
       const path = `documents/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
       const { error: uploadError } = await supabase.storage
-        .from('maraehub')
+        .from('documents')
         .upload(path, file);
-
+ 
       if (uploadError) {
         // If storage bucket doesn't exist yet, save record without file
         console.warn('Storage upload failed:', uploadError.message);
       } else {
         const { data: urlData } = supabase.storage
-          .from('maraehub')
+          .from('documents')
           .getPublicUrl(path);
         file_url = urlData?.publicUrl || null;
       }
-
+ 
       file_name = file.name;
       file_size = file.size;
       file_type = ext;
     }
-
+ 
     const { error: dbError } = await supabase.from('documents').insert({
       title: form.title.trim(),
       category: form.category,
@@ -111,34 +111,34 @@ export default function DocumentsManager() {
       file_type,
       file_url,
     });
-
+ 
     if (dbError) {
       setError(dbError.message);
       setUploading(false);
       return;
     }
-
+ 
     setShowModal(false);
     setForm(EMPTY_FORM);
     setFile(null);
     setUploading(false);
     fetchDocs();
   }
-
+ 
   async function handleDelete(doc) {
     if (!window.confirm(`Delete "${doc.title}"?`)) return;
     if (doc.file_url) {
       const path = doc.file_url.split('/maraehub/')[1];
-      if (path) await supabase.storage.from('maraehub').remove([path]);
+      if (path) await supabase.storage.from('documents').remove([path]);
     }
     await supabase.from('documents').delete().eq('id', doc.id);
     fetchDocs();
   }
-
+ 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
-
+ 
   const filtered = filter === 'all' ? docs : docs.filter(d => d.category === filter);
-
+ 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -150,7 +150,7 @@ export default function DocumentsManager() {
           + Upload Document
         </button>
       </div>
-
+ 
       {/* CATEGORY FILTERS */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {['all', ...CATEGORIES].map(cat => (
@@ -167,7 +167,7 @@ export default function DocumentsManager() {
           </button>
         ))}
       </div>
-
+ 
       {/* DOCUMENT LIST */}
       {loading ? (
         <div className="loading">Loading documents...</div>
@@ -218,14 +218,14 @@ export default function DocumentsManager() {
           })}
         </div>
       )}
-
+ 
       {/* UPLOAD MODAL */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
             <div className="modal-title">Upload Document</div>
             {error && <div className="alert alert-error">{error}</div>}
-
+ 
             {/* DROP ZONE */}
             <div
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
@@ -253,24 +253,24 @@ export default function DocumentsManager() {
               )}
             </div>
             <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => handleFileSelect(e.target.files[0])} />
-
+ 
             <div className="form-group">
               <label className="form-label">Document Title *</label>
               <input className="form-input" value={form.title} onChange={e => setField('title', e.target.value)} placeholder="e.g. Marae Charter 2024" />
             </div>
-
+ 
             <div className="form-group">
               <label className="form-label">Category</label>
               <select className="form-input" value={form.category} onChange={e => setField('category', e.target.value)}>
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
-
+ 
             <div className="form-group">
               <label className="form-label">Notes (optional)</label>
               <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any notes about this document..." style={{ resize: 'vertical' }} />
             </div>
-
+ 
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="btn-primary" onClick={handleUpload} disabled={uploading}>
@@ -283,3 +283,4 @@ export default function DocumentsManager() {
     </div>
   );
 }
+ 
