@@ -583,12 +583,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'documents' && <DocumentsManager />}
 
         {/* ── TASKS ──────────────────────────────────────────────────────── */}
-        {activeTab === 'tasks' && (
-          <>
-            <KpiBar tiles={kpis.tasks || []} loading={kpiLoading.tasks} count={4} />
-            <TaskBoard />
-          </>
-        )}
+        {activeTab === 'tasks' && <TaskBoard />}
 
         {/* ── GRANTS ─────────────────────────────────────────────────────── */}
         {activeTab === 'grants' && (
