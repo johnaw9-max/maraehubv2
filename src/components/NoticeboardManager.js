@@ -16,6 +16,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
   const [filter, setFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,14 +35,13 @@ export default function NoticeboardManager({ isTrustee, profile }) {
   async function handlePost() {
     if (!form.title.trim() || !form.body.trim()) { setError('Please fill in title and message'); return; }
     setSaving(true); setError('');
-    const { error } = await supabase.from('notices').insert({
-      title: form.title.trim(),
-      body: form.body.trim(),
-      category: form.category,
-      author: profile?.full_name || 'Trustee',
-    });
+    const payload = { title: form.title.trim(), body: form.body.trim(), category: form.category };
+    const { error } = editId
+      ? await supabase.from('notices').update(payload).eq('id', editId)
+      : await supabase.from('notices').insert({ ...payload, author: profile?.full_name || 'Trustee' });
     if (error) { setError(error.message); setSaving(false); return; }
     setForm(EMPTY_FORM);
+    setEditId(null);
     setShowForm(false);
     setSaving(false);
     fetchNotices();
@@ -70,7 +70,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Announcements for the whānau</p>
         </div>
         {isTrustee && (
-          <button className="btn-primary" onClick={() => { setShowForm(true); setError(''); setForm(EMPTY_FORM); }}>
+          <button className="btn-primary" onClick={() => { setShowForm(true); setEditId(null); setError(''); setForm(EMPTY_FORM); }}>
             + Post Notice
           </button>
         )}
@@ -93,7 +93,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
 
       {isTrustee && showForm && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <div className="modal-title" style={{ fontSize: 16, marginBottom: 16 }}>Post a Notice</div>
+          <div className="modal-title" style={{ fontSize: 16, marginBottom: 16 }}>{editId ? 'Edit Notice' : 'Post a Notice'}</div>
           {error && <div className="alert alert-error">{error}</div>}
           <div className="form-group">
             <label className="form-label">Title *</label>
@@ -110,8 +110,8 @@ export default function NoticeboardManager({ isTrustee, profile }) {
             </select>
           </div>
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
-            <button className="btn-primary" onClick={handlePost} disabled={saving}>{saving ? 'Posting...' : 'Post Notice'}</button>
+            <button className="btn-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
+            <button className="btn-primary" onClick={handlePost} disabled={saving}>{saving ? 'Saving...' : editId ? 'Save Changes' : 'Post Notice'}</button>
           </div>
         </div>
       )}
@@ -135,7 +135,15 @@ export default function NoticeboardManager({ isTrustee, profile }) {
                     <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: style.bg, color: style.color }}>{n.category}</span>
                   </div>
                   {isTrustee && (
-                    <button onClick={() => handleDelete(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 15, flexShrink: 0 }}>✕</button>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => { setForm({ title: n.title, body: n.body, category: n.category }); setEditId(n.id); setError(''); setShowForm(true); }}
+                        style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}
+                      >
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 15 }}>✕</button>
+                    </div>
                   )}
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 10 }}>{n.body}</p>
