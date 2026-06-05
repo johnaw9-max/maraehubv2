@@ -35,20 +35,20 @@ export default function CalendarView({ isTrustee }) {
   useEffect(() => { fetchData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
-    const base = [
-      supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
-      supabase.from('blocked_dates').select('*').order('from_date'),
-    ];
-
     if (isTrustee) {
       const [bookRes, blockRes, projRes, remRes, taskRes, grantRes, meetRes] = await Promise.all([
-        ...base,
-        supabase.from('projects').select('name, due_date').not('due_date', 'is', null),
+        supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
+        supabase.from('blocked_dates').select('*').order('from_date'),
+        supabase.from('projects').select('name, due_date'),
         supabase.from('service_reminders').select('type, due_date, assets(name)'),
-        supabase.from('tasks').select('title, due_date').not('due_date', 'is', null).not('status', 'in', '("cancelled","completed")'),
-        supabase.from('grants').select('name, deadline').not('deadline', 'is', null),
-        supabase.from('meetings').select('title, meeting_date').not('meeting_date', 'is', null),
+        supabase.from('tasks').select('title, due_date').neq('status', 'cancelled').neq('status', 'completed'),
+        supabase.from('grants').select('name, deadline'),
+        supabase.from('meetings').select('title, meeting_date'),
       ]);
+      if (projRes.error)  console.error('[CalendarView] projects query failed:', projRes.error);
+      if (taskRes.error)  console.error('[CalendarView] tasks query failed:', taskRes.error);
+      if (grantRes.error) console.error('[CalendarView] grants query failed:', grantRes.error);
+      if (meetRes.error)  console.error('[CalendarView] meetings query failed:', meetRes.error);
       setBookings(bookRes.data || []);
       setBlocked(blockRes.data || []);
       setProjects(projRes.data || []);
@@ -57,7 +57,10 @@ export default function CalendarView({ isTrustee }) {
       setGrants(grantRes.data || []);
       setMeetings(meetRes.data || []);
     } else {
-      const [bookRes, blockRes] = await Promise.all(base);
+      const [bookRes, blockRes] = await Promise.all([
+        supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
+        supabase.from('blocked_dates').select('*').order('from_date'),
+      ]);
       setBookings(bookRes.data || []);
       setBlocked(blockRes.data || []);
     }
