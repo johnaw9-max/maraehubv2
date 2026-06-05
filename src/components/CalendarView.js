@@ -25,6 +25,9 @@ const TAB_FOR_EVENT = {
 
 export default function CalendarView({ isTrustee, onNavigate }) {
   const now = new Date();
+  useEffect(() => {
+    console.log('[CalendarView] mounted — onNavigate prop:', typeof onNavigate, onNavigate);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [year, setYear]     = useState(now.getFullYear());
   const [month, setMonth]   = useState(now.getMonth());
   const [bookings, setBookings]   = useState([]);
@@ -352,11 +355,15 @@ export default function CalendarView({ isTrustee, onNavigate }) {
             {tevents.map((ev, idx) => {
               const et  = EVENT_TYPES[ev.type];
               const tab = TAB_FOR_EVENT[ev.type];
-              const canNav = onNavigate && tab;
+              const canNav = !!(onNavigate && tab);
               return (
                 <div
                   key={idx}
-                  onClick={canNav ? () => onNavigate(tab) : undefined}
+                  onClick={canNav ? (e) => {
+                    e.stopPropagation();
+                    console.log('[CalendarView] event row clicked:', ev.type, '->', tab);
+                    onNavigate(tab);
+                  } : undefined}
                   style={{
                     padding: '10px 12px', background: et.bg, borderRadius: 8,
                     border: `1px solid ${et.border}`, marginBottom: 8,
