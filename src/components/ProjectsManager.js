@@ -132,7 +132,7 @@ export default function ProjectsManager() {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => { fetchProjects(); }, []);
+  useEffect(() => { fetchProjects(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchProjects() {
     setLoading(true);
