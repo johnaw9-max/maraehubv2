@@ -322,6 +322,42 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       ];
     }
 
+    if (tab === 'tasks') {
+      const { data } = await supabase.from('tasks').select('status, due_date, completed_at');
+      const rows = data || [];
+      const total = rows.length;
+      const open = rows.filter(t => t.status === 'open').length;
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      const overdue = rows.filter(t => {
+        if (!t.due_date || ['completed', 'cancelled'].includes(t.status)) return false;
+        return new Date(t.due_date + 'T12:00:00') < now;
+      }).length;
+      const todayStr = new Date().toDateString();
+      const completedToday = rows.filter(t =>
+        t.status === 'completed' && t.completed_at &&
+        new Date(t.completed_at).toDateString() === todayStr
+      ).length;
+
+      tiles = [
+        { label: 'Total Tasks', value: total, icon: '📋', bg: '#e8eef8' },
+        {
+          label: 'Open', value: open, icon: '📂',
+          bg: open > 0 ? '#fdf0dc' : '#f5f5f5',
+          valueColor: open > 0 ? 'var(--warning)' : 'var(--text3)',
+        },
+        {
+          label: 'Overdue', value: overdue, icon: '⚠️',
+          bg: overdue > 0 ? '#faeae7' : '#f5f5f5',
+          valueColor: overdue > 0 ? 'var(--danger)' : 'var(--text3)',
+        },
+        {
+          label: 'Completed Today', value: completedToday, icon: '✅',
+          bg: '#e8f4ef',
+          valueColor: completedToday > 0 ? 'var(--success)' : 'var(--text3)',
+        },
+      ];
+    }
+
     if (tab === 'users') {
       const { data } = await supabase.from('profiles').select('role');
       const rows = data || [];
@@ -517,7 +553,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {activeTab === 'calendar' && <CalendarView isTrustee={true} />}
+        {activeTab === 'calendar' && <CalendarView isTrustee={true} onNavigate={setActiveTab} />}
         {activeTab === 'noticeboard' && <NoticeboardManager isTrustee={true} profile={profile} />}
 
         {/* ── MINUTES ────────────────────────────────────────────────────── */}
@@ -547,7 +583,12 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'documents' && <DocumentsManager />}
 
         {/* ── TASKS ──────────────────────────────────────────────────────── */}
-        {activeTab === 'tasks' && <TaskBoard />}
+        {activeTab === 'tasks' && (
+          <>
+            <KpiBar tiles={kpis.tasks || []} loading={kpiLoading.tasks} count={4} />
+            <TaskBoard />
+          </>
+        )}
 
         {/* ── GRANTS ─────────────────────────────────────────────────────── */}
         {activeTab === 'grants' && (

@@ -15,7 +15,15 @@ const EVENT_TYPES = {
   meeting:  { label: 'Meeting',            icon: '🏛️', dot: '#1a6a5a', bg: '#e0f0ec', text: '#1a6a5a', border: '#90c8bc' },
 };
 
-export default function CalendarView({ isTrustee }) {
+const TAB_FOR_EVENT = {
+  project:  'projects',
+  reminder: 'assets',
+  task:     'tasks',
+  grant:    'grants',
+  meeting:  'minutes',
+};
+
+export default function CalendarView({ isTrustee, onNavigate }) {
   const now = new Date();
   const [year, setYear]     = useState(now.getFullYear());
   const [month, setMonth]   = useState(now.getMonth());
@@ -342,14 +350,28 @@ export default function CalendarView({ isTrustee }) {
             )}
 
             {tevents.map((ev, idx) => {
-              const et = EVENT_TYPES[ev.type];
+              const et  = EVENT_TYPES[ev.type];
+              const tab = TAB_FOR_EVENT[ev.type];
+              const canNav = onNavigate && tab;
               return (
-                <div key={idx} style={{ padding: '10px 12px', background: et.bg, borderRadius: 8, border: `1px solid ${et.border}`, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  key={idx}
+                  onClick={canNav ? () => onNavigate(tab) : undefined}
+                  style={{
+                    padding: '10px 12px', background: et.bg, borderRadius: 8,
+                    border: `1px solid ${et.border}`, marginBottom: 8,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    cursor: canNav ? 'pointer' : 'default',
+                  }}
+                >
                   <span style={{ fontSize: 15 }}>{et.icon}</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
                     <div style={{ fontSize: 12, color: 'var(--text2)' }}>{ev.name}</div>
                   </div>
+                  {canNav && (
+                    <span style={{ fontSize: 13, color: et.text, opacity: 0.6, fontWeight: 700 }}>→</span>
+                  )}
                 </div>
               );
             })}
