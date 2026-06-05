@@ -51,7 +51,7 @@ export default function CalendarView({ isTrustee, onNavigate }) {
         supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
         supabase.from('blocked_dates').select('*').order('from_date'),
         supabase.from('projects').select('name, due_date'),
-        supabase.from('service_reminders').select('type, due_date, assets(name)'),
+        supabase.from('service_reminders').select('type, due_date'),
         supabase.from('tasks').select('title, due_date').neq('status', 'cancelled').neq('status', 'completed'),
         supabase.from('grants').select('name, deadline'),
         supabase.from('meetings').select('title, meeting_date'),
@@ -119,7 +119,7 @@ export default function CalendarView({ isTrustee, onNavigate }) {
     });
     serviceReminders.forEach(r => {
       if (normaliseDate(r.due_date) === ds)
-        evs.push({ type: 'reminder', name: `${r.assets?.name || 'Asset'} — ${r.type || 'Service'}` });
+        evs.push({ type: 'reminder', name: r.type || 'Service Reminder' });
     });
     tasks.forEach(t => {
       if (normaliseDate(t.due_date) === ds)
