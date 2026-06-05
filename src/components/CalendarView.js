@@ -169,6 +169,14 @@ export default function CalendarView({ isTrustee, onNavigate }) {
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
+  // ─── SELECTED DAY DATA ────────────────────────────────────────────────────────
+  // Computed here (not inside JSX IIFE) so React tracks them normally.
+
+  const dayBookingInfo = selected ? getBookingInfo(selected) : null;
+  const dayBlockedInfo = selected ? getBlockedInfo(selected) : null;
+  const dayTevents     = selected ? getTrusteeEvents(selected) : [];
+  const dayHasAny      = !!(dayBookingInfo || dayBlockedInfo || dayTevents.length > 0);
+
   // ─── CALENDAR GRID ────────────────────────────────────────────────────────────
 
   const firstDay    = new Date(year, month, 1).getDay();
@@ -317,82 +325,81 @@ export default function CalendarView({ isTrustee, onNavigate }) {
       </div>
 
       {/* ── SELECTED DAY PANEL ─────────────────────────────────────────────── */}
-      {selected && (() => {
-        const bookingInfo = getBookingInfo(selected);
-        const blockedInfo = getBlockedInfo(selected);
-        const tevents     = getTrusteeEvents(selected);
-        const hasAny      = bookingInfo || blockedInfo || tevents.length > 0;
-
-        return (
-          <div className="panel" style={{ marginBottom: 16 }}>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text1)' }}>
-              {formatDate(selected)}
-            </div>
-
-            {!hasAny && (
-              <div style={{ fontSize: 13, color: 'var(--text3)', padding: '4px 0' }}>Available for booking</div>
-            )}
-
-            {blockedInfo && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#faeae7', borderRadius: 8, border: '1px solid #f0b8b0', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 16 }}>🚫</span>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 2 }}>Blocked</div>
-                    <div style={{ fontSize: 12, color: 'var(--text2)' }}>{blockedInfo.reason}</div>
-                  </div>
-                </div>
-                {isTrustee && (
-                  <button onClick={() => handleRemoveBlock(blockedInfo.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
-                    Remove
-                  </button>
-                )}
-              </div>
-            )}
-
-            {bookingInfo && (
-              <div style={{ padding: '10px 12px', background: '#e8f4ef', borderRadius: 8, border: '1px solid #a8d8c0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 16 }}>📅</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#1a4a3a', marginBottom: 2 }}>Approved Booking</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>{bookingInfo.occasion}</div>
-                </div>
-              </div>
-            )}
-
-            {tevents.map((ev, idx) => {
-              const et  = EVENT_TYPES[ev.type];
-              const tab = TAB_FOR_EVENT[ev.type];
-              const canNav = !!(onNavigate && tab);
-              return (
-                <button
-                  key={idx}
-                  onClick={canNav ? () => {
-                    console.log('[CalendarView] event row clicked:', ev.type, '->', tab);
-                    onNavigate(tab);
-                  } : undefined}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                    padding: '10px 12px', background: et.bg, borderRadius: 8,
-                    border: `1px solid ${et.border}`, marginBottom: 8,
-                    cursor: canNav ? 'pointer' : 'default',
-                    textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
-                  }}
-                >
-                  <span style={{ fontSize: 15 }}>{et.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text2)' }}>{ev.name}</div>
-                  </div>
-                  {canNav && (
-                    <span style={{ fontSize: 13, color: et.text, opacity: 0.6, fontWeight: 700 }}>→</span>
-                  )}
-                </button>
-              );
-            })}
+      {selected && (
+        <div
+          className="panel"
+          style={{ marginBottom: 16, pointerEvents: 'auto' }}
+          onClick={(e) => console.log('[CalendarView] panel container clicked — target tag:', e.target.tagName, 'type:', e.target.type)}
+        >
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text1)' }}>
+            {formatDate(selected)}
           </div>
-        );
-      })()}
+
+          {!dayHasAny && (
+            <div style={{ fontSize: 13, color: 'var(--text3)', padding: '4px 0' }}>Available for booking</div>
+          )}
+
+          {dayBlockedInfo && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: '#faeae7', borderRadius: 8, border: '1px solid #f0b8b0', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🚫</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 2 }}>Blocked</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>{dayBlockedInfo.reason}</div>
+                </div>
+              </div>
+              {isTrustee && (
+                <button onClick={() => handleRemoveBlock(dayBlockedInfo.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                  Remove
+                </button>
+              )}
+            </div>
+          )}
+
+          {dayBookingInfo && (
+            <div style={{ padding: '10px 12px', background: '#e8f4ef', borderRadius: 8, border: '1px solid #a8d8c0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 16 }}>📅</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#1a4a3a', marginBottom: 2 }}>Approved Booking</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{dayBookingInfo.occasion}</div>
+              </div>
+            </div>
+          )}
+
+          {dayTevents.map((ev, idx) => {
+            const et     = EVENT_TYPES[ev.type];
+            const tab    = TAB_FOR_EVENT[ev.type];
+            const canNav = !!(onNavigate && tab);
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={canNav ? () => {
+                  console.log('[CalendarView] event button clicked:', ev.type, '->', tab);
+                  onNavigate(tab);
+                } : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                  padding: '10px 12px', background: et.bg, borderRadius: 8,
+                  border: `1px solid ${et.border}`, marginBottom: 8,
+                  cursor: canNav ? 'pointer' : 'default',
+                  textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
+                  pointerEvents: 'auto',
+                }}
+              >
+                <span style={{ fontSize: 15 }}>{et.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>{ev.name}</div>
+                </div>
+                {canNav && (
+                  <span style={{ fontSize: 13, color: et.text, opacity: 0.6, fontWeight: 700 }}>→</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── LEGEND ─────────────────────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 16, padding: '14px 18px' }}>
