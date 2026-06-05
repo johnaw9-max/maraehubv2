@@ -56,10 +56,18 @@ export default function CalendarView({ isTrustee, onNavigate }) {
         supabase.from('grants').select('name, deadline'),
         supabase.from('meetings').select('title, meeting_date'),
       ]);
-      if (projRes.error)  console.error('[CalendarView] projects query failed:', projRes.error);
-      if (taskRes.error)  console.error('[CalendarView] tasks query failed:', taskRes.error);
-      if (grantRes.error) console.error('[CalendarView] grants query failed:', grantRes.error);
-      if (meetRes.error)  console.error('[CalendarView] meetings query failed:', meetRes.error);
+      if (projRes.error)  console.error('[CalendarView] projects:', projRes.error);
+      if (taskRes.error) {
+        if (taskRes.status === 404 || taskRes.error.code === 'PGRST200') {
+          // PostgREST schema cache stale — run in Supabase SQL editor:
+          //   NOTIFY pgrst, 'reload schema';
+          console.warn('[CalendarView] tasks table not visible to PostgREST. Run in Supabase SQL editor: NOTIFY pgrst, \'reload schema\';');
+        } else {
+          console.error('[CalendarView] tasks:', taskRes.error);
+        }
+      }
+      if (grantRes.error) console.error('[CalendarView] grants:', grantRes.error);
+      if (meetRes.error)  console.error('[CalendarView] meetings:', meetRes.error);
       setBookings(bookRes.data || []);
       setBlocked(blockRes.data || []);
       setProjects(projRes.data || []);
@@ -357,18 +365,18 @@ export default function CalendarView({ isTrustee, onNavigate }) {
               const tab = TAB_FOR_EVENT[ev.type];
               const canNav = !!(onNavigate && tab);
               return (
-                <div
+                <button
                   key={idx}
-                  onClick={canNav ? (e) => {
-                    e.stopPropagation();
+                  onClick={canNav ? () => {
                     console.log('[CalendarView] event row clicked:', ev.type, '->', tab);
                     onNavigate(tab);
                   } : undefined}
                   style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                     padding: '10px 12px', background: et.bg, borderRadius: 8,
                     border: `1px solid ${et.border}`, marginBottom: 8,
-                    display: 'flex', alignItems: 'center', gap: 10,
                     cursor: canNav ? 'pointer' : 'default',
+                    textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
                   }}
                 >
                   <span style={{ fontSize: 15 }}>{et.icon}</span>
@@ -379,7 +387,7 @@ export default function CalendarView({ isTrustee, onNavigate }) {
                   {canNav && (
                     <span style={{ fontSize: 13, color: et.text, opacity: 0.6, fontWeight: 700 }}>→</span>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
