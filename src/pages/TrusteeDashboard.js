@@ -11,6 +11,7 @@ import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import UserManager from '../components/UserManager';
 import GrantsTracker from '../components/GrantsTracker';
+import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
 
@@ -24,6 +25,7 @@ const TABS = [
   { key: 'assets', label: 'Assets' },
   { key: 'documents', label: 'Documents' },
   { key: 'grants', label: 'Grants' },
+  { key: 'tasks', label: 'Tasks' },
   { key: 'users', label: 'Users' },
   { key: 'settings', label: 'Settings' },
 ];
@@ -543,6 +545,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         )}
 
         {activeTab === 'documents' && <DocumentsManager />}
+
+        {/* ── TASKS ──────────────────────────────────────────────────────── */}
+        {activeTab === 'tasks' && <TaskBoard />}
 
         {/* ── GRANTS ─────────────────────────────────────────────────────── */}
         {activeTab === 'grants' && (
