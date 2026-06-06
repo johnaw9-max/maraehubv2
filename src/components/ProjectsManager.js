@@ -426,11 +426,12 @@ export default function ProjectsManager() {
           {subtaskError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{subtaskError}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px', gap: 8, marginBottom: 8 }}>
             <input
+              type="text"
               className="form-input"
               placeholder="Subtask title *"
               value={subtaskForm.title}
-              onChange={e => setSubtaskForm(f => ({ ...f, title: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter') handleSaveSubtask(); }}
+              onChange={e => { const v = e.target.value; setSubtaskForm(f => ({ ...f, title: v })); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSaveSubtask(); } }}
               style={{ fontSize: 13 }}
             />
             <select className="form-input" value={subtaskForm.assigned_to} onChange={e => setSubtaskForm(f => ({ ...f, assigned_to: e.target.value }))} style={{ fontSize: 13 }}>
