@@ -66,6 +66,7 @@ export default function BoardDashboard({ onNavigate }) {
   const [d, setD]             = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod]   = useState('month');
+  // eslint-disable-next-line no-unused-vars
   const [aiLoading, setAiLoading] = useState(false);
   const [aiReport, setAiReport]   = useState('');
   const [aiError, setAiError]     = useState('');
@@ -254,6 +255,7 @@ export default function BoardDashboard({ onNavigate }) {
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
+  // eslint-disable-next-line no-unused-vars
   async function generateReport() {
     setAiLoading(true);
     setAiError('');
