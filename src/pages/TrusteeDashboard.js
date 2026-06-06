@@ -9,9 +9,8 @@ import NoticeboardManager from '../components/NoticeboardManager';
 import CommitteeMinutes from '../components/CommitteeMinutes';
 import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
-import UserManager from '../components/UserManager';
 import GrantsTracker from '../components/GrantsTracker';
-import ContractorsDirectory from '../components/ContractorsDirectory';
+import ContactsManager from '../components/ContactsManager';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
@@ -24,11 +23,10 @@ const TABS = [
   { key: 'minutes', label: 'Minutes' },
   { key: 'projects', label: 'Projects' },
   { key: 'assets', label: 'Assets' },
-  { key: 'contractors', label: 'Contractors' },
   { key: 'documents', label: 'Documents' },
   { key: 'grants', label: 'Grants' },
   { key: 'tasks', label: 'Tasks' },
-  { key: 'users', label: 'Users' },
+  { key: 'contacts', label: 'Contacts' },
   { key: 'settings', label: 'Settings' },
 ];
 
@@ -287,27 +285,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       ];
     }
 
-    if (tab === 'contractors') {
-      const { data } = await supabase.from('contractors').select('trade, preferred');
-      const rows = data || [];
-      const total = rows.length;
-      const preferred = rows.filter(c => c.preferred).length;
-      const trades = [...new Set(rows.map(c => c.trade))].length;
-      const tradeMap = {};
-      rows.forEach(c => { tradeMap[c.trade] = (tradeMap[c.trade] || 0) + 1; });
-      const topEntry = Object.entries(tradeMap).sort((a, b) => b[1] - a[1])[0];
-
-      tiles = [
-        { label: 'Total Contractors', value: total,     icon: '🔨', bg: '#e8eef8' },
-        { label: 'Preferred',         value: preferred, icon: '⭐', bg: '#fdf8dc',
-          valueColor: preferred > 0 ? '#7a5a00' : 'var(--text3)' },
-        { label: 'Trades Covered',    value: trades,    icon: '🛠️', bg: '#e8f4ef',
-          valueColor: trades > 0 ? 'var(--brand)' : 'var(--text3)' },
-        { label: topEntry ? `Most: ${topEntry[0]}` : 'Top Trade',
-          value: topEntry ? topEntry[1] : '—', icon: '📊', bg: '#f0ecf8', valueColor: '#6b42a8' },
-      ];
-    }
-
     if (tab === 'grants') {
       const { data } = await supabase.from('grants').select('status, amount, deadline');
       const rows = data || [];
@@ -378,22 +355,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           bg: '#e8f4ef',
           valueColor: completedToday > 0 ? 'var(--success)' : 'var(--text3)',
         },
-      ];
-    }
-
-    if (tab === 'users') {
-      const { data } = await supabase.from('profiles').select('role');
-      const rows = data || [];
-      const total = rows.length;
-      const trustees = rows.filter(u => u.role === 'trustee').length;
-      const community = rows.filter(u => u.role === 'community').length;
-      const trusteeRatio = total > 0 ? Math.round((trustees / total) * 100) : 0;
-
-      tiles = [
-        { label: 'Total Users', value: total, icon: '👥', bg: '#e8eef8' },
-        { label: 'Trustees', value: trustees, icon: '🏛️', bg: '#e8f4ef', valueColor: 'var(--brand)' },
-        { label: 'Community', value: community, icon: '🌿', bg: '#f0ecf8', valueColor: '#6b42a8' },
-        { label: 'Trustee Ratio', value: total > 0 ? `${trusteeRatio}%` : '—', icon: '📊', bg: '#fdf0dc' },
       ];
     }
 
@@ -603,14 +564,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {/* ── CONTRACTORS ────────────────────────────────────────────────── */}
-        {activeTab === 'contractors' && (
-          <>
-            <KpiBar tiles={kpis.contractors || []} loading={kpiLoading.contractors} count={4} />
-            <ContractorsDirectory />
-          </>
-        )}
-
         {activeTab === 'documents' && <DocumentsManager />}
 
         {/* ── TASKS ──────────────────────────────────────────────────────── */}
@@ -624,13 +577,8 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {/* ── USERS ──────────────────────────────────────────────────────── */}
-        {activeTab === 'users' && (
-          <>
-            <KpiBar tiles={kpis.users || []} loading={kpiLoading.users} count={4} />
-            <UserManager />
-          </>
-        )}
+        {/* ── CONTACTS ───────────────────────────────────────────────────── */}
+        {activeTab === 'contacts' && <ContactsManager />}
 
         {activeTab === 'settings' && <MaraeSettings />}
       </div>
