@@ -239,6 +239,19 @@ export default function BoardDashboard({ onNavigate }) {
     ...greenInsights.slice(0, 2).map(text => ({ text, level: 'green' })),
   ].slice(0, 6);
 
+  console.log('[SmartInsights] inputs:', {
+    overdueTasks: overdueTasks.length,
+    overdueReminders: overdueReminders.length,
+    actionsCount: d.actions.length,
+    avgRating,
+    periodProjects: periodProjects.length,
+    compliantPct,
+    approvedGrantsAmt,
+    totalPeriodBookings,
+    soonReminders: soonReminders.length,
+  });
+  console.log('[SmartInsights] output:', { redInsights, amberInsights, greenInsights, INSIGHTS });
+
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
   async function generateReport() {
