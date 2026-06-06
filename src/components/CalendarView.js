@@ -371,11 +371,12 @@ export default function CalendarView({ isTrustee, onNavigate }) {
             const tab    = TAB_FOR_EVENT[ev.type];
             const canNav = !!(onNavigate && tab);
             return (
-              <button
+              <a
                 key={idx}
-                type="button"
-                onClick={canNav ? () => {
-                  console.log('[CalendarView] event button clicked:', ev.type, '->', tab);
+                href={canNav ? `#${tab}` : undefined}
+                onClick={canNav ? (e) => {
+                  e.preventDefault();
+                  console.log('[CalendarView] event row clicked:', ev.type, '->', tab);
                   onNavigate(tab);
                 } : undefined}
                 style={{
@@ -383,8 +384,7 @@ export default function CalendarView({ isTrustee, onNavigate }) {
                   padding: '10px 12px', background: et.bg, borderRadius: 8,
                   border: `1px solid ${et.border}`, marginBottom: 8,
                   cursor: canNav ? 'pointer' : 'default',
-                  textAlign: 'left', fontFamily: 'DM Sans, sans-serif',
-                  pointerEvents: 'auto',
+                  textDecoration: 'none', pointerEvents: 'auto',
                 }}
               >
                 <span style={{ fontSize: 15 }}>{et.icon}</span>
@@ -395,7 +395,7 @@ export default function CalendarView({ isTrustee, onNavigate }) {
                 {canNav && (
                   <span style={{ fontSize: 13, color: et.text, opacity: 0.6, fontWeight: 700 }}>→</span>
                 )}
-              </button>
+              </a>
             );
           })}
         </div>
