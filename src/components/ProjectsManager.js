@@ -100,7 +100,6 @@ export default function ProjectsManager() {
   // Detail / subtask state
   const [selectedProject, setSelectedProject]   = useState(null);
   const [subtasks, setSubtasks]                 = useState([]);
-  const [subtasksLoading, setSubtasksLoading]   = useState(false);
   const [subtaskForm, setSubtaskForm]           = useState(EMPTY_SUBTASK_FORM);
   const [savingSubtask, setSavingSubtask]       = useState(false);
   const [subtaskError, setSubtaskError]         = useState('');
@@ -112,23 +111,11 @@ export default function ProjectsManager() {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
     const rows = data || [];
     setProjects(rows);
-    if (rows.length > 0) await fetchSubtaskCounts(rows.map(p => p.id));
-    setLoading(false);
-  }
-
-  async function fetchSubtaskCounts(ids) {
-    const { data } = await supabase.from('project_subtasks').select('project_id').in('project_id', ids);
-    if (!data) return;
+    // Counts come straight from the JSONB field — no separate table query
     const counts = {};
-    data.forEach(t => { counts[t.project_id] = (counts[t.project_id] || 0) + 1; });
+    rows.forEach(p => { counts[p.id] = (p.subtasks || []).length; });
     setSubtaskCounts(counts);
-  }
-
-  async function fetchSubtasks(projectId) {
-    setSubtasksLoading(true);
-    const { data } = await supabase.from('project_subtasks').select('*').eq('project_id', projectId).order('created_at', { ascending: true });
-    setSubtasks(data || []);
-    setSubtasksLoading(false);
+    setLoading(false);
   }
 
   // ── PROJECT CRUD ───────────────────────────────────────────────────────────
@@ -142,10 +129,9 @@ export default function ProjectsManager() {
 
   function openProject(p) {
     setSelectedProject(p);
-    setSubtasks([]);
+    setSubtasks(p.subtasks || []);
     setSubtaskForm(EMPTY_SUBTASK_FORM);
     setSubtaskError('');
-    fetchSubtasks(p.id);
   }
 
   function closeProject() {
@@ -159,7 +145,7 @@ export default function ProjectsManager() {
     const payload = { ...form, progress: parseInt(form.progress) };
     const { error } = editId
       ? await supabase.from('projects').update(payload).eq('id', editId)
-      : await supabase.from('projects').insert(payload);
+      : await supabase.from('projects').insert({ ...payload, subtasks: [] });
     if (error) { setError(error.message); setSaving(false); return; }
     setShowModal(false); fetchProjects(); setSaving(false);
     // Refresh selected project if we just edited it
@@ -182,36 +168,48 @@ export default function ProjectsManager() {
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
-  // ── SUBTASK CRUD ───────────────────────────────────────────────────────────
+  // ── SUBTASK CRUD (stored as JSONB on the project row) ─────────────────────
+
+  async function saveSubtasksToProject(newSubtasks) {
+    const { error } = await supabase
+      .from('projects')
+      .update({ subtasks: newSubtasks })
+      .eq('id', selectedProject.id);
+    if (error) return error;
+    setSubtasks(newSubtasks);
+    setSelectedProject(prev => ({ ...prev, subtasks: newSubtasks }));
+    setProjects(prev => prev.map(p =>
+      p.id === selectedProject.id ? { ...p, subtasks: newSubtasks } : p
+    ));
+    setSubtaskCounts(prev => ({ ...prev, [selectedProject.id]: newSubtasks.length }));
+    return null;
+  }
 
   async function handleSaveSubtask() {
     if (!subtaskForm.title.trim()) { setSubtaskError('Title is required.'); return; }
     setSavingSubtask(true); setSubtaskError('');
-    const { error } = await supabase.from('project_subtasks').insert({
-      project_id:  selectedProject.id,
+    const newSubtask = {
+      id:          crypto.randomUUID(),
       title:       subtaskForm.title.trim(),
       assigned_to: subtaskForm.assigned_to || null,
       due_date:    subtaskForm.due_date || null,
       priority:    subtaskForm.priority,
       status:      subtaskForm.status,
-    });
-    if (error) { setSubtaskError(error.message); setSavingSubtask(false); return; }
+      created_at:  new Date().toISOString(),
+    };
+    const err = await saveSubtasksToProject([...subtasks, newSubtask]);
+    if (err) { setSubtaskError(err.message); setSavingSubtask(false); return; }
     setSubtaskForm(EMPTY_SUBTASK_FORM);
     setSavingSubtask(false);
-    fetchSubtasks(selectedProject.id);
-    fetchSubtaskCounts(projects.map(p => p.id));
   }
 
   async function toggleSubtask(st) {
     const newStatus = st.status === 'Done' ? 'Open' : 'Done';
-    await supabase.from('project_subtasks').update({ status: newStatus }).eq('id', st.id);
-    setSubtasks(prev => prev.map(s => s.id === st.id ? { ...s, status: newStatus } : s));
+    await saveSubtasksToProject(subtasks.map(s => s.id === st.id ? { ...s, status: newStatus } : s));
   }
 
   async function deleteSubtask(id) {
-    await supabase.from('project_subtasks').delete().eq('id', id);
-    setSubtasks(prev => prev.filter(s => s.id !== id));
-    fetchSubtaskCounts(projects.map(p => p.id));
+    await saveSubtasksToProject(subtasks.filter(s => s.id !== id));
   }
 
   // ── DERIVED ────────────────────────────────────────────────────────────────
@@ -356,9 +354,7 @@ export default function ProjectsManager() {
           </div>
         </div>
 
-        {subtasksLoading ? (
-          <div style={{ color: 'var(--text3)', fontSize: 13, padding: '12px 0' }}>Loading subtasks...</div>
-        ) : subtasks.length === 0 ? (
+        {subtasks.length === 0 ? (
           <div style={{ color: 'var(--text3)', fontSize: 13, padding: '8px 0 16px', fontStyle: 'italic' }}>No subtasks yet — add one below.</div>
         ) : (
           <div style={{ marginBottom: 16 }}>
