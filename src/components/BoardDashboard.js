@@ -65,7 +65,7 @@ const STATUS_STYLES = {
 export default function BoardDashboard({ onNavigate }) {
   const [d, setD]         = useState(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod]   = useState('year');
+  const [period, setPeriod]   = useState('month');
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
