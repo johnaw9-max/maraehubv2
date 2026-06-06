@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import useProfiles from '../lib/useProfiles';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -140,6 +141,7 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function TaskBoard() {
+  const profiles = useProfiles();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -383,12 +385,21 @@ export default function TaskBoard() {
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Assigned To</label>
-                <input
+                <select
                   className="form-input"
                   value={form.assigned_to}
                   onChange={e => setForm(f => ({ ...f, assigned_to: e.target.value }))}
-                  placeholder="Person's name"
-                />
+                >
+                  <option value="">— Select assignee —</option>
+                  {profiles.map(p => {
+                    const roleLabel = p.role === 'trustee' ? 'Trustee' : 'Community';
+                    return (
+                      <option key={p.full_name} value={p.full_name}>
+                        {p.full_name} ({roleLabel})
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Due Date</label>

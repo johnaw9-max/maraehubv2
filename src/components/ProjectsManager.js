@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import useProfiles from '../lib/useProfiles';
 
 const STATUS_OPTIONS = ['planning', 'active', 'review', 'completed'];
 
@@ -122,6 +123,7 @@ function KanbanCard({ p, subtaskCount, onEdit, onDelete, onMove }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function ProjectsManager() {
+  const profiles = useProfiles();
   const [projects, setProjects] = useState([]);
   const [subtaskCounts, setSubtaskCounts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -366,7 +368,14 @@ export default function ProjectsManager() {
             </div>
             <div className="form-group">
               <label className="form-label">Project Lead</label>
-              <input className="form-input" value={form.lead} onChange={e => setField('lead', e.target.value)} placeholder="e.g. Hemi Tūhoe" />
+              <select className="form-input" value={form.lead} onChange={e => setField('lead', e.target.value)}>
+                <option value="">— Select assignee —</option>
+                {profiles.map(p => (
+                  <option key={p.full_name} value={p.full_name}>
+                    {p.full_name} ({p.role === 'trustee' ? 'Trustee' : 'Community'})
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label className="form-label">Notes</label>

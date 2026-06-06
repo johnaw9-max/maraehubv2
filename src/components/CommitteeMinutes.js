@@ -1,6 +1,7 @@
 // MaraeHub Committee Minutes & Resolutions
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import useProfiles from '../lib/useProfiles';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -195,6 +196,7 @@ function ResolutionForm({ initial, onSave, onCancel, saving, error }) {
 // ─── ACTION INLINE FORM ───────────────────────────────────────────────────────
 
 function ActionForm({ initial, onSave, onCancel, saving, error }) {
+  const profiles = useProfiles();
   const [form, setForm] = useState(initial || EMPTY_ACTION);
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -208,7 +210,14 @@ function ActionForm({ initial, onSave, onCancel, saving, error }) {
       <div className="grid-2">
         <div className="form-group">
           <label className="form-label">Assigned To</label>
-          <input className="form-input" value={form.assigned_to} onChange={e => setField('assigned_to', e.target.value)} placeholder="e.g. Hemi Walker" />
+          <select className="form-input" value={form.assigned_to} onChange={e => setField('assigned_to', e.target.value)}>
+              <option value="">— Select assignee —</option>
+              {profiles.map(p => (
+                <option key={p.full_name} value={p.full_name}>
+                  {p.full_name} ({p.role === 'trustee' ? 'Trustee' : 'Community'})
+                </option>
+              ))}
+            </select>
         </div>
         <div className="form-group">
           <label className="form-label">Due Date</label>
