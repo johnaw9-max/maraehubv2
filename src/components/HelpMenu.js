@@ -9,6 +9,17 @@ const HELP_TOPICS = {
         { q: 'How do I approve a booking?', a: 'Go to the Bookings tab. You will see all pending requests. Click the green "Approve" button to confirm a booking, or the red "Decline" button to reject it. The community member will need to check back to see the status.' },
         { q: 'How do I block dates so no one can book?', a: 'Go to the Calendar tab and click "Block Dates" in the top right. Enter the dates and a reason (e.g. Maintenance, Private event). Blocked dates show in red on the calendar and prevent community members from booking those days.' },
         { q: 'Can I see all upcoming bookings?', a: 'Yes — go to the Calendar tab to see a visual overview of all approved bookings and blocked dates. You can also go to the Bookings tab and filter by status (pending, approved, declined).' },
+        { q: 'How do I complete the exit checklist?', a: 'After a booking, go to the Bookings tab, find the relevant booking, and click "Checklist". Tick off each item — cleaning, securing the building, returning keys, etc — and submit. This creates an accountability record for the marae and confirms the hirers met their obligations.' },
+        { q: 'How do I view feedback ratings?', a: 'After a booking, community members can submit star ratings and comments. Go to the Bookings tab and click on a completed booking to see any feedback received. An overall summary of ratings across all bookings is also shown on the main Dashboard under Community Feedback Reports.' },
+      ]
+    },
+    {
+      category: 'Minutes',
+      icon: '📝',
+      items: [
+        { q: 'How do I record a meeting?', a: 'Go to the Minutes tab and click "+ New Meeting". Fill in the meeting title, date, type (Trustee Meeting, AGM, Special Meeting, etc), chairperson, secretary, and attendees. Click "Save Meeting" to create the record. You can then open the meeting to add resolutions and action items.' },
+        { q: 'How do I add a resolution?', a: 'Open a meeting from the Minutes tab and click the "Resolutions" section, then "+ Add Resolution". Enter the resolution number, a description of what was resolved, and the date it was passed. As progress is made, update the status — Open, In Progress, Completed, or Cancelled.' },
+        { q: 'How do I assign an action?', a: 'Open a meeting and go to the "Actions" section, then click "+ Add Action". Describe the action required, assign it to a trustee or community member using the dropdown, and set a due date. Actions show as Open until marked complete — click "Edit" on any action to update its status.' },
       ]
     },
     {
@@ -17,6 +28,24 @@ const HELP_TOPICS = {
       items: [
         { q: 'How do I add a new project?', a: 'Go to the Projects tab and click "+ Add Project". Fill in the project name, status, lead person, and due date. You can update the progress percentage as work gets done.' },
         { q: 'How do I add subtasks to a project?', a: 'Click on any project to open it, then click "+ Add Subtask". You can set a subtask name, assignee, due date, and priority. Tick subtasks off as they are completed — the project progress updates automatically.' },
+        { q: 'How do I switch to board view?', a: 'In the Projects tab, look for the view toggle near the top right of the page. Click "Board" to switch to the kanban-style column view which organises projects by status: Planning, Active, Review, and Completed. Click "List" to return to the list view.' },
+        { q: 'How do I move a project between columns?', a: 'In Board view, each project card has ← and → arrow buttons. Click → to advance the project to the next status column (e.g. Planning → Active → Review → Completed), or ← to move it back. You can also edit the project and change the status directly from the form.' },
+      ]
+    },
+    {
+      category: 'Grants',
+      icon: '💰',
+      items: [
+        { q: 'How do I track a grant?', a: 'Go to the Grants tab and click "+ Add Grant". Enter the grant name, funder, amount, category, and deadline. As you progress, update the status to reflect where you are in the process. The KPI tiles at the top show your overall success rate, total approved funding, and any urgent upcoming deadlines.' },
+        { q: 'What do the status options mean?', a: 'Researching — you are looking into whether to apply. In-Progress — you are actively writing the application. Submitted — the application has been sent and you are waiting for a decision. Approved or Declined — the outcome. Reporting — funding has been received and you are completing required progress reports.' },
+      ]
+    },
+    {
+      category: 'Tasks',
+      icon: '✅',
+      items: [
+        { q: 'How do I add a task?', a: 'Go to the Tasks tab and click "+ Add Task". Enter a title, optional description, assign it to someone from the dropdown, set a due date, and choose a priority — High, Medium, or Low. New tasks start in the Open column. High priority tasks show a red left border, Medium is amber, and Low is green. Overdue tasks are flagged with a red OVERDUE label.' },
+        { q: 'How do I move a task between columns?', a: 'Each task card has ← and → arrow buttons at the bottom. Click → to move the task forward through the columns: Open → In Progress → Completed → Cancelled. Click ← to move it back. Tasks moved into Completed are automatically time-stamped, which updates the "Completed Today" KPI tile.' },
       ]
     },
     {
@@ -28,19 +57,20 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Contacts',
+      icon: '👥',
+      items: [
+        { q: 'How do I add a new trustee or community member?', a: 'Go to the Contacts tab and click "+ Add User". Enter their full name, email address, a temporary password, and choose their role — Trustee or Community Member. They can log in straight away with those details. You can change their role at any time using the "Make Trustee" or "Make Community" buttons on their row.' },
+        { q: 'How do I add a contractor?', a: 'Go to the Contacts tab and click "+ Add Contractor" (visible when the "All" or "Contractors" filter is selected). Fill in their name, trade (Plumber, Electrician, Builder, etc), company, phone, email, address, and any notes such as rates or availability. Use the Preferred toggle to mark them as your go-to for that trade.' },
+        { q: 'How do I mark a contractor as preferred?', a: 'On any contractor card in the Contacts tab, click the ☆ star icon in the top-right corner to toggle their preferred status on or off. Preferred contractors display a ⭐ Preferred badge on their card. You can also set this when adding or editing a contractor using the toggle switch in the form.' },
+      ]
+    },
+    {
       category: 'Documents',
       icon: '📁',
       items: [
         { q: 'How do I upload a document?', a: 'Go to the Documents tab and click "+ Upload Document". You can drag and drop a file or click to browse. Add a title and category (Governance, Finance, Legal, etc) then click Save.' },
         { q: 'What file types can I upload?', a: 'You can upload PDFs, Word documents, Excel spreadsheets, and images. All important marae documents like the charter, trust deed, and policies can be stored here.' },
-      ]
-    },
-    {
-      category: 'Users',
-      icon: '👥',
-      items: [
-        { q: 'How do I add a new trustee or community member?', a: 'Go to the Users tab and click "+ Add User". Enter their full name, email, a temporary password, and choose their role (Trustee or Community Member). They can log in straight away with those details.' },
-        { q: 'Can I change someone\'s role?', a: 'Yes — in the Users tab, find the person and click "Make Trustee" or "Make Community" to change their access level.' },
       ]
     },
     {
@@ -59,6 +89,7 @@ const HELP_TOPICS = {
         { q: 'How do I book the marae?', a: 'Click "Book the Marae" in the top navigation. Follow the 3 steps: choose your occasion type, select your dates and number of guests, then fill in your details and submit. The committee will review and confirm within 2-3 working days.' },
         { q: 'How do I know if my booking is confirmed?', a: 'Go to "My Bookings" to check the status of your request. It will show as Pending while the committee reviews it, then Approved or Declined once they decide.' },
         { q: 'What if my dates are not available?', a: 'If you select dates that are already booked or blocked, you will see a message saying the marae is not available. Try selecting different dates — the calendar shows which dates are taken.' },
+        { q: 'How do I leave feedback on a booking?', a: 'After your booking date has passed, go to "My Bookings" and click "Leave Feedback" on the completed booking. Rate the overall experience, cleanliness, and facilities out of 5 stars, and add any comments you\'d like to share. Your feedback helps the committee improve the marae for the whole community.' },
       ]
     },
     {
