@@ -11,12 +11,14 @@ import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import GrantsTracker from '../components/GrantsTracker';
 import ContactsManager from '../components/ContactsManager';
+import BoardDashboard from '../components/BoardDashboard';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'board', label: 'Board View' },
   { key: 'bookings', label: 'Bookings' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'noticeboard', label: 'Noticeboard' },
@@ -528,6 +530,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
             </div>
           </>
         )}
+
+        {/* ── BOARD VIEW ─────────────────────────────────────────────────── */}
+        {activeTab === 'board' && <BoardDashboard onNavigate={setActiveTab} />}
 
         {/* ── BOOKINGS ───────────────────────────────────────────────────── */}
         {activeTab === 'bookings' && (
