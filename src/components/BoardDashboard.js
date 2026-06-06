@@ -108,6 +108,7 @@ export default function BoardDashboard({ onNavigate }) {
 
   const today    = new Date(); today.setHours(0, 0, 0, 0);
   const todayStr = new Date().toISOString().split('T')[0];
+  const in7      = new Date(today); in7.setDate(in7.getDate() + 7);
   const in14     = new Date(today); in14.setDate(in14.getDate() + 14);
   const in60     = new Date(today); in60.setDate(in60.getDate() + 60);
 
@@ -176,6 +177,67 @@ export default function BoardDashboard({ onNavigate }) {
   ];
 
   const todayDisplay = new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // ─── SMART INSIGHTS ────────────────────────────────────────────────────────
+
+  const redInsights   = [];
+  const amberInsights = [];
+  const greenInsights = [];
+
+  // RED
+  if (overdueTasks.length > 0)
+    redInsights.push(`You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately`);
+
+  d.grants
+    .filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7)
+    .forEach(g => {
+      const daysLeft = Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
+      redInsights.push(`Grant deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — action required today: ${g.name}`);
+    });
+
+  if (overdueReminders.length > 0)
+    redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
+
+  // AMBER
+  d.grants
+    .filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14)
+    .forEach(g => {
+      const daysLeft = Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
+      amberInsights.push(`Grant "${g.name}" deadline in ${daysLeft} days — begin preparation`);
+    });
+
+  const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
+  if (soonReminders.length > 0)
+    amberInsights.push(`${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`);
+
+  if (d.actions.length > 3)
+    amberInsights.push(`${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`);
+
+  if (avgRating !== null && avgRating < 4)
+    amberInsights.push(`Community rating is ${Number(avgRating).toFixed(1)}/5 — review recent feedback and identify areas for improvement`);
+
+  if (periodProjects.length === 0)
+    amberInsights.push(`No active projects this period — consider initiating planned work`);
+
+  // GREEN (max 2)
+  if (avgRating !== null && avgRating >= 4.5)
+    greenInsights.push(`Community satisfaction is strong at ${Number(avgRating).toFixed(1)}/5 — great work`);
+
+  if (compliantPct === 100)
+    greenInsights.push(`All assets are fully service-compliant`);
+
+  if (approvedGrantsAmt > 0)
+    greenInsights.push(`${fmtMoney(approvedGrantsAmt)} in grants secured ${pl.toLowerCase()} — excellent funding progress`);
+
+  const totalPeriodBookings = d.bookings.filter(b => inPeriod(b.start_date)).length;
+  if (totalPeriodBookings > 0 && Math.round((periodBookings.length / totalPeriodBookings) * 100) >= 90)
+    greenInsights.push(`${Math.round((periodBookings.length / totalPeriodBookings) * 100)}% of bookings this period have been approved`);
+
+  const INSIGHTS = [
+    ...redInsights.map(text => ({ text, level: 'red' })),
+    ...amberInsights.map(text => ({ text, level: 'amber' })),
+    ...greenInsights.slice(0, 2).map(text => ({ text, level: 'green' })),
+  ].slice(0, 6);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
@@ -392,6 +454,29 @@ export default function BoardDashboard({ onNavigate }) {
       ) : (
         <div style={{ background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)', borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 13, fontWeight: 600, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>✅</span> All clear — no urgent items requiring attention
+        </div>
+      )}
+
+      {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
+      {INSIGHTS.length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="💡" title="Insights and Recommendations" count={INSIGHTS.length} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {INSIGHTS.map((ins, i) => {
+              const s = {
+                red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
+                amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
+                green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
+              }[ins.level];
+              const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
+              return (
+                <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8, ...s }}>
+                  <span style={{ flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                  {ins.text}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
