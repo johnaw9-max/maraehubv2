@@ -86,19 +86,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div style={{
-          marginTop: 28, padding: '16px', background: 'var(--surface2)',
-          borderRadius: 10, border: '1px solid var(--border)'
-        }}>
-          <div style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, fontWeight: 600 }}>
-            Test Accounts
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.8 }}>
-            <strong>Trustee:</strong> trustee@maraehub.com / Trustee123!<br />
-            <strong>Community:</strong> community@maraehub.com / Community123!
-          </div>
-        </div>
-
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: 11, color: 'var(--text3)' }}>
           MaraeHub NZ Ltd · maraehub.com
         </div>
