@@ -290,6 +290,7 @@ export default function BoardDashboard({ onNavigate }) {
           <div style={{ fontSize: 13, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
         <div className="no-print" style={{ display: 'flex', gap: 10 }}>
+          {/* AI Report button — hidden for now, re-enable when ready
           <button
             onClick={generateReport}
             disabled={aiLoading}
@@ -297,6 +298,7 @@ export default function BoardDashboard({ onNavigate }) {
           >
             {aiLoading ? '⏳ Generating…' : '✨ AI Report'}
           </button>
+          */}
           <button
             onClick={() => window.print()}
             style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
