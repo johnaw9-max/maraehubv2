@@ -186,90 +186,91 @@ export default function GrantsTracker() {
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* ADD / EDIT FORM */}
+      {/* ADD / EDIT MODAL */}
       {showForm && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
-            {editId ? 'Edit Grant' : 'Add New Grant'}
-          </div>
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditId(null); } }}>
+          <div className="modal" style={{ maxWidth: 560 }}>
+            <div className="modal-title">{editId ? 'Edit Grant' : 'Add New Grant'}</div>
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Grant Name *</label>
-              <input className="form-input" value={form.name} onChange={e => setField('name', e.target.value)} placeholder="e.g. Marae Development Fund" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Funder *</label>
-              <input className="form-input" value={form.funder} onChange={e => setField('funder', e.target.value)} placeholder="e.g. Te Puni Kōkiri" />
-            </div>
-          </div>
+            {error && <div className="alert alert-error">{error}</div>}
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Amount ($)</label>
-              <input type="number" className="form-input" value={form.amount} onChange={e => setField('amount', e.target.value)} placeholder="e.g. 50000" />
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Grant Name *</label>
+                <input className="form-input" value={form.name} onChange={e => setField('name', e.target.value)} placeholder="e.g. Marae Development Fund" autoFocus />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Funder *</label>
+                <input className="form-input" value={form.funder} onChange={e => setField('funder', e.target.value)} placeholder="e.g. Te Puni Kōkiri" />
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Category</label>
-              <select className="form-input" value={form.category} onChange={e => setField('category', e.target.value)}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Status</label>
-              <select className="form-input" value={form.status} onChange={e => setField('status', e.target.value)}>
-                {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Amount ($)</label>
+                <input type="number" className="form-input" value={form.amount} onChange={e => setField('amount', e.target.value)} placeholder="e.g. 50000" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Category</label>
+                <select className="form-input" value={form.category} onChange={e => setField('category', e.target.value)}>
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Deadline</label>
-              <input type="date" className="form-input" value={form.deadline} onChange={e => setField('deadline', e.target.value)} />
-            </div>
-          </div>
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Submitted Date</label>
-              <input type="date" className="form-input" value={form.submitted_date} onChange={e => setField('submitted_date', e.target.value)} />
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select className="form-input" value={form.status} onChange={e => setField('status', e.target.value)}>
+                  {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Deadline</label>
+                <input type="date" className="form-input" value={form.deadline} onChange={e => setField('deadline', e.target.value)} />
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Decision Date</label>
-              <input type="date" className="form-input" value={form.decision_date} onChange={e => setField('decision_date', e.target.value)} />
+
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Submitted Date</label>
+                <input type="date" className="form-input" value={form.submitted_date} onChange={e => setField('submitted_date', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Decision Date</label>
+                <input type="date" className="form-input" value={form.decision_date} onChange={e => setField('decision_date', e.target.value)} />
+              </div>
             </div>
-          </div>
 
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label">Reporting Due Date</label>
-              <input type="date" className="form-input" value={form.reporting_date} onChange={e => setField('reporting_date', e.target.value)} />
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Reporting Due Date</label>
+                <input type="date" className="form-input" value={form.reporting_date} onChange={e => setField('reporting_date', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contact Name</label>
+                <input className="form-input" value={form.contact_name} onChange={e => setField('contact_name', e.target.value)} placeholder="e.g. Jane Smith" />
+              </div>
             </div>
+
             <div className="form-group">
-              <label className="form-label">Contact Name</label>
-              <input className="form-input" value={form.contact_name} onChange={e => setField('contact_name', e.target.value)} placeholder="e.g. Jane Smith" />
+              <label className="form-label">Contact Email</label>
+              <input type="email" className="form-input" value={form.contact_email} onChange={e => setField('contact_email', e.target.value)} placeholder="e.g. jane@funder.org.nz" />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label className="form-label">Contact Email</label>
-            <input type="email" className="form-input" value={form.contact_email} onChange={e => setField('contact_email', e.target.value)} placeholder="e.g. jane@funder.org.nz" />
-          </div>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any additional notes..." style={{ resize: 'vertical' }} />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Notes</label>
-            <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any additional notes..." style={{ resize: 'vertical' }} />
-          </div>
-
-          <div className="modal-actions">
-            <button className="btn-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
-            <button className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : editId ? 'Save Changes' : 'Add Grant'}
-            </button>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
+              <button className="btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : editId ? 'Save Changes' : 'Add Grant'}
+              </button>
+            </div>
           </div>
         </div>
       )}
