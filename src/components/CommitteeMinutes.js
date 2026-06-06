@@ -77,6 +77,7 @@ function SummaryTile({ icon, iconBg, value, label, valueColor, sub }) {
 // ─── MEETING FORM ────────────────────────────────────────────────────────────
 
 function MeetingForm({ initial, onSave, onCancel, saving, error }) {
+  const profiles = useProfiles();
   const [form, setForm] = useState(initial || EMPTY_MEETING);
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -115,11 +116,25 @@ function MeetingForm({ initial, onSave, onCancel, saving, error }) {
       <div className="grid-2">
         <div className="form-group">
           <label className="form-label">Chairperson</label>
-          <input className="form-input" value={form.chairperson} onChange={e => setField('chairperson', e.target.value)} placeholder="e.g. Hemi Walker" />
+          <select className="form-input" value={form.chairperson} onChange={e => setField('chairperson', e.target.value)}>
+            <option value="">— Select assignee —</option>
+            {profiles.map(p => (
+              <option key={p.full_name} value={p.full_name}>
+                {p.full_name} ({p.role === 'trustee' ? 'Trustee' : 'Community'})
+              </option>
+            ))}
+          </select>
         </div>
         <div className="form-group">
           <label className="form-label">Secretary</label>
-          <input className="form-input" value={form.secretary} onChange={e => setField('secretary', e.target.value)} placeholder="e.g. Aroha Ngata" />
+          <select className="form-input" value={form.secretary} onChange={e => setField('secretary', e.target.value)}>
+            <option value="">— Select assignee —</option>
+            {profiles.map(p => (
+              <option key={p.full_name} value={p.full_name}>
+                {p.full_name} ({p.role === 'trustee' ? 'Trustee' : 'Community'})
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
