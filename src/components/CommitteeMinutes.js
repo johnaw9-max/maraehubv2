@@ -324,6 +324,18 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       ? await supabase.from('meeting_actions').update(payload).eq('id', editActId)
       : await supabase.from('meeting_actions').insert(payload);
     if (error) { setActError(error.message); setSaving(false); return; }
+
+    // Silently sync new actions to the Task Board
+    if (!editActId) {
+      supabase.from('tasks').insert({
+        title: form.description.trim(),
+        assigned_to: form.assigned_to.trim() || null,
+        due_date: form.due_date || null,
+        status: 'open',
+        priority: 'Medium',
+      });
+    }
+
     setShowActForm(false); setEditActId(null); setActForm(null); setSaving(false);
     fetchDetail();
   }
@@ -526,6 +538,9 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{a.description}</div>
+                          <div style={{ fontSize: 11, color: 'var(--success)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span>📋</span> Added to Task Board
+                          </div>
                           <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 12 }}>
                             {a.assigned_to && <span>👤 {a.assigned_to}</span>}
                             {a.due_date && (
