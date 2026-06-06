@@ -11,6 +11,7 @@ import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import UserManager from '../components/UserManager';
 import GrantsTracker from '../components/GrantsTracker';
+import ContractorsDirectory from '../components/ContractorsDirectory';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
@@ -23,6 +24,7 @@ const TABS = [
   { key: 'minutes', label: 'Minutes' },
   { key: 'projects', label: 'Projects' },
   { key: 'assets', label: 'Assets' },
+  { key: 'contractors', label: 'Contractors' },
   { key: 'documents', label: 'Documents' },
   { key: 'grants', label: 'Grants' },
   { key: 'tasks', label: 'Tasks' },
@@ -282,6 +284,27 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           label: 'Compliance', value: `${complianceRate}%`, icon: '🛡️', bg: '#e8f4ef',
           valueColor: complianceRate >= 80 ? 'var(--brand)' : complianceRate >= 60 ? 'var(--warning)' : 'var(--danger)',
         },
+      ];
+    }
+
+    if (tab === 'contractors') {
+      const { data } = await supabase.from('contractors').select('trade, preferred');
+      const rows = data || [];
+      const total = rows.length;
+      const preferred = rows.filter(c => c.preferred).length;
+      const trades = [...new Set(rows.map(c => c.trade))].length;
+      const tradeMap = {};
+      rows.forEach(c => { tradeMap[c.trade] = (tradeMap[c.trade] || 0) + 1; });
+      const topEntry = Object.entries(tradeMap).sort((a, b) => b[1] - a[1])[0];
+
+      tiles = [
+        { label: 'Total Contractors', value: total,     icon: '🔨', bg: '#e8eef8' },
+        { label: 'Preferred',         value: preferred, icon: '⭐', bg: '#fdf8dc',
+          valueColor: preferred > 0 ? '#7a5a00' : 'var(--text3)' },
+        { label: 'Trades Covered',    value: trades,    icon: '🛠️', bg: '#e8f4ef',
+          valueColor: trades > 0 ? 'var(--brand)' : 'var(--text3)' },
+        { label: topEntry ? `Most: ${topEntry[0]}` : 'Top Trade',
+          value: topEntry ? topEntry[1] : '—', icon: '📊', bg: '#f0ecf8', valueColor: '#6b42a8' },
       ];
     }
 
@@ -577,6 +600,14 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           <>
             <KpiBar tiles={kpis.assets || []} loading={kpiLoading.assets} count={5} />
             <AssetsManager />
+          </>
+        )}
+
+        {/* ── CONTRACTORS ────────────────────────────────────────────────── */}
+        {activeTab === 'contractors' && (
+          <>
+            <KpiBar tiles={kpis.contractors || []} loading={kpiLoading.contractors} count={4} />
+            <ContractorsDirectory />
           </>
         )}
 
