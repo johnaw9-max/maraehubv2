@@ -63,9 +63,14 @@ const STATUS_STYLES = {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function BoardDashboard({ onNavigate }) {
-  const [d, setD]         = useState(null);
+  const [d, setD]             = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod]   = useState('month');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReport, setAiReport]   = useState('');
+  const [aiError, setAiError]     = useState('');
+  const [showReport, setShowReport] = useState(false);
+  const [copied, setCopied]       = useState(false);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -172,6 +177,100 @@ export default function BoardDashboard({ onNavigate }) {
 
   const todayDisplay = new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  // ─── AI REPORT ─────────────────────────────────────────────────────────────
+
+  async function generateReport() {
+    setAiLoading(true);
+    setAiError('');
+    setAiReport('');
+
+    const context = [
+      `MARAE: ${d.maraeName}`,
+      `DATE: ${new Date().toLocaleDateString('en-NZ')}`,
+      `PERIOD: ${pl}`,
+      ``,
+      `ALERTS (${ALERTS.length}):`,
+      ALERTS.length ? ALERTS.map(a => `- ${a.label}`).join('\n') : '- None',
+      ``,
+      `KPI SUMMARY:`,
+      `- Bookings (${pl}): ${periodBookings.length}`,
+      `- Avg Star Rating: ${avgRating ? Number(avgRating).toFixed(1) + '/5' : 'N/A'} from ${periodFeedbackScores.length} responses`,
+      `- Active Projects: ${periodProjects.length}`,
+      `- Open Meeting Actions: ${d.actions.length}`,
+      `- Grants Secured: ${fmtMoney(approvedGrantsAmt)}`,
+      `- Assets Compliant: ${compliantPct}%`,
+      ``,
+      `UPCOMING BOOKINGS (${periodUpcoming.length}):`,
+      periodUpcoming.length
+        ? periodUpcoming.map(b => `- ${b.occasion} on ${fmt(b.start_date)} (${b.guests} guests)`).join('\n')
+        : '- None',
+      ``,
+      `ACTIVE PROJECTS (${periodProjects.length}):`,
+      periodProjects.length
+        ? periodProjects.map(p => `- ${p.name}: ${p.progress || 0}% complete, lead: ${p.lead || 'unassigned'}, due: ${fmt(p.due_date)}${p.due_date && new Date(p.due_date) < today ? ' [OVERDUE]' : ''}`).join('\n')
+        : '- None',
+      ``,
+      `OPEN MEETING ACTIONS (${d.actions.length}):`,
+      d.actions.length
+        ? actionsSorted.map(a => `- ${a.description} (assigned: ${a.assigned_to || 'unassigned'}, due: ${fmt(a.due_date)}, status: ${a.status}${a.due_date && new Date(a.due_date + 'T12:00:00') < today ? ' [OVERDUE]' : ''})`).join('\n')
+        : '- None',
+      ``,
+      `GRANTS PIPELINE (${periodPipeline.length}):`,
+      periodPipeline.length
+        ? periodPipeline.map(g => `- ${g.name} (${g.funder}, ${fmtMoney(g.amount)}, status: ${g.status}, deadline: ${fmt(g.deadline)})`).join('\n')
+        : '- None',
+      ``,
+      `SERVICE REMINDERS DUE (${upcomingReminders.length}):`,
+      upcomingReminders.length
+        ? upcomingReminders.map(r => `- ${assetMap[r.asset_id] || 'Asset'} — ${r.type}, due: ${fmt(r.due_date)}${new Date(r.due_date + 'T12:00:00') < today ? ' [OVERDUE]' : ''}`).join('\n')
+        : '- None',
+      ``,
+      `COMMUNITY FEEDBACK:`,
+      `- ${periodFeedbackScores.length} responses, avg ${avgRating ? Number(avgRating).toFixed(1) + '/5' : 'N/A'}`,
+      periodComments.length
+        ? periodComments.map(f => `- "${f.experience?.slice(0, 120)}"`).join('\n')
+        : '- No comments this period',
+    ].join('\n');
+
+    try {
+      const res = await fetch('/api/ai-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1500,
+          system: `You are a governance advisor for a Māori community marae in Aotearoa New Zealand. Write clear, warm, and professional governance reports for marae trustees. Begin every report with "Tēnā koutou" on its own line. Use inclusive, community-focused language. Keep your tone respectful and solution-oriented. Structure the report with clear sections: an opening summary, what is performing well, what needs attention, and 3-5 specific recommendations in priority order. Use plain English — no jargon.`,
+          messages: [{
+            role: 'user',
+            content: `Write a governance report for ${d.maraeName} based on the following board data. Cover what is performing well, what needs attention, and provide 3-5 specific recommendations in priority order.\n\n${context}`,
+          }],
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setAiError(err.error || `Request failed (${res.status}). Check your API key in Vercel environment variables.`);
+        setAiLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      setAiReport(text);
+      setShowReport(true);
+    } catch (err) {
+      setAiError('Could not reach AI service: ' + err.message);
+    }
+    setAiLoading(false);
+  }
+
+  function copyReport() {
+    navigator.clipboard.writeText(aiReport).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   // ─── RENDER ────────────────────────────────────────────────────────────────
 
   return (
@@ -190,14 +289,54 @@ export default function BoardDashboard({ onNavigate }) {
           <h1 style={{ fontSize: 26, marginBottom: 2 }}>Board Overview</h1>
           <div style={{ fontSize: 13, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
-        <button
-          className="no-print"
-          onClick={() => window.print()}
-          style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-        >
-          🖨️ Print
-        </button>
+        <div className="no-print" style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={generateReport}
+            disabled={aiLoading}
+            style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {aiLoading ? '⏳ Generating…' : '✨ AI Report'}
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            🖨️ Print
+          </button>
+        </div>
       </div>
+
+      {/* ── AI REPORT MODAL ────────────────────────────────────────────── */}
+      {(showReport || aiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Governance Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {aiReport && (
+                  <button
+                    onClick={copyReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowReport(false); setAiError(''); setAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 13, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {aiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 13 }}>{aiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{aiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
