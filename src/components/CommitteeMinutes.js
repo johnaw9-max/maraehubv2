@@ -325,15 +325,22 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       : await supabase.from('meeting_actions').insert(payload);
     if (error) { setActError(error.message); setSaving(false); return; }
 
-    // Silently sync new actions to the Task Board
+    // Sync new actions to the Task Board
     if (!editActId) {
-      supabase.from('tasks').insert({
+      const taskPayload = {
         title: form.description.trim(),
-        assigned_to: form.assigned_to.trim() || null,
+        assigned_to: form.assigned_to ? form.assigned_to.trim() || null : null,
         due_date: form.due_date || null,
         status: 'open',
         priority: 'Medium',
-      });
+      };
+      console.log('[CommitteeMinutes] syncing action to tasks table:', taskPayload);
+      const { data: taskData, error: taskError } = await supabase.from('tasks').insert(taskPayload).select();
+      if (taskError) {
+        console.error('[CommitteeMinutes] task insert failed:', taskError);
+      } else {
+        console.log('[CommitteeMinutes] task created successfully:', taskData);
+      }
     }
 
     setShowActForm(false); setEditActId(null); setActForm(null); setSaving(false);
