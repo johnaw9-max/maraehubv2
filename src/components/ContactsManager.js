@@ -59,9 +59,10 @@ export default function ContactsManager() {
   const [filter, setFilter]           = useState('all');
 
   // User form
-  const [showUserForm, setShowUserForm] = useState(false);
-  const [editUserId, setEditUserId]     = useState(null);
-  const [userForm, setUserForm]         = useState(EMPTY_USER_FORM);
+  const [showUserForm, setShowUserForm]     = useState(false);
+  const [editUserId, setEditUserId]         = useState(null);
+  const [editUserSource, setEditUserSource] = useState('profiles');
+  const [userForm, setUserForm]             = useState(EMPTY_USER_FORM);
 
   // Contractor form
   const [showContractorForm, setShowContractorForm] = useState(false);
@@ -78,13 +79,20 @@ export default function ContactsManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [uRes, cRes] = await Promise.all([
+    const [uRes, cRes, ctRes] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('contractors').select('*').order('name'),
+      supabase.from('contacts').select('*').order('created_at', { ascending: false }),
     ]);
-    setUsers(uRes.data || []);
+    const profileUsers  = (uRes.data  || []).map(u => ({ ...u, _source: 'profiles' }));
+    const contactsUsers = (ctRes.data || []).map(u => ({ ...u, _source: 'contacts' }));
+    setUsers([...profileUsers, ...contactsUsers]);
     setContractors(cRes.data || []);
     setLoading(false);
+  }
+
+  function tableFor(id) {
+    return users.find(u => u.id === id)?._source === 'contacts' ? 'contacts' : 'profiles';
   }
 
   // ─── KPIs ──────────────────────────────────────────────────────────────────
@@ -132,6 +140,7 @@ export default function ContactsManager() {
   function openEditUser(u) {
     setUserForm({ full_name: u.full_name || '', email: u.email || '', password: '', role: u.role });
     setEditUserId(u.id);
+    setEditUserSource(u._source || 'profiles');
     setError(''); setSuccess('');
     setShowUserForm(true);
     setShowContractorForm(false);
@@ -141,7 +150,7 @@ export default function ContactsManager() {
     if (!userForm.full_name.trim()) { setError('Full name is required'); return; }
     setSaving(true); setError(''); setSuccess('');
     if (editUserId) {
-      const { error: err } = await supabase.from('profiles')
+      const { error: err } = await supabase.from(editUserSource)
         .update({ full_name: userForm.full_name.trim(), role: userForm.role })
         .eq('id', editUserId);
       if (err) { setError(err.message); setSaving(false); return; }
@@ -155,7 +164,7 @@ export default function ContactsManager() {
           await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role });
         }
       } else {
-        const { error: err } = await supabase.from('profiles').insert({ id: crypto.randomUUID(), full_name: userForm.full_name.trim(), role: userForm.role });
+        const { error: err } = await supabase.from('contacts').insert({ full_name: userForm.full_name.trim(), role: userForm.role });
         if (err) { setError(err.message); setSaving(false); return; }
       }
       setSuccess(userForm.full_name + ' added.');
@@ -165,7 +174,7 @@ export default function ContactsManager() {
   }
 
   async function handleUpdateRole(id, role) {
-    await supabase.from('profiles').update({ role }).eq('id', id);
+    await supabase.from(tableFor(id)).update({ role }).eq('id', id);
     fetchAll();
   }
 
@@ -218,7 +227,7 @@ export default function ContactsManager() {
   async function handleDelete() {
     if (!confirmDelete) return;
     if (confirmDelete.type === 'user') {
-      await supabase.from('profiles').delete().eq('id', confirmDelete.id);
+      await supabase.from(tableFor(confirmDelete.id)).delete().eq('id', confirmDelete.id);
     } else {
       await supabase.from('contractors').delete().eq('id', confirmDelete.id);
     }
