@@ -23,11 +23,8 @@ const TAB_FOR_EVENT = {
   meeting:  'minutes',
 };
 
-export default function CalendarView({ isTrustee, onNavigate }) {
+export default function CalendarView({ isTrustee }) {
   const now = new Date();
-  useEffect(() => {
-    console.log('[CalendarView] mounted — onNavigate prop:', typeof onNavigate, onNavigate);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [year, setYear]     = useState(now.getFullYear());
   const [month, setMonth]   = useState(now.getMonth());
   const [bookings, setBookings]   = useState([]);
@@ -367,24 +364,15 @@ export default function CalendarView({ isTrustee, onNavigate }) {
           )}
 
           {dayTevents.map((ev, idx) => {
-            const et     = EVENT_TYPES[ev.type];
-            const tab    = TAB_FOR_EVENT[ev.type];
-            const canNav = !!(onNavigate && tab);
+            const et  = EVENT_TYPES[ev.type];
+            const tab = TAB_FOR_EVENT[ev.type];
             return (
-              <a
+              <div
                 key={idx}
-                href={canNav ? `#${tab}` : undefined}
-                onClick={canNav ? (e) => {
-                  e.preventDefault();
-                  console.log('[CalendarView] event row clicked:', ev.type, '->', tab);
-                  onNavigate(tab);
-                } : undefined}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                   padding: '10px 12px', background: et.bg, borderRadius: 8,
                   border: `1px solid ${et.border}`, marginBottom: 8,
-                  cursor: canNav ? 'pointer' : 'default',
-                  textDecoration: 'none', pointerEvents: 'auto',
                 }}
               >
                 <span style={{ fontSize: 15 }}>{et.icon}</span>
@@ -392,10 +380,20 @@ export default function CalendarView({ isTrustee, onNavigate }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
                   <div style={{ fontSize: 12, color: 'var(--text2)' }}>{ev.name}</div>
                 </div>
-                {canNav && (
-                  <span style={{ fontSize: 13, color: et.text, opacity: 0.6, fontWeight: 700 }}>→</span>
+                {tab && (
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('marae:navigate', { detail: tab }))}
+                    style={{
+                      fontSize: 12, fontWeight: 700, color: et.text,
+                      background: 'none', border: `1px solid ${et.border}`,
+                      borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+                    }}
+                  >
+                    View →
+                  </button>
                 )}
-              </a>
+              </div>
             );
           })}
         </div>

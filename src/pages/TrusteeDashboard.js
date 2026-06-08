@@ -132,6 +132,12 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [kpiLoading, setKpiLoading] = useState({});
 
   useEffect(() => {
+    const handler = (e) => setActiveTab(e.detail);
+    window.addEventListener('marae:navigate', handler);
+    return () => window.removeEventListener('marae:navigate', handler);
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'dashboard') {
       fetchDashboardData();
     } else {
@@ -542,7 +548,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {activeTab === 'calendar' && <CalendarView isTrustee={true} onNavigate={setActiveTab} />}
+        {activeTab === 'calendar' && <CalendarView isTrustee={true} />}
         {activeTab === 'noticeboard' && <NoticeboardManager isTrustee={true} profile={profile} />}
 
         {/* ── MINUTES ────────────────────────────────────────────────────── */}
