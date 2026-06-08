@@ -147,12 +147,16 @@ export default function ContactsManager() {
       if (err) { setError(err.message); setSaving(false); return; }
       setSuccess('Details updated.');
     } else {
-      if (!userForm.email.trim())                    { setError('Email required'); setSaving(false); return; }
-      if (!userForm.password || userForm.password.length < 6) { setError('Password min 6 chars'); setSaving(false); return; }
-      const { data: sd, error: se } = await supabase.auth.signUp({ email: userForm.email.trim(), password: userForm.password });
-      if (se) { setError(se.message); setSaving(false); return; }
-      if (sd?.user) {
-        await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role });
+      if (userForm.email.trim()) {
+        if (!userForm.password || userForm.password.length < 6) { setError('Password min 6 chars'); setSaving(false); return; }
+        const { data: sd, error: se } = await supabase.auth.signUp({ email: userForm.email.trim(), password: userForm.password });
+        if (se) { setError(se.message); setSaving(false); return; }
+        if (sd?.user) {
+          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role });
+        }
+      } else {
+        const { error: err } = await supabase.from('profiles').insert({ id: crypto.randomUUID(), full_name: userForm.full_name.trim(), role: userForm.role });
+        if (err) { setError(err.message); setSaving(false); return; }
       }
       setSuccess(userForm.full_name + ' added.');
     }
@@ -312,14 +316,16 @@ export default function ContactsManager() {
           {!editUserId && (
             <>
               <div className="form-group">
-                <label className="form-label">Email *</label>
+                <label className="form-label">Email <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
                 <input type="email" className="form-input" value={userForm.email} onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. hemi@email.com" />
               </div>
-              <div className="form-group">
-                <label className="form-label">Temporary Password *</label>
-                <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
-                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user</div>
-              </div>
+              {userForm.email.trim() && (
+                <div className="form-group">
+                  <label className="form-label">Temporary Password *</label>
+                  <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user</div>
+                </div>
+              )}
             </>
           )}
           <div className="modal-actions">
