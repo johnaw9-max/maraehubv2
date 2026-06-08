@@ -326,7 +326,6 @@ export default function CalendarView({ isTrustee }) {
         <div
           className="panel"
           style={{ marginBottom: 16, pointerEvents: 'auto' }}
-          onClick={(e) => console.log('[CalendarView] panel container clicked — target tag:', e.target.tagName, 'type:', e.target.type)}
         >
           <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text1)' }}>
             {formatDate(selected)}
@@ -356,10 +355,19 @@ export default function CalendarView({ isTrustee }) {
           {dayBookingInfo && (
             <div style={{ padding: '10px 12px', background: '#e8f4ef', borderRadius: 8, border: '1px solid #a8d8c0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 16 }}>📅</span>
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#1a4a3a', marginBottom: 2 }}>Approved Booking</div>
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>{dayBookingInfo.occasion}</div>
               </div>
+              {isTrustee && (
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('marae:navigate', { detail: 'bookings' }))}
+                  style={{ fontSize: 12, fontWeight: 700, color: '#1a4a3a', background: 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+                >
+                  View →
+                </button>
+              )}
             </div>
           )}
 
