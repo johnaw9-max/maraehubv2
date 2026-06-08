@@ -22,7 +22,7 @@ const TRADE_STYLE = {
   Other:       { bg: '#f5f0e8', color: '#7a7268' },
 };
 
-const EMPTY_USER_FORM       = { full_name: '', email: '', password: '', role: 'community' };
+const EMPTY_USER_FORM       = { full_name: '', email: '', password: '', phone: '', role: 'community', notes: '' };
 const EMPTY_CONTRACTOR_FORM = { name: '', trade: 'Plumber', company: '', phone: '', email: '', address: '', notes: '', preferred: false };
 
 function fmt(d) {
@@ -138,7 +138,7 @@ export default function ContactsManager() {
   }
 
   function openEditUser(u) {
-    setUserForm({ full_name: u.full_name || '', email: u.email || '', password: '', role: u.role });
+    setUserForm({ full_name: u.full_name || '', email: u.email || '', password: '', phone: u.phone || '', role: u.role, notes: u.notes || '' });
     setEditUserId(u.id);
     setEditUserSource(u._source || 'profiles');
     setError(''); setSuccess('');
@@ -150,9 +150,14 @@ export default function ContactsManager() {
     if (!userForm.full_name.trim()) { setError('Full name is required'); return; }
     setSaving(true); setError(''); setSuccess('');
     if (editUserId) {
-      const { error: err } = await supabase.from(editUserSource)
-        .update({ full_name: userForm.full_name.trim(), role: userForm.role })
-        .eq('id', editUserId);
+      const updates = {
+        full_name: userForm.full_name.trim(),
+        role:      userForm.role,
+        email:     userForm.email.trim()  || null,
+        phone:     userForm.phone.trim()  || null,
+        notes:     userForm.notes.trim()  || null,
+      };
+      const { error: err } = await supabase.from(editUserSource).update(updates).eq('id', editUserId);
       if (err) { setError(err.message); setSaving(false); return; }
       setSuccess('Details updated.');
     } else {
@@ -161,10 +166,10 @@ export default function ContactsManager() {
         const { data: sd, error: se } = await supabase.auth.signUp({ email: userForm.email.trim(), password: userForm.password });
         if (se) { setError(se.message); setSaving(false); return; }
         if (sd?.user) {
-          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role });
+          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null });
         }
       } else {
-        const { error: err } = await supabase.from('contacts').insert({ full_name: userForm.full_name.trim(), role: userForm.role });
+        const { error: err } = await supabase.from('contacts').insert({ full_name: userForm.full_name.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null });
         if (err) { setError(err.message); setSaving(false); return; }
       }
       setSuccess(userForm.full_name + ' added.');
@@ -322,21 +327,29 @@ export default function ContactsManager() {
               </select>
             </div>
           </div>
-          {!editUserId && (
-            <>
-              <div className="form-group">
-                <label className="form-label">Email <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
-                <input type="email" className="form-input" value={userForm.email} onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. hemi@email.com" />
-              </div>
-              {userForm.email.trim() && (
-                <div className="form-group">
-                  <label className="form-label">Temporary Password *</label>
-                  <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user</div>
-                </div>
-              )}
-            </>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">
+                Email{!editUserId && <span style={{ fontWeight: 400, color: 'var(--text3)' }}> (optional)</span>}
+              </label>
+              <input type="email" className="form-input" value={userForm.email} onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. hemi@email.com" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <input type="tel" className="form-input" value={userForm.phone} onChange={e => setUserForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. 021 123 4567" />
+            </div>
+          </div>
+          {!editUserId && userForm.email.trim() && (
+            <div className="form-group">
+              <label className="form-label">Temporary Password *</label>
+              <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Share this with the user</div>
+            </div>
           )}
+          <div className="form-group">
+            <label className="form-label">Notes</label>
+            <textarea className="form-input" value={userForm.notes} onChange={e => setUserForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any additional notes..." rows={2} style={{ resize: 'vertical' }} />
+          </div>
           <div className="modal-actions">
             <button className="btn-secondary" onClick={() => { setShowUserForm(false); setEditUserId(null); }}>Cancel</button>
             <button className="btn-primary" onClick={handleSaveUser} disabled={saving}>
