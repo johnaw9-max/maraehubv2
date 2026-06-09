@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { sendNotification, getTrusteeEmails, bookingSubmittedBody } from '../lib/notify';
 
 const OCCASIONS = [
   { val: 'Tangi', icon: '🕊️', sub: 'Tangihanga / Funeral' },
@@ -120,6 +121,13 @@ export default function BookingWizard({ profile, onBooked }) {
       setSubmitting(false);
       return;
     }
+
+    // Notify trustees — fire and forget
+    getTrusteeEmails().then(emails => {
+      if (emails.length === 0) return;
+      const booking = { occasion: form.occasion, start_date: form.startDate, end_date: form.endDate, guests: form.guests, overnight: form.overnight, notes: form.notes, reference: ref };
+      sendNotification(emails, `New booking request — ${form.occasion} (${ref})`, bookingSubmittedBody(booking));
+    });
 
     setRefNum(ref);
     setStep(4);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
+import { sendNotification, bookingStatusBody } from '../lib/notify';
 
 function isPast(booking) {
   const d = booking.end_date || booking.start_date;
@@ -55,9 +56,20 @@ export default function BookingsManager({ isTrustee, userId }) {
     setChecklists(clMap);
   }
 
-  async function updateStatus(id, status) {
-    const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
-    if (!error) fetchBookings();
+  async function updateStatus(booking, status) {
+    const { error } = await supabase.from('bookings').update({ status }).eq('id', booking.id);
+    if (error) return;
+    // Notify the booking submitter when approved or declined — fire and forget
+    if ((status === 'approved' || status === 'declined') && booking.user_id) {
+      supabase.from('profiles').select('email').eq('id', booking.user_id).maybeSingle()
+        .then(({ data }) => {
+          if (data?.email) {
+            const label = status === 'approved' ? 'approved' : 'declined';
+            sendNotification(data.email, `Your booking has been ${label} — ${booking.occasion}`, bookingStatusBody(booking, status));
+          }
+        });
+    }
+    fetchBookings();
   }
 
   function formatDate(d) {
@@ -143,12 +155,12 @@ export default function BookingsManager({ isTrustee, userId }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignItems: 'flex-end' }}>
                   {isTrustee && b.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn-success" onClick={() => updateStatus(b.id, 'approved')}>✓ Approve</button>
-                      <button className="btn-danger" onClick={() => updateStatus(b.id, 'declined')}>✗ Decline</button>
+                      <button className="btn-success" onClick={() => updateStatus(b, 'approved')}>✓ Approve</button>
+                      <button className="btn-danger" onClick={() => updateStatus(b, 'declined')}>✗ Decline</button>
                     </div>
                   )}
                   {isTrustee && b.status !== 'pending' && (
-                    <button onClick={() => updateStatus(b.id, 'pending')}
+                    <button onClick={() => updateStatus(b, 'pending')}
                       style={{ fontSize: 11, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
                       Reset
                     </button>

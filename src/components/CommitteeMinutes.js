@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -324,6 +325,14 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       ? await supabase.from('meeting_actions').update(payload).eq('id', editActId)
       : await supabase.from('meeting_actions').insert(payload);
     if (error) { setActError(error.message); setSaving(false); return; }
+
+    // Notify the assignee — fire and forget (new actions only, not edits)
+    if (!editActId && form.assigned_to.trim()) {
+      const action  = { description: payload.description, assigned_to: payload.assigned_to, due_date: payload.due_date };
+      getEmailByName(payload.assigned_to).then(email => {
+        if (email) sendNotification(email, `Action assigned to you — ${meeting.title}`, meetingActionBody(action, meeting));
+      });
+    }
 
     // Sync new actions to the Task Board
     if (!editActId) {
