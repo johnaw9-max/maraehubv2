@@ -12,10 +12,6 @@ export default function App() {
   const [profileError, setProfileError] = useState(null);
 
   useEffect(() => {
-    Sentry.captureMessage('MaraeHub Sentry test', 'info');
-  }, []);
-
-  useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION synchronously on mount in Supabase v2.5+,
     // so getSession() is redundant and causes a dual-fetch race condition — use this alone.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
