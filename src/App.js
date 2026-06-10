@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import * as Sentry from '@sentry/react';
 import { supabase } from './lib/supabase';
 import LoginPage from './pages/LoginPage';
 import TrusteeDashboard from './pages/TrusteeDashboard';
@@ -10,10 +9,6 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(null);
-
-  useEffect(() => {
-    Sentry.captureMessage('MaraeHub Sentry test', 'info');
-  }, []);
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION synchronously on mount in Supabase v2.5+,
