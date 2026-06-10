@@ -5,7 +5,7 @@ import './index.css';
 import App from './App';
 
 Sentry.init({
-  dsn: 'https://ddd4554823cea7c284ebb7fff8dc3294@o4511536850468864.ingest.de.sentry.io/4511536862003280',
+  dsn: process.env.REACT_APP_SENTRY_DSN,
   environment: process.env.NODE_ENV,
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: 0.1,
