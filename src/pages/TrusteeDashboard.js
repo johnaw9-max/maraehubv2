@@ -11,6 +11,7 @@ import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import GrantsTracker from '../components/GrantsTracker';
 import ContactsManager from '../components/ContactsManager';
+import ComplianceTracker from '../components/ComplianceTracker';
 import BoardDashboard from '../components/BoardDashboard';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
@@ -29,6 +30,7 @@ const TABS = [
   { key: 'grants', label: 'Grants' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'contacts', label: 'Contacts' },
+  { key: 'compliance', label: 'Compliance' },
   { key: 'settings', label: 'Settings' },
 ];
 
@@ -401,6 +403,22 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       ];
     }
 
+    if (tab === 'compliance') {
+      const { data } = await supabase.from('compliance_items').select('due_date');
+      const rows = data || [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
+      const overdue  = rows.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today).length;
+      const dueSoon  = rows.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in30).length;
+      const compliant = rows.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') > in30).length;
+      tiles = [
+        { label: 'Overdue',   value: overdue,   icon: '🔴', bg: overdue  > 0 ? '#faeae7' : '#f5f5f5', valueColor: overdue  > 0 ? 'var(--danger)'  : 'var(--text3)' },
+        { label: 'Due Soon',  value: dueSoon,   icon: '🟡', bg: dueSoon  > 0 ? '#fdf0dc' : '#f5f5f5', valueColor: dueSoon  > 0 ? 'var(--warning)' : 'var(--text3)' },
+        { label: 'Compliant', value: compliant, icon: '🟢', bg: '#e8f4ef', valueColor: 'var(--brand)' },
+        { label: 'Total Items', value: rows.length, icon: '📋', bg: '#f5f0e8' },
+      ];
+    }
+
     setKpis(prev => ({ ...prev, [tab]: tiles }));
     setKpiLoading(prev => ({ ...prev, [tab]: false }));
   }
@@ -590,6 +608,14 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
         {/* ── CONTACTS ───────────────────────────────────────────────────── */}
         {activeTab === 'contacts' && <ContactsManager />}
+
+        {/* ── COMPLIANCE ─────────────────────────────────────────────────── */}
+        {activeTab === 'compliance' && (
+          <>
+            <KpiBar tiles={kpis.compliance || []} loading={kpiLoading.compliance} count={4} />
+            <ComplianceTracker />
+          </>
+        )}
 
         {activeTab === 'settings' && <MaraeSettings />}
       </div>

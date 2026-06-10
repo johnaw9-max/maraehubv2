@@ -77,7 +77,7 @@ export default function BoardDashboard({ onNavigate }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -87,17 +87,19 @@ export default function BoardDashboard({ onNavigate }) {
       supabase.from('tasks').select('id, title, due_date, status, priority').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
+      supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
     ]);
     setD({
-      bookings:  bookRes.data   || [],
-      projects:  projRes.data   || [],
-      actions:   actRes.data    || [],
-      grants:    grantRes.data  || [],
-      reminders: remRes.data    || [],
-      assets:    assetRes.data  || [],
-      tasks:     taskRes.data   || [],
-      feedback:  feedRes.data   || [],
-      maraeName: settingsRes.data?.marae_name || 'Our Marae',
+      bookings:   bookRes.data   || [],
+      projects:   projRes.data   || [],
+      actions:    actRes.data    || [],
+      grants:     grantRes.data  || [],
+      reminders:  remRes.data    || [],
+      assets:     assetRes.data  || [],
+      tasks:      taskRes.data   || [],
+      feedback:   feedRes.data   || [],
+      maraeName:  settingsRes.data?.marae_name || 'Our Marae',
+      compliance: compRes.data   || [],
     });
     setLoading(false);
   }
@@ -111,6 +113,7 @@ export default function BoardDashboard({ onNavigate }) {
   const todayStr = new Date().toISOString().split('T')[0];
   const in7      = new Date(today); in7.setDate(in7.getDate() + 7);
   const in14     = new Date(today); in14.setDate(in14.getDate() + 14);
+  const in30     = new Date(today); in30.setDate(in30.getDate() + 30);
   const in60     = new Date(today); in60.setDate(in60.getDate() + 60);
 
   // ─── PERIOD FILTER ─────────────────────────────────────────────────────────
@@ -139,6 +142,8 @@ export default function BoardDashboard({ onNavigate }) {
   const assetMap = {};
   d.assets.forEach(a => { assetMap[a.id] = a.name; });
 
+  const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
+  const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
   const overdueReminders  = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
   const assetsWithOverdue = new Set(overdueReminders.map(r => r.asset_id));
   const compliantPct      = d.assets.length ? Math.round(((d.assets.length - assetsWithOverdue.size) / d.assets.length) * 100) : 100;
@@ -156,10 +161,12 @@ export default function BoardDashboard({ onNavigate }) {
   const pendingBookings = d.bookings.filter(b => b.status === 'pending');
 
   const ALERTS = [
-    overdueTasks.length     && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`,  level: 'red',   tab: 'tasks' },
-    overdueReminders.length && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
-    urgentGrants.length     && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
-    pendingBookings.length  && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
+    overdueCompliance.length && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
+    overdueTasks.length      && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
+    overdueReminders.length  && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
+    dueSoonCompliance.length && { label: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days`, level: 'amber', tab: 'compliance' },
+    urgentGrants.length      && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
+    pendingBookings.length   && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
   ].filter(Boolean);
 
   // ─── KPI TILES (period-filtered) ───────────────────────────────────────────
@@ -186,6 +193,9 @@ export default function BoardDashboard({ onNavigate }) {
   const greenInsights = [];
 
   // RED
+  if (overdueCompliance.length > 0)
+    redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately: ${overdueCompliance.slice(0, 2).map(c => c.name).join(', ')}${overdueCompliance.length > 2 ? '…' : ''}`);
+
   if (overdueTasks.length > 0)
     redInsights.push(`You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately`);
 
@@ -211,6 +221,9 @@ export default function BoardDashboard({ onNavigate }) {
   if (soonReminders.length > 0)
     amberInsights.push(`${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`);
 
+  if (dueSoonCompliance.length > 0)
+    amberInsights.push(`${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`);
+
   if (d.actions.length > 3)
     amberInsights.push(`${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`);
 
@@ -226,6 +239,9 @@ export default function BoardDashboard({ onNavigate }) {
 
   if (compliantPct === 100)
     greenInsights.push(`All assets are fully service-compliant`);
+
+  if (d.compliance.length > 0 && overdueCompliance.length === 0 && dueSoonCompliance.length === 0)
+    greenInsights.push(`All compliance obligations are up to date`);
 
   if (approvedGrantsAmt > 0)
     greenInsights.push(`${fmtMoney(approvedGrantsAmt)} in grants secured ${pl.toLowerCase()} — excellent funding progress`);
