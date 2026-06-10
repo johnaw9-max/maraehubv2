@@ -9,7 +9,6 @@ Sentry.init({
   environment: process.env.NODE_ENV,
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: 0.1,
-  enabled: Boolean(process.env.REACT_APP_SENTRY_DSN),
 });
 
 function ErrorFallback() {
