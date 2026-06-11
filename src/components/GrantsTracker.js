@@ -337,13 +337,11 @@ export default function GrantsTracker() {
                     {fmtMoney(g.amount)}
                   </div>
                 )}
-                <span onClick={e => e.stopPropagation()}>
-                  <StatusPill
-                    status={g.status}
-                    options={STATUSES}
-                    onStatusChange={s => handleStatusChange(g.id, s)}
-                  />
-                </span>
+                <StatusPill
+                  status={g.status}
+                  options={STATUSES}
+                  onStatusChange={s => handleStatusChange(g.id, s)}
+                />
                 <span style={{ fontSize: 12, color: 'var(--text3)' }}>{isExpanded ? '▲' : '▼'}</span>
               </div>
 

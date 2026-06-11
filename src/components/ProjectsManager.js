@@ -54,13 +54,11 @@ function KanbanCard({ p, subtaskCount, onOpen, onEdit, onDelete, onMove }) {
           {p.name}
           {overdue && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--danger)', background: '#faeae7', borderRadius: 4, padding: '1px 5px', marginLeft: 6, verticalAlign: 'middle' }}>OVERDUE</span>}
         </div>
-        <span onClick={e => e.stopPropagation()}>
-          <StatusPill
-            status={p.status}
-            options={STATUS_OPTIONS}
-            onStatusChange={s => onMove(p.id, s)}
-          />
-        </span>
+        <StatusPill
+          status={p.status}
+          options={STATUS_OPTIONS}
+          onStatusChange={s => onMove(p.id, s)}
+        />
       </div>
 
       <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>

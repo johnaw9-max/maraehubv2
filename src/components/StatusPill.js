@@ -143,10 +143,10 @@ export default function StatusPill({ status, options, onStatusChange, size = 'sm
   }
 
   return (
-    <span ref={wrapRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <span ref={wrapRef} style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', flexShrink: 0 }}>
       <button
         type="button"
-        style={pillStyle}
+        style={{ ...pillStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
         onMouseEnter={e => { e.currentTarget.style.background = colors.hoverBg; }}
         onMouseLeave={e => { e.currentTarget.style.background = colors.bg; }}
         onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
