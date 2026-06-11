@@ -168,9 +168,11 @@ export default function ComplianceTracker() {
     };
 
     if (editItem) {
-      await supabase.from('compliance_items').update(payload).eq('id', editItem.id);
+      const { error } = await supabase.from('compliance_items').update(payload).eq('id', editItem.id);
+      if (error) { setItemError(error.message); setItemSaving(false); return; }
     } else {
-      await supabase.from('compliance_items').insert(payload);
+      const { error } = await supabase.from('compliance_items').insert(payload);
+      if (error) { setItemError(error.message); setItemSaving(false); return; }
     }
     await fetchAll();
     setShowItemModal(false);
@@ -234,9 +236,11 @@ export default function ComplianceTracker() {
     };
 
     if (editIncident) {
-      await supabase.from('incidents').update(payload).eq('id', editIncident.id);
+      const { error } = await supabase.from('incidents').update(payload).eq('id', editIncident.id);
+      if (error) { setIncidentError(error.message); setIncidentSaving(false); return; }
     } else {
-      await supabase.from('incidents').insert(payload);
+      const { error } = await supabase.from('incidents').insert(payload);
+      if (error) { setIncidentError(error.message); setIncidentSaving(false); return; }
     }
     await fetchAll();
     setShowIncidentModal(false);
