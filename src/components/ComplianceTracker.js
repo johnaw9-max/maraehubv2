@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import useProfiles from '../lib/useProfiles';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -30,14 +31,14 @@ const STATUS_ORDER = { overdue: 0, due_soon: 1, compliant: 2, not_set: 3 };
 
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '',
-  renewal_months: 12, responsible_id: '', notes: '',
+  renewal_months: 12, responsible_name: '', notes: '',
 };
 
 const EMPTY_INCIDENT = {
   incident_date: new Date().toISOString().split('T')[0],
   title: '', description: '', location: '',
   severity: 'minor', people_involved: '',
-  responsible_id: '', action_taken: '',
+  responsible_name: '', action_taken: '',
   follow_up_date: '', resolved: false,
 };
 
@@ -71,9 +72,11 @@ function daysLabel(dueDate) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function ComplianceTracker() {
+  const profiles = useProfiles();
+  const trustees = profiles.filter(p => p.role === 'trustee');
+
   const [items, setItems]       = useState([]);
   const [incidents, setIncidents] = useState([]);
-  const [trustees, setTrustees] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [section, setSection]   = useState('items');
   const [catFilter, setCatFilter] = useState('all');
@@ -100,19 +103,13 @@ export default function ComplianceTracker() {
 
   async function fetchAll() {
     setLoading(true);
-    const [itemsRes, incRes, trusteeRes] = await Promise.all([
+    const [itemsRes, incRes] = await Promise.all([
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
-      supabase.from('profiles').select('id, full_name').eq('role', 'trustee').order('full_name'),
     ]);
     setItems(itemsRes.data || []);
     setIncidents(incRes.data || []);
-    setTrustees(trusteeRes.data || []);
     setLoading(false);
-  }
-
-  function trusteeName(id) {
-    return trustees.find(t => t.id === id)?.full_name || '—';
   }
 
   // ── DOCUMENT UPLOAD ────────────────────────────────────────────────────────
@@ -142,7 +139,7 @@ export default function ComplianceTracker() {
       name: item.name || '',
       due_date: item.due_date || '',
       renewal_months: item.renewal_months ?? 12,
-      responsible_id: item.responsible_id || '',
+      responsible_name: item.responsible_name || '',
       notes: item.notes || '',
     });
     setItemFile(null); setItemError(''); setShowItemModal(true);
@@ -164,7 +161,7 @@ export default function ComplianceTracker() {
       name: itemForm.name.trim(),
       due_date: itemForm.due_date || null,
       renewal_months: itemForm.renewal_months ? Number(itemForm.renewal_months) : null,
-      responsible_id: itemForm.responsible_id || null,
+      responsible_name: itemForm.responsible_name || null,
       notes: itemForm.notes.trim() || null,
       document_url, document_name,
       updated_at: new Date().toISOString(),
@@ -202,7 +199,7 @@ export default function ComplianceTracker() {
       location: inc.location || '',
       severity: inc.severity || 'minor',
       people_involved: inc.people_involved || '',
-      responsible_id: inc.responsible_id || '',
+      responsible_name: inc.responsible_name || '',
       action_taken: inc.action_taken || '',
       follow_up_date: inc.follow_up_date || '',
       resolved: inc.resolved || false,
@@ -229,7 +226,7 @@ export default function ComplianceTracker() {
       location: incidentForm.location.trim() || null,
       severity: incidentForm.severity,
       people_involved: incidentForm.people_involved.trim() || null,
-      responsible_id: incidentForm.responsible_id || null,
+      responsible_name: incidentForm.responsible_name || null,
       action_taken: incidentForm.action_taken.trim() || null,
       follow_up_date: incidentForm.follow_up_date || null,
       resolved: incidentForm.resolved,
@@ -398,8 +395,8 @@ export default function ComplianceTracker() {
                           {item.due_date && <span>Due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
                           {item.due_date && item.renewal_months && <span style={{ margin: '0 6px' }}>·</span>}
                           {item.renewal_months && <span>Renews every {item.renewal_months >= 12 ? `${item.renewal_months / 12}yr` : `${item.renewal_months}mo`}</span>}
-                          {(item.due_date || item.renewal_months) && item.responsible_id && <span style={{ margin: '0 6px' }}>·</span>}
-                          {item.responsible_id && <span>👤 {trusteeName(item.responsible_id)}</span>}
+                          {(item.due_date || item.renewal_months) && item.responsible_name && <span style={{ margin: '0 6px' }}>·</span>}
+                          {item.responsible_name && <span>👤 {item.responsible_name}</span>}
                         </div>
                         {item.notes && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
                       </div>
@@ -463,7 +460,7 @@ export default function ComplianceTracker() {
                         {inc.description && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3, lineHeight: 1.5 }}>{inc.description}</div>}
                         <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 12px' }}>
                           {inc.people_involved && <span>👥 {inc.people_involved}</span>}
-                          {inc.responsible_id && <span>Responsible: {trusteeName(inc.responsible_id)}</span>}
+                          {inc.responsible_name && <span>Responsible: {inc.responsible_name}</span>}
                           {inc.follow_up_date && <span>Follow-up: {fmt(inc.follow_up_date)}</span>}
                         </div>
                         {inc.action_taken && (
@@ -550,9 +547,9 @@ export default function ComplianceTracker() {
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Responsible Trustee</label>
-                <select className="form-input" value={itemForm.responsible_id} onChange={e => setItemForm(f => ({ ...f, responsible_id: e.target.value }))}>
+                <select className="form-input" value={itemForm.responsible_name} onChange={e => setItemForm(f => ({ ...f, responsible_name: e.target.value }))}>
                   <option value="">— Select trustee —</option>
-                  {trustees.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+                  {trustees.map(t => <option key={t.full_name} value={t.full_name}>{t.full_name}</option>)}
                 </select>
               </div>
 
@@ -638,9 +635,9 @@ export default function ComplianceTracker() {
 
               <div className="form-group">
                 <label className="form-label">Responsible Trustee</label>
-                <select className="form-input" value={incidentForm.responsible_id} onChange={e => setIncidentForm(f => ({ ...f, responsible_id: e.target.value }))}>
+                <select className="form-input" value={incidentForm.responsible_name} onChange={e => setIncidentForm(f => ({ ...f, responsible_name: e.target.value }))}>
                   <option value="">— Select trustee —</option>
-                  {trustees.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+                  {trustees.map(t => <option key={t.full_name} value={t.full_name}>{t.full_name}</option>)}
                 </select>
               </div>
 

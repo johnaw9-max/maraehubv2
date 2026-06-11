@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import useProfiles from '../lib/useProfiles';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ const GRANT_PROGRESS = {
 };
 
 const EMPTY_FORM = {
-  name: '', description: '', category: 'governance', responsible_id: '',
+  name: '', description: '', category: 'governance', responsible_name: '',
   start_date: '', target_date: '', status: 'not_started', progress: 0, notes: '',
 };
 
@@ -98,12 +99,14 @@ function getTrafficLight(goal, effectiveProgress) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function GoalsReporting() {
+  const allProfiles = useProfiles();
+  const trustees = allProfiles.filter(p => p.role === 'trustee');
+
   const [goals, setGoals]             = useState([]);
   const [goalLinks, setGoalLinks]     = useState([]);
   const [projects, setProjects]       = useState([]);
   const [complianceItems, setComplianceItems] = useState([]);
   const [grants, setGrants]           = useState([]);
-  const [trustees, setTrustees]       = useState([]);
   const [loading, setLoading]         = useState(true);
 
   const [section, setSection]         = useState('board');
@@ -121,13 +124,12 @@ export default function GoalsReporting() {
 
   async function fetchAll() {
     setLoading(true);
-    const [goalsRes, linksRes, projRes, compRes, grantsRes, trusteeRes] = await Promise.all([
+    const [goalsRes, linksRes, projRes, compRes, grantsRes] = await Promise.all([
       supabase.from('goals').select('*').order('target_date', { ascending: true, nullsFirst: false }),
       supabase.from('goal_links').select('*'),
       supabase.from('projects').select('id, name, status, progress'),
       supabase.from('compliance_items').select('id, name, due_date, category'),
       supabase.from('grants').select('id, name, status, funder'),
-      supabase.from('profiles').select('id, full_name').eq('role', 'trustee').order('full_name'),
     ]);
     if (goalsRes.error) console.error('[GoalsReporting] goals fetch error:', goalsRes.error.message);
     if (linksRes.error) console.error('[GoalsReporting] goal_links fetch error:', linksRes.error.message);
@@ -136,12 +138,7 @@ export default function GoalsReporting() {
     setProjects(projRes.data || []);
     setComplianceItems(compRes.data || []);
     setGrants(grantsRes.data || []);
-    setTrustees(trusteeRes.data || []);
     setLoading(false);
-  }
-
-  function trusteeName(id) {
-    return trustees.find(t => t.id === id)?.full_name || '—';
   }
 
   function getLinksForGoal(goalId) {
@@ -175,7 +172,7 @@ export default function GoalsReporting() {
       name: goal.name || '',
       description: goal.description || '',
       category: goal.category || 'governance',
-      responsible_id: goal.responsible_id || '',
+      responsible_name: goal.responsible_name || '',
       start_date: goal.start_date || '',
       target_date: goal.target_date || '',
       status: goal.status || 'not_started',
@@ -200,7 +197,7 @@ export default function GoalsReporting() {
       name: form.name.trim(),
       description: form.description.trim() || null,
       category: form.category,
-      responsible_id: form.responsible_id || null,
+      responsible_name: form.responsible_name || null,
       start_date: form.start_date || null,
       target_date: form.target_date || null,
       status: form.status,
@@ -382,7 +379,7 @@ export default function GoalsReporting() {
                     {/* Responsible */}
                     <div style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {goal.responsible_id ? `👤 ${trusteeName(goal.responsible_id)}` : '—'}
+                        {goal.responsible_name ? `👤 ${goal.responsible_name}` : '—'}
                       </span>
                       <button
                         onClick={() => openEdit(goal)}
@@ -511,7 +508,7 @@ export default function GoalsReporting() {
                         <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 14px' }}>
                           {goal.start_date && <span>Start: {fmt(goal.start_date)}</span>}
                           {goal.target_date && <span>Target: <strong style={{ color: tl === 'red' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(goal.target_date)}</strong></span>}
-                          {goal.responsible_id && <span>👤 {trusteeName(goal.responsible_id)}</span>}
+                          {goal.responsible_name && <span>👤 {goal.responsible_name}</span>}
                         </div>
 
                         {/* Links */}
@@ -626,9 +623,9 @@ export default function GoalsReporting() {
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Responsible Trustee</label>
-                <select className="form-input" value={form.responsible_id} onChange={e => setForm(f => ({ ...f, responsible_id: e.target.value }))}>
+                <select className="form-input" value={form.responsible_name} onChange={e => setForm(f => ({ ...f, responsible_name: e.target.value }))}>
                   <option value="">— Select trustee —</option>
-                  {trustees.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+                  {trustees.map(t => <option key={t.full_name} value={t.full_name}>{t.full_name}</option>)}
                 </select>
               </div>
 
