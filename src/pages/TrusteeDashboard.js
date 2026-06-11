@@ -657,7 +657,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {activeTab === 'settings' && <MaraeSettings />}
+        {activeTab === 'settings' && <MaraeSettings profile={profile} />}
       </div>
 
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>

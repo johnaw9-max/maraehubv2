@@ -5,13 +5,26 @@ const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
 };
 
-export default function MaraeSettings() {
+const NOTIF_LABELS = [
+  { key: 'bookings',   icon: '📅', label: 'Booking Reminders',    desc: '48 hours before a confirmed booking' },
+  { key: 'compliance', icon: '✅', label: 'Compliance Alerts',     desc: 'Items due within 30 days' },
+  { key: 'grants',     icon: '💰', label: 'Grant Deadlines',       desc: 'Deadlines within 14 days' },
+  { key: 'actions',    icon: '📝', label: 'Overdue Actions',       desc: 'Meeting actions overdue by 7+ days' },
+  { key: 'goals',      icon: '🎯', label: 'Goal Status Changes',   desc: 'Goals marked At Risk or Completed' },
+];
+
+export default function MaraeSettings({ profile }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [settingsId, setSettingsId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState({ bookings: true, compliance: true, grants: true, actions: true, goals: true });
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [notifSuccess, setNotifSuccess] = useState(false);
 
   // Checklist template state
   const [templates, setTemplates] = useState([]);
@@ -25,7 +38,22 @@ export default function MaraeSettings() {
   useEffect(() => {
     fetchSettings();
     fetchTemplates();
+    if (profile?.id) fetchNotifPrefs(profile.id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchNotifPrefs(userId) {
+    const { data } = await supabase.from('profiles').select('notification_prefs').eq('id', userId).single();
+    if (data?.notification_prefs) setNotifPrefs({ ...notifPrefs, ...data.notification_prefs });
+  }
+
+  async function saveNotifPrefs() {
+    if (!profile?.id) return;
+    setNotifSaving(true);
+    await supabase.from('profiles').update({ notification_prefs: notifPrefs }).eq('id', profile.id);
+    setNotifSaving(false);
+    setNotifSuccess(true);
+    setTimeout(() => setNotifSuccess(false), 3000);
+  }
 
   async function fetchSettings() {
     setLoading(true);
@@ -278,6 +306,55 @@ export default function MaraeSettings() {
             </div>
           </>
         )}
+      </div>
+      {/* ── EMAIL NOTIFICATIONS ── */}
+      <div className="panel" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Email Notifications
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+          Choose which automated email reminders you receive. Emails are sent daily at 8:00am.
+        </p>
+
+        {notifSuccess && <div className="alert alert-success" style={{ marginBottom: 16 }}>✓ Notification preferences saved</div>}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          {NOTIF_LABELS.map(n => (
+            <div
+              key={n.key}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 18 }}>{n.icon}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{n.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 1 }}>{n.desc}</div>
+                </div>
+              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={notifPrefs[n.key] !== false}
+                  onChange={e => setNotifPrefs(p => ({ ...p, [n.key]: e.target.checked }))}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', inset: 0, borderRadius: 24, transition: 'background 0.2s',
+                  background: notifPrefs[n.key] !== false ? 'var(--brand)' : '#d0cbc4',
+                }} />
+                <span style={{
+                  position: 'absolute', top: 3, left: notifPrefs[n.key] !== false ? 23 : 3,
+                  width: 18, height: 18, background: '#fff', borderRadius: '50%',
+                  transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </label>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn-primary" onClick={saveNotifPrefs} disabled={notifSaving} style={{ fontSize: 14 }}>
+          {notifSaving ? 'Saving...' : 'Save Notification Preferences'}
+        </button>
       </div>
     </div>
   );
