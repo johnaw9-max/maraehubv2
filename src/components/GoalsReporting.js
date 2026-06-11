@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import StatusPill from './StatusPill';
+
+const GOAL_STATUSES = ['not_started', 'in_progress', 'at_risk', 'completed'];
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -239,6 +242,11 @@ export default function GoalsReporting() {
     setGoalLinks(prev => prev.filter(l => l.goal_id !== id));
   }
 
+  async function handleGoalStatusChange(goalId, newStatus) {
+    const { error } = await supabase.from('goals').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', goalId);
+    if (!error) setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status: newStatus } : g));
+  }
+
   // ── COMPUTED ───────────────────────────────────────────────────────────────
 
   const summary = { total: goals.length, completed: 0, on_track: 0, at_risk: 0, behind: 0 };
@@ -328,7 +336,6 @@ export default function GoalsReporting() {
                 const eff = getEffectiveProgress(goal);
                 const tl = getTrafficLight(goal, eff);
                 const tlCfg = TRAFFIC_LIGHT_CFG[tl];
-                const scfg = STATUS_CFG[goal.status] || STATUS_CFG.not_started;
                 const cat = CATEGORIES[goal.category] || CATEGORIES.governance;
                 const auto = isAutoProgress(goal);
                 return (
@@ -370,9 +377,11 @@ export default function GoalsReporting() {
                     </div>
                     {/* Status */}
                     <div>
-                      <span style={{ fontSize: 11, fontWeight: 700, background: scfg.bg, color: scfg.color, border: `1px solid ${scfg.border}`, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>
-                        {scfg.label}
-                      </span>
+                      <StatusPill
+                        status={goal.status}
+                        options={GOAL_STATUSES}
+                        onStatusChange={s => handleGoalStatusChange(goal.id, s)}
+                      />
                     </div>
                     {/* Target date */}
                     <div style={{ fontSize: 12, color: 'var(--text2)' }}>{fmt(goal.target_date)}</div>
@@ -460,7 +469,6 @@ export default function GoalsReporting() {
                 const eff = getEffectiveProgress(goal);
                 const tl = getTrafficLight(goal, eff);
                 const tlCfg = TRAFFIC_LIGHT_CFG[tl];
-                const scfg = STATUS_CFG[goal.status] || STATUS_CFG.not_started;
                 const cat = CATEGORIES[goal.category] || CATEGORIES.governance;
                 const links = getLinksForGoal(goal.id);
                 const auto = isAutoProgress(goal);
@@ -474,9 +482,11 @@ export default function GoalsReporting() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {/* Tags row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, background: scfg.bg, color: scfg.color, border: `1px solid ${scfg.border}`, borderRadius: 20, padding: '2px 9px' }}>
-                            {scfg.label}
-                          </span>
+                          <StatusPill
+                            status={goal.status}
+                            options={GOAL_STATUSES}
+                            onStatusChange={s => handleGoalStatusChange(goal.id, s)}
+                          />
                           <span style={{ fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '2px 9px' }}>
                             {cat.icon} {cat.label}
                           </span>

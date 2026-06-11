@@ -174,19 +174,24 @@ export default function BoardDashboard({ onNavigate }) {
   // ─── ALERTS (always current — not period-filtered) ─────────────────────────
 
   const overdueTasks    = d.tasks.filter(t => t.due_date && new Date(t.due_date + 'T12:00:00') < today);
+  const overdueProjects = d.projects.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date + 'T12:00:00') < today);
   const urgentGrants    = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in14);
   const pendingBookings = d.bookings.filter(b => b.status === 'pending');
 
   const ALERTS = [
-    overdueCompliance.length && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
-    goalsBehind.length       && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
-    overdueTasks.length      && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
-    overdueReminders.length  && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
-    dueSoonCompliance.length && { label: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days`, level: 'amber', tab: 'compliance' },
-    goalsAtRisk.length       && { label: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk`, level: 'amber', tab: 'goals' },
-    urgentGrants.length      && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
-    pendingBookings.length   && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
+    overdueCompliance.length  && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
+    goalsBehind.length        && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
+    overdueTasks.length       && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
+    overdueProjects.length    && { label: `${overdueProjects.length} overdue project${overdueProjects.length !== 1 ? 's' : ''}`, level: 'red', tab: 'projects' },
+    overdueReminders.length   && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
+    dueSoonCompliance.length  && { label: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days`, level: 'amber', tab: 'compliance' },
+    goalsAtRisk.length        && { label: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk`, level: 'amber', tab: 'goals' },
+    urgentGrants.length       && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
+    pendingBookings.length    && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
   ].filter(Boolean);
+
+  const redAlerts   = ALERTS.filter(a => a.level === 'red');
+  const amberAlerts = ALERTS.filter(a => a.level === 'amber');
 
   // ─── KPI TILES (period-filtered) ───────────────────────────────────────────
 
@@ -470,6 +475,46 @@ export default function BoardDashboard({ onNavigate }) {
         </div>
       )}
 
+      {/* ── RED ALERT STRIP — all urgent items from every module ──────── */}
+      {redAlerts.length > 0 && (
+        <div className="no-print" style={{
+          background: '#faeae7',
+          border: '1px solid #f0b8b0',
+          borderLeft: '4px solid var(--danger)',
+          borderRadius: 8,
+          padding: '14px 18px',
+          marginBottom: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 16 }}>🔴</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger)' }}>
+              {redAlerts.length} urgent item{redAlerts.length !== 1 ? 's' : ''} require immediate attention
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {redAlerts.map((a, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onNavigate && onNavigate(a.tab)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(255,255,255,0.82)',
+                  border: '1px solid #f0b8b0',
+                  borderRadius: 6, padding: '6px 12px',
+                  fontSize: 12, fontWeight: 600, color: 'var(--danger)',
+                  cursor: onNavigate ? 'pointer' : 'default',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                {a.label}
+                {onNavigate && <span style={{ opacity: 0.5, fontSize: 11 }}>→</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
@@ -494,32 +539,31 @@ export default function BoardDashboard({ onNavigate }) {
         </div>
       </div>
 
-      {/* ── ALERTS STRIP ───────────────────────────────────────────────── */}
-      {ALERTS.length > 0 ? (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-          {ALERTS.map((a, i) => (
+      {/* ── AMBER ALERTS STRIP ─────────────────────────────────────────── */}
+      {amberAlerts.length > 0 ? (
+        <div className="no-print" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+          {amberAlerts.map((a, i) => (
             <button
               key={i}
               type="button"
               onClick={() => onNavigate && onNavigate(a.tab)}
-              className="no-print"
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                background: a.level === 'red' ? '#faeae7' : '#fdf0dc',
-                color: a.level === 'red' ? 'var(--danger)' : '#7a4f00',
-                border: `1px solid ${a.level === 'red' ? '#f0b8b0' : '#e8c880'}`,
-                borderLeft: `4px solid ${a.level === 'red' ? 'var(--danger)' : 'var(--warning)'}`,
+                background: '#fdf0dc',
+                color: '#7a4f00',
+                border: '1px solid #e8c880',
+                borderLeft: '4px solid var(--warning)',
                 borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600,
                 cursor: onNavigate ? 'pointer' : 'default', fontFamily: 'DM Sans, sans-serif',
               }}
             >
-              <span>{a.level === 'red' ? '🔴' : '🟡'}</span>
+              <span>🟡</span>
               {a.label}
               {onNavigate && <span style={{ opacity: 0.5, fontSize: 12 }}>→</span>}
             </button>
           ))}
         </div>
-      ) : (
+      ) : ALERTS.length === 0 && (
         <div style={{ background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)', borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 13, fontWeight: 600, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>✅</span> All clear — no urgent items requiring attention
         </div>

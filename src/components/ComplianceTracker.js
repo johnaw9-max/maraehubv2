@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import StatusPill from './StatusPill';
+
+const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -258,6 +261,11 @@ export default function ComplianceTracker() {
     setIncidents(prev => prev.map(i => i.id === inc.id ? { ...i, resolved: !i.resolved } : i));
   }
 
+  async function handleSeverityChange(id, severity) {
+    await supabase.from('incidents').update({ severity }).eq('id', id);
+    setIncidents(prev => prev.map(i => i.id === id ? { ...i, severity } : i));
+  }
+
   // ── COMPUTED ───────────────────────────────────────────────────────────────
 
   const counts = { overdue: 0, due_soon: 0, compliant: 0, not_set: 0 };
@@ -382,9 +390,7 @@ export default function ComplianceTracker() {
                       {/* Left: status + name */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, background: scfg.bg, color: scfg.color, border: `1px solid ${scfg.border}`, borderRadius: 20, padding: '2px 9px' }}>
-                            {scfg.label}
-                          </span>
+                          <StatusPill status={status} />
                           <span style={{ fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '2px 9px' }}>
                             {cat.icon} {cat.label}
                           </span>
@@ -454,9 +460,15 @@ export default function ComplianceTracker() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, background: inc.resolved ? '#e8f4ef' : scfg.bg, color: inc.resolved ? '#1a4a3a' : scfg.color, borderRadius: 20, padding: '2px 9px' }}>
-                            {inc.resolved ? '✓ Resolved' : inc.severity.charAt(0).toUpperCase() + inc.severity.slice(1)}
-                          </span>
+                          {inc.resolved ? (
+                            <StatusPill status="compliant" />
+                          ) : (
+                            <StatusPill
+                              status={inc.severity}
+                              options={SEVERITY_OPTIONS}
+                              onStatusChange={s => handleSeverityChange(inc.id, s)}
+                            />
+                          )}
                           <span style={{ fontSize: 12, color: 'var(--text3)' }}>{fmt(inc.incident_date)}</span>
                           {inc.location && <span style={{ fontSize: 12, color: 'var(--text3)' }}>📍 {inc.location}</span>}
                         </div>

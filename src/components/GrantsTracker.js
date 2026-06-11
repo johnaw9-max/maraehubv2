@@ -1,18 +1,10 @@
 // MaraeHub Grants Tracker
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import StatusPill from './StatusPill';
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
-
-const STATUS_STYLES = {
-  researching:  { bg: '#f0ecf8', color: '#6b42a8' },
-  'in-progress':{ bg: '#e8eef8', color: '#1a4a8a' },
-  submitted:    { bg: '#fdf0dc', color: '#7a4f00' },
-  approved:     { bg: '#e8f4ef', color: '#1a4a3a' },
-  declined:     { bg: '#fdecea', color: '#7a1a1a' },
-  reporting:    { bg: '#e8f8f4', color: '#0a5a48' },
-};
 
 const EMPTY_FORM = {
   name: '', funder: '', amount: '', category: 'Community', status: 'researching',
@@ -129,6 +121,11 @@ export default function GrantsTracker() {
     if (!window.confirm('Remove grant "' + name + '"?')) return;
     await supabase.from('grants').delete().eq('id', id);
     fetchGrants();
+  }
+
+  async function handleStatusChange(id, newStatus) {
+    await supabase.from('grants').update({ status: newStatus }).eq('id', id);
+    setGrants(prev => prev.map(g => g.id === id ? { ...g, status: newStatus } : g));
   }
 
   function setField(k, v) {
@@ -308,7 +305,6 @@ export default function GrantsTracker() {
         </div>
       ) : (
         filtered.map(g => {
-          const ss = STATUS_STYLES[g.status] || STATUS_STYLES.researching;
           const days = daysUntil(g.deadline);
           const isUrgent = days !== null && days >= 0 && days <= 14 && !['approved', 'declined'].includes(g.status);
           const isExpanded = expandedId === g.id;
@@ -341,8 +337,12 @@ export default function GrantsTracker() {
                     {fmtMoney(g.amount)}
                   </div>
                 )}
-                <span style={{ fontSize: 10, borderRadius: 20, padding: '3px 10px', fontWeight: 600, background: ss.bg, color: ss.color, whiteSpace: 'nowrap' }}>
-                  {g.status.charAt(0).toUpperCase() + g.status.slice(1)}
+                <span onClick={e => e.stopPropagation()}>
+                  <StatusPill
+                    status={g.status}
+                    options={STATUSES}
+                    onStatusChange={s => handleStatusChange(g.id, s)}
+                  />
                 </span>
                 <span style={{ fontSize: 12, color: 'var(--text3)' }}>{isExpanded ? '▲' : '▼'}</span>
               </div>

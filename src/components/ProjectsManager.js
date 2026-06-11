@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import StatusPill from './StatusPill';
 
 const STATUS_OPTIONS = ['planning', 'active', 'review', 'completed'];
 
@@ -48,9 +49,18 @@ function KanbanCard({ p, subtaskCount, onOpen, onEdit, onDelete, onMove }) {
       }}
       onClick={() => onOpen(p)}
     >
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, lineHeight: 1.3 }}>
-        {p.name}
-        {overdue && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--danger)', background: '#faeae7', borderRadius: 4, padding: '1px 5px', marginLeft: 6, verticalAlign: 'middle' }}>OVERDUE</span>}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.3, flex: 1, minWidth: 0, paddingRight: 8 }}>
+          {p.name}
+          {overdue && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--danger)', background: '#faeae7', borderRadius: 4, padding: '1px 5px', marginLeft: 6, verticalAlign: 'middle' }}>OVERDUE</span>}
+        </div>
+        <span onClick={e => e.stopPropagation()}>
+          <StatusPill
+            status={p.status}
+            options={STATUS_OPTIONS}
+            onStatusChange={s => onMove(p.id, s)}
+          />
+        </span>
       </div>
 
       <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -274,7 +284,11 @@ export default function ProjectsManager() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
-                <span className={`badge badge-${p.status}`}>{p.status}</span>
+                <StatusPill
+                  status={p.status}
+                  options={STATUS_OPTIONS}
+                  onStatusChange={s => moveProject(p.id, s)}
+                />
                 <button onClick={() => openEdit(p)} style={{ fontSize: 12, color: 'var(--brand-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Edit</button>
                 <button onClick={() => handleDelete(p.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
               </div>
@@ -315,7 +329,12 @@ export default function ProjectsManager() {
               {selectedProject.due_date && <span style={{ color: isOverdue(selectedProject) ? 'var(--danger)' : 'var(--text3)' }}>📅 Due {fmt(selectedProject.due_date)}</span>}
             </div>
           </div>
-          <span className={`badge badge-${selectedProject.status}`} style={{ fontSize: 12, padding: '4px 12px' }}>{selectedProject.status}</span>
+          <StatusPill
+            status={selectedProject.status}
+            options={STATUS_OPTIONS}
+            onStatusChange={s => moveProject(selectedProject.id, s)}
+            size="md"
+          />
         </div>
 
         {selectedProject.notes && (

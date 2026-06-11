@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
 import { sendNotification, bookingStatusBody } from '../lib/notify';
+import StatusPill from './StatusPill';
+
+const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
 
 function isPast(booking) {
   const d = booking.end_date || booking.start_date;
@@ -133,7 +136,11 @@ export default function BookingsManager({ isTrustee, userId }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{b.occasion}</div>
-                    <span className={`badge badge-${b.status}`}>{b.status}</span>
+                    <StatusPill
+                      status={b.status}
+                      options={isTrustee ? BOOKING_STATUSES : undefined}
+                      onStatusChange={isTrustee ? s => updateStatus(b, s) : undefined}
+                    />
                     {b.reference && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{b.reference}</span>}
                     {fb && <StarDisplay rating={fb.rating_overall} />}
                   </div>

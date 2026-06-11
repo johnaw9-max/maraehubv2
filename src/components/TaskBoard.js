@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import StatusPill from './StatusPill';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -36,9 +37,11 @@ function isCompletedToday(task) {
   return new Date(task.completed_at).toDateString() === new Date().toDateString();
 }
 
+const TASK_STATUSES = COLUMNS.map(c => c.key);
+
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, colIndex, onMove, onEdit, onDelete }) {
+function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus }) {
   const overdue = isOverdue(task);
   const dateStr = fmtDate(task.due_date);
   const badge = PRIORITY_BADGE[task.priority] || PRIORITY_BADGE.Medium;
@@ -80,7 +83,12 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete }) {
         )}
       </div>
 
-      <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+        <StatusPill
+          status={task.status}
+          options={TASK_STATUSES}
+          onStatusChange={s => onChangeStatus(task, s)}
+        />
         <span style={{
           fontSize: 10, background: badge.bg, color: badge.color,
           borderRadius: 20, padding: '2px 8px', fontWeight: 600, letterSpacing: '0.04em',
@@ -234,10 +242,13 @@ export default function TaskBoard() {
     const idx = COLUMNS.findIndex(c => c.key === task.status);
     const newIdx = idx + direction;
     if (newIdx < 0 || newIdx >= COLUMNS.length) return;
-    const newStatus = COLUMNS[newIdx].key;
+    await changeTaskStatus(task, COLUMNS[newIdx].key);
+  }
+
+  async function changeTaskStatus(task, newStatus) {
     const updates = { status: newStatus };
-    if (newStatus === 'completed') updates.completed_at = new Date().toISOString();
-    else if (task.status === 'completed') updates.completed_at = null;
+    if (newStatus === 'completed' && task.status !== 'completed') updates.completed_at = new Date().toISOString();
+    else if (newStatus !== 'completed' && task.status === 'completed') updates.completed_at = null;
     await supabase.from('tasks').update(updates).eq('id', task.id);
     fetchTasks();
   }
@@ -342,6 +353,7 @@ export default function TaskBoard() {
                       onMove={moveTask}
                       onEdit={openEdit}
                       onDelete={setConfirmDeleteId}
+                      onChangeStatus={changeTaskStatus}
                     />
                   ))}
                 </div>
