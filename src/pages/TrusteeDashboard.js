@@ -12,6 +12,7 @@ import MaraeSettings from '../components/MaraeSettings';
 import GrantsTracker from '../components/GrantsTracker';
 import ContactsManager from '../components/ContactsManager';
 import ComplianceTracker from '../components/ComplianceTracker';
+import GoalsReporting from '../components/GoalsReporting';
 import BoardDashboard from '../components/BoardDashboard';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
@@ -31,6 +32,7 @@ const TABS = [
   { key: 'tasks', label: 'Tasks' },
   { key: 'contacts', label: 'Contacts' },
   { key: 'compliance', label: 'Compliance' },
+  { key: 'goals', label: 'Goals & Reporting' },
   { key: 'settings', label: 'Settings' },
 ];
 
@@ -419,6 +421,36 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       ];
     }
 
+    if (tab === 'goals') {
+      const { data } = await supabase.from('goals').select('status, target_date');
+      const rows = data || [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
+      const total = rows.length;
+      const completed = rows.filter(r => r.status === 'completed').length;
+      const atRisk = rows.filter(r => r.status === 'at_risk').length;
+      const behind = rows.filter(r => {
+        if (['completed'].includes(r.status)) return false;
+        if (!r.target_date) return false;
+        return new Date(r.target_date + 'T12:00:00') < today;
+      }).length;
+      const onTrack = rows.filter(r => {
+        if (r.status === 'completed') return true;
+        if (r.status === 'at_risk' || r.status === 'not_started') return false;
+        const t = r.target_date ? new Date(r.target_date + 'T12:00:00') : null;
+        if (t && t < today) return false;
+        if (t && t <= in14) return false;
+        return true;
+      }).length;
+      tiles = [
+        { label: 'Total Goals',  value: total,     icon: '🎯', bg: '#e8eef8' },
+        { label: 'On Track',     value: onTrack,   icon: '🟢', bg: '#e8f4ef',  valueColor: 'var(--brand)' },
+        { label: 'At Risk',      value: atRisk,    icon: '🟡', bg: atRisk > 0 ? '#fdf0dc' : '#f5f5f5', valueColor: atRisk > 0 ? 'var(--warning)' : 'var(--text3)' },
+        { label: 'Behind',       value: behind,    icon: '🔴', bg: behind > 0 ? '#faeae7' : '#f5f5f5', valueColor: behind > 0 ? 'var(--danger)' : 'var(--text3)' },
+        { label: 'Completed',    value: completed, icon: '✅', bg: '#f0ecf8',  valueColor: completed > 0 ? '#6b42a8' : 'var(--text3)' },
+      ];
+    }
+
     setKpis(prev => ({ ...prev, [tab]: tiles }));
     setKpiLoading(prev => ({ ...prev, [tab]: false }));
   }
@@ -614,6 +646,14 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           <>
             <KpiBar tiles={kpis.compliance || []} loading={kpiLoading.compliance} count={4} />
             <ComplianceTracker />
+          </>
+        )}
+
+        {/* ── GOALS & REPORTING ──────────────────────────────────────────── */}
+        {activeTab === 'goals' && (
+          <>
+            <KpiBar tiles={kpis.goals || []} loading={kpiLoading.goals} count={5} />
+            <GoalsReporting />
           </>
         )}
 
