@@ -84,5 +84,5 @@ SELECT * FROM (VALUES
   ('health_safety', 'Emergency Evacuation Drill',           12),
   ('civil_defence', 'Civil Defence Emergency Plan Review',  24),
   ('civil_defence', 'Emergency Contact List Update',        12)
-) AS v(category text, name text, renewal_months integer)
+) AS v(category, name, renewal_months)
 WHERE NOT EXISTS (SELECT 1 FROM compliance_items LIMIT 1);
