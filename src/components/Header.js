@@ -45,7 +45,10 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
           {groups.map((group, gi) => (
             <React.Fragment key={gi}>
               {group.label && (
-                <div className="nav-group-label">{group.label}</div>
+                <div className="nav-group-label">
+                  {group.icon && <span style={{ fontSize: 12, lineHeight: 1 }}>{group.icon}</span>}
+                  {group.label}
+                </div>
               )}
               {group.tabs.map(tab => (
                 <div

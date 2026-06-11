@@ -20,11 +20,11 @@ import HelpMenu from '../components/HelpMenu';
 
 const NAV_GROUPS = [
   {
-    label: null,
+    label: null, icon: null,
     tabs: [{ key: 'dashboard', label: 'Dashboard' }],
   },
   {
-    label: 'Governance',
+    label: 'Governance', icon: '🛡️',
     tabs: [
       { key: 'board',   label: 'Board View' },
       { key: 'minutes', label: 'Minutes' },
@@ -32,7 +32,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Operations',
+    label: 'Operations', icon: '⚙️',
     tabs: [
       { key: 'bookings',    label: 'Bookings' },
       { key: 'calendar',    label: 'Calendar' },
@@ -41,14 +41,14 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Assets & Compliance',
+    label: 'Assets & Compliance', icon: '🏛️',
     tabs: [
       { key: 'assets',     label: 'Assets' },
       { key: 'compliance', label: 'Compliance' },
     ],
   },
   {
-    label: 'Funding & Projects',
+    label: 'Funding & Projects', icon: '💰',
     tabs: [
       { key: 'grants',   label: 'Grants' },
       { key: 'projects', label: 'Projects' },
@@ -56,7 +56,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Admin',
+    label: 'Admin', icon: '📁',
     tabs: [
       { key: 'documents', label: 'Documents' },
       { key: 'settings',  label: 'Settings' },
