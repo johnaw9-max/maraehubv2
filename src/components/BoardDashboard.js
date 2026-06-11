@@ -77,7 +77,7 @@ export default function BoardDashboard({ onNavigate }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -88,6 +88,7 @@ export default function BoardDashboard({ onNavigate }) {
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
       supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
+      supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
     ]);
     setD({
       bookings:   bookRes.data   || [],
@@ -100,6 +101,7 @@ export default function BoardDashboard({ onNavigate }) {
       feedback:   feedRes.data   || [],
       maraeName:  settingsRes.data?.marae_name || 'Our Marae',
       compliance: compRes.data   || [],
+      goals:      goalsRes.data  || [],
     });
     setLoading(false);
   }
@@ -144,6 +146,21 @@ export default function BoardDashboard({ onNavigate }) {
 
   const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
   const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
+
+  // Goals traffic light (matches GoalsReporting.js logic)
+  function goalLight(g) {
+    const t = g.target_date ? new Date(g.target_date + 'T12:00:00') : null;
+    if (g.status === 'completed') return 'green';
+    if (g.status === 'at_risk') return 'orange';
+    if (g.status === 'not_started') return (t && t < today) ? 'red' : 'grey';
+    if (t && t < today) return 'red';
+    if (t && t <= in14) return 'orange';
+    return 'green';
+  }
+  const goalsBehind   = d.goals.filter(g => goalLight(g) === 'red');
+  const goalsAtRisk   = d.goals.filter(g => goalLight(g) === 'orange');
+  const goalsOnTrack  = d.goals.filter(g => goalLight(g) === 'green');
+  const goalsComplete = d.goals.filter(g => g.status === 'completed');
   const overdueReminders  = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
   const assetsWithOverdue = new Set(overdueReminders.map(r => r.asset_id));
   const compliantPct      = d.assets.length ? Math.round(((d.assets.length - assetsWithOverdue.size) / d.assets.length) * 100) : 100;
@@ -162,9 +179,11 @@ export default function BoardDashboard({ onNavigate }) {
 
   const ALERTS = [
     overdueCompliance.length && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
+    goalsBehind.length       && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
     overdueTasks.length      && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
     overdueReminders.length  && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
     dueSoonCompliance.length && { label: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days`, level: 'amber', tab: 'compliance' },
+    goalsAtRisk.length       && { label: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk`, level: 'amber', tab: 'goals' },
     urgentGrants.length      && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
     pendingBookings.length   && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
   ].filter(Boolean);
@@ -196,6 +215,9 @@ export default function BoardDashboard({ onNavigate }) {
   if (overdueCompliance.length > 0)
     redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately: ${overdueCompliance.slice(0, 2).map(c => c.name).join(', ')}${overdueCompliance.length > 2 ? '…' : ''}`);
 
+  if (goalsBehind.length > 0)
+    redInsights.push(`${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's are' : ' is'} behind schedule — review and update plans: ${goalsBehind.slice(0, 2).map(g => g.name).join(', ')}${goalsBehind.length > 2 ? '…' : ''}`);
+
   if (overdueTasks.length > 0)
     redInsights.push(`You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately`);
 
@@ -224,6 +246,9 @@ export default function BoardDashboard({ onNavigate }) {
   if (dueSoonCompliance.length > 0)
     amberInsights.push(`${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`);
 
+  if (goalsAtRisk.length > 0)
+    amberInsights.push(`${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers: ${goalsAtRisk.slice(0, 2).map(g => g.name).join(', ')}${goalsAtRisk.length > 2 ? '…' : ''}`);
+
   if (d.actions.length > 3)
     amberInsights.push(`${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`);
 
@@ -234,6 +259,12 @@ export default function BoardDashboard({ onNavigate }) {
     amberInsights.push(`No active projects this period — consider initiating planned work`);
 
   // GREEN (max 2)
+  if (d.goals.length > 0 && goalsBehind.length === 0 && goalsAtRisk.length === 0)
+    greenInsights.push(`All ${d.goals.length} strategic goal${d.goals.length !== 1 ? 's are' : ' is'} on track — excellent governance progress`);
+
+  if (goalsComplete.length > 0 && d.goals.length > 0 && goalsComplete.length === d.goals.length)
+    greenInsights.push(`All strategic goals completed — outstanding achievement for the committee`);
+
   if (avgRating !== null && avgRating >= 4.5)
     greenInsights.push(`Community satisfaction is strong at ${Number(avgRating).toFixed(1)}/5 — great work`);
 
@@ -312,6 +343,12 @@ export default function BoardDashboard({ onNavigate }) {
       periodPipeline.length
         ? periodPipeline.map(g => `- ${g.name} (${g.funder}, ${fmtMoney(g.amount)}, status: ${g.status}, deadline: ${fmt(g.deadline)})`).join('\n')
         : '- None',
+      ``,
+      `STRATEGIC GOALS (${d.goals.length}):`,
+      `- On Track: ${goalsOnTrack.length} | At Risk: ${goalsAtRisk.length} | Behind: ${goalsBehind.length} | Completed: ${goalsComplete.length}`,
+      d.goals.length
+        ? d.goals.map(g => `- ${g.name} [${g.status.replace('_',' ')}] target: ${fmt(g.target_date)} ${g.responsible_name ? `responsible: ${g.responsible_name}` : ''}`).join('\n')
+        : '- No goals set',
       ``,
       `SERVICE REMINDERS DUE (${upcomingReminders.length}):`,
       upcomingReminders.length
@@ -520,6 +557,116 @@ export default function BoardDashboard({ onNavigate }) {
             <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, lineHeight: 1.3 }}>{t.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* ── GOALS & COMPLIANCE ROW ─────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+
+        {/* ── STRATEGIC GOALS SUMMARY ────────────────────────────────── */}
+        <div className="panel">
+          <SectionTitle icon="🎯" title="Strategic Goals" count={d.goals.length} />
+          {d.goals.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
+          ) : (
+            <>
+              {/* Status summary pills */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+                {[
+                  { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                  { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                  { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+                  { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
+                ].map(s => (
+                  <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
+                    <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                    <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {/* At-risk and behind goals list */}
+              {[...goalsBehind, ...goalsAtRisk].length === 0 ? (
+                <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+                  ✅ All goals are on track or completed
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[...goalsBehind, ...goalsAtRisk].map(g => {
+                    const light = goalLight(g);
+                    const dot   = light === 'red' ? '#d9534f' : '#c8902a';
+                    const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
+                    const label = light === 'red' ? 'Behind' : 'At Risk';
+                    return (
+                      <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                            {g.responsible_name && `👤 ${g.responsible_name}`}
+                            {g.responsible_name && g.target_date && ' · '}
+                            {g.target_date && `Target: ${fmt(g.target_date)}`}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ── COMPLIANCE TRACKER ─────────────────────────────────────── */}
+        <div className="panel">
+          <SectionTitle icon="✅" title="Compliance Tracker" count={d.compliance.length} />
+          {d.compliance.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
+          ) : (
+            <>
+              {/* Status summary */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+                {[
+                  { label: 'Overdue',   count: overdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+                  { label: 'Due Soon',  count: dueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                  { label: 'Compliant', count: d.compliance.length - overdueCompliance.length - dueSoonCompliance.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                ].map(s => (
+                  <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
+                    <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                    <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Overdue and due-soon items */}
+              {[...overdueCompliance, ...dueSoonCompliance].length === 0 ? (
+                <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+                  ✅ All compliance obligations are up to date
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[...overdueCompliance, ...dueSoonCompliance].map(c => {
+                    const overdue = new Date(c.due_date + 'T12:00:00') < today;
+                    const dot   = overdue ? '#d9534f' : '#c8902a';
+                    const bg    = overdue ? '#faeae7' : '#fdf0dc';
+                    const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
+                    return (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}`, gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 11, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
+                            {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>
+                          {overdue ? 'Overdue' : 'Due Soon'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
