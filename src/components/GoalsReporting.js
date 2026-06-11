@@ -129,6 +129,8 @@ export default function GoalsReporting() {
       supabase.from('grants').select('id, name, status, funder'),
       supabase.from('profiles').select('id, full_name').eq('role', 'trustee').order('full_name'),
     ]);
+    if (goalsRes.error) console.error('[GoalsReporting] goals fetch error:', goalsRes.error.message);
+    if (linksRes.error) console.error('[GoalsReporting] goal_links fetch error:', linksRes.error.message);
     setGoals(goalsRes.data || []);
     setGoalLinks(linksRes.data || []);
     setProjects(projRes.data || []);
@@ -209,10 +211,12 @@ export default function GoalsReporting() {
 
     let goalId;
     if (editGoal) {
-      await supabase.from('goals').update(payload).eq('id', editGoal.id);
+      const { error } = await supabase.from('goals').update(payload).eq('id', editGoal.id);
+      if (error) { setFormError(error.message); setSaving(false); return; }
       goalId = editGoal.id;
     } else {
-      const { data } = await supabase.from('goals').insert(payload).select('id').single();
+      const { data, error } = await supabase.from('goals').insert(payload).select('id').single();
+      if (error) { setFormError(error.message); setSaving(false); return; }
       goalId = data?.id;
     }
 
