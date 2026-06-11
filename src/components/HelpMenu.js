@@ -66,6 +66,31 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Compliance Tracker',
+      icon: '✅',
+      items: [
+        { q: 'What does the Compliance Tracker do?', a: 'The Compliance Tracker helps your marae stay on top of all legal and operational obligations in one place — so you never miss a renewal, inspection, or review deadline. You can track Building Warrants of Fitness, insurance renewals, trustee term limits, Health & Safety obligations, Civil Defence emergency plans, and log any incidents that occur at marae events.' },
+        { q: 'How do I add a compliance item?', a: 'Go to the Compliance tab in the main navigation and click "Add Item". Select the type of compliance item (e.g. Building, Insurance, Trustee, Health & Safety), enter the due date, responsible person, and any notes. You can also upload a supporting document such as a WOF certificate. Save — the item will appear in your compliance list sorted by urgency.' },
+        { q: 'What do the traffic light colours mean?', a: 'Green (Compliant) — no action needed, the item is up to date. Orange (Due Soon) — the item is due within 30 days, review it soon. Red (Overdue) — the item is past its due date and requires immediate attention.' },
+        { q: 'How do I log an incident?', a: 'Go to the Compliance tab and click the "Incident Register" section, then "+ Log Incident". Enter the date, a title, description, location, severity level (Minor, Moderate, Serious, Critical), people involved, and any action taken. You can upload a supporting document and set a follow-up date. Once resolved, click "Resolve" to close the incident.' },
+        { q: 'Does it connect to the Board View?', a: 'Yes. Overdue and due-soon compliance items automatically appear as red alerts in the Board View Smart Insights panel. Trustees see a summary at the start of every meeting without needing to open the Compliance tab separately.' },
+        { q: 'Who can access the Compliance Tracker?', a: 'Trustees only. The community role cannot access this module. This is intentional — marae are PCBUs under the Health and Safety at Work Act 2015 and trustees have personal legal liability for compliance. The tracker protects trustees by keeping a digital record of all obligations and actions taken.' },
+      ]
+    },
+    {
+      category: 'Goals & Reporting',
+      icon: '🎯',
+      items: [
+        { q: 'What does Goals & Reporting do?', a: 'Goals & Reporting helps your committee track strategic goals and see progress automatically using data already stored in MaraeHub. It is not a task list — it is a governance and reporting tool that gives trustees a clear view of how the marae is tracking against its plans. You can set goals, link them to existing projects, compliance items and grants, and watch progress update automatically.' },
+        { q: 'What are the Goal Categories?', a: 'Governance — committee structure, elections, handover. Compliance — WOFs, insurance, H&S, Civil Defence. Projects — capital works, renovation, infrastructure. Funding — grants, applications, income targets. Community — events, engagement, whānau. Assets — equipment, maintenance, vehicles. Finance and Whakapapa categories are planned for a future release.' },
+        { q: 'How do I add a goal?', a: 'Go to the Goals tab and click "+ Add Goal". Enter the goal name, description, and category. Set a target date and assign a responsible trustee. Optionally link the goal to a related project, compliance item, or grant — progress will then update automatically from that linked data. Set an initial progress percentage and status, then save. The goal appears in your Goals list and the Board Report.' },
+        { q: 'What do the status options mean?', a: 'Not Started — the goal is in the planning phase and work has not begun. In Progress — the committee is actively working toward this goal. At Risk — progress has fallen behind schedule or faces an obstacle. Completed — the goal has been achieved.' },
+        { q: 'What do the traffic light colours mean in the Board Report?', a: 'Green (On Track) — the goal is progressing well and the target date is not at risk. Orange (At Risk) — the goal is flagged as at risk, or the target date is within 14 days. Red (Behind Schedule) — the target date has passed and the goal is not yet complete. Grey means the goal has not started and the target date is still in the future.' },
+        { q: 'Why does progress update automatically?', a: 'When you link a goal to a project, the project\'s progress percentage is used directly. When linked to a compliance item, the status (Compliant, Due Soon, Overdue) is converted to a progress score. When linked to a grant, the grant\'s stage (Researching through to Approved) is converted to a percentage. This means trustees do not need to manually update every goal — MaraeHub does it for them.' },
+        { q: 'Who can see Goals & Reporting?', a: 'Trustees only. The community role cannot access this module. Goals & Reporting exists to keep the committee accountable and give every trustee visibility of progress — without anyone needing to manually chase updates.' },
+      ]
+    },
+    {
       category: 'Documents',
       icon: '📁',
       items: [
