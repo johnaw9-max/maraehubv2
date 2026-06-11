@@ -18,22 +18,50 @@ import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
 
-const TABS = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'board', label: 'Board View' },
-  { key: 'bookings', label: 'Bookings' },
-  { key: 'calendar', label: 'Calendar' },
-  { key: 'noticeboard', label: 'Noticeboard' },
-  { key: 'minutes', label: 'Minutes' },
-  { key: 'projects', label: 'Projects' },
-  { key: 'assets', label: 'Assets' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'grants', label: 'Grants' },
-  { key: 'tasks', label: 'Tasks' },
-  { key: 'contacts', label: 'Contacts' },
-  { key: 'compliance', label: 'Compliance' },
-  { key: 'goals', label: 'Goals & Reporting' },
-  { key: 'settings', label: 'Settings' },
+const NAV_GROUPS = [
+  {
+    label: null,
+    tabs: [{ key: 'dashboard', label: 'Dashboard' }],
+  },
+  {
+    label: 'Governance',
+    tabs: [
+      { key: 'board',   label: 'Board View' },
+      { key: 'minutes', label: 'Minutes' },
+      { key: 'goals',   label: 'Goals' },
+    ],
+  },
+  {
+    label: 'Operations',
+    tabs: [
+      { key: 'bookings',    label: 'Bookings' },
+      { key: 'calendar',    label: 'Calendar' },
+      { key: 'noticeboard', label: 'Notices' },
+      { key: 'contacts',    label: 'Contacts' },
+    ],
+  },
+  {
+    label: 'Assets & Compliance',
+    tabs: [
+      { key: 'assets',     label: 'Assets' },
+      { key: 'compliance', label: 'Compliance' },
+    ],
+  },
+  {
+    label: 'Funding & Projects',
+    tabs: [
+      { key: 'grants',   label: 'Grants' },
+      { key: 'projects', label: 'Projects' },
+      { key: 'tasks',    label: 'Tasks' },
+    ],
+  },
+  {
+    label: 'Admin',
+    tabs: [
+      { key: 'documents', label: 'Documents' },
+      { key: 'settings',  label: 'Settings' },
+    ],
+  },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -464,7 +492,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   return (
     <div>
-      <Header profile={profile} onLogout={onLogout} activeTab={activeTab} setActiveTab={setActiveTab} tabs={TABS} />
+      <Header profile={profile} onLogout={onLogout} activeTab={activeTab} setActiveTab={setActiveTab} groups={NAV_GROUPS} />
 
       <div className="main">
 

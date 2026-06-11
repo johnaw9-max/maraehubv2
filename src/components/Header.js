@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function Header({ profile, onLogout, activeTab, setActiveTab, tabs }) {
+export default function Header({ profile, onLogout, activeTab, setActiveTab, tabs, groups }) {
   const [maraeName, setMaraeName] = useState('Te Marae o Tainui');
   const [maraeLocation, setMaraeLocation] = useState('Manurewa, Auckland');
 
@@ -40,7 +40,26 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
         </div>
       </div>
 
-      {tabs && (
+      {groups ? (
+        <div className="nav">
+          {groups.map((group, gi) => (
+            <React.Fragment key={gi}>
+              {group.label && (
+                <div className="nav-group-label">{group.label}</div>
+              )}
+              {group.tabs.map(tab => (
+                <div
+                  key={tab.key}
+                  className={`nav-item ${activeTab === tab.key ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.key)}
+                >
+                  {tab.label}
+                </div>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+      ) : tabs ? (
         <div className="nav">
           {tabs.map(tab => (
             <div
@@ -52,7 +71,7 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </>
   );
 }

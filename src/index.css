@@ -111,6 +111,17 @@ input, select, textarea {
 .nav-item.active { color: #fff; border-bottom-color: var(--accent-light); }
 .nav-item:hover { color: rgba(255,255,255,0.9); }
 
+.nav-group-label {
+  display: flex; align-items: center;
+  padding: 0 8px 0 14px;
+  margin-left: 8px;
+  font-size: 8px; font-weight: 700;
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 0.16em; text-transform: uppercase;
+  border-left: 1px solid rgba(255,255,255,0.12);
+  white-space: nowrap; cursor: default; user-select: none; flex-shrink: 0;
+}
+
 /* MAIN CONTENT */
 .main { padding: 24px 28px; max-width: 1400px; }
 
