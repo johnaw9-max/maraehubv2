@@ -86,6 +86,12 @@ function daysLabel(dueDate) {
   return `${days}d remaining`;
 }
 
+function nextDueDate(months) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split('T')[0];
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function ComplianceTracker() {
@@ -117,7 +123,10 @@ export default function ComplianceTracker() {
   const incidentFileRef = useRef();
 
   useEffect(() => {
-    fetchAll().then(seedEmergencyPreparedness);
+    fetchAll().then(async items => {
+      await seedEmergencyPreparedness(items);
+      await createOverdueTasks(items);
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
@@ -146,6 +155,52 @@ export default function ComplianceTracker() {
     if (!error) {
       const { data } = await supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false });
       if (data) setItems(data);
+    }
+  }
+
+  // Mark a compliance item as done/serviced today.
+  // Sets last_checked_date = today; if renewal_months is set, auto-advances due_date.
+  async function handleMarkDone(item) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updates = { last_checked_date: todayStr, updated_at: new Date().toISOString() };
+    if (item.renewal_months) {
+      updates.due_date = nextDueDate(item.renewal_months);
+    }
+    const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
+    if (!error) setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
+  }
+
+  // Auto-create a High-priority task for every overdue compliance item
+  // that doesn't already have an open/in-progress OVERDUE: task.
+  async function createOverdueTasks(currentItems) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const overdueItems = currentItems.filter(
+      i => i.due_date && new Date(i.due_date + 'T12:00:00') < today
+    );
+    if (overdueItems.length === 0) return;
+
+    const expectedTitles = overdueItems.map(i => `OVERDUE: ${i.name}`);
+    const { data: existing } = await supabase
+      .from('tasks')
+      .select('title')
+      .in('title', expectedTitles)
+      .in('status', ['open', 'in-progress']);
+
+    const existingSet = new Set((existing || []).map(t => t.title));
+    const newTasks = overdueItems
+      .filter(i => !existingSet.has(`OVERDUE: ${i.name}`))
+      .map(i => ({
+        title: `OVERDUE: ${i.name}`,
+        description: `Compliance item overdue. Category: ${CATEGORIES[i.category]?.label || i.category}. Please arrange renewal immediately.`,
+        assigned_to: i.responsible_name || null,
+        due_date: todayStr,
+        priority: 'High',
+        status: 'open',
+      }));
+
+    if (newTasks.length > 0) {
+      await supabase.from('tasks').insert(newTasks);
     }
   }
 
@@ -492,6 +547,20 @@ export default function ComplianceTracker() {
                             📎 Doc
                           </a>
                         )}
+                        <button
+                          onClick={() => handleMarkDone(item)}
+                          title={item.renewal_months
+                            ? `Mark done today — next due date set to ${nextDueDate(item.renewal_months)}`
+                            : 'Mark as checked today'}
+                          style={{
+                            fontSize: 11, fontWeight: 700,
+                            color: '#1a4a3a', background: '#e8f4ef',
+                            border: '1px solid #a8d8c0', borderRadius: 6,
+                            padding: '4px 10px', cursor: 'pointer',
+                          }}
+                        >
+                          ✓ Done
+                        </button>
                         <button
                           onClick={() => openEditItem(item)}
                           style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
