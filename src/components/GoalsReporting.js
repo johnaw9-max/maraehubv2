@@ -42,7 +42,7 @@ const EMPTY_FORM = {
   start_date: '', target_date: '', status: 'not_started', progress: 0, notes: '',
 };
 
-const EMPTY_LINKS = { project_id: '', compliance_id: '', grant_id: '' };
+const EMPTY_LINKS = { project_ids: [], compliance_ids: [], grant_ids: [] };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -98,6 +98,69 @@ function getTrafficLight(goal, effectiveProgress) {
   if (target && target < today) return 'red';
   if (target && target <= in14) return 'orange';
   return 'green';
+}
+
+// ─── MULTI-CHIP SELECT ────────────────────────────────────────────────────────
+
+function MultiChipSelect({ label, icon, items, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selectedSet = new Set(selected);
+  const toggle = (id) => {
+    if (selectedSet.has(id)) onChange(selected.filter(x => x !== id));
+    else onChange([...selected, id]);
+  };
+  return (
+    <div className="form-group">
+      <label className="form-label">{icon} {label}</label>
+      {selected.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+          {selected.map(id => {
+            const item = items.find(x => x.id === id);
+            return item ? (
+              <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', color: 'var(--text1)', fontWeight: 600 }}>
+                {item.name}
+                <button type="button" onClick={() => toggle(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, padding: 0, fontSize: 13, marginLeft: 2 }}>✕</button>
+              </span>
+            ) : null;
+          })}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px dashed var(--brand)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+      >
+        {open ? '▲' : '▼'} {selected.length ? `${selected.length} selected — change` : `+ Add ${label}`}
+      </button>
+      {open && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
+          {items.length === 0 ? (
+            <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text3)' }}>No {label.toLowerCase()} available</div>
+          ) : items.map((item, i) => (
+            <div
+              key={item.id}
+              onClick={() => toggle(item.id)}
+              style={{
+                padding: '8px 12px', fontSize: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: selectedSet.has(item.id) ? 'var(--surface2)' : 'var(--surface)',
+                borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              <span style={{
+                width: 16, height: 16, borderRadius: 4, border: '2px solid var(--brand)',
+                background: selectedSet.has(item.id) ? 'var(--brand)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                {selectedSet.has(item.id) && <span style={{ color: '#fff', fontSize: 10, lineHeight: 1 }}>✓</span>}
+              </span>
+              {item.name}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
@@ -227,9 +290,9 @@ export default function GoalsReporting() {
     });
     const links = getLinksForGoal(goal.id);
     setLinkForm({
-      project_id: links.find(l => l.link_type === 'project')?.link_id || '',
-      compliance_id: links.find(l => l.link_type === 'compliance_item')?.link_id || '',
-      grant_id: links.find(l => l.link_type === 'grant')?.link_id || '',
+      project_ids:    links.filter(l => l.link_type === 'project').map(l => l.link_id),
+      compliance_ids: links.filter(l => l.link_type === 'compliance_item').map(l => l.link_id),
+      grant_ids:      links.filter(l => l.link_type === 'grant').map(l => l.link_id),
     });
     setFormError('');
     setShowModal(true);
@@ -266,10 +329,10 @@ export default function GoalsReporting() {
     if (goalId) {
       await supabase.from('goal_links').delete().eq('goal_id', goalId);
       const newLinks = [
-        linkForm.project_id    ? { goal_id: goalId, link_type: 'project',          link_id: linkForm.project_id }    : null,
-        linkForm.compliance_id ? { goal_id: goalId, link_type: 'compliance_item',   link_id: linkForm.compliance_id } : null,
-        linkForm.grant_id      ? { goal_id: goalId, link_type: 'grant',             link_id: linkForm.grant_id }      : null,
-      ].filter(Boolean);
+        ...linkForm.project_ids.map(id    => ({ goal_id: goalId, link_type: 'project',         link_id: id })),
+        ...linkForm.compliance_ids.map(id => ({ goal_id: goalId, link_type: 'compliance_item', link_id: id })),
+        ...linkForm.grant_ids.map(id      => ({ goal_id: goalId, link_type: 'grant',            link_id: id })),
+      ];
       if (newLinks.length) await supabase.from('goal_links').insert(newLinks);
     }
 
@@ -701,27 +764,24 @@ export default function GoalsReporting() {
                   <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text3)', marginLeft: 8 }}>Progress will auto-calculate from linked items</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-                  <div className="form-group">
-                    <label className="form-label">📋 Project</label>
-                    <select className="form-input" value={linkForm.project_id} onChange={e => setLinkForm(f => ({ ...f, project_id: e.target.value }))}>
-                      <option value="">— None —</option>
-                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">✅ Compliance Item</label>
-                    <select className="form-input" value={linkForm.compliance_id} onChange={e => setLinkForm(f => ({ ...f, compliance_id: e.target.value }))}>
-                      <option value="">— None —</option>
-                      {complianceItems.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">💰 Grant</label>
-                    <select className="form-input" value={linkForm.grant_id} onChange={e => setLinkForm(f => ({ ...f, grant_id: e.target.value }))}>
-                      <option value="">— None —</option>
-                      {grants.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                  </div>
+                  <MultiChipSelect
+                    label="Projects" icon="📋"
+                    items={projects}
+                    selected={linkForm.project_ids}
+                    onChange={ids => setLinkForm(f => ({ ...f, project_ids: ids }))}
+                  />
+                  <MultiChipSelect
+                    label="Compliance Items" icon="✅"
+                    items={complianceItems}
+                    selected={linkForm.compliance_ids}
+                    onChange={ids => setLinkForm(f => ({ ...f, compliance_ids: ids }))}
+                  />
+                  <MultiChipSelect
+                    label="Grants" icon="💰"
+                    items={grants}
+                    selected={linkForm.grant_ids}
+                    onChange={ids => setLinkForm(f => ({ ...f, grant_ids: ids }))}
+                  />
                 </div>
               </div>
 
