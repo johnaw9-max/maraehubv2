@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import StatusPill from './StatusPill';
+import { ensureTask } from '../lib/taskSync';
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -45,8 +46,30 @@ export default function GrantsTracker() {
   async function fetchGrants() {
     setLoading(true);
     const { data } = await supabase.from('grants').select('*').order('created_at', { ascending: false });
-    setGrants(data || []);
+    const rows = data || [];
+    setGrants(rows);
     setLoading(false);
+    createUrgentTasks(rows);
+  }
+
+  async function createUrgentTasks(rows) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
+    const urgent = rows.filter(g => {
+      if (!g.deadline || ['approved', 'declined'].includes(g.status)) return false;
+      const d = new Date(g.deadline);
+      return d >= today && d <= in14;
+    });
+    for (const g of urgent) {
+      const daysLeft = Math.ceil((new Date(g.deadline) - today) / 86400000);
+      await ensureTask({
+        title: `GRANT: ${g.name}`,
+        description: `Grant deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Funder: ${g.funder || 'unknown'}. Status: ${g.status}. Action required. [source_id:${g.id}]`,
+        assigned_to: null,
+        due_date: g.deadline,
+        priority: 'High',
+      });
+    }
   }
 
   function openAdd() {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
+import { ensureTask } from '../lib/taskSync';
 
 const STATUS_OPTIONS = ['planning', 'active', 'review', 'completed'];
 
@@ -119,11 +120,28 @@ export default function ProjectsManager() {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
     const rows = data || [];
     setProjects(rows);
-    // Counts come straight from the JSONB field — no separate table query
     const counts = {};
     rows.forEach(p => { counts[p.id] = (p.subtasks || []).length; });
     setSubtaskCounts(counts);
     setLoading(false);
+    createOverdueTasks(rows);
+  }
+
+  async function createOverdueTasks(rows) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const overdue = rows.filter(p =>
+      p.due_date && new Date(p.due_date) < today && p.status !== 'completed'
+    );
+    for (const p of overdue) {
+      await ensureTask({
+        title: `PROJECT: ${p.name}`,
+        description: `Project overdue. Lead: ${p.lead || 'unassigned'}. Due: ${p.due_date}. Update status or progress. [source_id:${p.id}]`,
+        assigned_to: p.lead || null,
+        due_date: todayStr,
+        priority: 'High',
+      });
+    }
   }
 
   // ── PROJECT CRUD ───────────────────────────────────────────────────────────

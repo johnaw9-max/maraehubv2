@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { TASK_SOURCES, taskSource } from '../lib/taskSync';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -794,6 +795,62 @@ export default function BoardDashboard({ onNavigate }) {
           </div>
         )}
       </div>
+
+      {/* ── OPEN TASKS BY SOURCE ───────────────────────────────────────── */}
+      {d.tasks.length > 0 && (() => {
+        const todayTs = new Date(); todayTs.setHours(0, 0, 0, 0);
+        const groups = {};
+        TASK_SOURCES.forEach(s => { groups[s.prefix] = []; });
+        const manual = [];
+        d.tasks.forEach(t => {
+          const src = taskSource(t.title);
+          if (src) groups[src.prefix].push(t);
+          else manual.push(t);
+        });
+        const activeSources = TASK_SOURCES.filter(s => groups[s.prefix].length > 0);
+        if (activeSources.length === 0 && manual.length === 0) return null;
+        const allGroups = [
+          ...activeSources.map(s => ({ ...s, tasks: groups[s.prefix] })),
+          ...(manual.length > 0 ? [{ prefix: '__manual', label: 'Manual', icon: '✏️', tab: 'tasks', tasks: manual }] : []),
+        ];
+        return (
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <SectionTitle icon="📋" title="Open Tasks — by Source" count={d.tasks.length} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              {allGroups.map(grp => (
+                <div key={grp.prefix} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 14 }}>{grp.icon}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>{grp.label}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, background: 'var(--brand)', color: '#fff', borderRadius: 10, padding: '1px 7px' }}>{grp.tasks.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {grp.tasks.slice(0, 5).map(t => {
+                      const overdue = t.due_date && new Date(t.due_date + 'T12:00:00') < todayTs;
+                      const displayTitle = grp.prefix !== '__manual' ? t.title.slice(grp.prefix.length) : t.title;
+                      return (
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                          <span style={{ fontSize: 10, marginTop: 3, color: overdue ? 'var(--danger)' : 'var(--warning)', flexShrink: 0 }}>●</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, color: overdue ? 'var(--danger)' : 'var(--text1)', fontWeight: overdue ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={displayTitle}>{displayTitle}</div>
+                            {t.due_date && <div style={{ fontSize: 10, color: overdue ? 'var(--danger)' : 'var(--text3)' }}>{overdue ? 'Overdue · ' : 'Due · '}{fmt(t.due_date)}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {grp.tasks.length > 5 && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>+{grp.tasks.length - 5} more</div>}
+                  </div>
+                  {onNavigate && (
+                    <button onClick={() => onNavigate('tasks')} style={{ marginTop: 8, fontSize: 10, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                      View in Tasks →
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── TWO-COLUMN: GRANTS + REMINDERS ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>

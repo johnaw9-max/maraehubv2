@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
+import { ensureTask } from '../lib/taskSync';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -599,7 +600,7 @@ export default function CommitteeMinutes() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);
@@ -612,6 +613,27 @@ export default function CommitteeMinutes() {
     setAllResolutions(resRes.data || []);
     setAllActions(actRes.data || []);
     setLoading(false);
+    createOverdueTasks();
+  }
+
+  async function createOverdueTasks() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const { data: overdueActions } = await supabase
+      .from('meeting_actions')
+      .select('id, description, assigned_to, due_date')
+      .in('status', ['Open', 'In Progress'])
+      .lt('due_date', todayStr);
+    if (!overdueActions || !overdueActions.length) return;
+    for (const a of overdueActions) {
+      const shortDesc = (a.description || '').slice(0, 80);
+      await ensureTask({
+        title: `ACTION: ${shortDesc}`,
+        description: `Meeting action overdue. Due: ${a.due_date}. Follow up immediately. [source_id:${a.id}]`,
+        assigned_to: a.assigned_to || null,
+        due_date: todayStr,
+        priority: 'High',
+      });
+    }
   }
 
   async function handleSaveMeeting(form) {

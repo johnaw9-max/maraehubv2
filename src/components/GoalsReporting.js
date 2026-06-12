@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
+import { ensureTask } from '../lib/taskSync';
 
 const GOAL_STATUSES = ['not_started', 'in_progress', 'at_risk', 'completed'];
 
@@ -136,12 +137,31 @@ export default function GoalsReporting() {
     ]);
     if (goalsRes.error) console.error('[GoalsReporting] goals fetch error:', goalsRes.error.message);
     if (linksRes.error) console.error('[GoalsReporting] goal_links fetch error:', linksRes.error.message);
-    setGoals(goalsRes.data || []);
+    const goalsData = goalsRes.data || [];
+    setGoals(goalsData);
     setGoalLinks(linksRes.data || []);
     setProjects(projRes.data || []);
     setComplianceItems(compRes.data || []);
     setGrants(grantsRes.data || []);
     setLoading(false);
+    createOverdueTasks(goalsData);
+  }
+
+  async function createOverdueTasks(goalsData) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const behind = goalsData.filter(g =>
+      g.status !== 'completed' && g.target_date && new Date(g.target_date + 'T12:00:00') < today
+    );
+    for (const g of behind) {
+      await ensureTask({
+        title: `GOAL: ${g.name}`,
+        description: `Strategic goal behind schedule. Target: ${g.target_date}. Review and update plan. [source_id:${g.id}]`,
+        assigned_to: g.responsible_name || null,
+        due_date: todayStr,
+        priority: 'High',
+      });
+    }
   }
 
   function getLinksForGoal(goalId) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
+import { onTaskCompleted } from '../lib/taskSync';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -247,8 +248,12 @@ export default function TaskBoard() {
 
   async function changeTaskStatus(task, newStatus) {
     const updates = { status: newStatus };
-    if (newStatus === 'completed' && task.status !== 'completed') updates.completed_at = new Date().toISOString();
-    else if (newStatus !== 'completed' && task.status === 'completed') updates.completed_at = null;
+    if (newStatus === 'completed' && task.status !== 'completed') {
+      updates.completed_at = new Date().toISOString();
+      onTaskCompleted(task); // fire-and-forget: resets the source module
+    } else if (newStatus !== 'completed' && task.status === 'completed') {
+      updates.completed_at = null;
+    }
     await supabase.from('tasks').update(updates).eq('id', task.id);
     fetchTasks();
   }

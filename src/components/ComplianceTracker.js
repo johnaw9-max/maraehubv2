@@ -192,7 +192,7 @@ export default function ComplianceTracker() {
       .filter(i => !existingSet.has(`OVERDUE: ${i.name}`))
       .map(i => ({
         title: `OVERDUE: ${i.name}`,
-        description: `Compliance item overdue. Category: ${CATEGORIES[i.category]?.label || i.category}. Please arrange renewal immediately.`,
+        description: `Compliance item overdue. Category: ${CATEGORIES[i.category]?.label || i.category}. Please arrange renewal immediately. [source_id:${i.id}]`,
         assigned_to: i.responsible_name || null,
         due_date: todayStr,
         priority: 'High',
