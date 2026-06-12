@@ -147,6 +147,12 @@ export default function BoardDashboard({ onNavigate }) {
   const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
   const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
 
+  // Emergency Preparedness — high-priority check (overdue OR no due_date set)
+  const epCompliance      = d.compliance.filter(c => c.category === 'emergency_preparedness');
+  const epOverdue         = epCompliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
+  const epNotScheduled    = epCompliance.filter(c => !c.due_date);
+  const epUrgentCount     = epOverdue.length + epNotScheduled.length;
+
   // Goals traffic light (matches GoalsReporting.js logic)
   function goalLight(g) {
     const t = g.target_date ? new Date(g.target_date + 'T12:00:00') : null;
@@ -179,6 +185,7 @@ export default function BoardDashboard({ onNavigate }) {
   const pendingBookings = d.bookings.filter(b => b.status === 'pending');
 
   const ALERTS = [
+    epUrgentCount             && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
     overdueCompliance.length  && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
     goalsBehind.length        && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
     overdueTasks.length       && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
@@ -216,7 +223,10 @@ export default function BoardDashboard({ onNavigate }) {
   const amberInsights = [];
   const greenInsights = [];
 
-  // RED
+  // RED — Emergency Preparedness first (highest priority)
+  if (epUrgentCount > 0)
+    redInsights.unshift(`🆘 Emergency Preparedness: ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} are overdue or not yet scheduled — marae may not be ready for a civil defence event`);
+
   if (overdueCompliance.length > 0)
     redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately: ${overdueCompliance.slice(0, 2).map(c => c.name).join(', ')}${overdueCompliance.length > 2 ? '…' : ''}`);
 

@@ -8,13 +8,27 @@ const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = {
-  building:      { label: 'Building',        icon: '🏛️', color: '#1a4a8a', bg: '#e8eef8' },
-  insurance:     { label: 'Insurance',       icon: '🛡️', color: '#6b42a8', bg: '#f0ecf8' },
-  trustee:       { label: 'Trustee',         icon: '👥', color: '#1a4a3a', bg: '#e8f4ef' },
-  health_safety: { label: 'Health & Safety', icon: '⛑️', color: '#a63020', bg: '#faeae7' },
-  civil_defence: { label: 'Civil Defence',   icon: '🚨', color: '#7a4f00', bg: '#fdf0dc' },
-  other:         { label: 'Other',           icon: '📋', color: '#4a4438', bg: '#f5f0e8' },
+  building:                { label: 'Building',                icon: '🏛️', color: '#1a4a8a', bg: '#e8eef8' },
+  insurance:               { label: 'Insurance',               icon: '🛡️', color: '#6b42a8', bg: '#f0ecf8' },
+  trustee:                 { label: 'Trustee',                 icon: '👥', color: '#1a4a3a', bg: '#e8f4ef' },
+  health_safety:           { label: 'Health & Safety',         icon: '⛑️', color: '#a63020', bg: '#faeae7' },
+  civil_defence:           { label: 'Civil Defence',           icon: '🚨', color: '#7a4f00', bg: '#fdf0dc' },
+  emergency_preparedness:  { label: 'Emergency Preparedness',  icon: '🆘', color: '#8b0000', bg: '#fce8e8' },
+  other:                   { label: 'Other',                   icon: '📋', color: '#4a4438', bg: '#f5f0e8' },
 };
+
+const EP_SEED_ITEMS = [
+  { name: 'Civil Defence Emergency Plan — reviewed and up to date',                    renewal_months: 12, notes: 'Must align with local Civil Defence Group plan. Review after any civil defence exercise or event.' },
+  { name: 'Emergency contact list — trustees, key community members, Civil Defence coordinator', renewal_months: 6, notes: 'Include cell numbers, alternative contacts, and local Civil Defence coordinator details.' },
+  { name: 'Generator — tested, fuelled, serviced',                                     renewal_months: 3,  notes: 'Test under load monthly. Fuel stabiliser if stored long-term. Log every test run.' },
+  { name: 'Water supply — 10,000L tank or alternative checked',                        renewal_months: 6,  notes: 'Inspect tank for leaks, contamination, and pump operation. Confirm potability.' },
+  { name: 'Emergency food and supply kit — stocked and checked',                       renewal_months: 6,  notes: 'Check expiry dates on food and medications. Minimum 72-hour supply for likely occupancy.' },
+  { name: 'Community welfare register — vulnerable whānau who need checking on',       renewal_months: 12, notes: 'List of kaumātua, disabled whānau, and others who may need welfare checks. Keep private and current.' },
+  { name: 'First aid kit — stocked and in date',                                       renewal_months: 6,  notes: 'Check all consumables for expiry. Restock after any use. Ensure AED pads/battery checked if applicable.' },
+  { name: 'Evacuation routes — identified and communicated to committee',              renewal_months: 12, notes: 'Post maps in the marae. Brief all trustees and key volunteers. Include accessibility routes.' },
+  { name: 'Emergency communications plan — contact community if power/internet down',  renewal_months: 12, notes: 'Document the plan: phone trees, community radio channel, meeting point. Test annually.' },
+  { name: 'Marae structure — roof, walls, foundations checked for storm readiness',    renewal_months: 6,  notes: 'Visual inspection after major weather events. Engage qualified builder for structural assessment annually.' },
+];
 
 const STATUS_CFG = {
   overdue:   { bg: '#faeae7', color: 'var(--danger)', border: '#f0b8b0', label: 'Overdue',   dot: '#d9534f' },
@@ -33,7 +47,7 @@ const SEVERITY_CFG = {
 const STATUS_ORDER = { overdue: 0, due_soon: 1, compliant: 2, not_set: 3 };
 
 const EMPTY_ITEM = {
-  category: 'building', name: '', due_date: '',
+  category: 'building', name: '', due_date: '', last_checked_date: '',
   renewal_months: 12, responsible_name: '', notes: '',
 };
 
@@ -102,7 +116,9 @@ export default function ComplianceTracker() {
   const [incidentError, setIncidentError]   = useState('');
   const incidentFileRef = useRef();
 
-  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchAll().then(seedEmergencyPreparedness);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);
@@ -110,9 +126,27 @@ export default function ComplianceTracker() {
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
     ]);
-    setItems(itemsRes.data || []);
+    const allItems = itemsRes.data || [];
+    setItems(allItems);
     setIncidents(incRes.data || []);
     setLoading(false);
+    return allItems;
+  }
+
+  async function seedEmergencyPreparedness(currentItems) {
+    const hasEP = currentItems.some(i => i.category === 'emergency_preparedness');
+    if (hasEP) return;
+    const rows = EP_SEED_ITEMS.map(item => ({
+      category: 'emergency_preparedness',
+      name: item.name,
+      renewal_months: item.renewal_months,
+      notes: item.notes,
+    }));
+    const { error } = await supabase.from('compliance_items').insert(rows);
+    if (!error) {
+      const { data } = await supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false });
+      if (data) setItems(data);
+    }
   }
 
   // ── DOCUMENT UPLOAD ────────────────────────────────────────────────────────
@@ -141,6 +175,7 @@ export default function ComplianceTracker() {
       category: item.category || 'building',
       name: item.name || '',
       due_date: item.due_date || '',
+      last_checked_date: item.last_checked_date || '',
       renewal_months: item.renewal_months ?? 12,
       responsible_name: item.responsible_name || '',
       notes: item.notes || '',
@@ -163,6 +198,7 @@ export default function ComplianceTracker() {
       category: itemForm.category,
       name: itemForm.name.trim(),
       due_date: itemForm.due_date || null,
+      last_checked_date: itemForm.last_checked_date || null,
       renewal_months: itemForm.renewal_months ? Number(itemForm.renewal_months) : null,
       responsible_name: itemForm.responsible_name || null,
       notes: itemForm.notes.trim() || null,
@@ -271,6 +307,11 @@ export default function ComplianceTracker() {
   const counts = { overdue: 0, due_soon: 0, compliant: 0, not_set: 0 };
   items.forEach(item => counts[getStatus(item.due_date)]++);
 
+  const epItems = items.filter(i => i.category === 'emergency_preparedness');
+  const epOverdue  = epItems.filter(i => getStatus(i.due_date) === 'overdue');
+  const epNotSet   = epItems.filter(i => getStatus(i.due_date) === 'not_set');
+  const epAlert    = epOverdue.length + epNotSet.length;
+
   const filteredItems = (catFilter === 'all' ? items : items.filter(i => i.category === catFilter))
     .slice()
     .sort((a, b) => {
@@ -313,6 +354,32 @@ export default function ComplianceTracker() {
           );
         })}
       </div>
+
+      {/* ── EMERGENCY PREPAREDNESS ALERT ─────────────────────────────────── */}
+      {epItems.length > 0 && epAlert > 0 && (
+        <div
+          style={{
+            background: '#fce8e8', border: '1px solid #f5b8b8', borderLeft: '4px solid #8b0000',
+            borderRadius: 8, padding: '12px 16px', marginBottom: 16,
+            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+          }}
+          onClick={() => { setSection('items'); setCatFilter('emergency_preparedness'); }}
+        >
+          <span style={{ fontSize: 18 }}>🆘</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#8b0000' }}>
+              Emergency Preparedness — {epAlert} item{epAlert !== 1 ? 's' : ''} need attention
+            </div>
+            <div style={{ fontSize: 12, color: '#a63020', marginTop: 2 }}>
+              {epOverdue.length > 0 && `${epOverdue.length} overdue`}
+              {epOverdue.length > 0 && epNotSet.length > 0 && ' · '}
+              {epNotSet.length > 0 && `${epNotSet.length} not yet scheduled`}
+              {' — click to review'}
+            </div>
+          </div>
+          <span style={{ fontSize: 11, color: '#a63020', opacity: 0.7 }}>→</span>
+        </div>
+      )}
 
       {/* ── SECTION TOGGLE ───────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -402,11 +469,16 @@ export default function ComplianceTracker() {
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{item.name}</div>
                         <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                          {item.due_date && <span>Due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
+                          {item.due_date && <span>Next due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
                           {item.due_date && item.renewal_months && <span style={{ margin: '0 6px' }}>·</span>}
                           {item.renewal_months && <span>Renews every {item.renewal_months >= 12 ? `${item.renewal_months / 12}yr` : `${item.renewal_months}mo`}</span>}
                           {(item.due_date || item.renewal_months) && item.responsible_name && <span style={{ margin: '0 6px' }}>·</span>}
                           {item.responsible_name && <span>👤 {item.responsible_name}</span>}
+                          {item.last_checked_date && (
+                            <span style={{ marginLeft: 6 }}>
+                              · Last checked: <strong style={{ color: 'var(--text2)' }}>{fmt(item.last_checked_date)}</strong>
+                            </span>
+                          )}
                         </div>
                         {item.notes && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
                       </div>
@@ -552,14 +624,21 @@ export default function ComplianceTracker() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Due Date</label>
+                <label className="form-label">Next Due Date</label>
                 <input type="date" className="form-input" value={itemForm.due_date} onChange={e => setItemForm(f => ({ ...f, due_date: e.target.value }))} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Last Checked Date</label>
+                <input type="date" className="form-input" value={itemForm.last_checked_date} onChange={e => setItemForm(f => ({ ...f, last_checked_date: e.target.value }))} />
               </div>
 
               <div className="form-group">
                 <label className="form-label">Renewal (months)</label>
                 <input type="number" className="form-input" min="1" max="120" value={itemForm.renewal_months} onChange={e => setItemForm(f => ({ ...f, renewal_months: e.target.value }))} placeholder="12" />
               </div>
+
+              <div className="form-group" />
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Responsible Trustee</label>
