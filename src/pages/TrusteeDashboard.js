@@ -10,6 +10,7 @@ import CommitteeMinutes from '../components/CommitteeMinutes';
 import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import GrantsTracker from '../components/GrantsTracker';
+import FinanceManager from '../components/FinanceManager';
 import ContactsManager from '../components/ContactsManager';
 import ComplianceTracker from '../components/ComplianceTracker';
 import GoalsReporting from '../components/GoalsReporting';
@@ -53,6 +54,7 @@ const NAV_GROUPS = [
       { key: 'grants',   label: 'Grants' },
       { key: 'projects', label: 'Projects' },
       { key: 'tasks',    label: 'Tasks' },
+      { key: 'finance',  label: 'Finance' },
     ],
   },
   {
@@ -398,6 +400,33 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       ];
     }
 
+    if (tab === 'finance') {
+      const now = new Date();
+      const fyYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+      const fyFrom = `${fyYear}-04-01`;
+      const fyTo   = `${fyYear + 1}-03-31`;
+      const [incRes, expRes, budRes] = await Promise.all([
+        supabase.from('finance_income').select('amount').gte('date', fyFrom).lte('date', fyTo),
+        supabase.from('finance_expenses').select('amount, category').gte('date', fyFrom).lte('date', fyTo),
+        supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
+      ]);
+      const totalIncome   = (incRes.data || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+      const totalExpenses = (expRes.data || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+      const net = totalIncome - totalExpenses;
+      const budgetMap = {};
+      (budRes.data || []).forEach(b => { budgetMap[b.category] = parseFloat(b.amount || 0); });
+      const spentMap = {};
+      (expRes.data || []).forEach(e => { spentMap[e.category] = (spentMap[e.category] || 0) + parseFloat(e.amount || 0); });
+      const overBudget = Object.entries(budgetMap).filter(([cat, bud]) => bud > 0 && (spentMap[cat] || 0) > bud).length;
+      const fyLabel = `${fyYear}/${String(fyYear + 1).slice(2)}`;
+      tiles = [
+        { label: `Income — FY ${fyLabel}`, value: `$${(totalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', valueColor: 'var(--brand)' },
+        { label: `Expenses — FY ${fyLabel}`, value: `$${(totalExpenses/1000).toFixed(1)}k`, icon: '📤', bg: '#faeae7', valueColor: totalExpenses > totalIncome ? 'var(--danger)' : 'var(--text1)' },
+        { label: net >= 0 ? 'Net Surplus' : 'Net Deficit', value: `$${(Math.abs(net)/1000).toFixed(1)}k`, icon: net >= 0 ? '✅' : '⚠️', bg: net >= 0 ? '#e8f4ef' : '#faeae7', valueColor: net >= 0 ? 'var(--brand)' : 'var(--danger)' },
+        { label: 'Over Budget', value: overBudget, icon: '📊', bg: overBudget > 0 ? '#faeae7' : '#f5f5f5', valueColor: overBudget > 0 ? 'var(--danger)' : 'var(--text3)' },
+      ];
+    }
+
     if (tab === 'minutes') {
       const [meetRes, resRes, actRes] = await Promise.all([
         supabase.from('meetings').select('id'),
@@ -657,6 +686,14 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
         {/* ── TASKS ──────────────────────────────────────────────────────── */}
         {activeTab === 'tasks' && <TaskBoard />}
+
+        {/* ── FINANCE ────────────────────────────────────────────────────── */}
+        {activeTab === 'finance' && (
+          <>
+            <KpiBar tiles={kpis.finance || []} loading={kpiLoading.finance} count={4} />
+            <FinanceManager />
+          </>
+        )}
 
         {/* ── GRANTS ─────────────────────────────────────────────────────── */}
         {activeTab === 'grants' && (

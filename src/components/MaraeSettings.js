@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
+  use_xero: false,
 };
 
 const NOTIF_LABELS = [
@@ -68,6 +69,7 @@ export default function MaraeSettings({ profile }) {
         phone: data.phone || '',
         email: data.email || '',
         website: data.website || '',
+        use_xero: data.use_xero || false,
       });
     }
     setLoading(false);
@@ -355,6 +357,52 @@ export default function MaraeSettings({ profile }) {
         <button className="btn-primary" onClick={saveNotifPrefs} disabled={notifSaving} style={{ fontSize: 14 }}>
           {notifSaving ? 'Saving...' : 'Save Notification Preferences'}
         </button>
+      </div>
+
+      {/* ── ACCOUNTING INTEGRATION ── */}
+      <div className="panel">
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Accounting Integration
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16, lineHeight: 1.6 }}>
+          If your marae uses Xero for accounting, enable this toggle. When enabled, the Finance module will display a placeholder until the Xero integration is activated. If disabled, use the built-in MaraeHub Finance module.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>Does your marae use Xero?</div>
+            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}>Xero integration is coming soon — enabling this prepares the settings architecture.</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, color: form.use_xero ? 'var(--text3)' : 'var(--brand)', fontWeight: 600 }}>No</span>
+            <div
+              onClick={() => setField('use_xero', !form.use_xero)}
+              style={{
+                width: 44, height: 24, borderRadius: 12, cursor: 'pointer', position: 'relative', flexShrink: 0,
+                background: form.use_xero ? 'var(--brand)' : 'var(--cream2)',
+                transition: 'background 0.2s',
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 3, left: form.use_xero ? 23 : 3,
+                width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                transition: 'left 0.2s',
+              }} />
+            </div>
+            <span style={{ fontSize: 13, color: form.use_xero ? 'var(--brand)' : 'var(--text3)', fontWeight: 600 }}>Yes</span>
+          </div>
+        </div>
+        {form.use_xero && (
+          <div style={{ marginTop: 12, padding: '12px 16px', background: '#e8eef8', border: '1px solid #b8cce8', borderRadius: 8, fontSize: 13, color: '#1a4a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🔗</span>
+            <span><strong>Xero integration coming soon.</strong> Your settings have been saved. We will notify you when the Xero connection is ready to activate.</span>
+          </div>
+        )}
+        <div style={{ marginTop: 16 }}>
+          <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ fontSize: 14 }}>
+            {saving ? 'Saving…' : 'Save Settings'}
+          </button>
+        </div>
       </div>
     </div>
   );

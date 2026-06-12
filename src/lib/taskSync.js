@@ -184,6 +184,13 @@ export async function onTaskCompleted(task) {
   }
 
   // GRANT: — no auto-reset; grant workflow is manual
+
+  // ── FINANCE (prefix "FINANCE: ") → acknowledges over-budget review ───────────
+  if (title.startsWith('FINANCE: ')) {
+    // No DB update — completing the task is the review acknowledgment.
+    // A new task will be created next time Finance tab is visited if still over budget.
+    return;
+  }
 }
 
 // Map a task title prefix to a source label and icon for Board View grouping.
@@ -196,6 +203,7 @@ export const TASK_SOURCES = [
   { prefix: 'ACTION: ',   label: 'Meeting Actions',   icon: '📝', tab: 'minutes'    },
   { prefix: 'GOAL: ',     label: 'Strategic Goals',   icon: '🎯', tab: 'goals'      },
   { prefix: 'GRANT: ',    label: 'Grants',            icon: '💰', tab: 'grants'     },
+  { prefix: 'FINANCE: ',  label: 'Finance',           icon: '📊', tab: 'finance'    },
 ];
 
 export function taskSource(title) {

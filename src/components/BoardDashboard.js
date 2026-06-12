@@ -78,7 +78,12 @@ export default function BoardDashboard({ onNavigate }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes] = await Promise.all([
+    const now = new Date();
+    const fyYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const fyFrom = `${fyYear}-04-01`;
+    const fyTo   = `${fyYear + 1}-03-31`;
+
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -90,19 +95,26 @@ export default function BoardDashboard({ onNavigate }) {
       supabase.from('marae_settings').select('marae_name').single(),
       supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
+      supabase.from('finance_income').select('amount').gte('date', fyFrom).lte('date', fyTo),
+      supabase.from('finance_expenses').select('amount, category').gte('date', fyFrom).lte('date', fyTo),
+      supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
     ]);
     setD({
-      bookings:   bookRes.data   || [],
-      projects:   projRes.data   || [],
-      actions:    actRes.data    || [],
-      grants:     grantRes.data  || [],
-      reminders:  remRes.data    || [],
-      assets:     assetRes.data  || [],
-      tasks:      taskRes.data   || [],
-      feedback:   feedRes.data   || [],
-      maraeName:  settingsRes.data?.marae_name || 'Our Marae',
-      compliance: compRes.data   || [],
-      goals:      goalsRes.data  || [],
+      bookings:     bookRes.data   || [],
+      projects:     projRes.data   || [],
+      actions:      actRes.data    || [],
+      grants:       grantRes.data  || [],
+      reminders:    remRes.data    || [],
+      assets:       assetRes.data  || [],
+      tasks:        taskRes.data   || [],
+      feedback:     feedRes.data   || [],
+      maraeName:    settingsRes.data?.marae_name || 'Our Marae',
+      compliance:   compRes.data   || [],
+      goals:        goalsRes.data  || [],
+      finIncome:    finIncRes.data  || [],
+      finExpenses:  finExpRes.data  || [],
+      finBudgets:   finBudRes.data  || [],
+      fyYear,
     });
     setLoading(false);
   }
@@ -144,6 +156,19 @@ export default function BoardDashboard({ onNavigate }) {
 
   const assetMap = {};
   d.assets.forEach(a => { assetMap[a.id] = a.name; });
+
+  // ─── FINANCIAL HEALTH ──────────────────────────────────────────────────────
+  const finTotalIncome   = (d.finIncome   || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const finTotalExpenses = (d.finExpenses || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const finNet           = finTotalIncome - finTotalExpenses;
+  const finBudgetMap     = {};
+  (d.finBudgets || []).forEach(b => { finBudgetMap[b.category] = parseFloat(b.amount || 0); });
+  const finSpentMap = {};
+  (d.finExpenses || []).forEach(e => { finSpentMap[e.category] = (finSpentMap[e.category] || 0) + parseFloat(e.amount || 0); });
+  const finOverBudgetCats = Object.entries(finBudgetMap)
+    .filter(([cat, bud]) => bud > 0 && (finSpentMap[cat] || 0) > bud)
+    .map(([cat]) => cat);
+  const fyLabelStr = `${d.fyYear}/${String(d.fyYear + 1).slice(2)}`;
 
   const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
   const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
@@ -198,6 +223,7 @@ export default function BoardDashboard({ onNavigate }) {
     goalsAtRisk.length         && { label: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk`, level: 'amber', tab: 'goals' },
     urgentGrants.length        && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
     upcomingAutoTasks.length   && { label: `${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged — review before they become overdue`, level: 'amber', tab: 'tasks' },
+    finOverBudgetCats.length   && { label: `${finOverBudgetCats.length} budget categor${finOverBudgetCats.length !== 1 ? 'ies' : 'y'} over limit — review finance`, level: 'amber', tab: 'finance' },
     pendingBookings.length     && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
   ].filter(Boolean);
 
@@ -910,6 +936,41 @@ export default function BoardDashboard({ onNavigate }) {
             );
           })}
         </div>
+      </div>
+
+      {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <SectionTitle icon="📊" title="Financial Health" note={`(FY ${fyLabelStr})`} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: finOverBudgetCats.length > 0 ? 14 : 0 }}>
+          {[
+            { label: 'Total Income', value: `$${(finTotalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', color: 'var(--brand)' },
+            { label: 'Total Expenses', value: `$${(finTotalExpenses/1000).toFixed(1)}k`, icon: '📤', bg: '#faeae7', color: finTotalExpenses > finTotalIncome ? 'var(--danger)' : 'var(--text1)' },
+            { label: finNet >= 0 ? 'Net Surplus' : 'Net Deficit', value: `$${(Math.abs(finNet)/1000).toFixed(1)}k`, icon: finNet >= 0 ? '✅' : '⚠️', bg: finNet >= 0 ? '#e8f4ef' : '#faeae7', color: finNet >= 0 ? 'var(--brand)' : 'var(--danger)' },
+          ].map((t, i) => (
+            <div key={i} style={{ textAlign: 'center', padding: '12px 8px', background: t.bg, borderRadius: 8 }}>
+              <div style={{ fontSize: 16, marginBottom: 4 }}>{t.icon}</div>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 700, color: t.color }}>{t.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{t.label}</div>
+            </div>
+          ))}
+        </div>
+        {finOverBudgetCats.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {finOverBudgetCats.map(cat => (
+              <span key={cat} onClick={() => onNavigate && onNavigate('finance')} style={{ fontSize: 11, fontWeight: 600, background: '#faeae7', color: 'var(--danger)', border: '1px solid #f0b8b0', borderRadius: 20, padding: '3px 10px', cursor: onNavigate ? 'pointer' : 'default' }}>
+                🔴 Over budget — {cat}
+              </span>
+            ))}
+          </div>
+        ) : (
+          finTotalIncome > 0 || finTotalExpenses > 0 ? (
+            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '7px 12px', fontWeight: 500 }}>
+              ✅ All budget categories within limits
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>No finance data recorded for this financial year — add income and expenses in the Finance tab</div>
+          )
+        )}
       </div>
 
       {/* ── COMMUNITY FEEDBACK ─────────────────────────────────────────── */}
