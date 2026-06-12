@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
-import { ensureTask } from '../lib/taskSync';
+import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 
 const STATUS_OPTIONS = ['planning', 'active', 'review', 'completed'];
 
@@ -125,6 +125,7 @@ export default function ProjectsManager() {
     setSubtaskCounts(counts);
     setLoading(false);
     createOverdueTasks(rows);
+    createUpcomingTasks(rows);
   }
 
   async function createOverdueTasks(rows) {
@@ -140,6 +141,28 @@ export default function ProjectsManager() {
         assigned_to: p.lead || null,
         due_date: todayStr,
         priority: 'High',
+      });
+    }
+  }
+
+  async function createUpcomingTasks(rows) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
+    const approaching = rows.filter(p =>
+      p.due_date &&
+      new Date(p.due_date) >= today &&
+      new Date(p.due_date) <= in7 &&
+      p.status !== 'completed'
+    );
+    for (const p of approaching) {
+      await ensureUpcomingTask({
+        sourceId: p.id,
+        sourceType: 'project',
+        name: p.name,
+        description: `Project due date approaching. Lead: ${p.lead || 'unassigned'}. Check progress and confirm on track.`,
+        assigned_to: p.lead || null,
+        due_date: p.due_date,
+        windowDays: 7,
       });
     }
   }

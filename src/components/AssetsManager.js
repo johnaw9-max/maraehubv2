@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ensureTask } from '../lib/taskSync';
+import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 
 const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Other'];
 const CONDITIONS = ['good', 'fair', 'poor'];
@@ -38,6 +38,7 @@ export default function AssetsManager() {
     setReminders(reminderData);
     setLoading(false);
     createOverdueTasks(assetData, reminderData);
+    createUpcomingTasks(assetData, reminderData);
   }
 
   async function createOverdueTasks(assetData, reminderData) {
@@ -56,6 +57,30 @@ export default function AssetsManager() {
         assigned_to: null,
         due_date: todayStr,
         priority: 'High',
+      });
+    }
+  }
+
+  async function createUpcomingTasks(assetData, reminderData) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
+    const assetMap = {};
+    assetData.forEach(a => { assetMap[a.id] = a.name; });
+    const upcoming = reminderData.filter(r =>
+      r.due_date &&
+      new Date(r.due_date + 'T12:00:00') >= today &&
+      new Date(r.due_date + 'T12:00:00') <= in30
+    );
+    for (const r of upcoming) {
+      const assetName = assetMap[r.asset_id] || 'Asset';
+      await ensureUpcomingTask({
+        sourceId: r.id,
+        sourceType: 'service',
+        name: `${assetName} — ${r.type}`,
+        description: `Asset service reminder due soon. Schedule maintenance before the due date.`,
+        assigned_to: null,
+        due_date: r.due_date,
+        windowDays: 30,
       });
     }
   }

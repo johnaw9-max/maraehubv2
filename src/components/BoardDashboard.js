@@ -180,22 +180,25 @@ export default function BoardDashboard({ onNavigate }) {
 
   // ─── ALERTS (always current — not period-filtered) ─────────────────────────
 
-  const overdueTasks    = d.tasks.filter(t => t.due_date && new Date(t.due_date + 'T12:00:00') < today);
-  const overdueProjects = d.projects.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date + 'T12:00:00') < today);
-  const urgentGrants    = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in14);
-  const pendingBookings = d.bookings.filter(b => b.status === 'pending');
+  // Separate UPCOMING tasks (Medium / amber) from true OVERDUE tasks (High / red)
+  const upcomingAutoTasks = d.tasks.filter(t => t.title.startsWith('UPCOMING: '));
+  const overdueTasks      = d.tasks.filter(t => !t.title.startsWith('UPCOMING: ') && t.due_date && new Date(t.due_date + 'T12:00:00') < today);
+  const overdueProjects   = d.projects.filter(p => p.status !== 'completed' && p.due_date && new Date(p.due_date + 'T12:00:00') < today);
+  const urgentGrants      = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in14);
+  const pendingBookings   = d.bookings.filter(b => b.status === 'pending');
 
   const ALERTS = [
-    epUrgentCount             && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
-    overdueCompliance.length  && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
-    goalsBehind.length        && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
-    overdueTasks.length       && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
-    overdueProjects.length    && { label: `${overdueProjects.length} overdue project${overdueProjects.length !== 1 ? 's' : ''}`, level: 'red', tab: 'projects' },
-    overdueReminders.length   && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
-    dueSoonCompliance.length  && { label: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days`, level: 'amber', tab: 'compliance' },
-    goalsAtRisk.length        && { label: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk`, level: 'amber', tab: 'goals' },
-    urgentGrants.length       && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
-    pendingBookings.length    && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
+    epUrgentCount              && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
+    overdueCompliance.length   && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
+    goalsBehind.length         && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
+    overdueTasks.length        && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
+    overdueProjects.length     && { label: `${overdueProjects.length} overdue project${overdueProjects.length !== 1 ? 's' : ''}`, level: 'red', tab: 'projects' },
+    overdueReminders.length    && { label: `${overdueReminders.length} overdue service reminder${overdueReminders.length !== 1 ? 's' : ''}`, level: 'red', tab: 'assets' },
+    dueSoonCompliance.length   && { label: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days`, level: 'amber', tab: 'compliance' },
+    goalsAtRisk.length         && { label: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk`, level: 'amber', tab: 'goals' },
+    urgentGrants.length        && { label: `${urgentGrants.length} grant deadline${urgentGrants.length !== 1 ? 's' : ''} within 14 days`, level: 'amber', tab: 'grants' },
+    upcomingAutoTasks.length   && { label: `${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged — review before they become overdue`, level: 'amber', tab: 'tasks' },
+    pendingBookings.length     && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
   ].filter(Boolean);
 
   const redAlerts   = ALERTS.filter(a => a.level === 'red');
@@ -248,6 +251,9 @@ export default function BoardDashboard({ onNavigate }) {
     redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
 
   // AMBER
+  if (upcomingAutoTasks.length > 0)
+    amberInsights.push(`${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged across your modules — review and prepare before they become overdue`);
+
   d.grants
     .filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14)
     .forEach(g => {

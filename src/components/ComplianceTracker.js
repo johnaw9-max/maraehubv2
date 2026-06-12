@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
+import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -126,6 +127,7 @@ export default function ComplianceTracker() {
     fetchAll().then(async items => {
       await seedEmergencyPreparedness(items);
       await createOverdueTasks(items);
+      await createUpcomingTasks(items);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -170,37 +172,41 @@ export default function ComplianceTracker() {
     if (!error) setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
   }
 
-  // Auto-create a High-priority task for every overdue compliance item
-  // that doesn't already have an open/in-progress OVERDUE: task.
   async function createOverdueTasks(currentItems) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayStr = new Date().toISOString().split('T')[0];
     const overdueItems = currentItems.filter(
       i => i.due_date && new Date(i.due_date + 'T12:00:00') < today
     );
-    if (overdueItems.length === 0) return;
-
-    const expectedTitles = overdueItems.map(i => `OVERDUE: ${i.name}`);
-    const { data: existing } = await supabase
-      .from('tasks')
-      .select('title')
-      .in('title', expectedTitles)
-      .in('status', ['open', 'in-progress']);
-
-    const existingSet = new Set((existing || []).map(t => t.title));
-    const newTasks = overdueItems
-      .filter(i => !existingSet.has(`OVERDUE: ${i.name}`))
-      .map(i => ({
+    for (const i of overdueItems) {
+      await ensureTask({
         title: `OVERDUE: ${i.name}`,
-        description: `Compliance item overdue. Category: ${CATEGORIES[i.category]?.label || i.category}. Please arrange renewal immediately. [source_id:${i.id}]`,
+        description: `Compliance item overdue. Category: ${CATEGORIES[i.category]?.label || i.category}. Arrange renewal immediately. [source_id:${i.id}]`,
         assigned_to: i.responsible_name || null,
         due_date: todayStr,
         priority: 'High',
-        status: 'open',
-      }));
+      });
+    }
+  }
 
-    if (newTasks.length > 0) {
-      await supabase.from('tasks').insert(newTasks);
+  async function createUpcomingTasks(currentItems) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
+    const upcomingItems = currentItems.filter(i =>
+      i.due_date &&
+      new Date(i.due_date + 'T12:00:00') >= today &&
+      new Date(i.due_date + 'T12:00:00') <= in30
+    );
+    for (const i of upcomingItems) {
+      await ensureUpcomingTask({
+        sourceId: i.id,
+        sourceType: 'compliance',
+        name: i.name,
+        description: `Compliance item due soon. Category: ${CATEGORIES[i.category]?.label || i.category}. Review and prepare for renewal.`,
+        assigned_to: i.responsible_name || null,
+        due_date: i.due_date,
+        windowDays: 30,
+      });
     }
   }
 

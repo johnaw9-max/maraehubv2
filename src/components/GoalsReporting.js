@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
-import { ensureTask } from '../lib/taskSync';
+import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 
 const GOAL_STATUSES = ['not_started', 'in_progress', 'at_risk', 'completed'];
 
@@ -145,6 +145,7 @@ export default function GoalsReporting() {
     setGrants(grantsRes.data || []);
     setLoading(false);
     createOverdueTasks(goalsData);
+    createUpcomingTasks(goalsData);
   }
 
   async function createOverdueTasks(goalsData) {
@@ -160,6 +161,28 @@ export default function GoalsReporting() {
         assigned_to: g.responsible_name || null,
         due_date: todayStr,
         priority: 'High',
+      });
+    }
+  }
+
+  async function createUpcomingTasks(goalsData) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
+    const approaching = goalsData.filter(g =>
+      g.status !== 'completed' &&
+      g.target_date &&
+      new Date(g.target_date + 'T12:00:00') >= today &&
+      new Date(g.target_date + 'T12:00:00') <= in14
+    );
+    for (const g of approaching) {
+      await ensureUpcomingTask({
+        sourceId: g.id,
+        sourceType: 'goal',
+        name: g.name,
+        description: `Strategic goal target date approaching. Review progress and confirm on track.`,
+        assigned_to: g.responsible_name || null,
+        due_date: g.target_date,
+        windowDays: 14,
       });
     }
   }
