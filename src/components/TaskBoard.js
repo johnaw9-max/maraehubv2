@@ -160,6 +160,7 @@ export default function TaskBoard() {
   const [formError, setFormError] = useState('');
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => { fetchTasks(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -182,6 +183,12 @@ export default function TaskBoard() {
     const q = search.toLowerCase();
     return tasks.filter(t => t.title?.toLowerCase().includes(q));
   }, [tasks, search]);
+
+  const ARCHIVE_THRESHOLD = 50;
+  const archivedTasks = useMemo(() => {
+    if (search.trim()) return [];
+    return filtered.filter(t => t.status === 'completed').slice(ARCHIVE_THRESHOLD);
+  }, [filtered, search]);
 
   function openAdd() {
     setForm(EMPTY_FORM);
@@ -324,7 +331,10 @@ export default function TaskBoard() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           {COLUMNS.map((col, colIndex) => {
-            const colTasks = filtered.filter(t => t.status === col.key);
+            const allColTasks = filtered.filter(t => t.status === col.key);
+            const colTasks = col.key === 'completed' && !search.trim()
+              ? allColTasks.slice(0, ARCHIVE_THRESHOLD)
+              : allColTasks;
             return (
               <div key={col.key} className="panel" style={{ padding: 0, overflow: 'hidden', minHeight: 300 }}>
                 <div style={{
@@ -341,7 +351,7 @@ export default function TaskBoard() {
                     borderRadius: 12, padding: '2px 9px', fontSize: 12,
                     fontWeight: 700, color: col.headerColor,
                   }}>
-                    {colTasks.length}
+                    {allColTasks.length}
                   </span>
                 </div>
 
@@ -365,6 +375,41 @@ export default function TaskBoard() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── ARCHIVE SECTION ───────────────────────────────────────────────── */}
+      {archivedTasks.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={() => setShowArchive(a => !a)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600, color: 'var(--text2)',
+              fontFamily: 'DM Sans, sans-serif',
+            }}
+          >
+            <span>{showArchive ? '▲' : '▼'}</span>
+            <span>📦 Completed Task Archive — {archivedTasks.length} older task{archivedTasks.length !== 1 ? 's' : ''}</span>
+          </button>
+          {showArchive && (
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+              {archivedTasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  colIndex={COLUMNS.findIndex(c => c.key === 'completed')}
+                  onMove={moveTask}
+                  onEdit={openEdit}
+                  onDelete={setConfirmDeleteId}
+                  onChangeStatus={changeTaskStatus}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

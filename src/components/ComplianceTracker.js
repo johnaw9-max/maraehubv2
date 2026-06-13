@@ -115,6 +115,7 @@ export default function ComplianceTracker() {
   const itemFileRef = useRef();
 
   // Incident modal
+  const [showIncidentArchive, setShowIncidentArchive] = useState(false);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [editIncident, setEditIncident] = useState(null);
   const [incidentForm, setIncidentForm] = useState(EMPTY_INCIDENT);
@@ -387,6 +388,14 @@ export default function ComplianceTracker() {
 
   if (loading) return <div className="loading">Loading compliance data...</div>;
 
+  // ── INCIDENT ARCHIVE SPLIT ─────────────────────────────────────────────────
+  const INCIDENT_ARCHIVE_THRESHOLD = 50;
+  const resolvedIncidents  = incidents.filter(i => i.resolved);
+  const activeIncidents    = incidents.filter(i => !i.resolved);
+  const recentResolved     = resolvedIncidents.slice(0, INCIDENT_ARCHIVE_THRESHOLD);
+  const archivedIncidents  = resolvedIncidents.slice(INCIDENT_ARCHIVE_THRESHOLD);
+  const visibleIncidents   = [...activeIncidents, ...recentResolved];
+
   // ── RENDER ────────────────────────────────────────────────────────────────
 
   return (
@@ -596,7 +605,7 @@ export default function ComplianceTracker() {
             <div className="empty-state"><div className="emoji">📋</div><div>No incidents recorded</div></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {incidents.map(inc => {
+              {visibleIncidents.map(inc => {
                 const scfg = SEVERITY_CFG[inc.severity] || SEVERITY_CFG.minor;
                 return (
                   <div
@@ -665,6 +674,46 @@ export default function ComplianceTracker() {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {archivedIncidents.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setShowIncidentArchive(a => !a)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, color: 'var(--text2)',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                <span>{showIncidentArchive ? '▲' : '▼'}</span>
+                <span>📦 Resolved Incident Archive — {archivedIncidents.length} older incident{archivedIncidents.length !== 1 ? 's' : ''}</span>
+              </button>
+              {showIncidentArchive && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                  {archivedIncidents.map(inc => {
+                    return (
+                      <div key={inc.id} className="panel" style={{ padding: '14px 16px', borderLeft: '4px solid #2e7d52', opacity: 0.75 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 2 }}>{inc.title}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text3)' }}>{fmt(inc.incident_date)} · Resolved</div>
+                          </div>
+                          <button
+                            onClick={() => openEditIncident(inc)}
+                            style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}
+                          >
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </>

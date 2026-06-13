@@ -402,6 +402,7 @@ export default function GoalsReporting() {
           ].map((s, i) => (
             <button
               key={s.key}
+              type="button"
               onClick={() => setSection(s.key)}
               style={{
                 padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',

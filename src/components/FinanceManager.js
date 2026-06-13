@@ -118,6 +118,7 @@ export default function FinanceManager() {
   const [budgets, setBudgets]   = useState([]);
   const [balanceSheet, setBalanceSheet] = useState(null);
   const [equipmentValue, setEquipmentValue] = useState(0);
+  const [contactNames, setContactNames] = useState([]);
   const [loading, setLoading]   = useState(true);
 
   // Modals
@@ -145,6 +146,7 @@ export default function FinanceManager() {
   // Balance sheet editing
   const [bsForm, setBsForm] = useState({
     cash_balance: '', other_assets: '', other_assets_notes: '',
+    term_deposits: '', shares_bonds: '', property_investments: '', other_investments: '', investments_notes: '',
     loans: '', loans_notes: '', outstanding_payments: '', outstanding_notes: '',
   });
   const [bsId, setBsId] = useState(null);
@@ -159,12 +161,13 @@ export default function FinanceManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [incRes, expRes, budRes, bsRes, assetRes] = await Promise.all([
+    const [incRes, expRes, budRes, bsRes, assetRes, ctRes] = await Promise.all([
       supabase.from('finance_income').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_expenses').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_budgets').select('*').eq('financial_year', fy),
       supabase.from('finance_balance_sheet').select('*').limit(1).single(),
       supabase.from('assets').select('value'),
+      supabase.from('contacts').select('full_name').order('full_name'),
     ]);
     setIncome(incRes.data || []);
     setExpenses(expRes.data || []);
@@ -173,18 +176,24 @@ export default function FinanceManager() {
     if (bs) {
       setBsId(bs.id);
       setBsForm({
-        cash_balance: bs.cash_balance ?? '',
-        other_assets: bs.other_assets ?? '',
-        other_assets_notes: bs.other_assets_notes || '',
-        loans: bs.loans ?? '',
-        loans_notes: bs.loans_notes || '',
+        cash_balance:         bs.cash_balance ?? '',
+        other_assets:         bs.other_assets ?? '',
+        other_assets_notes:   bs.other_assets_notes || '',
+        term_deposits:        bs.term_deposits ?? '',
+        shares_bonds:         bs.shares_bonds ?? '',
+        property_investments: bs.property_investments ?? '',
+        other_investments:    bs.other_investments ?? '',
+        investments_notes:    bs.investments_notes || '',
+        loans:                bs.loans ?? '',
+        loans_notes:          bs.loans_notes || '',
         outstanding_payments: bs.outstanding_payments ?? '',
-        outstanding_notes: bs.outstanding_notes || '',
+        outstanding_notes:    bs.outstanding_notes || '',
       });
       setBalanceSheet(bs);
     }
     const eqVal = (assetRes.data || []).reduce((s, a) => s + (parseFloat(a.value) || 0), 0);
     setEquipmentValue(eqVal);
+    setContactNames((ctRes.data || []).map(c => c.full_name).filter(Boolean));
     setLoading(false);
     createBudgetTasks(budRes.data || [], expRes.data || []);
   }
@@ -401,6 +410,11 @@ export default function FinanceManager() {
       cash_balance:         parseFloat(bsForm.cash_balance || 0),
       other_assets:         parseFloat(bsForm.other_assets || 0),
       other_assets_notes:   bsForm.other_assets_notes || null,
+      term_deposits:        parseFloat(bsForm.term_deposits || 0),
+      shares_bonds:         parseFloat(bsForm.shares_bonds || 0),
+      property_investments: parseFloat(bsForm.property_investments || 0),
+      other_investments:    parseFloat(bsForm.other_investments || 0),
+      investments_notes:    bsForm.investments_notes || null,
       loans:                parseFloat(bsForm.loans || 0),
       loans_notes:          bsForm.loans_notes || null,
       outstanding_payments: parseFloat(bsForm.outstanding_payments || 0),
@@ -436,7 +450,8 @@ export default function FinanceManager() {
   function printAGMReport() {
     const win = window.open('', '_blank');
     const bs = balanceSheet;
-    const totalAssets = (parseFloat(bs?.cash_balance || 0) + parseFloat(bs?.other_assets || 0) + equipmentValue).toFixed(2);
+    const bsInvTotal = parseFloat(bs?.term_deposits || 0) + parseFloat(bs?.shares_bonds || 0) + parseFloat(bs?.property_investments || 0) + parseFloat(bs?.other_investments || 0);
+    const totalAssets = (parseFloat(bs?.cash_balance || 0) + parseFloat(bs?.other_assets || 0) + bsInvTotal + equipmentValue).toFixed(2);
     const totalLiabilities = (parseFloat(bs?.loans || 0) + parseFloat(bs?.outstanding_payments || 0)).toFixed(2);
     const netWorth = (parseFloat(totalAssets) - parseFloat(totalLiabilities)).toFixed(2);
 
@@ -466,6 +481,10 @@ export default function FinanceManager() {
 <tr><td>Cash &amp; Bank Balance</td><td style="text-align:right">${fmtMoney(bs?.cash_balance || 0)}</td></tr>
 <tr><td>Equipment (Assets Register)</td><td style="text-align:right">${fmtMoney(equipmentValue)}</td></tr>
 ${parseFloat(bs?.other_assets || 0) > 0 ? `<tr><td>Other Assets${bs?.other_assets_notes ? ' — ' + bs.other_assets_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.other_assets || 0)}</td></tr>` : ''}
+${parseFloat(bs?.term_deposits || 0) > 0 ? `<tr><td>Term Deposits</td><td style="text-align:right">${fmtMoney(bs?.term_deposits || 0)}</td></tr>` : ''}
+${parseFloat(bs?.shares_bonds || 0) > 0 ? `<tr><td>Shares &amp; Bonds</td><td style="text-align:right">${fmtMoney(bs?.shares_bonds || 0)}</td></tr>` : ''}
+${parseFloat(bs?.property_investments || 0) > 0 ? `<tr><td>Property Investments</td><td style="text-align:right">${fmtMoney(bs?.property_investments || 0)}</td></tr>` : ''}
+${parseFloat(bs?.other_investments || 0) > 0 ? `<tr><td>Other Investments${bs?.investments_notes ? ' — ' + bs.investments_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.other_investments || 0)}</td></tr>` : ''}
 <tr style="font-weight:bold"><td>Total Assets</td><td style="text-align:right">$${totalAssets}</td></tr>
 <tr><th>Liabilities</th><th></th></tr>
 <tr><td>Loans${bs?.loans_notes ? ' — ' + bs.loans_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.loans || 0)}</td></tr>
@@ -483,11 +502,15 @@ ${parseFloat(bs?.other_assets || 0) > 0 ? `<tr><td>Other Assets${bs?.other_asset
 
   // ── COMPUTED BALANCE SHEET ─────────────────────────────────────────────────
 
-  const bsCash    = parseFloat(balanceSheet?.cash_balance || 0);
-  const bsOther   = parseFloat(balanceSheet?.other_assets || 0);
-  const bsLoans   = parseFloat(balanceSheet?.loans || 0);
+  const bsCash        = parseFloat(balanceSheet?.cash_balance || 0);
+  const bsOther       = parseFloat(balanceSheet?.other_assets || 0);
+  const bsInvestments = parseFloat(balanceSheet?.term_deposits || 0)
+                      + parseFloat(balanceSheet?.shares_bonds || 0)
+                      + parseFloat(balanceSheet?.property_investments || 0)
+                      + parseFloat(balanceSheet?.other_investments || 0);
+  const bsLoans       = parseFloat(balanceSheet?.loans || 0);
   const bsOutstanding = parseFloat(balanceSheet?.outstanding_payments || 0);
-  const totalAssets      = bsCash + bsOther + equipmentValue;
+  const totalAssets      = bsCash + bsOther + bsInvestments + equipmentValue;
   const totalLiabilities = bsLoans + bsOutstanding;
   const netWorth         = totalAssets - totalLiabilities;
 
@@ -843,8 +866,47 @@ ${parseFloat(bs?.other_assets || 0) > 0 ? `<tr><td>Other Assets${bs?.other_asset
                 <label className="form-label">Other Assets — Notes</label>
                 <input className="form-input" value={bsForm.other_assets_notes}
                   onChange={e => setBsForm(f => ({ ...f, other_assets_notes: e.target.value }))}
-                  placeholder="e.g. Term deposit, investments" />
+                  placeholder="e.g. Furniture, equipment not in Assets Register" />
               </div>
+
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1a4a8a', marginBottom: 10, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                Investments
+              </div>
+              <div className="form-group">
+                <label className="form-label">Term Deposits ($)</label>
+                <input type="number" min="0" step="0.01" className="form-input"
+                  value={bsForm.term_deposits}
+                  onChange={e => setBsForm(f => ({ ...f, term_deposits: e.target.value }))}
+                  placeholder="0.00" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Shares &amp; Bonds ($)</label>
+                <input type="number" min="0" step="0.01" className="form-input"
+                  value={bsForm.shares_bonds}
+                  onChange={e => setBsForm(f => ({ ...f, shares_bonds: e.target.value }))}
+                  placeholder="0.00" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Property Investments ($)</label>
+                <input type="number" min="0" step="0.01" className="form-input"
+                  value={bsForm.property_investments}
+                  onChange={e => setBsForm(f => ({ ...f, property_investments: e.target.value }))}
+                  placeholder="0.00" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Other Investments ($)</label>
+                <input type="number" min="0" step="0.01" className="form-input"
+                  value={bsForm.other_investments}
+                  onChange={e => setBsForm(f => ({ ...f, other_investments: e.target.value }))}
+                  placeholder="0.00" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Investments — Notes</label>
+                <input className="form-input" value={bsForm.investments_notes}
+                  onChange={e => setBsForm(f => ({ ...f, investments_notes: e.target.value }))}
+                  placeholder="e.g. ANZ term deposit, Māori Authority shares" />
+              </div>
+
               <div style={{ padding: '12px 14px', background: '#e8f4ef', borderRadius: 8, border: '1px solid #a8d8c0' }}>
                 <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>Total Assets</div>
                 <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: 'var(--brand)' }}>{fmtMoney(totalAssets)}</div>
@@ -1102,7 +1164,17 @@ ${parseFloat(bs?.other_assets || 0) > 0 ? `<tr><td>Other Assets${bs?.other_asset
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Payee</label>
-                <input className="form-input" value={expenseForm.payee} onChange={e => setExpenseForm(f => ({ ...f, payee: e.target.value }))} placeholder="e.g. Auckland City Council" />
+                <input
+                  list="finance-payee-list"
+                  className="form-input"
+                  value={expenseForm.payee}
+                  onChange={e => setExpenseForm(f => ({ ...f, payee: e.target.value }))}
+                  placeholder="Search contacts or type a name"
+                  autoComplete="off"
+                />
+                <datalist id="finance-payee-list">
+                  {contactNames.map(name => <option key={name} value={name} />)}
+                </datalist>
               </div>
               <div className="form-group">
                 <label className="form-label">Reference Number</label>
