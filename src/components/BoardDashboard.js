@@ -258,20 +258,19 @@ export default function BoardDashboard({ onNavigate }) {
     redInsights.unshift(`🆘 Emergency Preparedness: ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} are overdue or not yet scheduled — marae may not be ready for a civil defence event`);
 
   if (overdueCompliance.length > 0)
-    redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately: ${overdueCompliance.slice(0, 2).map(c => c.name).join(', ')}${overdueCompliance.length > 2 ? '…' : ''}`);
+    redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately (see Compliance panel)`);
 
   if (goalsBehind.length > 0)
-    redInsights.push(`${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's are' : ' is'} behind schedule — review and update plans: ${goalsBehind.slice(0, 2).map(g => g.name).join(', ')}${goalsBehind.length > 2 ? '…' : ''}`);
+    redInsights.push(`${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's are' : ' is'} behind schedule — review and update plans (see Strategic Goals panel)`);
 
   if (overdueTasks.length > 0)
-    redInsights.push(`You have ${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately`);
+    redInsights.push(`${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately (see Tasks panel)`);
 
-  d.grants
-    .filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7)
-    .forEach(g => {
-      const daysLeft = Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
-      redInsights.push(`Grant deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — action required today: ${g.name}`);
-    });
+  const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
+  if (grantsUrgent.length > 0) {
+    const minDays = Math.min(...grantsUrgent.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
+    redInsights.push(`${grantsUrgent.length} grant deadline${grantsUrgent.length !== 1 ? 's' : ''} within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`);
+  }
 
   if (overdueReminders.length > 0)
     redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
@@ -280,12 +279,11 @@ export default function BoardDashboard({ onNavigate }) {
   if (upcomingAutoTasks.length > 0)
     amberInsights.push(`${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged across your modules — review and prepare before they become overdue`);
 
-  d.grants
-    .filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14)
-    .forEach(g => {
-      const daysLeft = Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
-      amberInsights.push(`Grant "${g.name}" deadline in ${daysLeft} days — begin preparation`);
-    });
+  const grantsSoon = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14);
+  if (grantsSoon.length > 0) {
+    const minDays = Math.min(...grantsSoon.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
+    amberInsights.push(`${grantsSoon.length} grant deadline${grantsSoon.length !== 1 ? 's' : ''} within ${minDays}–14 days — begin preparation (see Grants panel)`);
+  }
 
   const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
   if (soonReminders.length > 0)
@@ -295,7 +293,7 @@ export default function BoardDashboard({ onNavigate }) {
     amberInsights.push(`${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`);
 
   if (goalsAtRisk.length > 0)
-    amberInsights.push(`${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers: ${goalsAtRisk.slice(0, 2).map(g => g.name).join(', ')}${goalsAtRisk.length > 2 ? '…' : ''}`);
+    amberInsights.push(`${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers (see Strategic Goals panel)`);
 
   if (d.actions.length > 3)
     amberInsights.push(`${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`);
@@ -332,21 +330,8 @@ export default function BoardDashboard({ onNavigate }) {
   const INSIGHTS = [
     ...redInsights.map(text => ({ text, level: 'red' })),
     ...amberInsights.map(text => ({ text, level: 'amber' })),
-    ...greenInsights.slice(0, 2).map(text => ({ text, level: 'green' })),
-  ].slice(0, 6);
-
-  console.log('[SmartInsights] inputs:', {
-    overdueTasks: overdueTasks.length,
-    overdueReminders: overdueReminders.length,
-    actionsCount: d.actions.length,
-    avgRating,
-    periodProjects: periodProjects.length,
-    compliantPct,
-    approvedGrantsAmt,
-    totalPeriodBookings,
-    soonReminders: soonReminders.length,
-  });
-  console.log('[SmartInsights] output:', { redInsights, amberInsights, greenInsights, INSIGHTS });
+    ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
+  ].slice(0, 4);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
