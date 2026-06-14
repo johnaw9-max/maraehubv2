@@ -227,8 +227,6 @@ export default function BoardDashboard({ onNavigate }) {
     pendingBookings.length     && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
   ].filter(Boolean);
 
-  const redAlerts   = ALERTS.filter(a => a.level === 'red');
-  const amberAlerts = ALERTS.filter(a => a.level === 'amber');
 
   // ─── KPI TILES (period-filtered) ───────────────────────────────────────────
 
