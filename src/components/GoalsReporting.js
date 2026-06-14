@@ -341,11 +341,11 @@ export default function GoalsReporting() {
     setSaving(false);
   }
 
-  async function deleteGoal(id) {
-    if (!window.confirm('Delete this goal?')) return;
-    await supabase.from('goals').delete().eq('id', id);
-    setGoals(prev => prev.filter(g => g.id !== id));
-    setGoalLinks(prev => prev.filter(l => l.goal_id !== id));
+  async function deleteGoal(goal) {
+    if (!window.confirm(`Permanently delete the goal "${goal.name}"? This cannot be undone.`)) return;
+    await supabase.from('goals').delete().eq('id', goal.id);
+    setGoals(prev => prev.filter(g => g.id !== goal.id));
+    setGoalLinks(prev => prev.filter(l => l.goal_id !== goal.id));
   }
 
   async function handleGoalStatusChange(goalId, newStatus) {
@@ -497,12 +497,20 @@ export default function GoalsReporting() {
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {goal.responsible_name ? `👤 ${goal.responsible_name}` : '—'}
                       </span>
-                      <button
-                        onClick={() => openEdit(goal)}
-                        style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 8px', cursor: 'pointer', flexShrink: 0 }}
-                      >
-                        Edit
-                      </button>
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        <button
+                          onClick={() => openEdit(goal)}
+                          style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteGoal(goal)}
+                          style={{ fontSize: 11, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}
+                        >
+                          🗑
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -666,10 +674,10 @@ export default function GoalsReporting() {
                           Edit
                         </button>
                         <button
-                          onClick={() => deleteGoal(goal.id)}
-                          style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                          onClick={() => deleteGoal(goal)}
+                          style={{ fontSize: 12, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
                         >
-                          ✕
+                          🗑 Delete
                         </button>
                       </div>
                     </div>
