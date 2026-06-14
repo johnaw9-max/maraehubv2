@@ -247,6 +247,92 @@ export default function BoardDashboard({ onNavigate }) {
 
   const todayDisplay = new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  // ─── SMART INSIGHTS ────────────────────────────────────────────────────────
+
+  const redInsights   = [];
+  const amberInsights = [];
+  const greenInsights = [];
+
+  // RED — Emergency Preparedness first (highest priority)
+  if (epUrgentCount > 0)
+    redInsights.unshift(`🆘 Emergency Preparedness: ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} are overdue or not yet scheduled — marae may not be ready for a civil defence event`);
+
+  if (overdueCompliance.length > 0)
+    redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately (see Compliance panel)`);
+
+  if (goalsBehind.length > 0)
+    redInsights.push(`${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's are' : ' is'} behind schedule — review and update plans (see Strategic Goals panel)`);
+
+  if (overdueTasks.length > 0)
+    redInsights.push(`${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately (see Tasks panel)`);
+
+  const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
+  if (grantsUrgent.length > 0) {
+    const minDays = Math.min(...grantsUrgent.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
+    redInsights.push(`${grantsUrgent.length} grant deadline${grantsUrgent.length !== 1 ? 's' : ''} within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`);
+  }
+
+  if (overdueReminders.length > 0)
+    redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
+
+  // AMBER
+  if (upcomingAutoTasks.length > 0)
+    amberInsights.push(`${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged across your modules — review and prepare before they become overdue`);
+
+  const grantsSoon = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14);
+  if (grantsSoon.length > 0) {
+    const minDays = Math.min(...grantsSoon.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
+    amberInsights.push(`${grantsSoon.length} grant deadline${grantsSoon.length !== 1 ? 's' : ''} within ${minDays}–14 days — begin preparation (see Grants panel)`);
+  }
+
+  const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
+  if (soonReminders.length > 0)
+    amberInsights.push(`${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`);
+
+  if (dueSoonCompliance.length > 0)
+    amberInsights.push(`${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`);
+
+  if (goalsAtRisk.length > 0)
+    amberInsights.push(`${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers (see Strategic Goals panel)`);
+
+  if (d.actions.length > 3)
+    amberInsights.push(`${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`);
+
+  if (avgRating !== null && avgRating < 4)
+    amberInsights.push(`Community rating is ${Number(avgRating).toFixed(1)}/5 — review recent feedback and identify areas for improvement`);
+
+  if (periodProjects.length === 0)
+    amberInsights.push(`No active projects this period — consider initiating planned work`);
+
+  // GREEN (max 2)
+  if (d.goals.length > 0 && goalsBehind.length === 0 && goalsAtRisk.length === 0)
+    greenInsights.push(`All ${d.goals.length} strategic goal${d.goals.length !== 1 ? 's are' : ' is'} on track — excellent governance progress`);
+
+  if (goalsComplete.length > 0 && d.goals.length > 0 && goalsComplete.length === d.goals.length)
+    greenInsights.push(`All strategic goals completed — outstanding achievement for the committee`);
+
+  if (avgRating !== null && avgRating >= 4.5)
+    greenInsights.push(`Community satisfaction is strong at ${Number(avgRating).toFixed(1)}/5 — great work`);
+
+  if (compliantPct === 100)
+    greenInsights.push(`All assets are fully service-compliant`);
+
+  if (d.compliance.length > 0 && overdueCompliance.length === 0 && dueSoonCompliance.length === 0)
+    greenInsights.push(`All compliance obligations are up to date`);
+
+  if (approvedGrantsAmt > 0)
+    greenInsights.push(`${fmtMoney(approvedGrantsAmt)} in grants secured ${pl.toLowerCase()} — excellent funding progress`);
+
+  const totalPeriodBookings = d.bookings.filter(b => inPeriod(b.start_date)).length;
+  if (totalPeriodBookings > 0 && Math.round((periodBookings.length / totalPeriodBookings) * 100) >= 90)
+    greenInsights.push(`${Math.round((periodBookings.length / totalPeriodBookings) * 100)}% of bookings this period have been approved`);
+
+  const INSIGHTS = [
+    ...redInsights.map(text => ({ text, level: 'red' })),
+    ...amberInsights.map(text => ({ text, level: 'amber' })),
+    ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
+  ].slice(0, 4);
+
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
   // eslint-disable-next-line no-unused-vars
@@ -417,46 +503,6 @@ export default function BoardDashboard({ onNavigate }) {
         </div>
       )}
 
-      {/* ── RED ALERT STRIP — all urgent items from every module ──────── */}
-      {redAlerts.length > 0 && (
-        <div className="no-print" style={{
-          background: '#faeae7',
-          border: '1px solid #f0b8b0',
-          borderLeft: '4px solid var(--danger)',
-          borderRadius: 8,
-          padding: '14px 18px',
-          marginBottom: 16,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 16 }}>🔴</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger)' }}>
-              {redAlerts.length} urgent item{redAlerts.length !== 1 ? 's' : ''} require immediate attention
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {redAlerts.map((a, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => onNavigate && onNavigate(a.tab)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  background: 'rgba(255,255,255,0.82)',
-                  border: '1px solid #f0b8b0',
-                  borderRadius: 6, padding: '6px 12px',
-                  fontSize: 12, fontWeight: 600, color: 'var(--danger)',
-                  cursor: onNavigate ? 'pointer' : 'default',
-                  fontFamily: 'DM Sans, sans-serif',
-                }}
-              >
-                {a.label}
-                {onNavigate && <span style={{ opacity: 0.5, fontSize: 11 }}>→</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
@@ -481,33 +527,26 @@ export default function BoardDashboard({ onNavigate }) {
         </div>
       </div>
 
-      {/* ── AMBER ALERTS STRIP ─────────────────────────────────────────── */}
-      {amberAlerts.length > 0 ? (
-        <div className="no-print" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-          {amberAlerts.map((a, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onNavigate && onNavigate(a.tab)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: '#fdf0dc',
-                color: '#7a4f00',
-                border: '1px solid #e8c880',
-                borderLeft: '4px solid var(--warning)',
-                borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600,
-                cursor: onNavigate ? 'pointer' : 'default', fontFamily: 'DM Sans, sans-serif',
-              }}
-            >
-              <span>🟡</span>
-              {a.label}
-              {onNavigate && <span style={{ opacity: 0.5, fontSize: 12 }}>→</span>}
-            </button>
-          ))}
-        </div>
-      ) : ALERTS.length === 0 && (
-        <div style={{ background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)', borderRadius: 8, padding: '10px 16px', marginBottom: 20, fontSize: 13, fontWeight: 600, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>✅</span> All clear — no urgent items requiring attention
+      {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
+      {INSIGHTS.length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="💡" title="Insights and Recommendations" count={INSIGHTS.length} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {INSIGHTS.map((ins, i) => {
+              const s = {
+                red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
+                amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
+                green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
+              }[ins.level];
+              const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
+              return (
+                <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8, ...s }}>
+                  <span style={{ flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                  {ins.text}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
