@@ -80,6 +80,12 @@ export default function BookingsManager({ isTrustee, userId }) {
     return new Date(d).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  async function deleteBooking(booking) {
+    if (!window.confirm(`Permanently delete the booking for "${booking.occasion}"? This cannot be undone.`)) return;
+    await supabase.from('bookings').delete().eq('id', booking.id);
+    fetchBookings();
+  }
+
   function handleFeedbackSubmitted(bookingId, rating) {
     setFeedback(prev => ({ ...prev, [bookingId]: { booking_id: bookingId, rating_overall: rating } }));
   }
@@ -170,6 +176,12 @@ export default function BookingsManager({ isTrustee, userId }) {
                     <button onClick={() => updateStatus(b, 'pending')}
                       style={{ fontSize: 11, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
                       Reset
+                    </button>
+                  )}
+                  {isTrustee && (
+                    <button onClick={() => deleteBooking(b)}
+                      style={{ fontSize: 11, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
+                      🗑 Delete
                     </button>
                   )}
                   {showChecklist && (
