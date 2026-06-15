@@ -146,9 +146,10 @@ export default function FinanceManager() {
   // Balance sheet editing
   const [bsForm, setBsForm] = useState({
     cash_balance: '', other_assets: '', other_assets_notes: '',
-    term_deposits: '', shares_bonds: '', property_investments: '', other_investments: '', investments_notes: '',
-    loans: '', loans_notes: '', outstanding_payments: '', outstanding_notes: '',
+    outstanding_payments: '', outstanding_notes: '',
   });
+  const [loanRows, setLoanRows] = useState([{ id: 1, name: '', amount: '' }]);
+  const [investmentRows, setInvestmentRows] = useState([{ id: 1, name: '', amount: '' }]);
   const [bsId, setBsId] = useState(null);
   const [bsSaving, setBsSaving] = useState(false);
   const [bsSuccess, setBsSuccess] = useState(false);
@@ -179,16 +180,36 @@ export default function FinanceManager() {
         cash_balance:         bs.cash_balance ?? '',
         other_assets:         bs.other_assets ?? '',
         other_assets_notes:   bs.other_assets_notes || '',
-        term_deposits:        bs.term_deposits ?? '',
-        shares_bonds:         bs.shares_bonds ?? '',
-        property_investments: bs.property_investments ?? '',
-        other_investments:    bs.other_investments ?? '',
-        investments_notes:    bs.investments_notes || '',
-        loans:                bs.loans ?? '',
-        loans_notes:          bs.loans_notes || '',
         outstanding_payments: bs.outstanding_payments ?? '',
         outstanding_notes:    bs.outstanding_notes || '',
       });
+      try {
+        const parsed = JSON.parse(bs.loans_notes || '[]');
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setLoanRows(parsed.map((r, i) => ({ id: i + 1, name: r.name || '', amount: r.amount ?? '' })));
+        } else {
+          const oldAmt = parseFloat(bs.loans || 0);
+          setLoanRows([{ id: 1, name: oldAmt > 0 ? (bs.loans_notes || '') : '', amount: oldAmt > 0 ? String(oldAmt) : '' }]);
+        }
+      } catch {
+        const oldAmt = parseFloat(bs.loans || 0);
+        setLoanRows([{ id: 1, name: bs.loans_notes || '', amount: oldAmt > 0 ? String(oldAmt) : '' }]);
+      }
+      try {
+        const parsed = JSON.parse(bs.investments_notes || '[]');
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setInvestmentRows(parsed.map((r, i) => ({ id: i + 1, name: r.name || '', amount: r.amount ?? '' })));
+        } else {
+          const oldRows = [];
+          if (parseFloat(bs.term_deposits || 0) > 0) oldRows.push({ id: 1, name: 'Term Deposits', amount: String(bs.term_deposits) });
+          if (parseFloat(bs.shares_bonds || 0) > 0) oldRows.push({ id: 2, name: 'Shares & Bonds', amount: String(bs.shares_bonds) });
+          if (parseFloat(bs.property_investments || 0) > 0) oldRows.push({ id: 3, name: 'Property Investments', amount: String(bs.property_investments) });
+          if (parseFloat(bs.other_investments || 0) > 0) oldRows.push({ id: 4, name: 'Other Investments', amount: String(bs.other_investments) });
+          setInvestmentRows(oldRows.length > 0 ? oldRows : [{ id: 1, name: '', amount: '' }]);
+        }
+      } catch {
+        setInvestmentRows([{ id: 1, name: '', amount: '' }]);
+      }
       setBalanceSheet(bs);
     }
     const eqVal = (assetRes.data || []).reduce((s, a) => s + (parseFloat(a.value) || 0), 0);
@@ -406,17 +427,19 @@ export default function FinanceManager() {
 
   async function handleSaveBalanceSheet() {
     setBsSaving(true);
+    const loansTotal = loanRows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const investmentsTotal = investmentRows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
     const payload = {
       cash_balance:         parseFloat(bsForm.cash_balance || 0),
       other_assets:         parseFloat(bsForm.other_assets || 0),
       other_assets_notes:   bsForm.other_assets_notes || null,
-      term_deposits:        parseFloat(bsForm.term_deposits || 0),
-      shares_bonds:         parseFloat(bsForm.shares_bonds || 0),
-      property_investments: parseFloat(bsForm.property_investments || 0),
-      other_investments:    parseFloat(bsForm.other_investments || 0),
-      investments_notes:    bsForm.investments_notes || null,
-      loans:                parseFloat(bsForm.loans || 0),
-      loans_notes:          bsForm.loans_notes || null,
+      term_deposits:        0,
+      shares_bonds:         0,
+      property_investments: 0,
+      other_investments:    investmentsTotal,
+      investments_notes:    JSON.stringify(investmentRows.map(r => ({ name: r.name.trim(), amount: r.amount }))),
+      loans:                loansTotal,
+      loans_notes:          JSON.stringify(loanRows.map(r => ({ name: r.name.trim(), amount: r.amount }))),
       outstanding_payments: parseFloat(bsForm.outstanding_payments || 0),
       outstanding_notes:    bsForm.outstanding_notes || null,
       updated_at: new Date().toISOString(),
@@ -432,6 +455,15 @@ export default function FinanceManager() {
     setTimeout(() => setBsSuccess(false), 3000);
     fetchAll();
   }
+
+  // ── BALANCE SHEET ROW HELPERS ─────────────────────────────────────────────
+
+  function addLoanRow() { setLoanRows(r => [...r, { id: Date.now(), name: '', amount: '' }]); }
+  function removeLoanRow(id) { setLoanRows(r => r.filter(x => x.id !== id)); }
+  function updateLoanRow(id, field, value) { setLoanRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)); }
+  function addInvestmentRow() { setInvestmentRows(r => [...r, { id: Date.now(), name: '', amount: '' }]); }
+  function removeInvestmentRow(id) { setInvestmentRows(r => r.filter(x => x.id !== id)); }
+  function updateInvestmentRow(id, field, value) { setInvestmentRows(r => r.map(x => x.id === id ? { ...x, [field]: value } : x)); }
 
   // ── INCOME STATUS CHANGE ───────────────────────────────────────────────────
 
@@ -450,9 +482,17 @@ export default function FinanceManager() {
   function printAGMReport() {
     const win = window.open('', '_blank');
     const bs = balanceSheet;
-    const bsInvTotal = parseFloat(bs?.term_deposits || 0) + parseFloat(bs?.shares_bonds || 0) + parseFloat(bs?.property_investments || 0) + parseFloat(bs?.other_investments || 0);
+    const bsInvTotal = parseFloat(bs?.other_investments || 0);
     const totalAssets = (parseFloat(bs?.cash_balance || 0) + parseFloat(bs?.other_assets || 0) + bsInvTotal + equipmentValue).toFixed(2);
     const totalLiabilities = (parseFloat(bs?.loans || 0) + parseFloat(bs?.outstanding_payments || 0)).toFixed(2);
+    let parsedLoans = []; try { parsedLoans = JSON.parse(bs?.loans_notes || '[]'); if (!Array.isArray(parsedLoans)) parsedLoans = []; } catch { parsedLoans = []; }
+    let parsedInvestments = []; try { parsedInvestments = JSON.parse(bs?.investments_notes || '[]'); if (!Array.isArray(parsedInvestments)) parsedInvestments = []; } catch { parsedInvestments = []; }
+    const loanHtml = parsedLoans.length > 0
+      ? parsedLoans.map(r => `<tr><td>Loan${r.name ? ' — ' + r.name : ''}</td><td style="text-align:right">${fmtMoney(parseFloat(r.amount || 0))}</td></tr>`).join('')
+      : `<tr><td>Loans</td><td style="text-align:right">${fmtMoney(bs?.loans || 0)}</td></tr>`;
+    const investmentHtml = parsedInvestments.length > 0
+      ? parsedInvestments.map(r => `<tr><td>${r.name || 'Investment'}</td><td style="text-align:right">${fmtMoney(parseFloat(r.amount || 0))}</td></tr>`).join('')
+      : (bsInvTotal > 0 ? `<tr><td>Investments</td><td style="text-align:right">${fmtMoney(bsInvTotal)}</td></tr>` : '');
     const netWorth = (parseFloat(totalAssets) - parseFloat(totalLiabilities)).toFixed(2);
 
     const incomeRows = INCOME_CATEGORIES.map(cat => {
@@ -481,13 +521,10 @@ export default function FinanceManager() {
 <tr><td>Cash &amp; Bank Balance</td><td style="text-align:right">${fmtMoney(bs?.cash_balance || 0)}</td></tr>
 <tr><td>Equipment (Assets Register)</td><td style="text-align:right">${fmtMoney(equipmentValue)}</td></tr>
 ${parseFloat(bs?.other_assets || 0) > 0 ? `<tr><td>Other Assets${bs?.other_assets_notes ? ' — ' + bs.other_assets_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.other_assets || 0)}</td></tr>` : ''}
-${parseFloat(bs?.term_deposits || 0) > 0 ? `<tr><td>Term Deposits</td><td style="text-align:right">${fmtMoney(bs?.term_deposits || 0)}</td></tr>` : ''}
-${parseFloat(bs?.shares_bonds || 0) > 0 ? `<tr><td>Shares &amp; Bonds</td><td style="text-align:right">${fmtMoney(bs?.shares_bonds || 0)}</td></tr>` : ''}
-${parseFloat(bs?.property_investments || 0) > 0 ? `<tr><td>Property Investments</td><td style="text-align:right">${fmtMoney(bs?.property_investments || 0)}</td></tr>` : ''}
-${parseFloat(bs?.other_investments || 0) > 0 ? `<tr><td>Other Investments${bs?.investments_notes ? ' — ' + bs.investments_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.other_investments || 0)}</td></tr>` : ''}
+${investmentHtml}
 <tr style="font-weight:bold"><td>Total Assets</td><td style="text-align:right">$${totalAssets}</td></tr>
 <tr><th>Liabilities</th><th></th></tr>
-<tr><td>Loans${bs?.loans_notes ? ' — ' + bs.loans_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.loans || 0)}</td></tr>
+${loanHtml}
 <tr><td>Outstanding Payments${bs?.outstanding_notes ? ' — ' + bs.outstanding_notes : ''}</td><td style="text-align:right">${fmtMoney(bs?.outstanding_payments || 0)}</td></tr>
 <tr style="font-weight:bold"><td>Total Liabilities</td><td style="text-align:right">$${totalLiabilities}</td></tr>
 <tr style="font-weight:bold;font-size:15px"><td>Net Worth</td><td style="text-align:right;color:${parseFloat(netWorth) >= 0 ? '#1a4a3a' : '#a63020'}">$${netWorth}</td></tr>
@@ -504,15 +541,18 @@ ${parseFloat(bs?.other_investments || 0) > 0 ? `<tr><td>Other Investments${bs?.i
 
   const bsCash        = parseFloat(balanceSheet?.cash_balance || 0);
   const bsOther       = parseFloat(balanceSheet?.other_assets || 0);
-  const bsInvestments = parseFloat(balanceSheet?.term_deposits || 0)
-                      + parseFloat(balanceSheet?.shares_bonds || 0)
-                      + parseFloat(balanceSheet?.property_investments || 0)
-                      + parseFloat(balanceSheet?.other_investments || 0);
+  const bsInvestments = parseFloat(balanceSheet?.other_investments || 0);
   const bsLoans       = parseFloat(balanceSheet?.loans || 0);
   const bsOutstanding = parseFloat(balanceSheet?.outstanding_payments || 0);
   const totalAssets      = bsCash + bsOther + bsInvestments + equipmentValue;
   const totalLiabilities = bsLoans + bsOutstanding;
   const netWorth         = totalAssets - totalLiabilities;
+
+  const loansTotal           = loanRows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const investmentsTotal     = investmentRows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const liveTotalAssets      = parseFloat(bsForm.cash_balance || 0) + parseFloat(bsForm.other_assets || 0) + investmentsTotal + equipmentValue;
+  const liveTotalLiabilities = loansTotal + parseFloat(bsForm.outstanding_payments || 0);
+  const liveNetWorth         = liveTotalAssets - liveTotalLiabilities;
 
   // ── KPI TILES ─────────────────────────────────────────────────────────────
 
@@ -872,44 +912,53 @@ ${parseFloat(bs?.other_investments || 0) > 0 ? `<tr><td>Other Investments${bs?.i
               <div style={{ fontSize: 13, fontWeight: 700, color: '#1a4a8a', marginBottom: 10, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                 Investments
               </div>
-              <div className="form-group">
-                <label className="form-label">Term Deposits ($)</label>
-                <input type="number" min="0" step="0.01" className="form-input"
-                  value={bsForm.term_deposits}
-                  onChange={e => setBsForm(f => ({ ...f, term_deposits: e.target.value }))}
-                  placeholder="0.00" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Shares &amp; Bonds ($)</label>
-                <input type="number" min="0" step="0.01" className="form-input"
-                  value={bsForm.shares_bonds}
-                  onChange={e => setBsForm(f => ({ ...f, shares_bonds: e.target.value }))}
-                  placeholder="0.00" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Property Investments ($)</label>
-                <input type="number" min="0" step="0.01" className="form-input"
-                  value={bsForm.property_investments}
-                  onChange={e => setBsForm(f => ({ ...f, property_investments: e.target.value }))}
-                  placeholder="0.00" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Other Investments ($)</label>
-                <input type="number" min="0" step="0.01" className="form-input"
-                  value={bsForm.other_investments}
-                  onChange={e => setBsForm(f => ({ ...f, other_investments: e.target.value }))}
-                  placeholder="0.00" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Investments — Notes</label>
-                <input className="form-input" value={bsForm.investments_notes}
-                  onChange={e => setBsForm(f => ({ ...f, investments_notes: e.target.value }))}
-                  placeholder="e.g. ANZ term deposit, Māori Authority shares" />
-              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textAlign: 'left' }}>Description</th>
+                    <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textAlign: 'right' }}>Amount ($)</th>
+                    <th style={{ width: 32 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {investmentRows.map(row => (
+                    <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '5px 6px' }}>
+                        <input className="form-input" value={row.name}
+                          onChange={e => updateInvestmentRow(row.id, 'name', e.target.value)}
+                          placeholder="e.g. ANZ term deposit"
+                          style={{ padding: '5px 8px', fontSize: 12 }} />
+                      </td>
+                      <td style={{ padding: '5px 6px' }}>
+                        <input type="number" min="0" step="0.01" className="form-input"
+                          value={row.amount}
+                          onChange={e => updateInvestmentRow(row.id, 'amount', e.target.value)}
+                          placeholder="0.00"
+                          style={{ padding: '5px 8px', fontSize: 12, textAlign: 'right' }} />
+                      </td>
+                      <td style={{ padding: '5px 4px', textAlign: 'center' }}>
+                        <button onClick={() => removeInvestmentRow(row.id)} disabled={investmentRows.length === 1}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: investmentRows.length === 1 ? 'default' : 'pointer', opacity: investmentRows.length === 1 ? 0.3 : 1 }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: 'var(--surface2)', borderTop: '2px solid var(--border)' }}>
+                    <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>Total Investments</td>
+                    <td style={{ padding: '6px 10px', fontSize: 13, fontWeight: 700, color: '#1a4a8a', textAlign: 'right' }}>{fmtMoney(investmentsTotal)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+              <button onClick={addInvestmentRow}
+                style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px dashed var(--brand)', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', marginBottom: 12, width: '100%' }}>
+                + Add Investment
+              </button>
 
               <div style={{ padding: '12px 14px', background: '#e8f4ef', borderRadius: 8, border: '1px solid #a8d8c0' }}>
                 <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>Total Assets</div>
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: 'var(--brand)' }}>{fmtMoney(totalAssets)}</div>
+                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: 'var(--brand)' }}>{fmtMoney(liveTotalAssets)}</div>
               </div>
             </div>
 
@@ -918,19 +967,50 @@ ${parseFloat(bs?.other_investments || 0) > 0 ? `<tr><td>Other Investments${bs?.i
               <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, color: 'var(--danger)', marginBottom: 16, paddingBottom: 10, borderBottom: '2px solid var(--danger)' }}>
                 Liabilities
               </div>
-              <div className="form-group">
-                <label className="form-label">Loans ($)</label>
-                <input type="number" min="0" step="0.01" className="form-input"
-                  value={bsForm.loans}
-                  onChange={e => setBsForm(f => ({ ...f, loans: e.target.value }))}
-                  placeholder="0.00" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Loans — Notes</label>
-                <input className="form-input" value={bsForm.loans_notes}
-                  onChange={e => setBsForm(f => ({ ...f, loans_notes: e.target.value }))}
-                  placeholder="e.g. Marae building loan, bank term loan" />
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 10 }}>Loans</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8 }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textAlign: 'left' }}>Description</th>
+                    <th style={{ padding: '6px 10px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textAlign: 'right' }}>Amount ($)</th>
+                    <th style={{ width: 32 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {loanRows.map(row => (
+                    <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '5px 6px' }}>
+                        <input className="form-input" value={row.name}
+                          onChange={e => updateLoanRow(row.id, 'name', e.target.value)}
+                          placeholder="e.g. Marae building loan"
+                          style={{ padding: '5px 8px', fontSize: 12 }} />
+                      </td>
+                      <td style={{ padding: '5px 6px' }}>
+                        <input type="number" min="0" step="0.01" className="form-input"
+                          value={row.amount}
+                          onChange={e => updateLoanRow(row.id, 'amount', e.target.value)}
+                          placeholder="0.00"
+                          style={{ padding: '5px 8px', fontSize: 12, textAlign: 'right' }} />
+                      </td>
+                      <td style={{ padding: '5px 4px', textAlign: 'center' }}>
+                        <button onClick={() => removeLoanRow(row.id)} disabled={loanRows.length === 1}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: loanRows.length === 1 ? 'default' : 'pointer', opacity: loanRows.length === 1 ? 0.3 : 1 }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: 'var(--surface2)', borderTop: '2px solid var(--border)' }}>
+                    <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>Total Loans</td>
+                    <td style={{ padding: '6px 10px', fontSize: 13, fontWeight: 700, color: 'var(--danger)', textAlign: 'right' }}>{fmtMoney(loansTotal)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+              <button onClick={addLoanRow}
+                style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px dashed #f0b8b0', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', marginBottom: 12, width: '100%' }}>
+                + Add Loan
+              </button>
               <div className="form-group">
                 <label className="form-label">Outstanding Payments ($)</label>
                 <input type="number" min="0" step="0.01" className="form-input"
@@ -946,16 +1026,16 @@ ${parseFloat(bs?.other_investments || 0) > 0 ? `<tr><td>Other Investments${bs?.i
               </div>
               <div style={{ padding: '12px 14px', background: '#faeae7', borderRadius: 8, border: '1px solid #f0b8b0' }}>
                 <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>Total Liabilities</div>
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: 'var(--danger)' }}>{fmtMoney(totalLiabilities)}</div>
+                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: 'var(--danger)' }}>{fmtMoney(liveTotalLiabilities)}</div>
               </div>
             </div>
           </div>
 
           {/* NET WORTH */}
-          <div className="panel" style={{ textAlign: 'center', padding: '24px', background: netWorth >= 0 ? '#e8f4ef' : '#faeae7', border: `1px solid ${netWorth >= 0 ? '#a8d8c0' : '#f0b8b0'}` }}>
+          <div className="panel" style={{ textAlign: 'center', padding: '24px', background: liveNetWorth >= 0 ? '#e8f4ef' : '#faeae7', border: `1px solid ${liveNetWorth >= 0 ? '#a8d8c0' : '#f0b8b0'}` }}>
             <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 6 }}>Net Worth (Assets minus Liabilities)</div>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 700, color: netWorth >= 0 ? 'var(--brand)' : 'var(--danger)' }}>
-              {netWorth < 0 ? '−' : ''}{fmtMoney(Math.abs(netWorth))}
+            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 36, fontWeight: 700, color: liveNetWorth >= 0 ? 'var(--brand)' : 'var(--danger)' }}>
+              {liveNetWorth < 0 ? '−' : ''}{fmtMoney(Math.abs(liveNetWorth))}
             </div>
             {balanceSheet?.updated_at && (
               <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>
