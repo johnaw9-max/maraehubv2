@@ -418,30 +418,6 @@ export default function ComplianceTracker() {
   return (
     <div>
 
-      {/* ── SUMMARY BAR ──────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { key: 'overdue',   label: 'Overdue',   icon: '🔴' },
-          { key: 'due_soon',  label: 'Due Soon',  icon: '🟡' },
-          { key: 'compliant', label: 'Compliant', icon: '🟢' },
-          { key: 'not_set',   label: 'Not Set',   icon: '—'  },
-        ].map(s => {
-          const cfg = STATUS_CFG[s.key];
-          const n = counts[s.key];
-          return (
-            <div
-              key={s.key}
-              className="panel"
-              style={{ textAlign: 'center', padding: '14px 10px', cursor: 'pointer', borderLeft: `4px solid ${cfg.dot}` }}
-              onClick={() => { setSection('items'); setCatFilter('all'); }}
-            >
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, color: n > 0 && s.key !== 'compliant' && s.key !== 'not_set' ? cfg.color : 'var(--text1)', lineHeight: 1, marginBottom: 4 }}>{n}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>{s.label}</div>
-            </div>
-          );
-        })}
-      </div>
-
       {/* ── EMERGENCY PREPAREDNESS ALERT ─────────────────────────────────── */}
       {epItems.length > 0 && epAlert > 0 && (
         <div
