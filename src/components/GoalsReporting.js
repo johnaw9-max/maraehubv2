@@ -378,21 +378,6 @@ export default function GoalsReporting() {
   return (
     <div>
 
-      {/* ── SUMMARY BAR ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { key: 'total',     label: 'Total Goals',  val: summary.total,     dot: '#1a4a8a', bg: '#e8eef8' },
-          { key: 'on_track',  label: 'On Track',     val: summary.on_track,  dot: '#2e7d52', bg: '#e8f4ef' },
-          { key: 'at_risk',   label: 'At Risk',      val: summary.at_risk,   dot: '#c8902a', bg: '#fdf0dc' },
-          { key: 'behind',    label: 'Behind',       val: summary.behind,    dot: '#d9534f', bg: '#faeae7' },
-        ].map(s => (
-          <div key={s.key} className="panel" style={{ textAlign: 'center', padding: '14px 10px', borderLeft: `4px solid ${s.dot}` }}>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 28, fontWeight: 700, color: 'var(--text1)', lineHeight: 1, marginBottom: 4 }}>{s.val}</div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
       {/* ── SECTION TOGGLE ─────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
