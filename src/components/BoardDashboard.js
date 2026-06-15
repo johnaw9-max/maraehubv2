@@ -234,15 +234,6 @@ export default function BoardDashboard({ onNavigate }) {
   const approvedGrantsAmt = periodApprovedGrants.reduce((s, g) => s + (g.amount || 0), 0);
   const pl               = PERIOD_LABEL[period];
 
-  const KPI_TILES = [
-    { label: `Bookings — ${pl}`,    value: periodBookings.length,           icon: '📅', bg: '#e8eef8', color: '#1a4a8a' },
-    { label: `Avg Rating — ${pl}`,  value: avgRating ? `${Number(avgRating).toFixed(1)} ★` : '—', icon: '⭐', bg: '#fdf8dc', color: '#7a5a00' },
-    { label: 'Active Projects',     value: periodProjects.length,           icon: '📋', bg: '#e8f4ef', color: 'var(--brand)' },
-    { label: 'Open Actions',        value: d.actions.length,                icon: '✅', bg: d.actions.length > 0 ? '#fdf0dc' : '#f5f5f5', color: d.actions.length > 0 ? 'var(--warning)' : 'var(--text3)' },
-    { label: `Grants — ${pl}`,      value: fmtMoney(approvedGrantsAmt),     icon: '💰', bg: '#e8f4ef', color: 'var(--brand)' },
-    { label: 'Assets Compliant',    value: `${compliantPct}%`,              icon: '🛡️', bg: compliantPct >= 80 ? '#e8f4ef' : '#faeae7', color: compliantPct >= 80 ? 'var(--brand)' : 'var(--danger)' },
-  ];
-
   const todayDisplay = new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   // ─── SMART INSIGHTS ────────────────────────────────────────────────────────
@@ -547,17 +538,6 @@ export default function BoardDashboard({ onNavigate }) {
           </div>
         </div>
       )}
-
-      {/* ── KPI TILES ──────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 28 }}>
-        {KPI_TILES.map((t, i) => (
-          <div key={i} className="panel" style={{ textAlign: 'center', padding: '14px 8px' }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: t.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, margin: '0 auto 8px' }}>{t.icon}</div>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 600, color: t.color, marginBottom: 3, lineHeight: 1.2 }}>{t.value}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500, lineHeight: 1.3 }}>{t.label}</div>
-          </div>
-        ))}
-      </div>
 
       {/* ── GOALS & COMPLIANCE ROW ─────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
