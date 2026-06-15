@@ -126,11 +126,28 @@ export default function ComplianceTracker() {
 
   useEffect(() => {
     fetchAll().then(async items => {
+      await deduplicateItems(items);
       await seedEmergencyPreparedness(items);
       await createOverdueTasks(items);
       await createUpcomingTasks(items);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function deduplicateItems(currentItems) {
+    const seen = {};
+    const toDelete = [];
+    for (const item of currentItems) {
+      const key = `${item.category}||${item.name}`;
+      if (seen[key]) {
+        toDelete.push(item.id);
+      } else {
+        seen[key] = true;
+      }
+    }
+    if (toDelete.length === 0) return;
+    await supabase.from('compliance_items').delete().in('id', toDelete);
+    setItems(prev => prev.filter(i => !toDelete.includes(i.id)));
+  }
 
   async function fetchAll() {
     setLoading(true);
