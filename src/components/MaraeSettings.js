@@ -32,6 +32,12 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [trusteePermsLoading, setTrusteePermsLoading] = useState(false);
   const [trusteePermsError, setTrusteePermsError] = useState('');
 
+  // Invite trustee state
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [inviteError, setInviteError] = useState('');
+
   // Checklist template state
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -160,6 +166,27 @@ export default function MaraeSettings({ profile, isAdmin }) {
       .order('full_name');
     setTrustees(data || []);
     setTrusteePermsLoading(false);
+  }
+
+  async function sendInvite() {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) { setInviteError('Enter a valid email address'); return; }
+    setInviting(true);
+    setInviteError('');
+    setInviteSuccess('');
+    const { data, error } = await supabase.functions.invoke('invite-trustee', {
+      body: { email, redirectTo: window.location.origin },
+    });
+    setInviting(false);
+    if (error) { setInviteError(error.message || 'Failed to send invite'); return; }
+    if (data?.error) { setInviteError(data.error); return; }
+    if (data?.alreadyRegistered) {
+      setInviteSuccess(`${email} already has an account — they can log in now. Check their role in the list below.`);
+    } else {
+      setInviteSuccess(`Invite sent to ${email}. They will appear below once they accept.`);
+    }
+    setInviteEmail('');
+    fetchTrustees();
   }
 
   async function setTrusteeRole(trusteeId, newRole) {
@@ -399,6 +426,34 @@ export default function MaraeSettings({ profile, isAdmin }) {
           <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
             Manage permission levels for all trustees. <strong>Admin Trustees</strong> have full access including Finance and booking approvals. <strong>Standard Trustees</strong> can view and edit modules but cannot approve bookings, access Finance, or change permissions.
           </p>
+
+          {/* ── INVITE FORM ── */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <input
+              className="form-input"
+              style={{ flex: 1 }}
+              type="email"
+              placeholder="Email address to invite..."
+              value={inviteEmail}
+              onChange={e => { setInviteEmail(e.target.value); setInviteError(''); setInviteSuccess(''); }}
+              onKeyDown={e => { if (e.key === 'Enter') sendInvite(); }}
+              disabled={inviting}
+            />
+            <button
+              className="btn-primary"
+              onClick={sendInvite}
+              disabled={inviting || !inviteEmail.trim()}
+              style={{ flexShrink: 0, fontSize: 13 }}
+            >
+              {inviting ? 'Sending…' : '✉ Invite Trustee'}
+            </button>
+          </div>
+          {inviteSuccess && (
+            <div className="alert alert-success" style={{ marginBottom: 12 }}>{inviteSuccess}</div>
+          )}
+          {inviteError && (
+            <div className="alert alert-error" style={{ marginBottom: 12 }}>{inviteError}</div>
+          )}
 
           {trusteePermsError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{trusteePermsError}</div>}
 
