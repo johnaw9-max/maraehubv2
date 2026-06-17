@@ -130,13 +130,13 @@ export default function UserManager() {
       if (sd && sd.user) {
         const existingTrustees = users.filter(u => u.role === 'trustee').length;
         const trusteeRole = (form.role === 'trustee' && existingTrustees === 0) ? 'admin' : 'standard';
-        await supabase.from('profiles').insert({
+        await supabase.from('profiles').upsert({
           id: sd.user.id,
           full_name: form.full_name.trim(),
           email: form.email.trim(),
           role: form.role,
           trustee_role: trusteeRole,
-        });
+        }, { onConflict: 'id' });
       }
       setSuccess(form.full_name + ' added.');
     }
