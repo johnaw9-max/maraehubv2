@@ -166,6 +166,21 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Trustee Permissions',
+      icon: '🔑',
+      items: [
+        { q: 'What are the two trustee permission levels?', a: 'There are two levels: Standard Trustee and Admin Trustee. Standard Trustees can view and edit all modules but have restricted access to certain actions. Admin Trustees have full access to everything on the platform.' },
+        { q: 'What can a Standard Trustee do?', a: 'Standard Trustees can view and edit all modules — Bookings, Minutes, Projects, Assets, Compliance, Goals, Grants, Tasks, Contacts, Documents, and Notices. They cannot approve or decline bookings, access the Finance module, or change trustee permission levels. If they click on Finance they will see a locked screen with instructions to contact their Admin Trustee.' },
+        { q: 'What can an Admin Trustee do?', a: 'Admin Trustees have full access to everything. They can approve and decline bookings, access the Finance module, manage other trustees\' permission levels (upgrading Standard to Admin or downgrading Admin to Standard), and invite new trustees by email directly from Settings.' },
+        { q: 'How do I know what my permission level is?', a: 'Admin Trustees can see a "Trustee Permissions" section at the bottom of the Settings tab. If you open Settings and do not see that section, you are a Standard Trustee. You can also check with your Admin Trustee to confirm your level.' },
+        { q: 'How do I invite a new trustee?', a: 'Go to Settings → Trustee Permissions (Admin Trustees only). At the top of that section there is an email input field. Enter the new trustee\'s email address and click "✉ Invite Trustee". MaraeHub will send them a magic link by email — they click the link and land directly on the Trustee Dashboard, ready to use the platform. No passwords to set, no Supabase dashboard needed.' },
+        { q: 'How do I change a trustee\'s permission level?', a: 'Go to Settings → Trustee Permissions (Admin Trustees only). Each trustee in the list has two buttons — "Standard" and "Admin". The highlighted button shows their current level. Click the other button to change them. For example, if a trustee is currently Standard and you click "Admin", they immediately get full access. The change takes effect the next time they navigate to a new page or refresh.' },
+        { q: 'Can an Admin Trustee demote themselves?', a: 'Only if there is at least one other Admin Trustee on the platform. If you are the only Admin, MaraeHub will block the demotion and show a message asking you to promote another trustee first. This prevents the platform from being left with no Admin Trustee.' },
+        { q: 'What happens when a new trustee accepts an invite?', a: 'When an invited trustee clicks the magic link in their email, they are taken directly to the MaraeHub Trustee Dashboard. Their account is pre-set as a Standard Trustee. An Admin Trustee can then go to Settings → Trustee Permissions to upgrade them to Admin if needed.' },
+        { q: 'Who is automatically set as Admin Trustee?', a: 'The first trustee account created for a marae is automatically set as Admin Trustee. All subsequent trustees start as Standard Trustees and can be upgraded by any existing Admin.' },
+      ]
+    },
+    {
       category: 'Settings',
       icon: '⚙️',
       items: [
