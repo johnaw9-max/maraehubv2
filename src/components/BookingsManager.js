@@ -22,7 +22,7 @@ function StarDisplay({ rating }) {
   );
 }
 
-export default function BookingsManager({ isTrustee, userId }) {
+export default function BookingsManager({ isTrustee, canApprove, userId }) {
   const [bookings, setBookings] = useState([]);
   const [feedback, setFeedback] = useState({});
   const [checklists, setChecklists] = useState({});
@@ -144,8 +144,8 @@ export default function BookingsManager({ isTrustee, userId }) {
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{b.occasion}</div>
                     <StatusPill
                       status={b.status}
-                      options={isTrustee ? BOOKING_STATUSES : undefined}
-                      onStatusChange={isTrustee ? s => updateStatus(b, s) : undefined}
+                      options={canApprove ? BOOKING_STATUSES : undefined}
+                      onStatusChange={canApprove ? s => updateStatus(b, s) : undefined}
                     />
                     {b.reference && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{b.reference}</span>}
                     {fb && <StarDisplay rating={fb.rating_overall} />}
@@ -166,19 +166,19 @@ export default function BookingsManager({ isTrustee, userId }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, alignItems: 'flex-end' }}>
-                  {isTrustee && b.status === 'pending' && (
+                  {canApprove && b.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="btn-success" onClick={() => updateStatus(b, 'approved')}>✓ Approve</button>
                       <button className="btn-danger" onClick={() => updateStatus(b, 'declined')}>✗ Decline</button>
                     </div>
                   )}
-                  {isTrustee && b.status !== 'pending' && (
+                  {canApprove && b.status !== 'pending' && (
                     <button onClick={() => updateStatus(b, 'pending')}
                       style={{ fontSize: 11, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
                       Reset
                     </button>
                   )}
-                  {isTrustee && (
+                  {canApprove && (
                     <button onClick={() => deleteBooking(b)}
                       style={{ fontSize: 11, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
                       🗑 Delete

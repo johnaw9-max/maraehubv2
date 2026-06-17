@@ -152,6 +152,7 @@ function StarBar({ label, value }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function TrusteeDashboard({ profile, onLogout }) {
+  const isAdmin = profile?.trustee_role === 'admin';
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Dashboard state
@@ -651,7 +652,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'bookings' && (
           <>
             <KpiBar tiles={kpis.bookings || []} loading={kpiLoading.bookings} count={5} />
-            <BookingsManager isTrustee={true} />
+            <BookingsManager isTrustee={true} canApprove={isAdmin} />
           </>
         )}
 
@@ -689,10 +690,20 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
         {/* ── FINANCE ────────────────────────────────────────────────────── */}
         {activeTab === 'finance' && (
-          <>
-            <KpiBar tiles={kpis.finance || []} loading={kpiLoading.finance} count={4} />
-            <FinanceManager />
-          </>
+          isAdmin ? (
+            <>
+              <KpiBar tiles={kpis.finance || []} loading={kpiLoading.finance} count={4} />
+              <FinanceManager />
+            </>
+          ) : (
+            <div className="panel" style={{ textAlign: 'center', padding: '60px 24px', maxWidth: 480, margin: '0 auto' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Finance Access Restricted</div>
+              <div style={{ fontSize: 14, color: 'var(--text3)', lineHeight: 1.6 }}>
+                The Finance module is only available to Admin Trustees. Contact your Admin Trustee to update your permission level in Marae Settings.
+              </div>
+            </div>
+          )
         )}
 
         {/* ── GRANTS ─────────────────────────────────────────────────────── */}
@@ -722,7 +733,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           </>
         )}
 
-        {activeTab === 'settings' && <MaraeSettings profile={profile} />}
+        {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
       </div>
 
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>

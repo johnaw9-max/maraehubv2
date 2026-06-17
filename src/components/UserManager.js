@@ -21,6 +21,7 @@ function Card({ u, isTrustee, onEdit, onRole, onDelete }) {
     ? u.full_name.split(' ').map(n => n[0]).join('').toUpperCase()
     : '?';
   const rs = isTrustee ? RC.trustee : RC.community;
+  const isAdminTrustee = isTrustee && u.trustee_role === 'admin';
 
   return (
     <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
@@ -44,6 +45,14 @@ function Card({ u, isTrustee, onEdit, onRole, onDelete }) {
       }}>
         {isTrustee ? 'Trustee' : 'Community'}
       </span>
+      {isAdminTrustee && (
+        <span style={{
+          fontSize: 10, borderRadius: 20, padding: '2px 10px',
+          fontWeight: 600, background: '#fdf0dc', color: '#7a4a00',
+        }}>
+          Admin
+        </span>
+      )}
       <div style={{ display: 'flex', gap: 6 }}>
         <button
           onClick={() => onEdit(u)}
@@ -119,11 +128,14 @@ export default function UserManager() {
       const { data: sd, error: se } = await supabase.auth.signUp({ email: form.email.trim(), password: form.password });
       if (se) { setError(se.message); setSaving(false); return; }
       if (sd && sd.user) {
+        const existingTrustees = users.filter(u => u.role === 'trustee').length;
+        const trusteeRole = (form.role === 'trustee' && existingTrustees === 0) ? 'admin' : 'standard';
         await supabase.from('profiles').insert({
           id: sd.user.id,
           full_name: form.full_name.trim(),
           email: form.email.trim(),
           role: form.role,
+          trustee_role: trusteeRole,
         });
       }
       setSuccess(form.full_name + ' added.');

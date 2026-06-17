@@ -14,7 +14,7 @@ const NOTIF_LABELS = [
   { key: 'goals',      icon: '🎯', label: 'Goal Status Changes',   desc: 'Goals marked At Risk or Completed' },
 ];
 
-export default function MaraeSettings({ profile }) {
+export default function MaraeSettings({ profile, isAdmin }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [settingsId, setSettingsId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +26,11 @@ export default function MaraeSettings({ profile }) {
   const [notifPrefs, setNotifPrefs] = useState({ bookings: true, compliance: true, grants: true, actions: true, goals: true });
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifSuccess, setNotifSuccess] = useState(false);
+
+  // Trustee permissions state
+  const [trustees, setTrustees] = useState([]);
+  const [trusteePermsLoading, setTrusteePermsLoading] = useState(false);
+  const [trusteePermsError, setTrusteePermsError] = useState('');
 
   // Checklist template state
   const [templates, setTemplates] = useState([]);
@@ -40,6 +45,7 @@ export default function MaraeSettings({ profile }) {
     fetchSettings();
     fetchTemplates();
     if (profile?.id) fetchNotifPrefs(profile.id);
+    if (isAdmin) fetchTrustees();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchNotifPrefs(userId) {
@@ -143,6 +149,31 @@ export default function MaraeSettings({ profile }) {
       supabase.from('checklist_templates').update({ sort_order: aOrder }).eq('id', next[swapIdx].id),
     ]);
     fetchTemplates();
+  }
+
+  async function fetchTrustees() {
+    setTrusteePermsLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, trustee_role')
+      .eq('role', 'trustee')
+      .order('full_name');
+    setTrustees(data || []);
+    setTrusteePermsLoading(false);
+  }
+
+  async function setTrusteeRole(trusteeId, newRole) {
+    setTrusteePermsError('');
+    if (newRole === 'standard' && trusteeId === profile?.id) {
+      const adminCount = trustees.filter(t => t.trustee_role === 'admin').length;
+      if (adminCount <= 1) {
+        setTrusteePermsError('Cannot demote yourself — you are the only Admin Trustee. Promote another trustee first.');
+        return;
+      }
+    }
+    const { error } = await supabase.from('profiles').update({ trustee_role: newRole }).eq('id', trusteeId);
+    if (error) { setTrusteePermsError(error.message); return; }
+    fetchTrustees();
   }
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -358,6 +389,81 @@ export default function MaraeSettings({ profile }) {
           {notifSaving ? 'Saving...' : 'Save Notification Preferences'}
         </button>
       </div>
+
+      {/* ── TRUSTEE PERMISSIONS (admin only) ── */}
+      {isAdmin && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            Trustee Permissions
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+            Manage permission levels for all trustees. <strong>Admin Trustees</strong> have full access including Finance and booking approvals. <strong>Standard Trustees</strong> can view and edit modules but cannot approve bookings, access Finance, or change permissions.
+          </p>
+
+          {trusteePermsError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{trusteePermsError}</div>}
+
+          {trusteePermsLoading ? (
+            <div className="loading">Loading trustees...</div>
+          ) : trustees.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text3)' }}>No trustees found.</div>
+          ) : (
+            trustees.map(t => {
+              const isYou = t.id === profile?.id;
+              const isCurrentAdmin = t.trustee_role === 'admin';
+              return (
+                <div key={t.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: 8, marginBottom: 8,
+                }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%', background: 'var(--brand)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 600, color: '#fff', flexShrink: 0,
+                  }}>
+                    {t.full_name ? t.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>
+                      {t.full_name || '—'}
+                      {isYou && <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>(You)</span>}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>{t.email}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => isCurrentAdmin ? setTrusteeRole(t.id, 'standard') : undefined}
+                      style={{
+                        fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                        cursor: isCurrentAdmin ? 'pointer' : 'default',
+                        border: '1px solid var(--border)',
+                        background: !isCurrentAdmin ? 'var(--brand)' : 'var(--surface)',
+                        color: !isCurrentAdmin ? '#fff' : 'var(--text2)',
+                        fontWeight: !isCurrentAdmin ? 600 : 400,
+                      }}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      onClick={() => !isCurrentAdmin ? setTrusteeRole(t.id, 'admin') : undefined}
+                      style={{
+                        fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                        cursor: !isCurrentAdmin ? 'pointer' : 'default',
+                        border: '1px solid var(--border)',
+                        background: isCurrentAdmin ? 'var(--brand)' : 'var(--surface)',
+                        color: isCurrentAdmin ? '#fff' : 'var(--text2)',
+                        fontWeight: isCurrentAdmin ? 600 : 400,
+                      }}
+                    >
+                      Admin
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* ── ACCOUNTING INTEGRATION ── */}
       <div className="panel">
