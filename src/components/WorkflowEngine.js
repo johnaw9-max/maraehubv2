@@ -12,6 +12,13 @@ export default function WorkflowEngine() {
   const [startError, setStartError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Template management state
+  const [expandedTemplate, setExpandedTemplate] = useState(null);
+  const [templateSteps, setTemplateSteps] = useState({});
+  const [editingStep, setEditingStep] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '' });
+  const [savingStep, setSavingStep] = useState(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     const [tplRes, instRes] = await Promise.all([
@@ -67,6 +74,77 @@ export default function WorkflowEngine() {
   function formatDate(d) {
     if (!d) return '';
     return new Date(d).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // ── Template management helpers ───────────────────────────────────────────
+
+  async function loadSteps(templateId) {
+    const { data } = await supabase
+      .from('workflow_steps')
+      .select('*')
+      .eq('template_id', templateId)
+      .order('step_order');
+    setTemplateSteps(prev => ({ ...prev, [templateId]: data || [] }));
+  }
+
+  function toggleTemplate(templateId) {
+    if (expandedTemplate === templateId) {
+      setExpandedTemplate(null);
+      setEditingStep(null);
+    } else {
+      setExpandedTemplate(templateId);
+      setEditingStep(null);
+      if (!templateSteps[templateId]) loadSteps(templateId);
+    }
+  }
+
+  async function moveStep(templateId, step, direction) {
+    const steps = templateSteps[templateId] || [];
+    const idx = steps.findIndex(s => s.id === step.id);
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= steps.length) return;
+
+    const other = steps[swapIdx];
+    await Promise.all([
+      supabase.from('workflow_steps').update({ step_order: other.step_order }).eq('id', step.id),
+      supabase.from('workflow_steps').update({ step_order: step.step_order }).eq('id', other.id),
+    ]);
+
+    const updated = steps.map(s => {
+      if (s.id === step.id) return { ...s, step_order: other.step_order };
+      if (s.id === other.id) return { ...s, step_order: step.step_order };
+      return s;
+    }).sort((a, b) => a.step_order - b.step_order);
+    setTemplateSteps(prev => ({ ...prev, [templateId]: updated }));
+  }
+
+  function startEdit(step) {
+    setEditingStep(step.id);
+    setEditForm({ title: step.title, description: step.description || '' });
+  }
+
+  function cancelEdit() {
+    setEditingStep(null);
+    setEditForm({ title: '', description: '' });
+  }
+
+  async function saveEdit(templateId, step) {
+    if (!editForm.title.trim()) return;
+    setSavingStep(step.id);
+    await supabase
+      .from('workflow_steps')
+      .update({ title: editForm.title.trim(), description: editForm.description.trim() || null })
+      .eq('id', step.id);
+    setTemplateSteps(prev => ({
+      ...prev,
+      [templateId]: (prev[templateId] || []).map(s =>
+        s.id === step.id
+          ? { ...s, title: editForm.title.trim(), description: editForm.description.trim() || null }
+          : s
+      ),
+    }));
+    setSavingStep(null);
+    setEditingStep(null);
   }
 
   return (
@@ -143,7 +221,7 @@ export default function WorkflowEngine() {
       </div>
 
       {/* ── ACTIVE WORKFLOWS ──────────────────────────────────────────────── */}
-      <div className="panel">
+      <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header" style={{ marginBottom: 16 }}>
           <div className="panel-title">Active Workflows</div>
           <span style={{ fontSize: 12, color: 'var(--text3)' }}>{instances.length} active</span>
@@ -177,12 +255,10 @@ export default function WorkflowEngine() {
                   </span>
                 </div>
 
-                {/* Progress bar */}
                 <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden', marginBottom: 10 }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--brand)' : 'var(--brand-light)', borderRadius: 3, transition: 'width 0.3s' }} />
                 </div>
 
-                {/* Next task */}
                 {next ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>Next:</span>
@@ -196,6 +272,231 @@ export default function WorkflowEngine() {
               </div>
             );
           })
+        )}
+      </div>
+
+      {/* ── MANAGE TEMPLATES ──────────────────────────────────────────────── */}
+      <div className="panel">
+        <div className="panel-header" style={{ marginBottom: 16 }}>
+          <div className="panel-title">Manage Templates</div>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{templates.length} template{templates.length !== 1 ? 's' : ''}</span>
+        </div>
+
+        {loading ? (
+          <div className="loading">Loading templates…</div>
+        ) : templates.length === 0 ? (
+          <div className="empty-state">
+            <div className="emoji">📋</div>
+            <div>No templates to manage</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {templates.map(tpl => {
+              const isOpen = expandedTemplate === tpl.id;
+              const steps = templateSteps[tpl.id] || [];
+
+              return (
+                <div
+                  key={tpl.id}
+                  style={{
+                    border: isOpen ? '1px solid #e8c880' : '1px solid var(--border)',
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    background: isOpen ? '#fdf4e8' : 'var(--surface)',
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  {/* Template header row */}
+                  <button
+                    onClick={() => toggleTemplate(tpl.id)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', fontFamily: 'Playfair Display, serif' }}>
+                        {tpl.name}
+                      </span>
+                      {tpl.category && (
+                        <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 8px' }}>
+                          {tpl.category}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 16, color: isOpen ? '#C9A84C' : 'var(--text3)', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                      ▾
+                    </span>
+                  </button>
+
+                  {/* Expanded steps */}
+                  {isOpen && (
+                    <div style={{ borderTop: '1px solid #e8c880' }}>
+                      {steps.length === 0 ? (
+                        <div style={{ padding: '16px', fontSize: 13, color: 'var(--text3)', textAlign: 'center' }}>
+                          No steps defined for this template.
+                        </div>
+                      ) : (
+                        steps.map((step, idx) => {
+                          const isEditing = editingStep === step.id;
+                          const isSaving = savingStep === step.id;
+
+                          return (
+                            <div
+                              key={step.id}
+                              style={{
+                                padding: '12px 16px',
+                                borderBottom: idx < steps.length - 1 ? '1px solid #f0dfa0' : 'none',
+                                background: isEditing ? '#fffdf5' : 'transparent',
+                              }}
+                            >
+                              {isEditing ? (
+                                /* ── Inline edit mode ── */
+                                <div>
+                                  <div style={{ marginBottom: 8 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                                      Step title
+                                    </label>
+                                    <input
+                                      autoFocus
+                                      value={editForm.title}
+                                      onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                                      style={{
+                                        width: '100%', padding: '7px 10px', borderRadius: 7,
+                                        border: '1px solid #e8c880', fontSize: 13,
+                                        background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
+                                      }}
+                                    />
+                                  </div>
+                                  <div style={{ marginBottom: 10 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                                      Description
+                                    </label>
+                                    <textarea
+                                      rows={2}
+                                      value={editForm.description}
+                                      onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                                      style={{
+                                        width: '100%', padding: '7px 10px', borderRadius: 7,
+                                        border: '1px solid #e8c880', fontSize: 13,
+                                        background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
+                                        resize: 'vertical',
+                                      }}
+                                    />
+                                  </div>
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                      onClick={() => saveEdit(tpl.id, step)}
+                                      disabled={isSaving || !editForm.title.trim()}
+                                      style={{
+                                        padding: '6px 16px', background: 'var(--brand)', color: '#fff',
+                                        border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                                        cursor: 'pointer', opacity: (isSaving || !editForm.title.trim()) ? 0.6 : 1,
+                                      }}
+                                    >
+                                      {isSaving ? 'Saving…' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={cancelEdit}
+                                      disabled={isSaving}
+                                      style={{
+                                        padding: '6px 14px', background: 'var(--surface2)', color: 'var(--text2)',
+                                        border: '1px solid var(--border)', borderRadius: 7, fontSize: 12,
+                                        fontWeight: 500, cursor: 'pointer',
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* ── View mode ── */
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                                  {/* Step number */}
+                                  <span style={{
+                                    flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+                                    background: '#e8c880', color: '#7a5500', fontSize: 11,
+                                    fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    marginTop: 1,
+                                  }}>
+                                    {idx + 1}
+                                  </span>
+
+                                  {/* Step content */}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: step.description ? 2 : 0 }}>
+                                      {step.title}
+                                    </div>
+                                    {step.description && (
+                                      <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.4 }}>
+                                        {step.description}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Controls */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                    <button
+                                      onClick={() => moveStep(tpl.id, step, -1)}
+                                      disabled={idx === 0}
+                                      title="Move up"
+                                      style={{
+                                        width: 28, height: 28, border: '1px solid var(--border)',
+                                        borderRadius: 6, background: idx === 0 ? 'var(--surface2)' : '#fff',
+                                        color: idx === 0 ? 'var(--text3)' : 'var(--text2)',
+                                        cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                                        fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        opacity: idx === 0 ? 0.4 : 1,
+                                      }}
+                                    >
+                                      ↑
+                                    </button>
+                                    <button
+                                      onClick={() => moveStep(tpl.id, step, 1)}
+                                      disabled={idx === steps.length - 1}
+                                      title="Move down"
+                                      style={{
+                                        width: 28, height: 28, border: '1px solid var(--border)',
+                                        borderRadius: 6, background: idx === steps.length - 1 ? 'var(--surface2)' : '#fff',
+                                        color: idx === steps.length - 1 ? 'var(--text3)' : 'var(--text2)',
+                                        cursor: idx === steps.length - 1 ? 'not-allowed' : 'pointer',
+                                        fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        opacity: idx === steps.length - 1 ? 0.4 : 1,
+                                      }}
+                                    >
+                                      ↓
+                                    </button>
+                                    <button
+                                      onClick={() => startEdit(step)}
+                                      title="Edit step"
+                                      style={{
+                                        padding: '4px 11px', border: '1px solid #e8c880',
+                                        borderRadius: 6, background: '#fff9ee', color: '#7a5500',
+                                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
