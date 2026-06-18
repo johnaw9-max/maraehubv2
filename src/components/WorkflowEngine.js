@@ -47,7 +47,7 @@ export default function WorkflowEngine() {
     setStarting(true);
     setStartError('');
     try {
-      await startWorkflow(selectedTemplate, workflowName.trim());
+      await startWorkflow(selectedTemplate, { name: workflowName.trim() });
       setWorkflowName('');
       await load();
     } catch (err) {
