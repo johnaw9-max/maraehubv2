@@ -18,6 +18,7 @@ import BoardDashboard from '../components/BoardDashboard';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
+import WorkflowEngine from '../components/WorkflowEngine';
 
 const NAV_GROUPS = [
   {
@@ -39,6 +40,7 @@ const NAV_GROUPS = [
       { key: 'calendar',    label: 'Calendar' },
       { key: 'noticeboard', label: 'Notices' },
       { key: 'contacts',    label: 'Contacts' },
+      { key: 'workflows',   label: 'Workflows' },
     ],
   },
   {
@@ -732,6 +734,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
             <GoalsReporting />
           </>
         )}
+
+        {/* ── WORKFLOWS ──────────────────────────────────────────────────── */}
+        {activeTab === 'workflows' && <WorkflowEngine />}
 
         {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
       </div>
