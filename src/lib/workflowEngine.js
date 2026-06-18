@@ -27,7 +27,7 @@ export async function startWorkflow(templateId, context = {}) {
   const tasks = steps.map(s => ({
     title: `${context.name} — ${s.title}`,
     description: s.description,
-    status: 'To Do',
+    status: 'open',
     workflow_instance_id: instance.id,
     workflow_step_order: s.step_order,
     assigned_to: context.assigned_to || null
