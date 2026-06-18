@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { startWorkflow } from '../lib/workflowEngine';
+import { startWorkflow, getActiveWorkflows } from '../lib/workflowEngine';
 
 export default function WorkflowEngine() {
   const [templates, setTemplates] = useState([]);
@@ -27,28 +27,18 @@ export default function WorkflowEngine() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [tplRes, instRes] = await Promise.all([
+    const [tplRes, insts] = await Promise.all([
       supabase.from('workflow_templates').select('*').order('name'),
-      supabase.from('workflow_instances').select('*').eq('status', 'active').order('created_at', { ascending: false }),
+      getActiveWorkflows(),
     ]);
-    const tpls = tplRes.data || [];
-    const insts = instRes.data || [];
-    setTemplates(tpls);
+    setTemplates(tplRes.data || []);
     setInstances(insts);
 
-    if (insts.length > 0) {
-      const ids = insts.map(i => i.id);
-      const { data: tasks } = await supabase
-        .from('tasks')
-        .select('id, title, status, workflow_instance_id')
-        .in('workflow_instance_id', ids);
-      const grouped = {};
-      (tasks || []).forEach(t => {
-        if (!grouped[t.workflow_instance_id]) grouped[t.workflow_instance_id] = [];
-        grouped[t.workflow_instance_id].push(t);
-      });
-      setInstanceTasks(grouped);
-    }
+    const grouped = {};
+    insts.forEach(inst => {
+      grouped[inst.id] = inst.tasks || [];
+    });
+    setInstanceTasks(grouped);
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

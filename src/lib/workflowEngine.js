@@ -84,9 +84,9 @@ export async function updateWorkflowProgress(workflowInstanceId) {
 export async function getActiveWorkflows() {
   const { data } = await supabase
     .from('workflow_instances')
-    .select('*, workflow_templates(name, category), tasks(status, workflow_step_order, title)')
+    .select('*, workflow_templates(name, category), tasks(id, status, workflow_step_order, title)')
     .eq('status', 'active')
-    .order('started_at', { ascending: false });
+    .order('created_at', { ascending: false });
 
   return data || [];
 }
