@@ -18,6 +18,10 @@ export default function WorkflowEngine() {
   const [editingStep, setEditingStep] = useState(null);
   const [editForm, setEditForm] = useState({ title: '', description: '' });
   const [savingStep, setSavingStep] = useState(null);
+  const [deletingStep, setDeletingStep] = useState(null);
+  const [addingStepFor, setAddingStepFor] = useState(null);
+  const [addForm, setAddForm] = useState({ title: '', description: '' });
+  const [savingNewStep, setSavingNewStep] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +130,49 @@ export default function WorkflowEngine() {
   function cancelEdit() {
     setEditingStep(null);
     setEditForm({ title: '', description: '' });
+  }
+
+  async function deleteStep(templateId, step) {
+    if (!window.confirm(`Delete step "${step.title}"? This cannot be undone.`)) return;
+    setDeletingStep(step.id);
+    await supabase.from('workflow_steps').delete().eq('id', step.id);
+    setTemplateSteps(prev => ({
+      ...prev,
+      [templateId]: (prev[templateId] || []).filter(s => s.id !== step.id),
+    }));
+    setDeletingStep(null);
+  }
+
+  function startAddStep(templateId) {
+    setAddingStepFor(templateId);
+    setAddForm({ title: '', description: '' });
+    setEditingStep(null);
+  }
+
+  function cancelAddStep() {
+    setAddingStepFor(null);
+    setAddForm({ title: '', description: '' });
+  }
+
+  async function saveNewStep(templateId) {
+    if (!addForm.title.trim()) return;
+    setSavingNewStep(true);
+    const steps = templateSteps[templateId] || [];
+    const nextOrder = steps.length > 0 ? Math.max(...steps.map(s => s.step_order)) + 1 : 1;
+    const { data, error } = await supabase
+      .from('workflow_steps')
+      .insert({ template_id: templateId, title: addForm.title.trim(), description: addForm.description.trim() || null, step_order: nextOrder })
+      .select()
+      .single();
+    if (!error && data) {
+      setTemplateSteps(prev => ({
+        ...prev,
+        [templateId]: [...(prev[templateId] || []), data],
+      }));
+    }
+    setSavingNewStep(false);
+    setAddingStepFor(null);
+    setAddForm({ title: '', description: '' });
   }
 
   async function saveEdit(templateId, step) {
@@ -484,6 +531,19 @@ export default function WorkflowEngine() {
                                     >
                                       Edit
                                     </button>
+                                    <button
+                                      onClick={() => deleteStep(tpl.id, step)}
+                                      disabled={deletingStep === step.id}
+                                      title="Delete step"
+                                      style={{
+                                        padding: '4px 11px', border: '1px solid #e8c880',
+                                        borderRadius: 6, background: '#fff9ee', color: '#c0392b',
+                                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                        opacity: deletingStep === step.id ? 0.6 : 1,
+                                      }}
+                                    >
+                                      {deletingStep === step.id ? '…' : 'Delete'}
+                                    </button>
                                   </div>
                                 </div>
                               )}
@@ -491,6 +551,82 @@ export default function WorkflowEngine() {
                           );
                         })
                       )}
+
+                      {/* ── Add Step ── */}
+                      <div style={{ padding: '12px 16px', borderTop: '1px solid #f0dfa0' }}>
+                        {addingStepFor === tpl.id ? (
+                          <div style={{ border: '1px solid #e8c880', borderRadius: 8, padding: 12, background: '#fffdf5' }}>
+                            <div style={{ marginBottom: 8 }}>
+                              <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                                Step title
+                              </label>
+                              <input
+                                autoFocus
+                                value={addForm.title}
+                                onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
+                                placeholder="e.g. Review financials"
+                                style={{
+                                  width: '100%', padding: '7px 10px', borderRadius: 7,
+                                  border: '1px solid #e8c880', fontSize: 13,
+                                  background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
+                                }}
+                              />
+                            </div>
+                            <div style={{ marginBottom: 10 }}>
+                              <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                                Description
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={addForm.description}
+                                onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))}
+                                placeholder="Optional description"
+                                style={{
+                                  width: '100%', padding: '7px 10px', borderRadius: 7,
+                                  border: '1px solid #e8c880', fontSize: 13,
+                                  background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
+                                  resize: 'vertical',
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                onClick={() => saveNewStep(tpl.id)}
+                                disabled={savingNewStep || !addForm.title.trim()}
+                                style={{
+                                  padding: '6px 16px', background: 'var(--brand)', color: '#fff',
+                                  border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                                  cursor: 'pointer', opacity: (savingNewStep || !addForm.title.trim()) ? 0.6 : 1,
+                                }}
+                              >
+                                {savingNewStep ? 'Adding…' : 'Add Step'}
+                              </button>
+                              <button
+                                onClick={cancelAddStep}
+                                disabled={savingNewStep}
+                                style={{
+                                  padding: '6px 14px', background: 'var(--surface2)', color: 'var(--text2)',
+                                  border: '1px solid var(--border)', borderRadius: 7, fontSize: 12,
+                                  fontWeight: 500, cursor: 'pointer',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startAddStep(tpl.id)}
+                            style={{
+                              padding: '7px 16px', border: '1px dashed #e8c880',
+                              borderRadius: 8, background: 'transparent', color: '#7a5500',
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            }}
+                          >
+                            + Add Step
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
