@@ -17,7 +17,12 @@ export async function startWorkflow(templateId, context = {}) {
       due_date: context.due_date || null,
       created_by: context.assigned_to || null,
       progress_pct: 0,
-      status: 'active'
+      status: 'active',
+      entity_type: context.entity_type || null,
+      entity_id: context.entity_id || null,
+      entity_name: context.entity_name || null,
+      trigger_type: context.trigger_type || null,
+      trigger_date: context.trigger_date || null,
     })
     .select()
     .single();

@@ -8,6 +8,8 @@ export default function WorkflowEngine() {
   const [instanceTasks, setInstanceTasks] = useState({});
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [workflowName, setWorkflowName] = useState('');
+  const [sourceName, setSourceName] = useState('');
+  const [triggerType, setTriggerType] = useState('');
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -58,8 +60,14 @@ export default function WorkflowEngine() {
     setStarting(true);
     setStartError('');
     try {
-      await startWorkflow(selectedTemplate, { name: workflowName.trim() });
+      await startWorkflow(selectedTemplate, {
+        name: workflowName.trim(),
+        entity_name: sourceName.trim() || null,
+        trigger_type: triggerType || null,
+      });
       setWorkflowName('');
+      setSourceName('');
+      setTriggerType('');
       await load();
     } catch (err) {
       setStartError(err.message || 'Could not start workflow');
@@ -229,27 +237,58 @@ export default function WorkflowEngine() {
             </div>
 
             {selectedTemplate && (
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div style={{ flex: '2 1 280px' }}>
-                  <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
-                    Workflow Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. AGM 2026 Prep"
-                    value={workflowName}
-                    onChange={e => setWorkflowName(e.target.value)}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)', boxSizing: 'border-box' }}
-                  />
+              <div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
+                  <div style={{ flex: '2 1 280px' }}>
+                    <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                      Workflow Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. AGM 2026 Prep"
+                      value={workflowName}
+                      onChange={e => setWorkflowName(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)', boxSizing: 'border-box' }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <button
-                    type="submit"
-                    disabled={starting || !workflowName.trim()}
-                    style={{ padding: '9px 22px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (starting || !workflowName.trim()) ? 0.6 : 1 }}
-                  >
-                    {starting ? 'Starting…' : 'Start Workflow'}
-                  </button>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '2 1 200px' }}>
+                    <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                      Source Record <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ute — WOF due 15 Jul"
+                      value={sourceName}
+                      onChange={e => setSourceName(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ flex: '1 1 160px' }}>
+                    <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                      Trigger Type <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(optional)</span>
+                    </label>
+                    <select
+                      value={triggerType}
+                      onChange={e => setTriggerType(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)' }}
+                    >
+                      <option value="">— Select —</option>
+                      <option value="manual">Manual</option>
+                      <option value="service_reminder">Service Reminder</option>
+                      <option value="renewal_reminder">Renewal Reminder</option>
+                    </select>
+                  </div>
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={starting || !workflowName.trim()}
+                      style={{ padding: '9px 22px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (starting || !workflowName.trim()) ? 0.6 : 1 }}
+                    >
+                      {starting ? 'Starting…' : 'Start Workflow'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -293,6 +332,17 @@ export default function WorkflowEngine() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text1)', marginBottom: 2 }}>{inst.name}</div>
+                    {inst.entity_name && (
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 2 }}>
+                        <span style={{ color: 'var(--text3)' }}>From: </span>
+                        <span style={{ color: 'var(--text2)', fontWeight: 500 }}>{inst.entity_name}</span>
+                        {inst.trigger_type && (
+                          <span style={{ marginLeft: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '0px 7px', fontSize: 11 }}>
+                            {inst.trigger_type.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {tplName && (
                       <div style={{ fontSize: 12, color: 'var(--text3)' }}>{tplName} · Started {formatDate(inst.created_at)}</div>
                     )}
@@ -386,6 +436,14 @@ export default function WorkflowEngine() {
                   {/* Expanded steps */}
                   {isOpen && (
                     <div style={{ borderTop: '1px solid #e8c880' }}>
+                      {/* Breadcrumb */}
+                      <div style={{ padding: '8px 16px', background: '#fdf9ee', borderBottom: '1px solid #f0dfa0', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)' }}>
+                        <span>Source Record</span>
+                        <span style={{ color: '#e8c880' }}>→</span>
+                        <span style={{ color: '#7a5500', fontWeight: 600 }}>{tpl.name}</span>
+                        <span style={{ color: '#e8c880' }}>→</span>
+                        <span>Tasks ({steps.length})</span>
+                      </div>
                       {steps.length === 0 ? (
                         <div style={{ padding: '16px', fontSize: 13, color: 'var(--text3)', textAlign: 'center' }}>
                           No steps defined for this template.
