@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import { onTaskCompleted } from '../lib/taskSync';
+import { updateWorkflowProgress } from '../lib/workflowEngine';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -22,6 +23,8 @@ const PRIORITY_BADGE  = {
 
 const EMPTY_FORM = { title: '', description: '', assigned_to: '', due_date: '', priority: 'Medium' };
 
+const TASK_STATUSES = COLUMNS.map(c => c.key);
+
 function fmtDate(d) {
   if (!d) return null;
   return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -38,7 +41,125 @@ function isCompletedToday(task) {
   return new Date(task.completed_at).toDateString() === new Date().toDateString();
 }
 
-const TASK_STATUSES = COLUMNS.map(c => c.key);
+// ─── WORKFLOW PARENT CARD ─────────────────────────────────────────────────────
+
+function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus }) {
+  const [expanded, setExpanded] = useState(false);
+  const total = subtasks.length;
+  const done = subtasks.filter(t => t.status === 'completed').length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const allDone = total > 0 && done === total;
+  const next = subtasks.find(t => t.status !== 'completed' && t.status !== 'cancelled');
+
+  return (
+    <div style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderLeft: '4px solid var(--brand)',
+      borderRadius: '0 8px 8px 0',
+      padding: '12px 12px 10px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+          background: 'var(--brand)', color: '#fff',
+          borderRadius: 4, padding: '2px 6px',
+        }}>
+          WORKFLOW
+        </span>
+      </div>
+
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 8, lineHeight: 1.4 }}>
+        {task.title}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+          {done} / {total} steps complete
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: allDone ? 'var(--brand)' : 'var(--text3)' }}>
+          {pct}%
+        </span>
+      </div>
+
+      <div style={{ height: 5, background: '#e8eef8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{
+          height: '100%', width: `${pct}%`,
+          background: allDone ? 'var(--brand)' : '#5b8dee',
+          borderRadius: 3, transition: 'width 0.3s',
+        }} />
+      </div>
+
+      {allDone ? (
+        <div style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 500, marginBottom: 8 }}>
+          All steps complete
+        </div>
+      ) : next ? (
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8, fontStyle: 'italic' }}>
+          Next: {next.title}
+        </div>
+      ) : null}
+
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          style={{
+            flex: 1, background: 'var(--surface2)', color: 'var(--text2)',
+            border: '1px solid var(--border)', borderRadius: 6,
+            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          {expanded ? '▲ Hide Steps' : '▼ Show Steps'}
+        </button>
+        <button
+          onClick={() => onDelete(task.id)}
+          style={{
+            flex: 1, background: '#faeae7', color: 'var(--danger)',
+            border: '1px solid #f0b8b0', borderRadius: 6,
+            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          Delete
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+          {subtasks.map((sub, idx) => (
+            <div key={sub.id} style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '5px 0',
+              borderBottom: idx < subtasks.length - 1 ? '1px solid var(--border)' : 'none',
+            }}>
+              <span style={{
+                flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
+                background: sub.status === 'completed' ? 'var(--brand)' : '#e8eef8',
+                color: sub.status === 'completed' ? '#fff' : '#1a4a8a',
+                fontSize: 9, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {sub.status === 'completed' ? '✓' : (sub.workflow_step_order || idx + 1)}
+              </span>
+              <span style={{
+                flex: 1, fontSize: 11, minWidth: 0,
+                color: sub.status === 'completed' ? 'var(--text3)' : 'var(--text2)',
+                textDecoration: sub.status === 'completed' ? 'line-through' : 'none',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {sub.title}
+              </span>
+              <StatusPill
+                status={sub.status}
+                options={TASK_STATUSES}
+                onStatusChange={s => onChangeSubtaskStatus(sub, s)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
 
@@ -171,23 +292,37 @@ export default function TaskBoard() {
     setLoading(false);
   }
 
+  // Subtasks grouped by parent task id — used by WorkflowParentCard
+  const subtasksByParent = useMemo(() => {
+    const map = {};
+    tasks.filter(t => t.parent_task_id).forEach(t => {
+      if (!map[t.parent_task_id]) map[t.parent_task_id] = [];
+      map[t.parent_task_id].push(t);
+    });
+    Object.values(map).forEach(arr => arr.sort((a, b) => (a.workflow_step_order || 0) - (b.workflow_step_order || 0)));
+    return map;
+  }, [tasks]);
+
+  // Non-subtask tasks only — used for KPIs and the kanban board
+  const visibleTasks = useMemo(() => tasks.filter(t => !t.parent_task_id), [tasks]);
+
   const kpis = useMemo(() => ({
-    total: tasks.length,
-    open: tasks.filter(t => t.status === 'open').length,
-    overdue: tasks.filter(t => isOverdue(t)).length,
-    completedToday: tasks.filter(t => isCompletedToday(t)).length,
-  }), [tasks]);
+    total: visibleTasks.length,
+    open: visibleTasks.filter(t => t.status === 'open').length,
+    overdue: visibleTasks.filter(t => isOverdue(t)).length,
+    completedToday: visibleTasks.filter(t => isCompletedToday(t)).length,
+  }), [visibleTasks]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return tasks;
+    if (!search.trim()) return visibleTasks;
     const q = search.toLowerCase();
-    return tasks.filter(t => t.title?.toLowerCase().includes(q));
-  }, [tasks, search]);
+    return visibleTasks.filter(t => t.title?.toLowerCase().includes(q));
+  }, [visibleTasks, search]);
 
   const ARCHIVE_THRESHOLD = 50;
   const archivedTasks = useMemo(() => {
     if (search.trim()) return [];
-    return filtered.filter(t => t.status === 'completed').slice(ARCHIVE_THRESHOLD);
+    return filtered.filter(t => t.status === 'completed' && !t.workflow_instance_id).slice(ARCHIVE_THRESHOLD);
   }, [filtered, search]);
 
   function openAdd() {
@@ -241,7 +376,15 @@ export default function TaskBoard() {
 
   async function handleDelete() {
     if (!confirmDeleteId) return;
+    const taskToDelete = tasks.find(t => t.id === confirmDeleteId);
     await supabase.from('tasks').delete().eq('id', confirmDeleteId);
+    // If deleting a workflow parent task, also cancel the workflow instance
+    if (taskToDelete?.workflow_instance_id && !taskToDelete?.parent_task_id) {
+      await supabase
+        .from('workflow_instances')
+        .update({ status: 'cancelled' })
+        .eq('id', taskToDelete.workflow_instance_id);
+    }
     setConfirmDeleteId(null);
     fetchTasks();
   }
@@ -257,11 +400,18 @@ export default function TaskBoard() {
     const updates = { status: newStatus };
     if (newStatus === 'completed' && task.status !== 'completed') {
       updates.completed_at = new Date().toISOString();
-      onTaskCompleted(task); // fire-and-forget: resets the source module
     } else if (newStatus !== 'completed' && task.status === 'completed') {
       updates.completed_at = null;
     }
     await supabase.from('tasks').update(updates).eq('id', task.id);
+
+    if (newStatus === 'completed' && task.status !== 'completed') {
+      await onTaskCompleted(task);
+    } else if (task.parent_task_id && task.workflow_instance_id && task.status === 'completed' && newStatus !== 'completed') {
+      // Subtask un-completed — update workflow progress to push parent back to in-progress/open
+      await updateWorkflowProgress(task.workflow_instance_id);
+    }
+
     fetchTasks();
   }
 
@@ -275,6 +425,11 @@ export default function TaskBoard() {
     { label: 'Completed Today',  value: kpis.completedToday, icon: '✅', bg: '#e8f4ef',
       valueColor: kpis.completedToday > 0 ? 'var(--success)' : 'var(--text3)' },
   ];
+
+  // For the delete confirm modal
+  const taskToConfirmDelete = tasks.find(t => t.id === confirmDeleteId);
+  const isWorkflowParentDelete = taskToConfirmDelete?.workflow_instance_id && !taskToConfirmDelete?.parent_task_id;
+  const deleteSubtaskCount = isWorkflowParentDelete ? (subtasksByParent[confirmDeleteId] || []).length : 0;
 
   return (
     <div>
@@ -333,7 +488,7 @@ export default function TaskBoard() {
           {COLUMNS.map((col, colIndex) => {
             const allColTasks = filtered.filter(t => t.status === col.key);
             const colTasks = col.key === 'completed' && !search.trim()
-              ? allColTasks.slice(0, ARCHIVE_THRESHOLD)
+              ? allColTasks.filter(t => t.workflow_instance_id || allColTasks.indexOf(t) < ARCHIVE_THRESHOLD)
               : allColTasks;
             return (
               <div key={col.key} className="panel" style={{ padding: 0, overflow: 'hidden', minHeight: 300 }}>
@@ -361,15 +516,25 @@ export default function TaskBoard() {
                       No tasks
                     </div>
                   ) : colTasks.map(task => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      colIndex={colIndex}
-                      onMove={moveTask}
-                      onEdit={openEdit}
-                      onDelete={setConfirmDeleteId}
-                      onChangeStatus={changeTaskStatus}
-                    />
+                    task.workflow_instance_id ? (
+                      <WorkflowParentCard
+                        key={task.id}
+                        task={task}
+                        subtasks={subtasksByParent[task.id] || []}
+                        onDelete={setConfirmDeleteId}
+                        onChangeSubtaskStatus={changeTaskStatus}
+                      />
+                    ) : (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        colIndex={colIndex}
+                        onMove={moveTask}
+                        onEdit={openEdit}
+                        onDelete={setConfirmDeleteId}
+                        onChangeStatus={changeTaskStatus}
+                      />
+                    )
                   ))}
                 </div>
               </div>
@@ -508,9 +673,13 @@ export default function TaskBoard() {
       {confirmDeleteId && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setConfirmDeleteId(null); }}>
           <div className="modal" style={{ maxWidth: 380 }}>
-            <div className="modal-title" style={{ fontSize: 18 }}>Delete Task?</div>
+            <div className="modal-title" style={{ fontSize: 18 }}>
+              {isWorkflowParentDelete ? 'Delete Workflow?' : 'Delete Task?'}
+            </div>
             <p style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-              This task will be permanently deleted and cannot be recovered.
+              {isWorkflowParentDelete
+                ? `This will permanently delete this workflow and all ${deleteSubtaskCount} step${deleteSubtaskCount !== 1 ? 's' : ''}. This cannot be undone.`
+                : 'This task will be permanently deleted and cannot be recovered.'}
             </p>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
