@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { startWorkflow, getActiveWorkflows, getWorkflowTemplates } from '../lib/workflowEngine';
+import { startWorkflow } from '../lib/workflowEngine';
 
 export default function WorkflowEngine() {
   const [templates, setTemplates] = useState([]);
