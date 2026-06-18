@@ -50,7 +50,7 @@ export async function updateWorkflowProgress(workflowInstanceId) {
   if (!tasks || tasks.length === 0) return;
 
   const total = tasks.length;
-  const done = tasks.filter(t => t.status === 'Done').length;
+  const done = tasks.filter(t => t.status === 'completed').length;
   const progress = Math.round((done / total) * 100);
   const allDone = done === total;
 
