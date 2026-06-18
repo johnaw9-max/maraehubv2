@@ -94,6 +94,19 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Workflows',
+      icon: '⚙️',
+      items: [
+        { q: 'What is the Workflows tab?', a: 'Workflows is a step-by-step task engine for managing recurring marae processes. Instead of creating tasks from scratch each time, you pick a pre-built template, give the workflow a name, and click Start — MaraeHub automatically creates all the tasks in the right order and tracks progress for you.' },
+        { q: 'Where do I find it?', a: 'Go to the main navigation and click Operations. Workflows is listed in that group alongside Bookings, Calendar, Notices, and Contacts.' },
+        { q: 'How do I start a workflow?', a: 'In the Workflows tab, use the dropdown under "Start New Workflow" to pick a template — for example, Tangihanga Preparation or Marae Insurance Renewal. Once a template is selected, a name field will appear. Type a name for this specific run (e.g. "Hēni Smith Tangihanga — July 2026"), then click Start Workflow. All tasks are created immediately and appear in the Active Workflows panel and in the Tasks tab.' },
+        { q: 'How many templates are available?', a: 'MaraeHub V1.3 includes 15 built-in templates covering five areas: Governance (trustee meetings, AGM preparation, trustee onboarding), Compliance (insurance renewal, fire safety, WOF review), Maintenance (building inspection, equipment servicing), Operations (tangihanga preparation, contractor vetting, event setup), and Funding (grant application, funding report). More templates will be added in future releases.' },
+        { q: 'How do I track progress?', a: 'The Active Workflows section shows all currently running workflows with a progress bar and the next incomplete task highlighted. As you complete tasks in the Tasks tab, the progress bar updates automatically. When all tasks in a workflow are completed, the workflow is marked as complete and moves out of the Active Workflows view.' },
+        { q: 'Do workflow tasks appear in the Task Board?', a: 'Yes. Every task created by a workflow appears in the Tasks tab alongside your other open tasks. Workflow tasks are labelled with the workflow name so you can tell them apart. Complete them from the Task Board as normal — the workflow progress updates automatically each time a step is ticked off.' },
+        { q: 'Can I create my own workflow templates?', a: 'Custom templates are planned for a future release. For now, all 15 templates are built in and pre-loaded. If you need a template added, use the Feedback button to request it.' },
+      ]
+    },
+    {
       category: 'Finance Manager',
       icon: '📊',
       items: [
@@ -137,7 +150,7 @@ const HELP_TOPICS = {
       category: 'Finding Your Way Around',
       icon: '🗺️',
       items: [
-        { q: 'How is the navigation organised?', a: 'The navigation is grouped into five sections. The Dashboard is your starting point — a summary of recent bookings, active projects, and community feedback. Governance covers the Board View, Minutes, and Goals. Operations covers Bookings, Calendar, Notices, and Contacts. Assets & Compliance covers the Assets register and Compliance Tracker. Funding & Projects covers Grants, Projects, and the Task Board. Admin covers Documents and Settings.' },
+        { q: 'How is the navigation organised?', a: 'The navigation is grouped into five sections. The Dashboard is your starting point — a summary of recent bookings, active projects, and community feedback. Governance covers the Board View, Minutes, and Goals. Operations covers Bookings, Calendar, Notices, Contacts, and Workflows. Assets & Compliance covers the Assets register and Compliance Tracker. Funding & Projects covers Grants, Projects, and the Task Board. Admin covers Documents and Settings.' },
         { q: 'What is the Board View?', a: 'Board View is a single-screen summary designed for trustee meetings. It shows red and amber alerts for anything urgent, Smart Insights with recommended actions, KPI tiles for bookings and ratings, strategic goals progress, compliance status, upcoming bookings, active projects, open meeting actions, the grants pipeline, asset service reminders, and all open tasks grouped by source. You can print it directly from the browser using the Print button.' },
         { q: 'What is the Dashboard?', a: 'The Dashboard is your personal landing page when you log in. It shows a quick count of pending bookings, active projects, and assets, a list of recent booking requests you can click through to, a progress view of active projects, and a summary of community feedback ratings. Click any stat tile to jump straight to that module.' },
         { q: 'What does the Goals tab do?', a: 'Goals & Reporting lets your committee set strategic goals and track them automatically using data from other modules. Link a goal to a project, compliance item, or grant and the progress percentage updates without any manual entry. Goals appear in the Board View with a traffic light — green for on track, orange for at risk, red for behind schedule.' },

@@ -19,6 +19,7 @@ import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
 import WorkflowEngine from '../components/WorkflowEngine';
+import WhatsNew from '../components/WhatsNew';
 
 const NAV_GROUPS = [
   {
@@ -744,6 +745,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>
       <FeedbackButton profile={profile} />
       <HelpMenu role="trustee" />
+      <WhatsNew />
     </div>
   );
 }
