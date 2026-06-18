@@ -22,7 +22,6 @@ export default function WorkflowEngine() {
     const insts = instRes.data || [];
     setTemplates(tpls);
     setInstances(insts);
-    if (tpls.length > 0 && !selectedTemplate) setSelectedTemplate(tpls[0].id);
 
     if (insts.length > 0) {
       const ids = insts.map(i => i.id);
@@ -87,42 +86,48 @@ export default function WorkflowEngine() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleStart} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 220px' }}>
+          <form onSubmit={handleStart}>
+            <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
                 Template
               </label>
               <select
                 value={selectedTemplate}
                 onChange={e => setSelectedTemplate(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)' }}
+                style={{ width: '100%', maxWidth: 360, padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)' }}
               >
+                <option value="">— Select a template —</option>
                 {templates.map(t => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </div>
-            <div style={{ flex: '2 1 280px' }}>
-              <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
-                Workflow Name
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. AGM 2026 Prep"
-                value={workflowName}
-                onChange={e => setWorkflowName(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div>
-              <button
-                type="submit"
-                disabled={starting || !selectedTemplate || !workflowName.trim()}
-                style={{ padding: '9px 22px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (starting || !workflowName.trim()) ? 0.6 : 1 }}
-              >
-                {starting ? 'Starting…' : 'Start Workflow'}
-              </button>
-            </div>
+
+            {selectedTemplate && (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ flex: '2 1 280px' }}>
+                  <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                    Workflow Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. AGM 2026 Prep"
+                    value={workflowName}
+                    onChange={e => setWorkflowName(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, background: 'var(--surface)', color: 'var(--text1)', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <button
+                    type="submit"
+                    disabled={starting || !workflowName.trim()}
+                    style={{ padding: '9px 22px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: (starting || !workflowName.trim()) ? 0.6 : 1 }}
+                  >
+                    {starting ? 'Starting…' : 'Start Workflow'}
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
         )}
         {startError && (
