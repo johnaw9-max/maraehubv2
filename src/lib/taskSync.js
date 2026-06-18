@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { updateWorkflowProgress } from './workflowEngine';
 
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
 
@@ -100,6 +101,10 @@ export async function ensureUpcomingTask({ sourceId, sourceType, name, descripti
 // Called when a task moves to 'completed'. Routes to the correct source action
 // based on title prefix and [source_id] / [source_type] markers in description.
 export async function onTaskCompleted(task) {
+  if (task.workflow_instance_id) {
+    await updateWorkflowProgress(task.workflow_instance_id);
+  }
+
   const title = task.title || '';
   const desc = task.description || '';
   const sourceId = parseSourceId(desc);
