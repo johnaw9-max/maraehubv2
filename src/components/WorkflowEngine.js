@@ -31,6 +31,7 @@ export default function WorkflowEngine() {
       supabase.from('workflow_templates').select('*').order('name'),
       getActiveWorkflows(),
     ]);
+    console.log('[WorkflowEngine] getActiveWorkflows result:', insts);
     setTemplates(tplRes.data || []);
     setInstances(insts);
 
