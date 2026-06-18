@@ -33,8 +33,19 @@ export async function startWorkflow(templateId, context = {}) {
     assigned_to: context.assigned_to || null
   }));
 
-  const { error: tasksError } = await supabase.from('tasks').insert(tasks);
-  if (tasksError) throw tasksError;
+  console.log('[startWorkflow] inserting tasks:', JSON.stringify(tasks, null, 2));
+
+  const { data: insertedTasks, error: tasksError } = await supabase
+    .from('tasks')
+    .insert(tasks)
+    .select();
+
+  if (tasksError) {
+    console.error('[startWorkflow] tasks insert failed:', tasksError);
+    throw tasksError;
+  }
+
+  console.log('[startWorkflow] tasks created:', insertedTasks?.length, 'for instance', instance.id);
 
   return instance;
 }
