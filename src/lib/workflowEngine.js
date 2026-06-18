@@ -29,8 +29,7 @@ export async function startWorkflow(templateId, context = {}) {
     description: s.description,
     status: 'open',
     workflow_instance_id: instance.id,
-    workflow_step_order: s.step_order,
-    assigned_to: context.assigned_to || null
+    workflow_step_order: s.step_order
   }));
 
   console.log('[startWorkflow] inserting tasks:', JSON.stringify(tasks, null, 2));
