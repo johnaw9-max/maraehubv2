@@ -98,6 +98,13 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
           notes: 'Auto-created on approval — update amount to record hire fee',
         });
       }
+    } else if (status === 'declined' || status === 'cancelled') {
+      await supabase
+        .from('finance_income')
+        .delete()
+        .eq('source_type', 'booking')
+        .eq('source_id', booking.id)
+        .eq('amount', 0);
     }
     fetchBookings();
   }
