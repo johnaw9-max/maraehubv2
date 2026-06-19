@@ -100,7 +100,7 @@ const HELP_TOPICS = {
         { q: 'What is the Workflows tab?', a: 'Workflows is a step-by-step task engine for managing recurring marae processes. Instead of creating tasks from scratch each time, you pick a pre-built template, give the workflow a name, and click Start — MaraeHub automatically creates all the tasks in the right order and tracks progress for you.' },
         { q: 'Where do I find it?', a: 'Go to the main navigation and click Operations. Workflows is listed in that group alongside Bookings, Calendar, Notices, and Contacts.' },
         { q: 'How do I start a workflow?', a: 'In the Workflows tab, use the dropdown under "Start New Workflow" to pick a template — for example, Tangihanga Preparation or Marae Insurance Renewal. Once a template is selected, a name field will appear. Type a name for this specific run (e.g. "Hēni Smith Tangihanga — July 2026"), then click Start Workflow. All tasks are created immediately and appear in the Active Workflows panel and in the Tasks tab.' },
-        { q: 'How many templates are available?', a: 'MaraeHub V1.3 includes 15 built-in templates covering five areas: Governance (trustee meetings, AGM preparation, trustee onboarding), Compliance (insurance renewal, fire safety, WOF review), Maintenance (building inspection, equipment servicing), Operations (tangihanga preparation, contractor vetting, event setup), and Funding (grant application, funding report). More templates will be added in future releases.' },
+        { q: 'How many templates are available?', a: 'MaraeHub currently includes 18 built-in templates covering five areas: Governance (trustee meetings, AGM preparation, trustee onboarding), Compliance (insurance renewal, fire safety, WOF review), Maintenance (building inspection, equipment servicing), Operations (tangihanga preparation, contractor vetting, event setup, Facility Hire Agreement), and Funding (grant application, funding report). The most recent addition is the Marae Emergency Readiness Starter Pack, which covers insurance, first aid kit checks, generator testing, water supply inspection, fire safety, and Civil Defence registration. More templates will be added in future releases.' },
         { q: 'How do I track progress?', a: 'The Active Workflows section shows all currently running workflows with a progress bar and the next incomplete task highlighted. As you complete tasks in the Tasks tab, the progress bar updates automatically. When all tasks in a workflow are completed, the workflow is marked as complete and moves out of the Active Workflows view.' },
         { q: 'Do workflow tasks appear in the Task Board?', a: 'Yes. Every task created by a workflow appears in the Tasks tab alongside your other open tasks. Workflow tasks are labelled with the workflow name so you can tell them apart. Complete them from the Task Board as normal — the workflow progress updates automatically each time a step is ticked off.' },
         { q: 'Can I create my own workflow templates?', a: 'Custom templates are planned for a future release. For now, all 15 templates are built in and pre-loaded. If you need a template added, use the Feedback button to request it.' },
@@ -113,9 +113,17 @@ const HELP_TOPICS = {
       category: 'Smart Suggestions',
       icon: '💡',
       items: [
-        { q: 'What are Smart Suggestions?', a: 'Smart Suggestions are prompts that appear automatically when MaraeHub detects that a workflow might be relevant to something happening on your marae. Instead of having to remember to start a workflow yourself, the system notices a trigger — like a service reminder becoming due or a booking being approved — and offers to start the matching workflow for you.' },
+        { q: 'What are Smart Suggestions?', a: 'Smart Suggestions are prompts that appear automatically when MaraeHub detects that a workflow might be relevant to something happening on your marae. Instead of having to remember to start a workflow yourself, the system notices a trigger — like a service reminder becoming due, a booking being approved, or a trustee flagging a booking as commercial or external hire — and offers to start the matching workflow for you. The Facility Hire Agreement workflow is one example that can be triggered this way.' },
         { q: 'When does a service reminder suggest a workflow?', a: 'When an asset service reminder becomes due, MaraeHub checks whether a matching workflow template exists. If one is found — for example, a Heat Pump Service reminder triggers the Heat Pump Service template, or a Building Maintenance and Repair reminder triggers the matching maintenance workflow — a suggestion will appear prompting you to start that workflow. You can accept the suggestion to launch the workflow immediately, or dismiss it if you want to handle it another way.' },
         { q: 'How does the Facility Hire Agreement workflow get triggered?', a: 'When a trustee approves a booking, they are given the option to flag it as a commercial hire or external hire. If that flag is set, MaraeHub automatically suggests starting the Facility Hire Agreement workflow for that booking. The workflow is pre-linked to the booking so all the relevant details are carried through. This ensures the right paperwork and sign-off process is followed every time the marae is hired out for external or commercial purposes.' },
+      ]
+    },
+    {
+      category: 'Board View Insights',
+      icon: '📈',
+      items: [
+        { q: 'What is the Workflow Activity panel in Board View?', a: 'Board View includes a Workflow Activity section that gives trustees a quick read on how workflows are tracking across the marae. It shows the number of currently active workflows and how many workflows were completed this month — useful for seeing whether your committee is keeping on top of recurring processes without having to open the Workflows tab.' },
+        { q: 'What alerts appear in the Workflow Activity section?', a: 'Two types of alerts appear automatically. If a workflow has had no progress in 14 or more days — meaning none of its tasks have been completed — Board View will flag it as stalled so a trustee can follow up. If a booking income record has been created automatically but the hire fee has not yet been entered (it still shows as $0), an alert will appear reminding trustees to open that Finance record and enter the agreed amount. Both alerts clear automatically once the issue is resolved.' },
       ]
     },
     {
@@ -220,6 +228,16 @@ const HELP_TOPICS = {
       icon: '⚙️',
       items: [
         { q: 'How do I change the marae name?', a: 'Go to the Settings tab. You can update the marae name, location, iwi, hapū, and contact details. Click "Save Settings" and the name will update across the whole platform immediately.' },
+      ]
+    },
+    {
+      category: 'Privacy & Data',
+      icon: '🔒',
+      items: [
+        { q: 'Where can I find information about how our marae data is protected?', a: 'Go to Settings and open the "Privacy & Data" section. This page gives a full plain-language explanation of how MaraeHub handles your marae\'s information — covering data ownership, your rights under the Privacy Act 2020, and what happens to your data if you ever leave the platform.' },
+        { q: 'Who owns our marae\'s data?', a: 'Your marae owns its data. MaraeHub stores it securely on your behalf — but it belongs to you, not to us. The Privacy & Data page in Settings explains exactly what information is stored, how it is protected, and what rights your committee has over it.' },
+        { q: 'What does the Privacy Act 2020 mean for our marae?', a: 'New Zealand\'s Privacy Act 2020 governs how personal information must be collected, stored, and used. The Privacy & Data page in Settings explains how MaraeHub complies with the Act and what this means in practice for trustees and community members whose information is held on the platform.' },
+        { q: 'What happens to our data if we leave MaraeHub?', a: 'If your marae ever decides to leave MaraeHub, your data does not disappear or get retained without your consent. The Privacy & Data page in Settings explains the full process — including how to request an export of your records and what happens to stored data after an account is closed.' },
       ]
     },
   ],
