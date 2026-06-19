@@ -9,7 +9,6 @@ const OCCASIONS = [
   { val: 'Hui', icon: '🤝', sub: 'Community meeting' },
   { val: 'Fundraiser', icon: '🏆', sub: 'Charity / kaupapa event' },
   { val: 'Whanau Reunion', icon: '👨‍👩‍👧‍👦', sub: 'Family gathering' },
-  { val: 'Facility Hire', icon: '🏛️', sub: 'Commercial facility rental' },
   { val: 'Other', icon: '✨', sub: 'Something else' },
 ];
 

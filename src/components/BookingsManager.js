@@ -4,7 +4,6 @@ import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
 import { sendNotification, bookingStatusBody } from '../lib/notify';
 import StatusPill from './StatusPill';
-import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
 const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
 
@@ -100,15 +99,9 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
 
   const filters = ['all', 'pending', 'approved', 'declined'];
 
-  const workflowSuggestions = isTrustee && onStartWorkflow
-    ? bookings
-        .filter(b => b.status === 'approved')
-        .map(b => {
-          const tpl = matchWorkflowTemplate(b.occasion, templates);
-          return tpl ? { booking: b, template: tpl } : null;
-        })
-        .filter(Boolean)
-    : [];
+  const facilityHireTpl = isTrustee && onStartWorkflow
+    ? templates.find(t => /facility hire/i.test(t.name))
+    : null;
 
   return (
     <div>
@@ -129,32 +122,6 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
         </div>
       </div>
 
-      {workflowSuggestions.length > 0 && (
-        <div style={{ background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#7a5500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            ⚙️ Workflows Available ({workflowSuggestions.length})
-          </div>
-          {workflowSuggestions.map(({ booking: b, template }) => (
-            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '6px 0', borderBottom: '1px solid rgba(200,144,42,0.15)', gap: 12 }}>
-              <div>
-                <strong>{b.occasion}</strong>
-                {b.start_date && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text3)' }}>📅 {new Date(b.start_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
-                {b.reference && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text3)' }}>{b.reference}</span>}
-              </div>
-              <button
-                onClick={() => onStartWorkflow({
-                  templateId: template.id,
-                  workflowName: `${template.name} — ${b.occasion}${b.reference ? ` (${b.reference})` : ''}`,
-                  sourceName: `Booking: ${b.occasion}${b.start_date ? ` on ${b.start_date}` : ''}`,
-                  triggerType: 'booking',
-                })}
-                style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}>
-                Start {template.name} Workflow →
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {loading ? (
         <div className="loading">Loading bookings...</div>
@@ -172,9 +139,6 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
             const showChecklist = isTrustee && b.status === 'approved' && past;
             const showFeedback = !isTrustee && b.status === 'approved' && past && !fb;
             const checklistDone = cl?.completed;
-            const matchedTpl = isTrustee && onStartWorkflow && b.status === 'approved'
-              ? matchWorkflowTemplate(b.occasion, templates)
-              : null;
 
             return (
               <div key={b.id} className="panel" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
@@ -211,16 +175,16 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                       ))}
                     </div>
                   )}
-                  {matchedTpl && (
+                  {facilityHireTpl && b.status === 'approved' && (
                     <button
                       onClick={() => onStartWorkflow({
-                        templateId: matchedTpl.id,
-                        workflowName: `${matchedTpl.name} — ${b.occasion}${b.reference ? ` (${b.reference})` : ''}`,
+                        templateId: facilityHireTpl.id,
+                        workflowName: `${facilityHireTpl.name} — ${b.occasion}${b.reference ? ` (${b.reference})` : ''}`,
                         sourceName: `Booking: ${b.occasion}${b.start_date ? ` on ${b.start_date}` : ''}`,
                         triggerType: 'booking',
                       })}
-                      style={{ marginTop: 8, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                      ⚙️ Start {matchedTpl.name} Workflow →
+                      style={{ marginTop: 8, background: 'none', color: 'var(--brand)', border: '1px solid var(--brand)', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                      🏛️ Commercial or external hire? Start Facility Hire Agreement Workflow →
                     </button>
                   )}
                 </div>
