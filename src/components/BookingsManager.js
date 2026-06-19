@@ -4,6 +4,7 @@ import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
 import { sendNotification, bookingStatusBody } from '../lib/notify';
 import StatusPill from './StatusPill';
+import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
 const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
 
@@ -22,10 +23,11 @@ function StarDisplay({ rating }) {
   );
 }
 
-export default function BookingsManager({ isTrustee, canApprove, userId }) {
+export default function BookingsManager({ isTrustee, canApprove, userId, onStartWorkflow }) {
   const [bookings, setBookings] = useState([]);
   const [feedback, setFeedback] = useState({});
   const [checklists, setChecklists] = useState({});
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [checklistBooking, setChecklistBooking] = useState(null);
@@ -35,13 +37,19 @@ export default function BookingsManager({ isTrustee, canApprove, userId }) {
 
   async function fetchBookings() {
     setLoading(true);
-    let query = supabase.from('bookings').select('*').order('created_at', { ascending: false });
-    if (!isTrustee && userId) query = query.eq('user_id', userId);
-    if (filter !== 'all') query = query.eq('status', filter);
-    const { data, error } = await query;
-    if (error) { setLoading(false); return; }
-    const rows = data || [];
+    const [bookingRes, tplRes] = await Promise.all([
+      (() => {
+        let q = supabase.from('bookings').select('*').order('created_at', { ascending: false });
+        if (!isTrustee && userId) q = q.eq('user_id', userId);
+        if (filter !== 'all') q = q.eq('status', filter);
+        return q;
+      })(),
+      supabase.from('workflow_templates').select('id, name').order('name'),
+    ]);
+    if (bookingRes.error) { setLoading(false); return; }
+    const rows = bookingRes.data || [];
     setBookings(rows);
+    setTemplates(tplRes.data || []);
     if (rows.length > 0) await fetchMeta(rows.map(b => b.id));
     setLoading(false);
   }
@@ -92,6 +100,16 @@ export default function BookingsManager({ isTrustee, canApprove, userId }) {
 
   const filters = ['all', 'pending', 'approved', 'declined'];
 
+  const workflowSuggestions = isTrustee && onStartWorkflow
+    ? bookings
+        .filter(b => b.status === 'approved')
+        .map(b => {
+          const tpl = matchWorkflowTemplate(b.occasion, templates);
+          return tpl ? { booking: b, template: tpl } : null;
+        })
+        .filter(Boolean)
+    : [];
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -111,6 +129,33 @@ export default function BookingsManager({ isTrustee, canApprove, userId }) {
         </div>
       </div>
 
+      {workflowSuggestions.length > 0 && (
+        <div style={{ background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#7a5500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            ⚙️ Workflows Available ({workflowSuggestions.length})
+          </div>
+          {workflowSuggestions.map(({ booking: b, template }) => (
+            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '6px 0', borderBottom: '1px solid rgba(200,144,42,0.15)', gap: 12 }}>
+              <div>
+                <strong>{b.occasion}</strong>
+                {b.start_date && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text3)' }}>📅 {new Date(b.start_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                {b.reference && <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text3)' }}>{b.reference}</span>}
+              </div>
+              <button
+                onClick={() => onStartWorkflow({
+                  templateId: template.id,
+                  workflowName: `${template.name} — ${b.occasion}${b.reference ? ` (${b.reference})` : ''}`,
+                  sourceName: `Booking: ${b.occasion}${b.start_date ? ` on ${b.start_date}` : ''}`,
+                  triggerType: 'booking',
+                })}
+                style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}>
+                Start {template.name} Workflow →
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="loading">Loading bookings...</div>
       ) : bookings.length === 0 ? (
@@ -127,6 +172,9 @@ export default function BookingsManager({ isTrustee, canApprove, userId }) {
             const showChecklist = isTrustee && b.status === 'approved' && past;
             const showFeedback = !isTrustee && b.status === 'approved' && past && !fb;
             const checklistDone = cl?.completed;
+            const matchedTpl = isTrustee && onStartWorkflow && b.status === 'approved'
+              ? matchWorkflowTemplate(b.occasion, templates)
+              : null;
 
             return (
               <div key={b.id} className="panel" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
@@ -162,6 +210,18 @@ export default function BookingsManager({ isTrustee, canApprove, userId }) {
                         <span key={f} style={{ fontSize: 10, background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', color: 'var(--text2)' }}>{f}</span>
                       ))}
                     </div>
+                  )}
+                  {matchedTpl && (
+                    <button
+                      onClick={() => onStartWorkflow({
+                        templateId: matchedTpl.id,
+                        workflowName: `${matchedTpl.name} — ${b.occasion}${b.reference ? ` (${b.reference})` : ''}`,
+                        sourceName: `Booking: ${b.occasion}${b.start_date ? ` on ${b.start_date}` : ''}`,
+                        triggerType: 'booking',
+                      })}
+                      style={{ marginTop: 8, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                      ⚙️ Start {matchedTpl.name} Workflow →
+                    </button>
                   )}
                 </div>
 

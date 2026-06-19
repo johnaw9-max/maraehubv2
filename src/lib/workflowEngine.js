@@ -160,6 +160,7 @@ const KEYWORD_TEMPLATE_MAP = [
   { keywords: ['fire'],                       template: 'Fire Safety Compliance Check' },
   { keywords: ['insurance'],                  template: 'Marae Insurance Renewal' },
   { keywords: ['wof', 'vehicle'],             template: 'Building Maintenance and Repair' },
+  { keywords: ['facility hire'],              template: 'Facility Hire Agreement' },
 ];
 
 export function matchWorkflowTemplate(serviceType, templates) {

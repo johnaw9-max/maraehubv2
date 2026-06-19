@@ -661,7 +661,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'bookings' && (
           <>
             <KpiBar tiles={kpis.bookings || []} loading={kpiLoading.bookings} count={5} />
-            <BookingsManager isTrustee={true} canApprove={isAdmin} />
+            <BookingsManager isTrustee={true} canApprove={isAdmin} onStartWorkflow={handleStartWorkflow} />
           </>
         )}
 
