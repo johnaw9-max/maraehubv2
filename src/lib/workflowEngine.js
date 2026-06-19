@@ -153,17 +153,38 @@ export async function getWorkflowTemplates() {
   return data || [];
 }
 
+// Explicit keyword → template name mappings checked before any fuzzy logic.
+const KEYWORD_TEMPLATE_MAP = [
+  { keywords: ['lawnmower', 'mower'],        template: 'Building Maintenance and Repair' },
+  { keywords: ['heat pump', 'heatpump'],     template: 'Heat Pump Service' },
+  { keywords: ['fire'],                       template: 'Fire Safety Compliance Check' },
+  { keywords: ['insurance'],                  template: 'Marae Insurance Renewal' },
+  { keywords: ['wof', 'vehicle'],             template: 'Building Maintenance and Repair' },
+];
+
 export function matchWorkflowTemplate(serviceType, templates) {
   if (!serviceType || !templates || !templates.length) return null;
   const type = serviceType.toLowerCase();
-  for (const tpl of templates) {
-    const tplWords = tpl.name.toLowerCase().split(/[\s\-&,/]+/).filter(w => w.length > 3);
-    if (tplWords.some(w => type.includes(w))) return tpl;
+
+  // 1. Explicit keyword mapping (highest priority)
+  for (const { keywords, template } of KEYWORD_TEMPLATE_MAP) {
+    if (keywords.some(k => type.includes(k))) {
+      const match = templates.find(t => t.name === template);
+      if (match) return match;
+    }
   }
-  const serviceWords = type.split(/[\s\-&,/]+/).filter(w => w.length > 3);
-  for (const tpl of templates) {
-    const tplLow = tpl.name.toLowerCase();
-    if (serviceWords.some(w => tplLow.includes(w))) return tpl;
+
+  // 2. Fuzzy fallback — require at least one significant word (5+ chars) shared
+  //    between service type and template name, excluding generic words that match
+  //    too broadly (e.g. "service", "check", "marae").
+  const STOPWORDS = new Set(['service', 'check', 'marae', 'repair', 'renewal', 'compliance', 'safety']);
+  const serviceWords = type.split(/[\s\-&,/]+/).filter(w => w.length >= 5 && !STOPWORDS.has(w));
+  if (serviceWords.length) {
+    for (const tpl of templates) {
+      const tplLow = tpl.name.toLowerCase();
+      if (serviceWords.some(w => tplLow.includes(w))) return tpl;
+    }
   }
+
   return null;
 }
