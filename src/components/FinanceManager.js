@@ -639,7 +639,7 @@ ${loanHtml}
             action={
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn-secondary" onClick={openSyncModal} style={{ fontSize: 12, padding: '7px 14px' }}>
-                  ↓ Sync from Bookings / Grants
+                  ↓ Re-sync / Backup
                 </button>
                 <button className="btn-primary" onClick={openAddIncome} style={{ fontSize: 13 }}>
                   + Add Income
@@ -1286,7 +1286,10 @@ ${loanHtml}
       {showSyncModal && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowSyncModal(false); }}>
           <div className="modal" style={{ maxWidth: 620 }}>
-            <div className="modal-title">Sync Income from Bookings &amp; Grants</div>
+            <div className="modal-title">Re-sync: Bookings &amp; Grants</div>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16, marginTop: -4, lineHeight: 1.5 }}>
+              Income records are auto-created when bookings are approved or grants are marked approved. Use this to recover any that were missed.
+            </p>
             {syncLoading ? (
               <div className="loading">Loading…</div>
             ) : (

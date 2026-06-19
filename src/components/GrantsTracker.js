@@ -149,6 +149,28 @@ export default function GrantsTracker() {
   async function handleStatusChange(id, newStatus) {
     await supabase.from('grants').update({ status: newStatus }).eq('id', id);
     setGrants(prev => prev.map(g => g.id === id ? { ...g, status: newStatus } : g));
+    if (newStatus === 'approved') {
+      const grant = grants.find(g => g.id === id);
+      if (grant) {
+        const { data: existing } = await supabase
+          .from('finance_income')
+          .select('id')
+          .eq('source_type', 'grant')
+          .eq('source_id', id)
+          .maybeSingle();
+        if (!existing) {
+          await supabase.from('finance_income').insert({
+            date: grant.decision_date || new Date().toISOString().split('T')[0],
+            description: `Grant income — ${grant.name} (${grant.funder || 'unknown funder'})`,
+            amount: parseFloat(grant.amount || 0),
+            category: 'Grant Income',
+            status: 'Confirmed',
+            source_type: 'grant',
+            source_id: id,
+          });
+        }
+      }
+    }
   }
 
   function setField(k, v) {

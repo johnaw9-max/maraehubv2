@@ -79,6 +79,26 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
           }
         });
     }
+    if (status === 'approved') {
+      const { data: existing } = await supabase
+        .from('finance_income')
+        .select('id')
+        .eq('source_type', 'booking')
+        .eq('source_id', booking.id)
+        .maybeSingle();
+      if (!existing) {
+        await supabase.from('finance_income').insert({
+          date: booking.start_date || new Date().toISOString().split('T')[0],
+          description: `Booking income — ${booking.occasion}`,
+          amount: 0,
+          category: 'Booking Income',
+          status: 'Pending',
+          source_type: 'booking',
+          source_id: booking.id,
+          notes: 'Auto-created on approval — update amount to record hire fee',
+        });
+      }
+    }
     fetchBookings();
   }
 
