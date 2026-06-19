@@ -1,51 +1,69 @@
 import { supabase } from './supabase';
 
 export async function startWorkflow(templateId, context = {}) {
+  console.log('[startWorkflow] START — templateId:', templateId, 'context:', context);
+
+  // 1) Load steps
+  console.log('[startWorkflow] loading workflow_steps for template', templateId);
   const { data: steps, error: stepsError } = await supabase
     .from('workflow_steps')
     .select('*')
     .eq('template_id', templateId)
     .order('step_order');
 
-  if (stepsError) throw stepsError;
+  if (stepsError) {
+    console.error('[startWorkflow] failed to load steps:', stepsError);
+    throw stepsError;
+  }
+  console.log('[startWorkflow] steps loaded:', steps?.length ?? 0, 'steps', steps);
 
+  // 2) Create workflow instance
+  const instancePayload = {
+    template_id: templateId,
+    name: context.name,
+    due_date: context.due_date || null,
+    created_by: context.assigned_to || null,
+    progress_pct: 0,
+    status: 'active',
+    entity_type: context.entity_type || null,
+    entity_id: context.entity_id || null,
+    entity_name: context.entity_name || null,
+    trigger_type: context.trigger_type || null,
+    trigger_date: context.trigger_date || null,
+  };
+  console.log('[startWorkflow] inserting workflow_instance with payload:', instancePayload);
   const { data: instance, error: instanceError } = await supabase
     .from('workflow_instances')
-    .insert({
-      template_id: templateId,
-      name: context.name,
-      due_date: context.due_date || null,
-      created_by: context.assigned_to || null,
-      progress_pct: 0,
-      status: 'active',
-      entity_type: context.entity_type || null,
-      entity_id: context.entity_id || null,
-      entity_name: context.entity_name || null,
-      trigger_type: context.trigger_type || null,
-      trigger_date: context.trigger_date || null,
-    })
+    .insert(instancePayload)
     .select()
     .single();
 
-  if (instanceError) throw instanceError;
+  if (instanceError) {
+    console.error('[startWorkflow] workflow_instance insert failed:', instanceError);
+    throw instanceError;
+  }
+  console.log('[startWorkflow] workflow_instance created — id:', instance.id, 'result:', instance);
 
-  // Create one parent task representing the whole workflow
+  // 3) Create parent task
+  const parentPayload = {
+    title: context.name,
+    status: 'open',
+    workflow_instance_id: instance.id,
+  };
+  console.log('[startWorkflow] attempting parent task insert with payload:', parentPayload);
   const { data: parentTask, error: parentError } = await supabase
     .from('tasks')
-    .insert({
-      title: context.name,
-      status: 'open',
-      workflow_instance_id: instance.id,
-    })
+    .insert(parentPayload)
     .select()
     .single();
 
   if (parentError) {
-    console.error('[startWorkflow] parent task insert failed:', parentError);
+    console.error('[startWorkflow] parent task insert FAILED — error:', parentError, 'payload was:', parentPayload);
     throw parentError;
   }
+  console.log('[startWorkflow] parent task insert SUCCESS — id:', parentTask.id, 'result:', parentTask);
 
-  // Create subtasks linked to the parent, one per workflow step
+  // 4) Create subtasks
   const subtasks = steps.map(s => ({
     title: s.title,
     description: s.description,
@@ -54,18 +72,17 @@ export async function startWorkflow(templateId, context = {}) {
     workflow_step_order: s.step_order,
     parent_task_id: parentTask.id,
   }));
-
+  console.log('[startWorkflow] attempting subtask insert —', subtasks.length, 'subtasks:', subtasks);
   const { data: insertedSubtasks, error: subtasksError } = await supabase
     .from('tasks')
     .insert(subtasks)
     .select();
 
   if (subtasksError) {
-    console.error('[startWorkflow] subtasks insert failed:', subtasksError);
+    console.error('[startWorkflow] subtasks insert FAILED — error:', subtasksError, 'payload was:', subtasks);
     throw subtasksError;
   }
-
-  console.log('[startWorkflow] created parent', parentTask.id, 'with', insertedSubtasks?.length, 'subtasks for instance', instance.id);
+  console.log('[startWorkflow] subtasks insert SUCCESS —', insertedSubtasks?.length, 'inserted for instance', instance.id);
 
   return instance;
 }
