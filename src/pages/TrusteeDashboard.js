@@ -157,6 +157,12 @@ function StarBar({ label, value }) {
 export default function TrusteeDashboard({ profile, onLogout }) {
   const isAdmin = profile?.trustee_role === 'admin';
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [pendingWorkflow, setPendingWorkflow] = useState(null);
+
+  function handleStartWorkflow(suggestion) {
+    setPendingWorkflow(suggestion);
+    setActiveTab('workflows');
+  }
 
   // Dashboard state
   const [stats, setStats] = useState({ bookings: 0, projects: 0, assets: 0, pending: 0 });
@@ -649,7 +655,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         )}
 
         {/* ── BOARD VIEW ─────────────────────────────────────────────────── */}
-        {activeTab === 'board' && <BoardDashboard onNavigate={setActiveTab} />}
+        {activeTab === 'board' && <BoardDashboard onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} />}
 
         {/* ── BOOKINGS ───────────────────────────────────────────────────── */}
         {activeTab === 'bookings' && (
@@ -682,7 +688,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'assets' && (
           <>
             <KpiBar tiles={kpis.assets || []} loading={kpiLoading.assets} count={5} />
-            <AssetsManager />
+            <AssetsManager onStartWorkflow={handleStartWorkflow} />
           </>
         )}
 
@@ -737,7 +743,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         )}
 
         {/* ── WORKFLOWS ──────────────────────────────────────────────────── */}
-        {activeTab === 'workflows' && <WorkflowEngine />}
+        {activeTab === 'workflows' && <WorkflowEngine pendingWorkflow={pendingWorkflow} onPendingConsumed={() => setPendingWorkflow(null)} />}
 
         {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
       </div>

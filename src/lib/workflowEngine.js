@@ -152,3 +152,18 @@ export async function getWorkflowTemplates() {
 
   return data || [];
 }
+
+export function matchWorkflowTemplate(serviceType, templates) {
+  if (!serviceType || !templates || !templates.length) return null;
+  const type = serviceType.toLowerCase();
+  for (const tpl of templates) {
+    const tplWords = tpl.name.toLowerCase().split(/[\s\-&,/]+/).filter(w => w.length > 3);
+    if (tplWords.some(w => type.includes(w))) return tpl;
+  }
+  const serviceWords = type.split(/[\s\-&,/]+/).filter(w => w.length > 3);
+  for (const tpl of templates) {
+    const tplLow = tpl.name.toLowerCase();
+    if (serviceWords.some(w => tplLow.includes(w))) return tpl;
+  }
+  return null;
+}

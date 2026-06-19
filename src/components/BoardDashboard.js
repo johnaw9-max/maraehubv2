@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { TASK_SOURCES, taskSource } from '../lib/taskSync';
+import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ const STATUS_STYLES = {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function BoardDashboard({ onNavigate }) {
+export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [d, setD]             = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod]   = useState('month');
@@ -83,7 +84,7 @@ export default function BoardDashboard({ onNavigate }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -98,6 +99,7 @@ export default function BoardDashboard({ onNavigate }) {
       supabase.from('finance_income').select('amount').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_expenses').select('amount, category').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
+      supabase.from('workflow_templates').select('id, name').order('name'),
     ]);
     setD({
       bookings:     bookRes.data   || [],
@@ -114,6 +116,7 @@ export default function BoardDashboard({ onNavigate }) {
       finIncome:    finIncRes.data  || [],
       finExpenses:  finExpRes.data  || [],
       finBudgets:   finBudRes.data  || [],
+      templates:    tplRes.data    || [],
       fyYear,
     });
     setLoading(false);
@@ -812,19 +815,35 @@ export default function BoardDashboard({ onNavigate }) {
           ) : upcomingReminders.map(r => {
             const overdue = new Date(r.due_date + 'T12:00:00') < today;
             const daysLeft = Math.ceil((new Date(r.due_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
+            const matchedTpl = matchWorkflowTemplate(r.type, d.templates || []);
+            const assetName = assetMap[r.asset_id] || 'Asset';
             return (
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--cream2)', gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: overdue ? 600 : 400, color: overdue ? 'var(--danger)' : 'var(--text1)' }}>
-                    {assetMap[r.asset_id] || 'Asset'} — {r.type}
+                    {assetName} — {r.type}
                   </div>
                   <div style={{ fontSize: 11, color: overdue ? 'var(--danger)' : 'var(--text3)' }}>
                     {overdue ? `Overdue by ${Math.abs(daysLeft)}d` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(r.due_date)}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, background: overdue ? '#faeae7' : '#fdf0dc', color: overdue ? 'var(--danger)' : '#7a4f00', borderRadius: 20, padding: '2px 8px', fontWeight: 600, flexShrink: 0 }}>
-                  {overdue ? 'Overdue' : 'Due soon'}
-                </span>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                  {matchedTpl && onStartWorkflow && (
+                    <button
+                      onClick={() => onStartWorkflow({
+                        templateId: matchedTpl.id,
+                        workflowName: `${matchedTpl.name} — ${assetName}`,
+                        sourceName: `${assetName} — ${r.type} due ${r.due_date}`,
+                        triggerType: 'service_reminder',
+                      })}
+                      style={{ fontSize: 11, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                      ⚙️ Start Workflow →
+                    </button>
+                  )}
+                  <span style={{ fontSize: 10, background: overdue ? '#faeae7' : '#fdf0dc', color: overdue ? 'var(--danger)' : '#7a4f00', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                    {overdue ? 'Overdue' : 'Due soon'}
+                  </span>
+                </div>
               </div>
             );
           })}

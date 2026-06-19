@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { startWorkflow, getActiveWorkflows } from '../lib/workflowEngine';
 
-export default function WorkflowEngine() {
+export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
   const [templates, setTemplates] = useState([]);
   const [instances, setInstances] = useState([]);
   const [instanceTasks, setInstanceTasks] = useState({});
@@ -44,6 +44,15 @@ export default function WorkflowEngine() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!pendingWorkflow) return;
+    setSelectedTemplate(pendingWorkflow.templateId || '');
+    setWorkflowName(pendingWorkflow.workflowName || '');
+    setSourceName(pendingWorkflow.sourceName || '');
+    setTriggerType(pendingWorkflow.triggerType || 'service_reminder');
+    if (onPendingConsumed) onPendingConsumed();
+  }, [pendingWorkflow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleStart(e) {
     e.preventDefault();

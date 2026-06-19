@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
+import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
 const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Other'];
 const CONDITIONS = ['good', 'fair', 'poor'];
@@ -10,9 +11,10 @@ const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technol
 const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '' };
 const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', notes: '' };
 
-export default function AssetsManager() {
+export default function AssetsManager({ onStartWorkflow }) {
   const [assets, setAssets] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -28,20 +30,23 @@ export default function AssetsManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [assetRes, reminderRes] = await Promise.all([
+    const [assetRes, reminderRes, tplRes] = await Promise.all([
       supabase.from('assets').select('*').order('created_at', { ascending: false }),
       supabase.from('service_reminders').select('*').order('due_date', { ascending: true }),
+      supabase.from('workflow_templates').select('id, name').order('name'),
     ]);
     const assetData = assetRes.data || [];
     const reminderData = reminderRes.data || [];
+    const tplData = tplRes.data || [];
     setAssets(assetData);
     setReminders(reminderData);
+    setTemplates(tplData);
     setLoading(false);
-    createOverdueTasks(assetData, reminderData);
-    createUpcomingTasks(assetData, reminderData);
+    createOverdueTasks(assetData, reminderData, tplData);
+    createUpcomingTasks(assetData, reminderData, tplData);
   }
 
-  async function createOverdueTasks(assetData, reminderData) {
+  async function createOverdueTasks(assetData, reminderData, tplData) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayStr = new Date().toISOString().split('T')[0];
     const assetMap = {};
@@ -50,6 +55,7 @@ export default function AssetsManager() {
       r.due_date && new Date(r.due_date + 'T12:00:00') < today
     );
     for (const r of overdue) {
+      if (matchWorkflowTemplate(r.type, tplData)) continue;
       const assetName = assetMap[r.asset_id] || 'Asset';
       await ensureTask({
         title: `SERVICE: ${assetName} — ${r.type}`,
@@ -61,7 +67,7 @@ export default function AssetsManager() {
     }
   }
 
-  async function createUpcomingTasks(assetData, reminderData) {
+  async function createUpcomingTasks(assetData, reminderData, tplData) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
     const assetMap = {};
@@ -72,6 +78,7 @@ export default function AssetsManager() {
       new Date(r.due_date + 'T12:00:00') <= in30
     );
     for (const r of upcoming) {
+      if (matchWorkflowTemplate(r.type, tplData)) continue;
       const assetName = assetMap[r.asset_id] || 'Asset';
       await ensureUpcomingTask({
         sourceId: r.id,
@@ -184,6 +191,18 @@ export default function AssetsManager() {
   // Alerts — all overdue/due-soon across all assets
   const alerts = reminders.filter(r => getReminderStatus(r) !== 'ok');
 
+  // Workflow suggestions — overdue/due-soon reminders that match a workflow template
+  const assetNameMap = {};
+  assets.forEach(a => { assetNameMap[a.id] = a.name; });
+  const workflowSuggestions = reminders
+    .filter(r => getReminderStatus(r) !== 'ok')
+    .map(r => {
+      const tpl = matchWorkflowTemplate(r.type, templates);
+      if (!tpl) return null;
+      return { reminder: r, template: tpl, assetName: assetNameMap[r.asset_id] || 'Asset', isOverdue: getReminderStatus(r) === 'overdue' };
+    })
+    .filter(Boolean);
+
   if (selectedAsset) {
     const assetReminders = getAssetReminders(selectedAsset.id);
     return (
@@ -213,6 +232,7 @@ export default function AssetsManager() {
               const status = getReminderStatus(r);
               const days = getDaysUntil(r.due_date);
               const daysText = days < 0 ? `${Math.abs(days)} days overdue` : days === 0 ? 'Due today' : `${days} days away`;
+              const matchedTpl = matchWorkflowTemplate(r.type, templates);
               return (
                 <div key={r.id} style={{
                   borderRadius: 8, padding: '12px 14px', marginBottom: 10, border: '1px solid',
@@ -233,6 +253,18 @@ export default function AssetsManager() {
                     <span style={{ color: 'var(--text3)' }}>🔄 {RECURRING_LABELS[r.recurring] || 'Annual'}</span>
                   </div>
                   {r.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 8 }}>{r.notes}</div>}
+                  {(status === 'overdue' || status === 'due-soon') && matchedTpl && onStartWorkflow && (
+                    <button
+                      onClick={() => onStartWorkflow({
+                        templateId: matchedTpl.id,
+                        workflowName: `${matchedTpl.name} — ${selectedAsset.name}`,
+                        sourceName: `${selectedAsset.name} — ${r.type} due ${r.due_date}`,
+                        triggerType: 'service_reminder',
+                      })}
+                      style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 4, marginRight: 8 }}>
+                      ⚙️ Start {matchedTpl.name} Workflow →
+                    </button>
+                  )}
                   {status === 'overdue' && (
                     <button onClick={() => handleMarkServiced(r)}
                       style={{ background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 4 }}>
@@ -314,6 +346,35 @@ export default function AssetsManager() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* WORKFLOW SUGGESTIONS */}
+      {workflowSuggestions.length > 0 && onStartWorkflow && (
+        <div style={{ background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#7a5500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            ⚙️ Workflows Available ({workflowSuggestions.length})
+          </div>
+          {workflowSuggestions.map(({ reminder: r, template, assetName, isOverdue }) => (
+            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '6px 0', borderBottom: '1px solid rgba(200,144,42,0.15)', gap: 12 }}>
+              <div>
+                <strong>{assetName}</strong> — {r.type}
+                <span style={{ marginLeft: 8, fontSize: 11, color: isOverdue ? 'var(--danger)' : '#c8902a', fontWeight: 600 }}>
+                  ({isOverdue ? 'Overdue' : 'Due soon'}: {formatDate(r.due_date)})
+                </span>
+              </div>
+              <button
+                onClick={() => onStartWorkflow({
+                  templateId: template.id,
+                  workflowName: `${template.name} — ${assetName}`,
+                  sourceName: `${assetName} — ${r.type} due ${r.due_date}`,
+                  triggerType: 'service_reminder',
+                })}
+                style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}>
+                Start {template.name} Workflow →
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
