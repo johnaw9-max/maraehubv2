@@ -100,7 +100,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('finance_expenses').select('amount, category').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
       supabase.from('workflow_templates').select('id, name').order('name'),
-      supabase.from('workflow_instances').select('id, name, status, started_at, entity_name, trigger_type, updated_at').order('started_at', { ascending: false }),
+      supabase.from('workflow_instances').select('id, name, status, started_at, entity_name, trigger_type').order('started_at', { ascending: false }),
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
     ]);
@@ -252,7 +252,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   const activeWorkflows             = (d.workflowInstances || []).filter(w => w.status === 'active');
   const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w =>
-    w.status === 'completed' && w.updated_at && new Date(w.updated_at) >= monthStart
+    w.status === 'completed' && w.completed_at && new Date(w.completed_at) >= monthStart
   );
 
   const completedTasksByInstance = {};
