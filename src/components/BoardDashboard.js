@@ -84,7 +84,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -100,23 +100,29 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('finance_expenses').select('amount, category').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
       supabase.from('workflow_templates').select('id, name').order('name'),
+      supabase.from('workflow_instances').select('id, name, status, started_at, entity_name, trigger_type, updated_at').order('started_at', { ascending: false }),
+      supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
+      supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
     ]);
     setD({
-      bookings:     bookRes.data   || [],
-      projects:     projRes.data   || [],
-      actions:      actRes.data    || [],
-      grants:       grantRes.data  || [],
-      reminders:    remRes.data    || [],
-      assets:       assetRes.data  || [],
-      tasks:        taskRes.data   || [],
-      feedback:     feedRes.data   || [],
-      maraeName:    settingsRes.data?.marae_name || 'Our Marae',
-      compliance:   compRes.data   || [],
-      goals:        goalsRes.data  || [],
-      finIncome:    finIncRes.data  || [],
-      finExpenses:  finExpRes.data  || [],
-      finBudgets:   finBudRes.data  || [],
-      templates:    tplRes.data    || [],
+      bookings:          bookRes.data   || [],
+      projects:          projRes.data   || [],
+      actions:           actRes.data    || [],
+      grants:            grantRes.data  || [],
+      reminders:         remRes.data    || [],
+      assets:            assetRes.data  || [],
+      tasks:             taskRes.data   || [],
+      feedback:          feedRes.data   || [],
+      maraeName:         settingsRes.data?.marae_name || 'Our Marae',
+      compliance:        compRes.data   || [],
+      goals:             goalsRes.data  || [],
+      finIncome:         finIncRes.data  || [],
+      finExpenses:       finExpRes.data  || [],
+      finBudgets:        finBudRes.data  || [],
+      templates:         tplRes.data    || [],
+      workflowInstances: wfInstRes.data  || [],
+      workflowTasks:     wfTaskRes.data  || [],
+      pendingIncome:     pendIncRes.data  || [],
       fyYear,
     });
     setLoading(false);
@@ -239,6 +245,32 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   const todayDisplay = new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  // ─── WORKFLOW INSIGHT CALCULATIONS ────────────────────────────────────────
+
+  const monthStart       = new Date(today.getFullYear(), today.getMonth(), 1);
+  const fourteenDaysAgo  = new Date(today); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  const activeWorkflows             = (d.workflowInstances || []).filter(w => w.status === 'active');
+  const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w =>
+    w.status === 'completed' && w.updated_at && new Date(w.updated_at) >= monthStart
+  );
+
+  const completedTasksByInstance = {};
+  (d.workflowTasks || []).forEach(t => {
+    if (t.status === 'completed' && t.workflow_instance_id) {
+      if (!completedTasksByInstance[t.workflow_instance_id]) completedTasksByInstance[t.workflow_instance_id] = [];
+      completedTasksByInstance[t.workflow_instance_id].push(t);
+    }
+  });
+
+  const stalledWorkflows = activeWorkflows.filter(w => {
+    if (!w.started_at || new Date(w.started_at) > fourteenDaysAgo) return false;
+    return (completedTasksByInstance[w.id] || []).length === 0;
+  });
+
+  const activeWorkflowsWithSource  = activeWorkflows.filter(w => w.entity_name);
+  const pendingBookingIncomeCount   = (d.pendingIncome || []).length;
+
   // ─── SMART INSIGHTS ────────────────────────────────────────────────────────
 
   const redInsights   = [];
@@ -267,7 +299,20 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   if (overdueReminders.length > 0)
     redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
 
+  if (stalledWorkflows.length === 1)
+    redInsights.push(`Workflow "${stalledWorkflows[0].name}" has had no progress in 14+ days — check if it needs attention`);
+  else if (stalledWorkflows.length > 1)
+    redInsights.push(`${stalledWorkflows.length} workflows have had no progress in 14+ days: ${stalledWorkflows.map(w => w.name).join(', ')}`);
+
   // AMBER
+  if (pendingBookingIncomeCount > 0)
+    amberInsights.push(`${pendingBookingIncomeCount} booking income record${pendingBookingIncomeCount !== 1 ? 's need' : ' needs'} the hire fee entered — update in Finance`);
+
+  if (activeWorkflowsWithSource.length === 1)
+    amberInsights.push(`Active: ${activeWorkflowsWithSource[0].name} (from ${activeWorkflowsWithSource[0].entity_name})`);
+  else if (activeWorkflowsWithSource.length > 1)
+    amberInsights.push(`${activeWorkflowsWithSource.length} active workflows running — ${activeWorkflowsWithSource.slice(0, 2).map(w => `${w.name} (from ${w.entity_name})`).join(', ')}${activeWorkflowsWithSource.length > 2 ? ` +${activeWorkflowsWithSource.length - 2} more` : ''}`);
+
   if (upcomingAutoTasks.length > 0)
     amberInsights.push(`${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged across your modules — review and prepare before they become overdue`);
 
@@ -520,25 +565,53 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       </div>
 
       {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
-      {INSIGHTS.length > 0 && (
+      {(INSIGHTS.length > 0 || d.workflowInstances.length > 0) && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="💡" title="Insights and Recommendations" count={INSIGHTS.length} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {INSIGHTS.map((ins, i) => {
-              const s = {
-                red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
-                amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
-                green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
-              }[ins.level];
-              const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
-              return (
-                <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8, ...s }}>
-                  <span style={{ flexShrink: 0, marginTop: 1 }}>{icon}</span>
-                  {ins.text}
+          <SectionTitle icon="💡" title="Insights and Recommendations" count={INSIGHTS.length || undefined} />
+          {INSIGHTS.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {INSIGHTS.map((ins, i) => {
+                const s = {
+                  red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
+                  amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
+                  green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
+                }[ins.level];
+                const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
+                return (
+                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8, ...s }}>
+                    <span style={{ flexShrink: 0, marginTop: 1 }}>{icon}</span>
+                    {ins.text}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {d.workflowInstances.length > 0 && (
+            <div style={{ marginTop: INSIGHTS.length > 0 ? 14 : 0, paddingTop: INSIGHTS.length > 0 ? 12 : 0, borderTop: INSIGHTS.length > 0 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
+                  <div style={{ fontSize: 10, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
+                  <div style={{ fontSize: 10, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
+                </div>
+                {activeWorkflows.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
+                    {activeWorkflows.slice(0, 3).map(w => (
+                      <div key={w.id} style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
+                        {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
+                      </div>
+                    ))}
+                    {activeWorkflows.length > 3 && <div style={{ fontSize: 10, color: 'var(--text3)' }}>+{activeWorkflows.length - 3} more active</div>}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
