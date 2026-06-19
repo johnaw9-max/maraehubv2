@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import PrivacyPolicy from './PrivacyPolicy';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
@@ -14,7 +15,13 @@ const NOTIF_LABELS = [
   { key: 'goals',      icon: '🎯', label: 'Goal Status Changes',   desc: 'Goals marked At Risk or Completed' },
 ];
 
+const SETTINGS_TABS = [
+  { key: 'settings', label: 'Settings' },
+  { key: 'privacy',  label: 'Privacy & Data' },
+];
+
 export default function MaraeSettings({ profile, isAdmin }) {
+  const [activeSubTab, setActiveSubTab] = useState('settings');
   const [form, setForm] = useState(EMPTY_FORM);
   const [settingsId, setSettingsId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -209,6 +216,29 @@ export default function MaraeSettings({ profile, isAdmin }) {
 
   return (
     <div style={{ maxWidth: 640 }}>
+      {/* Sub-tab navigation */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
+        {SETTINGS_TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveSubTab(t.key)}
+            style={{
+              background: 'none', border: 'none', padding: '8px 18px',
+              fontSize: 14, fontWeight: activeSubTab === t.key ? 600 : 400,
+              color: activeSubTab === t.key ? 'var(--accent)' : 'var(--text3)',
+              borderBottom: activeSubTab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
+              marginBottom: -2, cursor: 'pointer', transition: 'color 0.15s',
+              fontFamily: activeSubTab === t.key ? 'Playfair Display, serif' : 'DM Sans, sans-serif',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeSubTab === 'privacy' && <PrivacyPolicy />}
+
+      {activeSubTab === 'settings' && <>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 22 }}>Settings</h2>
         <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Manage your marae details and system configuration</p>
@@ -565,6 +595,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </button>
         </div>
       </div>
+      </>}
     </div>
   );
 }
