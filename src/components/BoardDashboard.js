@@ -252,9 +252,11 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   console.log('workflowInstances', d.workflowInstances);
   const activeWorkflows             = (d.workflowInstances || []).filter(w => w.status === 'active');
-  const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w =>
-    w.status === 'complete' && w.completed_at && new Date(w.completed_at) >= monthStart
-  );
+  const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w => {
+    const pass = w.status === 'complete' && w.completed_at && new Date(w.completed_at) >= monthStart;
+    console.log('filter check', w.status, w.completed_at, new Date(w.completed_at), '>=', monthStart, '→', pass);
+    return pass;
+  });
 
   const completedTasksByInstance = {};
   (d.workflowTasks || []).forEach(t => {
