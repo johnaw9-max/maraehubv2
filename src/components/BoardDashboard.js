@@ -250,6 +250,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const monthStart       = new Date(today.getFullYear(), today.getMonth(), 1);
   const fourteenDaysAgo  = new Date(today); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
+  console.log('workflowInstances', d.workflowInstances);
   const activeWorkflows             = (d.workflowInstances || []).filter(w => w.status === 'active');
   const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w =>
     w.status === 'complete' && w.completed_at && new Date(w.completed_at) >= monthStart
