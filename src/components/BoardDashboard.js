@@ -599,7 +599,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
                   <div style={{ fontSize: 10, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{(() => { const v = completedWorkflowsThisMonth.length; console.log('JSX render completedWorkflowsThisMonth.length:', v); return v; })()}</div>
                   <div style={{ fontSize: 10, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
                 </div>
                 {activeWorkflows.length > 0 && (
