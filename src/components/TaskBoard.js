@@ -131,15 +131,41 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus })
               padding: '5px 0',
               borderBottom: idx < subtasks.length - 1 ? '1px solid var(--border)' : 'none',
             }}>
-              <span style={{
-                flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
-                background: sub.status === 'completed' ? 'var(--brand)' : '#e8eef8',
-                color: sub.status === 'completed' ? '#fff' : '#1a4a8a',
-                fontSize: 9, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {sub.status === 'completed' ? '✓' : (sub.workflow_step_order || idx + 1)}
-              </span>
+              {sub.status === 'completed' ? (
+                <span style={{
+                  flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
+                  background: 'var(--brand)', color: '#fff',
+                  fontSize: 9, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  ✓
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  title="Mark as Done"
+                  onClick={() => onChangeSubtaskStatus(sub, 'completed')}
+                  style={{
+                    flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
+                    background: '#e8eef8', color: '#1a4a8a',
+                    fontSize: 9, fontWeight: 700, border: '1.5px solid #b8ccee',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', padding: 0,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'var(--brand)';
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.borderColor = 'var(--brand)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#e8eef8';
+                    e.currentTarget.style.color = '#1a4a8a';
+                    e.currentTarget.style.borderColor = '#b8ccee';
+                  }}
+                >
+                  {sub.workflow_step_order || idx + 1}
+                </button>
+              )}
               <span style={{
                 flex: 1, fontSize: 11, minWidth: 0,
                 color: sub.status === 'completed' ? 'var(--text3)' : 'var(--text2)',
