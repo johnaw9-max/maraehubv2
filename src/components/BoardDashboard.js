@@ -257,6 +257,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     console.log('filter check', w.status, w.completed_at, new Date(w.completed_at), '>=', monthStart, '→', pass);
     return pass;
   });
+  console.log('FINAL completedWorkflowsThisMonth.length:', completedWorkflowsThisMonth.length);
 
   const completedTasksByInstance = {};
   (d.workflowTasks || []).forEach(t => {
