@@ -148,6 +148,7 @@ export default function ContactsManager() {
 
   async function handleSaveUser() {
     if (!userForm.full_name.trim()) { setError('Full name is required'); return; }
+    if (userForm.role === 'trustee' && !userForm.email.trim()) { setError('Trustees must have an email address to log in and receive permissions'); return; }
     setSaving(true); setError(''); setSuccess('');
     if (editUserId) {
       const updates = {
@@ -330,7 +331,10 @@ export default function ContactsManager() {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">
-                Email{!editUserId && <span style={{ fontWeight: 400, color: 'var(--text3)' }}> (optional)</span>}
+                Email
+                {userForm.role === 'trustee'
+                  ? <span style={{ color: 'var(--danger, #c0392b)' }}> *</span>
+                  : !editUserId && <span style={{ fontWeight: 400, color: 'var(--text3)' }}> (optional)</span>}
               </label>
               <input type="email" className="form-input" value={userForm.email} onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. hemi@email.com" />
             </div>
