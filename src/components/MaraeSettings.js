@@ -45,6 +45,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
 
+  // Change password state
+  const [pwNew, setPwNew]         = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwSaving, setPwSaving]   = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwError, setPwError]     = useState('');
+
   // Checklist template state
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -208,6 +215,22 @@ export default function MaraeSettings({ profile, isAdmin }) {
     const { error } = await supabase.from('profiles').update({ trustee_role: newRole }).eq('id', trusteeId);
     if (error) { setTrusteePermsError(error.message); return; }
     fetchTrustees();
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess(false);
+    if (pwNew.length < 6)       { setPwError('Password must be at least 6 characters.'); return; }
+    if (pwNew !== pwConfirm)    { setPwError('Passwords do not match.'); return; }
+    setPwSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: pwNew });
+    setPwSaving(false);
+    if (error) { setPwError(error.message); return; }
+    setPwNew('');
+    setPwConfirm('');
+    setPwSuccess(true);
+    setTimeout(() => setPwSuccess(false), 4000);
   }
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -445,6 +468,43 @@ export default function MaraeSettings({ profile, isAdmin }) {
         <button className="btn-primary" onClick={saveNotifPrefs} disabled={notifSaving} style={{ fontSize: 14 }}>
           {notifSaving ? 'Saving...' : 'Save Notification Preferences'}
         </button>
+      </div>
+
+      {/* ── CHANGE PASSWORD ── */}
+      <div className="panel" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Change Password
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+          Set a new password for your account. Must be at least 6 characters.
+        </p>
+        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {pwError   && <div className="alert alert-error">{pwError}</div>}
+          {pwSuccess && <div className="alert alert-success">✓ Password updated successfully.</div>}
+          <div className="form-group">
+            <label className="form-label">New Password</label>
+            <input
+              className="form-input"
+              type="password"
+              value={pwNew}
+              onChange={e => setPwNew(e.target.value)}
+              placeholder="At least 6 characters"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Confirm New Password</label>
+            <input
+              className="form-input"
+              type="password"
+              value={pwConfirm}
+              onChange={e => setPwConfirm(e.target.value)}
+              placeholder="Repeat your new password"
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={pwSaving} style={{ alignSelf: 'flex-start', fontSize: 14 }}>
+            {pwSaving ? 'Saving...' : 'Update Password'}
+          </button>
+        </form>
       </div>
 
       {/* ── TRUSTEE PERMISSIONS (admin only) ── */}
