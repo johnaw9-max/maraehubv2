@@ -47,6 +47,8 @@ export default function App() {
       setProfileError(error.message);
     } else {
       setProfile(data);
+      console.log('[App] fetchProfile data:', data);
+      console.log('[App] fetchProfile data.role:', data?.role, '| typeof:', typeof data?.role);
     }
     setLoading(false);
   }
