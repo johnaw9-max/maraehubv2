@@ -250,14 +250,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const monthStart       = new Date(today.getFullYear(), today.getMonth(), 1);
   const fourteenDaysAgo  = new Date(today); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  console.log('workflowInstances', d.workflowInstances);
   const activeWorkflows             = (d.workflowInstances || []).filter(w => w.status === 'active');
-  const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w => {
-    const pass = w.status === 'complete' && w.completed_at && new Date(w.completed_at) >= monthStart;
-    console.log('filter check', w.status, w.completed_at, new Date(w.completed_at), '>=', monthStart, '→', pass);
-    return pass;
-  });
-  console.log('FINAL completedWorkflowsThisMonth.length:', completedWorkflowsThisMonth.length);
+  const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w =>
+    w.status === 'complete' && w.completed_at && new Date(w.completed_at) >= monthStart
+  );
 
   const completedTasksByInstance = {};
   (d.workflowTasks || []).forEach(t => {
@@ -599,7 +595,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
                   <div style={{ fontSize: 10, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{(() => { const v = completedWorkflowsThisMonth.length; console.log('JSX render completedWorkflowsThisMonth.length:', v); return v; })()}</div>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
                   <div style={{ fontSize: 10, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
                 </div>
                 {activeWorkflows.length > 0 && (
