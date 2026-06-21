@@ -64,7 +64,10 @@ export default function App() {
     );
   }
 
-  if (recovering) return <SetNewPasswordForm onDone={() => setRecovering(false)} />;
+  if (recovering) return <SetNewPasswordForm onDone={() => {
+    if (session) fetchProfile(session.user.id);
+    setRecovering(false);
+  }} />;
 
   if (!session) return <LoginPage />;
 
