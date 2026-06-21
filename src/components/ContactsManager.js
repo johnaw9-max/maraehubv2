@@ -59,10 +59,11 @@ export default function ContactsManager() {
   const [filter, setFilter]           = useState('all');
 
   // User form
-  const [showUserForm, setShowUserForm]     = useState(false);
-  const [editUserId, setEditUserId]         = useState(null);
-  const [editUserSource, setEditUserSource] = useState('profiles');
-  const [userForm, setUserForm]             = useState(EMPTY_USER_FORM);
+  const [showUserForm, setShowUserForm]         = useState(false);
+  const [editUserId, setEditUserId]             = useState(null);
+  const [editUserSource, setEditUserSource]     = useState('profiles');
+  const [editUserOriginalEmail, setEditUserOriginalEmail] = useState('');
+  const [userForm, setUserForm]                 = useState(EMPTY_USER_FORM);
 
   // Contractor form
   const [showContractorForm, setShowContractorForm] = useState(false);
@@ -141,6 +142,7 @@ export default function ContactsManager() {
     setUserForm({ full_name: u.full_name || '', email: u.email || '', password: '', phone: u.phone || '', role: u.role, notes: u.notes || '' });
     setEditUserId(u.id);
     setEditUserSource(u._source || 'profiles');
+    setEditUserOriginalEmail(u.email || '');
     setError(''); setSuccess('');
     setShowUserForm(true);
     setShowContractorForm(false);
@@ -151,15 +153,26 @@ export default function ContactsManager() {
     if (userForm.role === 'trustee' && !userForm.email.trim()) { setError('Trustees must have an email address to log in and receive permissions'); return; }
     setSaving(true); setError(''); setSuccess('');
     if (editUserId) {
-      const updates = {
-        full_name: userForm.full_name.trim(),
-        role:      userForm.role,
-        email:     userForm.email.trim()  || null,
-        phone:     userForm.phone.trim()  || null,
-        notes:     userForm.notes.trim()  || null,
-      };
-      const { error: err } = await supabase.from(editUserSource).update(updates).eq('id', editUserId);
-      if (err) { setError(err.message); setSaving(false); return; }
+      const isUpgrade = editUserSource === 'contacts' && !editUserOriginalEmail && userForm.role === 'trustee' && userForm.email.trim();
+      if (isUpgrade) {
+        if (!userForm.password || userForm.password.length < 6) { setError('Password min 6 chars'); setSaving(false); return; }
+        const { data: sd, error: se } = await supabase.auth.signUp({ email: userForm.email.trim(), password: userForm.password });
+        if (se) { setError(se.message); setSaving(false); return; }
+        if (sd?.user) {
+          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null });
+          await supabase.from('contacts').delete().eq('id', editUserId);
+        }
+      } else {
+        const updates = {
+          full_name: userForm.full_name.trim(),
+          role:      userForm.role,
+          email:     userForm.email.trim()  || null,
+          phone:     userForm.phone.trim()  || null,
+          notes:     userForm.notes.trim()  || null,
+        };
+        const { error: err } = await supabase.from(editUserSource).update(updates).eq('id', editUserId);
+        if (err) { setError(err.message); setSaving(false); return; }
+      }
       setSuccess('Details updated.');
     } else {
       if (userForm.email.trim()) {
@@ -343,7 +356,7 @@ export default function ContactsManager() {
               <input type="tel" className="form-input" value={userForm.phone} onChange={e => setUserForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. 021 123 4567" />
             </div>
           </div>
-          {!editUserId && userForm.email.trim() && (
+          {(!editUserId || (editUserSource === 'contacts' && !editUserOriginalEmail && userForm.role === 'trustee')) && userForm.email.trim() && (
             <div className="form-group">
               <label className="form-label">Temporary Password *</label>
               <input type="password" className="form-input" value={userForm.password} onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
