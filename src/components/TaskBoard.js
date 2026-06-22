@@ -43,7 +43,7 @@ function isCompletedToday(task) {
 
 // ─── WORKFLOW PARENT CARD ─────────────────────────────────────────────────────
 
-function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus }) {
+function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, commentCount, onOpenComments }) {
   const [expanded, setExpanded] = useState(false);
   const total = subtasks.length;
   const done = subtasks.filter(t => t.status === 'completed').length;
@@ -110,6 +110,30 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus })
           }}
         >
           {expanded ? '▲ Hide Steps' : '▼ Show Steps'}
+        </button>
+        <button
+          onClick={() => onOpenComments(task)}
+          title="View updates"
+          style={{
+            background: commentCount > 0 ? '#e8eef8' : 'var(--surface2)',
+            color: commentCount > 0 ? '#1a4a8a' : 'var(--text3)',
+            border: `1px solid ${commentCount > 0 ? '#b8ccee' : 'var(--border)'}`,
+            borderRadius: 6, padding: '4px 8px', fontSize: 13,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+            flexShrink: 0,
+          }}
+        >
+          💬
+          {commentCount > 0 && (
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              background: 'var(--brand)', color: '#fff',
+              borderRadius: 10, padding: '0 5px', lineHeight: '16px',
+              minWidth: 16, textAlign: 'center', display: 'inline-block',
+            }}>
+              {commentCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => onDelete(task.id)}
@@ -710,6 +734,8 @@ export default function TaskBoard() {
                         subtasks={subtasksByParent[task.id] || []}
                         onDelete={setConfirmDeleteId}
                         onChangeSubtaskStatus={changeTaskStatus}
+                        commentCount={commentCounts[task.id] || 0}
+                        onOpenComments={setCommentTask}
                       />
                     ) : (
                       <TaskCard
