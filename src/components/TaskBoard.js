@@ -218,8 +218,14 @@ function CommentModal({ task, onClose, onCommentPosted }) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
 
-  useEffect(() => { fetchComments(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchComments();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserEmail(user?.email || '');
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchComments() {
     setLoading(true);
@@ -256,6 +262,13 @@ function CommentModal({ task, onClose, onCommentPosted }) {
       fetchComments();
       onCommentPosted(task.id);
     }
+  }
+
+  async function handleDelete(commentId) {
+    if (!window.confirm('Delete this comment?')) return;
+    await supabase.from('task_comments').delete().eq('id', commentId);
+    setComments(prev => prev.filter(c => c.id !== commentId));
+    onCommentPosted(task.id);
   }
 
   function fmtCommentTime(ts) {
@@ -295,6 +308,19 @@ function CommentModal({ task, onClose, onCommentPosted }) {
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{c.author_name}</span>
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtCommentTime(c.created_at)}</span>
+                  {c.author_email === currentUserEmail && (
+                    <button
+                      onClick={() => handleDelete(c.id)}
+                      style={{
+                        marginLeft: 'auto', background: 'none', border: 'none',
+                        cursor: 'pointer', color: 'var(--text3)', fontSize: 11,
+                        padding: '0 2px', lineHeight: 1,
+                      }}
+                      title="Delete comment"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
                 <div style={{
                   fontSize: 13, color: 'var(--text2)', lineHeight: 1.55,
