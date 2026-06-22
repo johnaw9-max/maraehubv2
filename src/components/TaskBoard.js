@@ -187,9 +187,130 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus })
   );
 }
 
+// ─── COMMENT MODAL ────────────────────────────────────────────────────────────
+
+function CommentModal({ task, onClose, onCommentPosted }) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => { fetchComments(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchComments() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('task_comments')
+      .select('*')
+      .eq('task_id', task.id)
+      .order('created_at', { ascending: false });
+    setComments(data || []);
+    setLoading(false);
+  }
+
+  async function handleSend() {
+    const msg = text.trim();
+    if (!msg) return;
+    setSending(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const email = user?.email || '';
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+    const authorName = profile?.full_name || email || 'Unknown';
+    const { error } = await supabase.from('task_comments').insert({
+      task_id: task.id,
+      author_name: authorName,
+      author_email: email,
+      message: msg,
+    });
+    setSending(false);
+    if (!error) {
+      setText('');
+      fetchComments();
+      onCommentPosted(task.id);
+    }
+  }
+
+  function fmtCommentTime(ts) {
+    return new Date(ts).toLocaleString('en-NZ', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    });
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ maxWidth: 500, display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}>
+        <div className="modal-title" style={{ fontSize: 16, marginBottom: 4 }}>
+          Updates
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>{task.title}</div>
+
+        {/* Thread */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, marginBottom: 16 }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, padding: 24 }}>Loading...</div>
+          ) : comments.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, padding: 24 }}>
+              No updates yet. Be the first to post.
+            </div>
+          ) : comments.map(c => (
+            <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <div style={{
+                flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
+                background: 'var(--brand)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 700,
+              }}>
+                {(c.author_name || '?').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{c.author_name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtCommentTime(c.created_at)}</span>
+                </div>
+                <div style={{
+                  fontSize: 13, color: 'var(--text2)', lineHeight: 1.55,
+                  background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px',
+                  wordBreak: 'break-word',
+                }}>
+                  {c.message}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          <textarea
+            className="form-input"
+            rows={3}
+            placeholder="Write an update..."
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend(); }}
+            style={{ resize: 'none', marginBottom: 10 }}
+            autoFocus
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button className="btn-secondary" onClick={onClose}>Close</button>
+            <button className="btn-primary" onClick={handleSend} disabled={sending || !text.trim()}>
+              {sending ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus }) {
+function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, commentCount, onOpenComments }) {
   const overdue = isOverdue(task);
   const dateStr = fmtDate(task.due_date);
   const badge = PRIORITY_BADGE[task.priority] || PRIORITY_BADGE.Medium;
@@ -264,16 +385,42 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus }) 
           style={{
             flex: 1, background: 'var(--surface2)', color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 6,
-            padding: '4px 0', fontSize: 11, fontWeight: 600,
+            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}
         >Edit</button>
+
+        {/* Comment / Updates button */}
+        <button
+          onClick={() => onOpenComments(task)}
+          title="View updates"
+          style={{
+            background: commentCount > 0 ? '#e8eef8' : 'var(--surface2)',
+            color: commentCount > 0 ? '#1a4a8a' : 'var(--text3)',
+            border: `1px solid ${commentCount > 0 ? '#b8ccee' : 'var(--border)'}`,
+            borderRadius: 6, padding: '4px 8px', fontSize: 13,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+            flexShrink: 0,
+          }}
+        >
+          💬
+          {commentCount > 0 && (
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              background: 'var(--brand)', color: '#fff',
+              borderRadius: 10, padding: '0 5px', lineHeight: '16px',
+              minWidth: 16, textAlign: 'center', display: 'inline-block',
+            }}>
+              {commentCount}
+            </span>
+          )}
+        </button>
 
         <button
           onClick={() => onDelete(task.id)}
           style={{
             flex: 1, background: '#faeae7', color: 'var(--danger)',
             border: '1px solid #f0b8b0', borderRadius: 6,
-            padding: '4px 0', fontSize: 11, fontWeight: 600,
+            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}
         >Delete</button>
 
@@ -308,14 +455,28 @@ export default function TaskBoard() {
   const [search, setSearch] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [showArchive, setShowArchive] = useState(false);
+  const [commentCounts, setCommentCounts] = useState({});
+  const [commentTask, setCommentTask] = useState(null);
 
-  useEffect(() => { fetchTasks(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchTasks(); fetchCommentCounts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchTasks() {
     setLoading(true);
     const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
     setTasks(data || []);
     setLoading(false);
+  }
+
+  async function fetchCommentCounts() {
+    const { data } = await supabase.from('task_comments').select('task_id');
+    if (!data) return;
+    const counts = {};
+    data.forEach(r => { counts[r.task_id] = (counts[r.task_id] || 0) + 1; });
+    setCommentCounts(counts);
+  }
+
+  function handleCommentPosted(taskId) {
+    setCommentCounts(prev => ({ ...prev, [taskId]: (prev[taskId] || 0) + 1 }));
   }
 
   // Subtasks grouped by parent task id — used by WorkflowParentCard
@@ -559,6 +720,8 @@ export default function TaskBoard() {
                         onEdit={openEdit}
                         onDelete={setConfirmDeleteId}
                         onChangeStatus={changeTaskStatus}
+                        commentCount={commentCounts[task.id] || 0}
+                        onOpenComments={setCommentTask}
                       />
                     )
                   ))}
@@ -597,6 +760,8 @@ export default function TaskBoard() {
                   onEdit={openEdit}
                   onDelete={setConfirmDeleteId}
                   onChangeStatus={changeTaskStatus}
+                  commentCount={commentCounts[task.id] || 0}
+                  onOpenComments={setCommentTask}
                 />
               ))}
             </div>
@@ -713,6 +878,15 @@ export default function TaskBoard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── COMMENT / UPDATES MODAL ────────────────────────────────────────── */}
+      {commentTask && (
+        <CommentModal
+          task={commentTask}
+          onClose={() => setCommentTask(null)}
+          onCommentPosted={handleCommentPosted}
+        />
       )}
     </div>
   );
