@@ -264,7 +264,6 @@ function ActionForm({ initial, onSave, onCancel, saving, error }) {
 // ─── MEETING DETAIL VIEW ──────────────────────────────────────────────────────
 
 function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
-  const [detailTab, setDetailTab] = useState('info');
   const [resolutions, setResolutions] = useState([]);
   const [actions, setActions] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
@@ -411,178 +410,161 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
         </div>
       </div>
 
-      {/* DETAIL TABS */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', marginBottom: 20 }}>
-        {[
-          { key: 'info', label: 'Meeting Info' },
-          { key: 'resolutions', label: `Resolutions${resolutions.length ? ` (${resolutions.length})` : ''}` },
-          { key: 'actions', label: `Actions${actions.length ? ` (${actions.length})` : ''}` },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setDetailTab(t.key)}
-            style={{
-              fontSize: 13, fontWeight: detailTab === t.key ? 600 : 400,
-              padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
-              borderBottom: detailTab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
-              color: detailTab === t.key ? 'var(--brand)' : 'var(--text2)',
-              marginBottom: -2,
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* SUMMARY TILES */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+        <SummaryTile icon="📋" iconBg="#e8eef8" value={resolutions.length} label="Resolutions" valueColor="var(--info)" sub={openRes > 0 ? `${openRes} open` : null} />
+        <SummaryTile icon="✅" iconBg="#e8f4ef" value={actions.length} label="Actions" valueColor="var(--brand)" sub={openActs > 0 ? `${openActs} open` : null} />
+        <SummaryTile icon="👥" iconBg="#f0ecf8" value={meeting.attendees ? meeting.attendees.split(',').filter(Boolean).length : '—'} label="Attendees" valueColor="#6b42a8" />
+      </div>
+
+      {/* MEETING DETAILS PANEL */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Meeting Details</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: 13 }}>
+          {[
+            { label: 'Date', val: fmt(meeting.meeting_date) },
+            { label: 'Type', val: meeting.meeting_type },
+            { label: 'Chairperson', val: meeting.chairperson || '—' },
+            { label: 'Secretary', val: meeting.secretary || '—' },
+            { label: 'Recorded by', val: meeting.created_by || '—' },
+          ].map(({ label, val }) => (
+            <div key={label}>
+              <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{label}: </span>
+              <span>{val}</span>
+            </div>
+          ))}
+        </div>
+        {meeting.attendees && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Attendees</div>
+            <div style={{ fontSize: 13 }}>{meeting.attendees}</div>
+          </div>
+        )}
+        {meeting.apologies && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Apologies</div>
+            <div style={{ fontSize: 13 }}>{meeting.apologies}</div>
+          </div>
+        )}
       </div>
 
       {loadingDetail ? <div className="loading">Loading...</div> : (
         <>
-          {/* INFO TAB */}
-          {detailTab === 'info' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
-                <SummaryTile icon="📋" iconBg="#e8eef8" value={resolutions.length} label="Resolutions" valueColor="var(--info)" sub={openRes > 0 ? `${openRes} open` : null} />
-                <SummaryTile icon="✅" iconBg="#e8f4ef" value={actions.length} label="Actions" valueColor="var(--brand)" sub={openActs > 0 ? `${openActs} open` : null} />
-                <SummaryTile icon="👥" iconBg="#f0ecf8" value={meeting.attendees ? meeting.attendees.split(',').filter(Boolean).length : '—'} label="Attendees" valueColor="#6b42a8" />
-              </div>
-
-              <div className="panel" style={{ marginBottom: 16 }}>
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Meeting Details</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: 13 }}>
-                  {[
-                    { label: 'Date', val: fmt(meeting.meeting_date) },
-                    { label: 'Type', val: meeting.meeting_type },
-                    { label: 'Chairperson', val: meeting.chairperson || '—' },
-                    { label: 'Secretary', val: meeting.secretary || '—' },
-                    { label: 'Recorded by', val: meeting.created_by || '—' },
-                  ].map(({ label, val }) => (
-                    <div key={label}>
-                      <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{label}: </span>
-                      <span>{val}</span>
-                    </div>
-                  ))}
-                </div>
-                {meeting.attendees && (
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Attendees</div>
-                    <div style={{ fontSize: 13 }}>{meeting.attendees}</div>
-                  </div>
-                )}
-                {meeting.apologies && (
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Apologies</div>
-                    <div style={{ fontSize: 13 }}>{meeting.apologies}</div>
-                  </div>
-                )}
-              </div>
-
-              {meeting.minutes && (
-                <div className="panel">
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Minutes</div>
-                  <div style={{ fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--text2)' }}>{meeting.minutes}</div>
-                </div>
-              )}
+          {/* ── SECTION 1: MEETING MINUTES ── */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600, marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--border)' }}>
+              Meeting Minutes
             </div>
-          )}
-
-          {/* RESOLUTIONS TAB */}
-          {detailTab === 'resolutions' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                <button className="btn-primary" onClick={() => { setResForm(null); setEditResId(null); setResError(''); setShowResForm(true); }}>+ Add Resolution</button>
+            {meeting.minutes ? (
+              <div className="panel">
+                <div style={{ fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--text2)' }}>{meeting.minutes}</div>
               </div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic', padding: '12px 0' }}>No minutes recorded. Use the Edit button above to add minutes.</div>
+            )}
+          </div>
 
-              {showResForm && (
-                <ResolutionForm
-                  initial={resForm}
-                  onSave={saveResolution}
-                  onCancel={() => { setShowResForm(false); setEditResId(null); setResForm(null); }}
-                  saving={saving}
-                  error={resError}
-                />
-              )}
+          {/* ── SECTION 2: RESOLUTIONS ── */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--border)' }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600 }}>
+                Resolutions{resolutions.length > 0 ? ` (${resolutions.length})` : ''}
+              </div>
+              <button className="btn-primary" style={{ fontSize: 12 }} onClick={() => { setResForm(null); setEditResId(null); setResError(''); setShowResForm(true); }}>+ Add Resolution</button>
+            </div>
 
-              {resolutions.length === 0 ? (
-                <div className="empty-state"><div className="emoji">📜</div><div>No resolutions yet</div></div>
-              ) : (
-                resolutions.map(r => (
-                  <div key={r.id} className="panel" style={{ marginBottom: 10 }}>
+            {showResForm && (
+              <ResolutionForm
+                initial={resForm}
+                onSave={saveResolution}
+                onCancel={() => { setShowResForm(false); setEditResId(null); setResForm(null); }}
+                saving={saving}
+                error={resError}
+              />
+            )}
+
+            {resolutions.length === 0 ? (
+              <div className="empty-state"><div className="emoji">📜</div><div>No resolutions yet</div></div>
+            ) : (
+              resolutions.map(r => (
+                <div key={r.id} className="panel" style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      {r.resolution_number && (
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {r.resolution_number}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{r.description}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                        {r.date_passed && <span>Passed {fmt(r.date_passed)}</span>}
+                        {r.notes && <span>{r.date_passed ? ' · ' : ''}{r.notes}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                      <StatusBadge status={r.status} colors={RESOLUTION_STATUS_COLORS} />
+                      <button onClick={() => openEditRes(r)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => deleteResolution(r.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Remove</button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* ── SECTION 3: ACTIONS ── */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--border)' }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600 }}>
+                Actions{actions.length > 0 ? ` (${actions.length})` : ''}
+              </div>
+              <button className="btn-primary" style={{ fontSize: 12 }} onClick={() => { setActForm(null); setEditActId(null); setActError(''); setShowActForm(true); }}>+ Add Action</button>
+            </div>
+
+            {showActForm && (
+              <ActionForm
+                initial={actForm}
+                onSave={saveAction}
+                onCancel={() => { setShowActForm(false); setEditActId(null); setActForm(null); }}
+                saving={saving}
+                error={actError}
+              />
+            )}
+
+            {actions.length === 0 ? (
+              <div className="empty-state"><div className="emoji">✅</div><div>No actions yet</div></div>
+            ) : (
+              actions.map(a => {
+                const days = daysUntil(a.due_date);
+                const overdue = days !== null && days < 0 && a.status !== 'Completed';
+                return (
+                  <div key={a.id} className="panel" style={{ marginBottom: 10, borderLeft: overdue ? '3px solid var(--danger)' : '3px solid transparent' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                       <div style={{ flex: 1 }}>
-                        {r.resolution_number && (
-                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            {r.resolution_number}
-                          </div>
-                        )}
-                        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{r.description}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                          {r.date_passed && <span>Passed {fmt(r.date_passed)}</span>}
-                          {r.notes && <span>{r.date_passed ? ' · ' : ''}{r.notes}</span>}
+                        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{a.description}</div>
+                        <div style={{ fontSize: 11, color: 'var(--success)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span>📋</span> Added to Task Board
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 12 }}>
+                          {a.assigned_to && <span>👤 {a.assigned_to}</span>}
+                          {a.due_date && (
+                            <span style={{ color: overdue ? 'var(--danger)' : 'inherit' }}>
+                              📅 Due {fmt(a.due_date)}{overdue && ` (${Math.abs(days)}d overdue)`}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                        <StatusBadge status={r.status} colors={RESOLUTION_STATUS_COLORS} />
-                        <button onClick={() => openEditRes(r)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Edit</button>
-                        <button onClick={() => deleteResolution(r.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Remove</button>
+                        <StatusBadge status={a.status} colors={ACTION_STATUS_COLORS} />
+                        <button onClick={() => openEditAct(a)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => deleteAction(a.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Remove</button>
                       </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* ACTIONS TAB */}
-          {detailTab === 'actions' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                <button className="btn-primary" onClick={() => { setActForm(null); setEditActId(null); setActError(''); setShowActForm(true); }}>+ Add Action</button>
-              </div>
-
-              {showActForm && (
-                <ActionForm
-                  initial={actForm}
-                  onSave={saveAction}
-                  onCancel={() => { setShowActForm(false); setEditActId(null); setActForm(null); }}
-                  saving={saving}
-                  error={actError}
-                />
-              )}
-
-              {actions.length === 0 ? (
-                <div className="empty-state"><div className="emoji">✅</div><div>No actions yet</div></div>
-              ) : (
-                actions.map(a => {
-                  const days = daysUntil(a.due_date);
-                  const overdue = days !== null && days < 0 && a.status !== 'Completed';
-                  return (
-                    <div key={a.id} className="panel" style={{ marginBottom: 10, borderLeft: overdue ? '3px solid var(--danger)' : '3px solid transparent' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{a.description}</div>
-                          <div style={{ fontSize: 11, color: 'var(--success)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span>📋</span> Added to Task Board
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 12 }}>
-                            {a.assigned_to && <span>👤 {a.assigned_to}</span>}
-                            {a.due_date && (
-                              <span style={{ color: overdue ? 'var(--danger)' : 'inherit' }}>
-                                📅 Due {fmt(a.due_date)}{overdue && ` (${Math.abs(days)}d overdue)`}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                          <StatusBadge status={a.status} colors={ACTION_STATUS_COLORS} />
-                          <button onClick={() => openEditAct(a)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Edit</button>
-                          <button onClick={() => deleteAction(a.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Remove</button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
+                );
+              })
+            )}
+          </div>
         </>
       )}
     </div>
