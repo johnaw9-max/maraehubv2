@@ -23,6 +23,22 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Decision Register',
+      icon: '📋',
+      items: [
+        { q: 'What is the Decision Register?', a: 'The Decision Register is a single searchable list of every resolution passed across all of your marae\'s meetings. Instead of opening individual meeting records to find a past decision, you can search by keyword and filter by status — Active, Implemented, or Superseded — to find exactly what you need. The register updates automatically whenever a resolution is recorded in any meeting. There are no extra steps and nothing to set up — if a resolution exists in a meeting, it appears in the Decision Register.' },
+        { q: 'How do I filter the Decision Register?', a: 'Go to the Minutes tab and open the Decision Register section. Use the search bar to find resolutions by keyword — the search checks both the resolution number and description. Use the status filter buttons to show only Active resolutions (decisions that are still current), Implemented (decisions that have been carried out), or Superseded (decisions that have been replaced by a later resolution). Select "All" to clear the filter and see every resolution at once.' },
+      ]
+    },
+    {
+      category: 'Recording a Meeting',
+      icon: '📝',
+      items: [
+        { q: 'How does the meeting page work?', a: 'When you open a meeting in the Minutes tab, everything is on one page — meeting details, minutes, resolutions, and actions. There is no tab switching or separate screens to navigate. Scroll down to move between sections and add to any of them as the meeting progresses. Once you are done, all the information is saved together under that meeting record.' },
+        { q: 'Do actions and resolutions connect to other modules automatically?', a: 'Yes — both connect automatically. Any action item you add to a meeting appears straight away on the Task Board, assigned to the person you nominated and showing the due date you set. You do not need to create a separate task. Any resolution you record in a meeting appears straight away in the Decision Register, where it can be searched and filtered across all meetings. Neither connection requires any extra steps — it happens as soon as you save the action or resolution.' },
+      ]
+    },
+    {
       category: 'Projects',
       icon: '📋',
       items: [
