@@ -7,7 +7,8 @@ import { ensureTask } from '../lib/taskSync';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
-const RESOLUTION_STATUSES = ['Open', 'In Progress', 'Completed', 'Cancelled'];
+const RESOLUTION_STATUSES = ['Open', 'In Progress', 'Completed', 'Cancelled', 'Active', 'Implemented', 'Superseded'];
+const DECISION_REGISTER_STATUSES = ['Active', 'Implemented', 'Superseded'];
 const ACTION_STATUSES = ['Open', 'In Progress', 'Completed'];
 
 const MEETING_TYPE_COLORS = {
@@ -19,10 +20,13 @@ const MEETING_TYPE_COLORS = {
 };
 
 const RESOLUTION_STATUS_COLORS = {
-  'Open':       { bg: '#fdf0dc', color: '#7a4f00' },
-  'In Progress':{ bg: '#e8eef8', color: '#1a4a8a' },
-  'Completed':  { bg: '#e8f4ef', color: '#1a4a3a' },
-  'Cancelled':  { bg: '#f5f0e8', color: '#4a4438' },
+  'Open':        { bg: '#fdf0dc', color: '#7a4f00' },
+  'In Progress': { bg: '#e8eef8', color: '#1a4a8a' },
+  'Completed':   { bg: '#e8f4ef', color: '#1a4a3a' },
+  'Cancelled':   { bg: '#f5f0e8', color: '#4a4438' },
+  'Active':      { bg: '#e8eef8', color: '#1a4a8a' },
+  'Implemented': { bg: '#e8f4ef', color: '#1a4a3a' },
+  'Superseded':  { bg: '#f5f0e8', color: '#4a4438' },
 };
 
 const ACTION_STATUS_COLORS = {
@@ -599,6 +603,10 @@ export default function CommitteeMinutes() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [mainTab, setMainTab] = useState('meetings');
+  const [decisionSearch, setDecisionSearch] = useState('');
+  const [decisionStatusFilter, setDecisionStatusFilter] = useState('all');
+  const [selectedResolution, setSelectedResolution] = useState(null);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -606,7 +614,7 @@ export default function CommitteeMinutes() {
     setLoading(true);
     const [meetRes, resRes, actRes] = await Promise.all([
       supabase.from('meetings').select('*').order('meeting_date', { ascending: false }),
-      supabase.from('resolutions').select('id, status'),
+      supabase.from('resolutions').select('*, meetings(id, title, meeting_date, meeting_type)').order('date_passed', { ascending: false }),
       supabase.from('meeting_actions').select('id, status'),
     ]);
     setMeetings(meetRes.data || []);
@@ -682,7 +690,19 @@ export default function CommitteeMinutes() {
   }
 
   // Summary stats
-  const openResolutions = allResolutions.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').length;
+  const CLOSED_STATUSES = ['Completed', 'Cancelled', 'Implemented', 'Superseded'];
+  const openResolutions = allResolutions.filter(r => !CLOSED_STATUSES.includes(r.status)).length;
+
+  // Decision Register filtered list
+  const filteredDecisions = allResolutions.filter(r => {
+    const matchStatus = decisionStatusFilter === 'all' || r.status === decisionStatusFilter;
+    const term = decisionSearch.toLowerCase();
+    const matchSearch = !decisionSearch ||
+      (r.resolution_number || '').toLowerCase().includes(term) ||
+      (r.description || '').toLowerCase().includes(term) ||
+      (r.meetings?.title || '').toLowerCase().includes(term);
+    return matchStatus && matchSearch;
+  });
   const openActions = allActions.filter(a => a.status !== 'Completed').length;
 
   // Filtered list
@@ -731,7 +751,9 @@ export default function CommitteeMinutes() {
           <h2 style={{ fontSize: 22 }}>Committee Minutes</h2>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Meeting records, resolutions and actions</p>
         </div>
-        <button className="btn-primary" onClick={() => { setEditMeeting(null); setError(''); setView('form'); }}>+ Add Meeting</button>
+        {mainTab === 'meetings' && (
+          <button className="btn-primary" onClick={() => { setEditMeeting(null); setError(''); setView('form'); }}>+ Add Meeting</button>
+        )}
       </div>
 
       {/* SUMMARY TILES */}
@@ -741,77 +763,227 @@ export default function CommitteeMinutes() {
         <SummaryTile icon="✅" iconBg="#e8f4ef" value={openActions} label="Open Actions" valueColor={openActions > 0 ? 'var(--brand)' : 'var(--text3)'} />
       </div>
 
-      {/* SEARCH + FILTER */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <input
-          className="form-input"
-          style={{ flex: 1, minWidth: 200, maxWidth: 320 }}
-          placeholder="Search meetings..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['all', ...MEETING_TYPES].map(t => (
-            <button
-              key={t}
-              onClick={() => setFilterType(t)}
-              style={{
-                fontSize: 11, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontWeight: 500,
-                background: filterType === t ? 'var(--brand)' : 'var(--surface2)',
-                color: filterType === t ? '#fff' : 'var(--text2)',
-                border: filterType === t ? '1px solid var(--brand)' : '1px solid var(--border)',
-              }}
-            >
-              {t === 'all' ? 'All Types' : t}
-            </button>
-          ))}
-        </div>
+      {/* MAIN TABS */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', marginBottom: 20 }}>
+        {[
+          { key: 'meetings', label: 'Meetings' },
+          { key: 'decisions', label: `Decision Register${allResolutions.length ? ` (${allResolutions.length})` : ''}` },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setMainTab(t.key)}
+            style={{
+              fontSize: 13, fontWeight: mainTab === t.key ? 600 : 400,
+              padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
+              borderBottom: mainTab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
+              color: mainTab === t.key ? 'var(--brand)' : 'var(--text2)',
+              marginBottom: -2,
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* MEETINGS LIST */}
-      {loading ? (
-        <div className="loading">Loading meetings...</div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <div className="emoji">📋</div>
-          <div>{meetings.length === 0 ? 'No meetings yet — add your first one above' : 'No meetings match your search'}</div>
-        </div>
-      ) : (
-        filtered.map(m => {
-          const mtc = MEETING_TYPE_COLORS[m.meeting_type] || { bg: '#f5f5f5', color: '#333' };
-          return (
-            <div
-              key={m.id}
-              className="panel"
-              style={{ marginBottom: 10, cursor: 'pointer' }}
-              onClick={() => { setSelectedMeeting(m); setView('detail'); }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 10, background: mtc.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: mtc.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {m.meeting_date ? new Date(m.meeting_date).toLocaleDateString('en-NZ', { month: 'short' }) : '—'}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: mtc.color, lineHeight: 1 }}>
-                    {m.meeting_date ? new Date(m.meeting_date).getDate() : '—'}
-                  </div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{m.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, display: 'flex', gap: 10 }}>
-                    {m.chairperson && <span>Chair: {m.chairperson}</span>}
-                    {m.created_by && <span>Recorded by: {m.created_by}</span>}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: mtc.bg, color: mtc.color }}>
-                    {m.meeting_type}
-                  </span>
-                  <span style={{ fontSize: 18, color: 'var(--text3)' }}>›</span>
-                </div>
-              </div>
+      {/* MEETINGS TAB */}
+      {mainTab === 'meetings' && (
+        <>
+          {/* SEARCH + FILTER */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input
+              className="form-input"
+              style={{ flex: 1, minWidth: 200, maxWidth: 320 }}
+              placeholder="Search meetings..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['all', ...MEETING_TYPES].map(t => (
+                <button
+                  key={t}
+                  onClick={() => setFilterType(t)}
+                  style={{
+                    fontSize: 11, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontWeight: 500,
+                    background: filterType === t ? 'var(--brand)' : 'var(--surface2)',
+                    color: filterType === t ? '#fff' : 'var(--text2)',
+                    border: filterType === t ? '1px solid var(--brand)' : '1px solid var(--border)',
+                  }}
+                >
+                  {t === 'all' ? 'All Types' : t}
+                </button>
+              ))}
             </div>
-          );
-        })
+          </div>
+
+          {/* MEETINGS LIST */}
+          {loading ? (
+            <div className="loading">Loading meetings...</div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state">
+              <div className="emoji">📋</div>
+              <div>{meetings.length === 0 ? 'No meetings yet — add your first one above' : 'No meetings match your search'}</div>
+            </div>
+          ) : (
+            filtered.map(m => {
+              const mtc = MEETING_TYPE_COLORS[m.meeting_type] || { bg: '#f5f5f5', color: '#333' };
+              return (
+                <div
+                  key={m.id}
+                  className="panel"
+                  style={{ marginBottom: 10, cursor: 'pointer' }}
+                  onClick={() => { setSelectedMeeting(m); setView('detail'); }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: mtc.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: mtc.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {m.meeting_date ? new Date(m.meeting_date).toLocaleDateString('en-NZ', { month: 'short' }) : '—'}
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: mtc.color, lineHeight: 1 }}>
+                        {m.meeting_date ? new Date(m.meeting_date).getDate() : '—'}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{m.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, display: 'flex', gap: 10 }}>
+                        {m.chairperson && <span>Chair: {m.chairperson}</span>}
+                        {m.created_by && <span>Recorded by: {m.created_by}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: mtc.bg, color: mtc.color }}>
+                        {m.meeting_type}
+                      </span>
+                      <span style={{ fontSize: 18, color: 'var(--text3)' }}>›</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
+
+      {/* DECISION REGISTER TAB */}
+      {mainTab === 'decisions' && (
+        <>
+          {/* SEARCH + STATUS FILTER */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input
+              className="form-input"
+              style={{ flex: 1, minWidth: 200, maxWidth: 320 }}
+              placeholder="Search resolutions..."
+              value={decisionSearch}
+              onChange={e => setDecisionSearch(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['all', ...DECISION_REGISTER_STATUSES].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setDecisionStatusFilter(s)}
+                  style={{
+                    fontSize: 11, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontWeight: 500,
+                    background: decisionStatusFilter === s ? 'var(--brand)' : 'var(--surface2)',
+                    color: decisionStatusFilter === s ? '#fff' : 'var(--text2)',
+                    border: decisionStatusFilter === s ? '1px solid var(--brand)' : '1px solid var(--border)',
+                  }}
+                >
+                  {s === 'all' ? 'All Statuses' : s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* DECISION LIST */}
+          {loading ? (
+            <div className="loading">Loading decisions...</div>
+          ) : filteredDecisions.length === 0 ? (
+            <div className="empty-state">
+              <div className="emoji">📜</div>
+              <div>{allResolutions.length === 0 ? 'No resolutions recorded yet' : 'No resolutions match your search'}</div>
+            </div>
+          ) : (
+            filteredDecisions.map(r => {
+              const isSelected = selectedResolution?.id === r.id;
+              const mtg = r.meetings;
+              const mtc = mtg ? (MEETING_TYPE_COLORS[mtg.meeting_type] || { bg: '#f5f5f5', color: '#333' }) : { bg: '#f5f5f5', color: '#333' };
+              const sc = RESOLUTION_STATUS_COLORS[r.status] || { bg: '#f5f5f5', color: '#666' };
+              return (
+                <div key={r.id} className="panel" style={{ marginBottom: 10 }}>
+                  <div
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}
+                    onClick={() => setSelectedResolution(isSelected ? null : r)}
+                  >
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: sc.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: sc.color, textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center', lineHeight: 1.2 }}>
+                        {r.date_passed ? new Date(r.date_passed).toLocaleDateString('en-NZ', { month: 'short' }) : '—'}
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: sc.color, lineHeight: 1 }}>
+                        {r.date_passed ? new Date(r.date_passed).getDate() : '—'}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {r.resolution_number && (
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {r.resolution_number}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{r.description}</div>
+                      {mtg && (
+                        <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 10, borderRadius: 20, padding: '1px 8px', fontWeight: 600, background: mtc.bg, color: mtc.color }}>{mtg.meeting_type}</span>
+                          <span>{mtg.title} · {fmt(mtg.meeting_date)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                      <StatusBadge status={r.status} colors={RESOLUTION_STATUS_COLORS} />
+                      <span style={{ fontSize: 18, color: 'var(--text3)', display: 'inline-block', transform: isSelected ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>›</span>
+                    </div>
+                  </div>
+
+                  {isSelected && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: 13, marginBottom: 14 }}>
+                        {r.resolution_number && (
+                          <div><span style={{ color: 'var(--text3)', fontWeight: 500 }}>Resolution No.: </span>{r.resolution_number}</div>
+                        )}
+                        <div><span style={{ color: 'var(--text3)', fontWeight: 500 }}>Date Passed: </span>{fmt(r.date_passed)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ color: 'var(--text3)', fontWeight: 500 }}>Status: </span>
+                          <StatusBadge status={r.status} colors={RESOLUTION_STATUS_COLORS} />
+                        </div>
+                        {mtg && (
+                          <div><span style={{ color: 'var(--text3)', fontWeight: 500 }}>Meeting: </span>{mtg.title}</div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 13, marginBottom: 12 }}>
+                        <div style={{ color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Description</div>
+                        <div style={{ lineHeight: 1.6 }}>{r.description}</div>
+                      </div>
+                      {r.notes && (
+                        <div style={{ fontSize: 13, marginBottom: 12 }}>
+                          <div style={{ color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Notes</div>
+                          <div style={{ lineHeight: 1.6 }}>{r.notes}</div>
+                        </div>
+                      )}
+                      {mtg && (
+                        <button
+                          onClick={() => {
+                            const fullMeeting = meetings.find(m => m.id === mtg.id);
+                            if (fullMeeting) { setSelectedMeeting(fullMeeting); setView('detail'); }
+                          }}
+                          style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}
+                        >
+                          View Full Meeting →
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </>
       )}
     </div>
   );
