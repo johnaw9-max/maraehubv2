@@ -31,6 +31,17 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Interest Register',
+      icon: '⚖️',
+      items: [
+        { q: 'What is the Interest Register?', a: 'The Interest Register is a formal record of every conflict of interest declared by trustees. A conflict of interest happens when a trustee has a personal, financial, or family connection to a decision or contract the marae is considering — which means they may not be able to vote or advise on that matter impartially. Recording these declarations is a requirement of good governance practice and expected under New Zealand law, including the principles that apply to charitable trusts and incorporated societies. It shows that your committee is operating transparently and in the best interests of the marae, not individual trustees.' },
+        { q: 'When should a trustee declare an interest?', a: 'Declare an interest whenever you have a personal stake in something the committee is deciding. Common examples: a contractor being considered for marae work is your family member, friend, or your own business. A grant application would benefit an organisation you are involved with. A trustee is being paid for services and the committee is setting or reviewing that arrangement. A decision affects land or property you have a personal interest in. The rule of thumb is: if you would benefit — or someone close to you would benefit — from the outcome of a committee decision, declare it. It is always better to declare and step back than to stay silent and have it questioned later.' },
+        { q: 'How do I add a declaration to the Interest Register?', a: 'Go to the Minutes tab and open the Interest Register section, then click "+ Add Declaration". Fill in the trustee\'s name, the nature of the interest (what the conflict is and how it relates to the trustee), the date it was declared, and the meeting or decision it relates to. Save the declaration — it will appear in the register straight away with an Active status. Once the matter has been fully resolved or the decision is complete, click "Resolve" to close it. Resolved declarations stay on the register permanently as a record — they do not disappear.' },
+        { q: 'Why does declaring an interest matter?', a: 'Declaring an interest protects individual trustees personally. If a decision is ever challenged — by a beneficiary, an auditor, or the Māori Land Court — a properly kept Interest Register shows that your committee followed the right process. It is exactly the kind of record the Māori Land Court looks for when assessing whether a trust has been managed properly. It also protects the marae itself: decisions made without managing conflicts of interest can be overturned or create serious legal exposure. Good governance is not just about making good decisions — it is about being able to show that you made them the right way.' },
+        { q: 'What should a trustee do after declaring an interest?', a: 'Once a declaration is made, the trustee with the conflict should step back from discussing and voting on that specific matter. They can leave the room during that part of the meeting if needed. The committee then makes the decision without their involvement. Record in the meeting minutes that the trustee declared an interest and did not participate in the vote. This protects everyone — the trustee, the other trustees, and the marae.' },
+      ]
+    },
+    {
       category: 'Recording a Meeting',
       icon: '📝',
       items: [
