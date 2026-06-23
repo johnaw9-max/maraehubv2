@@ -10,6 +10,7 @@ const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee M
 const RESOLUTION_STATUSES = ['Open', 'In Progress', 'Completed', 'Cancelled', 'Active', 'Implemented', 'Superseded'];
 const DECISION_REGISTER_STATUSES = ['Active', 'Implemented', 'Superseded'];
 const ACTION_STATUSES = ['Open', 'In Progress', 'Completed'];
+const INTEREST_REGISTER_STATUSES = ['Active', 'Resolved'];
 
 const MEETING_TYPE_COLORS = {
   'Trustee Meeting':      { bg: '#e8f4ef', color: '#1a4a3a' },
@@ -35,6 +36,11 @@ const ACTION_STATUS_COLORS = {
   'Completed':  { bg: '#e8f4ef', color: '#1a4a3a' },
 };
 
+const INTEREST_STATUS_COLORS = {
+  'Active':   { bg: '#e8eef8', color: '#1a4a8a' },
+  'Resolved': { bg: '#e8f4ef', color: '#1a4a3a' },
+};
+
 const EMPTY_MEETING = {
   title: '', meeting_type: 'Trustee Meeting', meeting_date: '',
   chairperson: '', secretary: '', attendees: '', apologies: '',
@@ -48,6 +54,10 @@ const EMPTY_RESOLUTION = {
 
 const EMPTY_ACTION = {
   description: '', assigned_to: '', due_date: '', status: 'Open',
+};
+
+const EMPTY_INTEREST = {
+  trustee_name: '', nature_of_interest: '', related_matter: '', date_declared: '', status: 'Active',
 };
 
 function fmt(d) {
@@ -571,6 +581,60 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
   );
 }
 
+// ─── INTEREST FORM ───────────────────────────────────────────────────────────
+
+function InterestForm({ initial, onSave, onCancel, saving, error }) {
+  const profiles = useProfiles();
+  const [form, setForm] = useState(initial || EMPTY_INTEREST);
+  function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  return (
+    <div className="panel" style={{ marginBottom: 20 }}>
+      <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+        {initial?.id ? 'Edit Declaration' : 'New Interest Declaration'}
+      </div>
+      {error && <div className="alert alert-error" style={{ marginBottom: 12 }}>{error}</div>}
+      <div className="grid-2">
+        <div className="form-group">
+          <label className="form-label">Trustee Name *</label>
+          <select className="form-input" value={form.trustee_name} onChange={e => setField('trustee_name', e.target.value)}>
+            <option value="">— Select trustee —</option>
+            {profiles.map(p => (
+              <option key={p.full_name} value={p.full_name}>
+                {p.full_name} ({p.role === 'trustee' ? 'Trustee' : 'Community'})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Date Declared *</label>
+          <input type="date" className="form-input" value={form.date_declared} onChange={e => setField('date_declared', e.target.value)} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="form-label">Nature of Interest *</label>
+        <textarea className="form-input" rows={3} value={form.nature_of_interest} onChange={e => setField('nature_of_interest', e.target.value)} placeholder="Describe the nature of the conflict of interest..." style={{ resize: 'vertical' }} />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Related Decision or Matter</label>
+        <input className="form-input" value={form.related_matter} onChange={e => setField('related_matter', e.target.value)} placeholder="e.g. Property purchase at 12 Main St" />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Status</label>
+        <select className="form-input" value={form.status} onChange={e => setField('status', e.target.value)}>
+          {INTEREST_REGISTER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+      <div className="modal-actions">
+        <button className="btn-secondary" onClick={onCancel}>Cancel</button>
+        <button className="btn-primary" onClick={() => onSave(form)} disabled={saving}>
+          {saving ? 'Saving...' : initial?.id ? 'Save Changes' : 'Add Declaration'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function CommitteeMinutes() {
@@ -589,19 +653,28 @@ export default function CommitteeMinutes() {
   const [decisionSearch, setDecisionSearch] = useState('');
   const [decisionStatusFilter, setDecisionStatusFilter] = useState('all');
   const [selectedResolution, setSelectedResolution] = useState(null);
+  const [interests, setInterests] = useState([]);
+  const [interestSearch, setInterestSearch] = useState('');
+  const [interestStatusFilter, setInterestStatusFilter] = useState('all');
+  const [showInterestForm, setShowInterestForm] = useState(false);
+  const [editInterest, setEditInterest] = useState(null);
+  const [interestSaving, setInterestSaving] = useState(false);
+  const [interestError, setInterestError] = useState('');
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);
-    const [meetRes, resRes, actRes] = await Promise.all([
+    const [meetRes, resRes, actRes, intRes] = await Promise.all([
       supabase.from('meetings').select('*').order('meeting_date', { ascending: false }),
       supabase.from('resolutions').select('*, meetings(id, title, meeting_date, meeting_type)').order('date_passed', { ascending: false }),
       supabase.from('meeting_actions').select('id, status'),
+      supabase.from('interest_register').select('*').order('created_at', { ascending: false }),
     ]);
     setMeetings(meetRes.data || []);
     setAllResolutions(resRes.data || []);
     setAllActions(actRes.data || []);
+    setInterests(intRes.data || []);
     setLoading(false);
     createOverdueTasks();
   }
@@ -671,6 +744,36 @@ export default function CommitteeMinutes() {
     fetchAll();
   }
 
+  async function handleSaveInterest(form) {
+    if (!form.trustee_name.trim()) { setInterestError('Trustee name is required'); return; }
+    if (!form.nature_of_interest.trim()) { setInterestError('Nature of interest is required'); return; }
+    setInterestSaving(true); setInterestError('');
+    const payload = {
+      trustee_name: form.trustee_name.trim(),
+      nature_of_interest: form.nature_of_interest.trim(),
+      related_matter: form.related_matter.trim() || null,
+      date_declared: form.date_declared || null,
+      status: form.status,
+    };
+    const { error } = editInterest?.id
+      ? await supabase.from('interest_register').update(payload).eq('id', editInterest.id)
+      : await supabase.from('interest_register').insert(payload);
+    if (error) { setInterestError(error.message); setInterestSaving(false); return; }
+    setShowInterestForm(false); setEditInterest(null); setInterestSaving(false);
+    fetchAll();
+  }
+
+  async function handleResolveInterest(id) {
+    await supabase.from('interest_register').update({ status: 'Resolved' }).eq('id', id);
+    fetchAll();
+  }
+
+  async function handleDeleteInterest(id) {
+    if (!window.confirm('Remove this interest declaration?')) return;
+    await supabase.from('interest_register').delete().eq('id', id);
+    fetchAll();
+  }
+
   // Summary stats
   const CLOSED_STATUSES = ['Completed', 'Cancelled', 'Implemented', 'Superseded'];
   const openResolutions = allResolutions.filter(r => !CLOSED_STATUSES.includes(r.status)).length;
@@ -686,6 +789,16 @@ export default function CommitteeMinutes() {
     return matchStatus && matchSearch;
   });
   const openActions = allActions.filter(a => a.status !== 'Completed').length;
+
+  const filteredInterests = interests.filter(i => {
+    const matchStatus = interestStatusFilter === 'all' || i.status === interestStatusFilter;
+    const term = interestSearch.toLowerCase();
+    const matchSearch = !interestSearch ||
+      (i.trustee_name || '').toLowerCase().includes(term) ||
+      (i.nature_of_interest || '').toLowerCase().includes(term) ||
+      (i.related_matter || '').toLowerCase().includes(term);
+    return matchStatus && matchSearch;
+  });
 
   // Filtered list
   const filtered = meetings.filter(m => {
@@ -736,6 +849,9 @@ export default function CommitteeMinutes() {
         {mainTab === 'meetings' && (
           <button className="btn-primary" onClick={() => { setEditMeeting(null); setError(''); setView('form'); }}>+ Add Meeting</button>
         )}
+        {mainTab === 'interests' && (
+          <button className="btn-primary" onClick={() => { setEditInterest(null); setInterestError(''); setShowInterestForm(true); }}>+ Add Declaration</button>
+        )}
       </div>
 
       {/* SUMMARY TILES */}
@@ -750,6 +866,7 @@ export default function CommitteeMinutes() {
         {[
           { key: 'meetings', label: 'Meetings' },
           { key: 'decisions', label: `Decision Register${allResolutions.length ? ` (${allResolutions.length})` : ''}` },
+          { key: 'interests', label: `Interest Register${interests.length ? ` (${interests.length})` : ''}` },
         ].map(t => (
           <button
             key={t.key}
@@ -836,6 +953,93 @@ export default function CommitteeMinutes() {
                         {m.meeting_type}
                       </span>
                       <span style={{ fontSize: 18, color: 'var(--text3)' }}>›</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </>
+      )}
+
+      {/* INTEREST REGISTER TAB */}
+      {mainTab === 'interests' && (
+        <>
+          {/* SEARCH + STATUS FILTER */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input
+              className="form-input"
+              style={{ flex: 1, minWidth: 200, maxWidth: 320 }}
+              placeholder="Search declarations..."
+              value={interestSearch}
+              onChange={e => setInterestSearch(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['all', ...INTEREST_REGISTER_STATUSES].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setInterestStatusFilter(s)}
+                  style={{
+                    fontSize: 11, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', fontWeight: 500,
+                    background: interestStatusFilter === s ? 'var(--brand)' : 'var(--surface2)',
+                    color: interestStatusFilter === s ? '#fff' : 'var(--text2)',
+                    border: interestStatusFilter === s ? '1px solid var(--brand)' : '1px solid var(--border)',
+                  }}
+                >
+                  {s === 'all' ? 'All Statuses' : s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {showInterestForm && (
+            <InterestForm
+              initial={editInterest}
+              onSave={handleSaveInterest}
+              onCancel={() => { setShowInterestForm(false); setEditInterest(null); }}
+              saving={interestSaving}
+              error={interestError}
+            />
+          )}
+
+          {/* INTEREST LIST */}
+          {loading ? (
+            <div className="loading">Loading...</div>
+          ) : filteredInterests.length === 0 ? (
+            <div className="empty-state">
+              <div className="emoji">🤝</div>
+              <div>{interests.length === 0 ? 'No interest declarations recorded yet' : 'No declarations match your search'}</div>
+            </div>
+          ) : (
+            filteredInterests.map(i => {
+              const ic = INTEREST_STATUS_COLORS[i.status] || { bg: '#f5f5f5', color: '#666' };
+              const isActive = i.status === 'Active';
+              return (
+                <div key={i.id} className="panel" style={{ marginBottom: 10, borderLeft: isActive ? '3px solid var(--info)' : '3px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 10, background: ic.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: ic.color, textTransform: 'uppercase', letterSpacing: '0.02em', textAlign: 'center', lineHeight: 1.2 }}>
+                        {i.date_declared ? new Date(i.date_declared).toLocaleDateString('en-NZ', { month: 'short' }) : '—'}
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: ic.color, lineHeight: 1 }}>
+                        {i.date_declared ? new Date(i.date_declared).getDate() : '—'}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{i.trustee_name}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>{i.nature_of_interest}</div>
+                      {i.related_matter && (
+                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>Related: {i.related_matter}</div>
+                      )}
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Declared {fmt(i.date_declared)}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <StatusBadge status={i.status} colors={INTEREST_STATUS_COLORS} />
+                      {isActive && (
+                        <button onClick={() => handleResolveInterest(i.id)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Resolve</button>
+                      )}
+                      <button onClick={() => { setEditInterest(i); setInterestError(''); setShowInterestForm(true); }} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => handleDeleteInterest(i.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Remove</button>
                     </div>
                   </div>
                 </div>
