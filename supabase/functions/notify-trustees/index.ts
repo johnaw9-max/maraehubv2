@@ -25,7 +25,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY') ?? '';
-const FROM_ADDRESS     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <notifications@maraehub.com>';
+const FROM_ADDRESS     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@resend.dev>';
 const APP_URL          = Deno.env.get('APP_URL') ?? 'https://maraehubv2.vercel.app';
 
 const CORS = {
