@@ -17,6 +17,7 @@
  *   RESEND_API_KEY            — set in Supabase Dashboard → Edge Functions → Secrets
  *   FROM_EMAIL                — optional, defaults to MaraeHub <notifications@maraehub.com>
  *   APP_URL                   — optional, defaults to https://maraehubv2.vercel.app
+ *   RESEND_TEST_EMAIL         — when set, all emails are redirected to this address (test mode)
  */
 
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -27,6 +28,7 @@ const SERVICE_KEY      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY') ?? '';
 const FROM_ADDRESS     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@resend.dev>';
 const APP_URL          = Deno.env.get('APP_URL') ?? 'https://maraehubv2.vercel.app';
+const TEST_EMAIL       = Deno.env.get('RESEND_TEST_EMAIL') ?? '';
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -85,12 +87,14 @@ function emailHtml(title: string, intro: string, rows: string[]): string {
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (!RESEND_API_KEY) { console.warn('[notify-trustees] RESEND_API_KEY not set — skipping', to); return; }
+  const recipient = TEST_EMAIL || to;
+  if (TEST_EMAIL) console.log(`[notify-trustees] TEST MODE — redirecting ${to} → ${TEST_EMAIL}`);
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM_ADDRESS, to: [to], subject, html }),
+    body: JSON.stringify({ from: FROM_ADDRESS, to: [recipient], subject, html }),
   });
-  if (!res.ok) console.error('[notify-trustees] Resend error for', to, await res.text());
+  if (!res.ok) console.error('[notify-trustees] Resend error for', recipient, await res.text());
 }
 
 // ─── Deduplication ────────────────────────────────────────────────────────────
