@@ -391,7 +391,7 @@ export default function HelpMenu({ role }) {
               {filteredTopics.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text3)' }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-                  <div>No results found for "{search}"</div>
+                  <div>No results found — try a different search term</div>
                 </div>
               ) : filteredTopics.map(cat => (
                 <div key={cat.category} style={{ marginBottom: 20 }}>
