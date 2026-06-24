@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
-import { sendNotification, bookingStatusBody } from '../lib/notify';
+import { sendNotification, bookingStatusBody, bookingConfirmedBody } from '../lib/notify';
 import StatusPill from './StatusPill';
 
 const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
@@ -74,8 +74,15 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
       supabase.from('profiles').select('email').eq('id', booking.user_id).maybeSingle()
         .then(({ data }) => {
           if (data?.email) {
-            const label = status === 'approved' ? 'approved' : 'declined';
-            sendNotification(data.email, `Your booking has been ${label} — ${booking.occasion}`, bookingStatusBody(booking, status));
+            if (status === 'approved') {
+              sendNotification(
+                data.email,
+                `Booking Confirmed — ${booking.reference || booking.occasion}`,
+                bookingConfirmedBody(booking),
+              );
+            } else {
+              sendNotification(data.email, `Your booking has been declined — ${booking.occasion}`, bookingStatusBody(booking, status));
+            }
           }
         });
     }

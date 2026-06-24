@@ -67,6 +67,23 @@ export function bookingSubmittedBody(booking) {
   );
 }
 
+export function bookingConfirmedBody(booking) {
+  const facilities = Array.isArray(booking.facilities) && booking.facilities.length > 0
+    ? booking.facilities.join(', ')
+    : 'Not specified';
+  return (
+    `Tēnā koe,\n\n` +
+    `Ka pai! We're delighted to confirm that your booking has been approved.\n\n` +
+    `Occasion: ${booking.occasion}\n` +
+    `Dates: ${fmtDate(booking.start_date)} → ${fmtDate(booking.end_date)}\n` +
+    `Guests: ${booking.guests}\n` +
+    `Facilities: ${facilities}\n` +
+    `Booking Reference: ${booking.reference || '—'}\n` +
+    `\nPlease log in to MaraeHub to view the full details of your booking. If you have any questions, don't hesitate to get in touch.` +
+    FOOTER
+  );
+}
+
 export function bookingStatusBody(booking, status) {
   const approved = status === 'approved';
   return (
