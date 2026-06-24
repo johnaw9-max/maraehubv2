@@ -4,7 +4,7 @@
  * Handles five notification types, each controlled by trustee preferences:
  *   • bookings   — approved bookings starting in 48 hours
  *   • compliance — compliance items due within 30 days
- *   • grants     — grant deadlines within 14 days
+ *   • grants     — grant deadlines: 30-day warning, 14-day reminder, 7-day critical
  *   • actions    — meeting actions overdue by 7+ days
  *   • goals      — goals newly marked at_risk or completed
  *
@@ -123,7 +123,7 @@ serve(async (req) => {
   // Pre-fetch everything needed for all notification types in parallel
   const [
     trusteesRes, logRes,
-    bookingsRes, complianceRes, grantsRes, actionsRes, goalsRes,
+    bookingsRes, complianceRes, grants30Res, grants14Res, grants7Res, actionsRes, goalsRes,
   ] = await Promise.all([
     db.from('profiles').select('id, full_name, email, notification_prefs').eq('role', 'trustee').not('email', 'is', null),
     db.from('notification_log').select('notification_type, entity_id, entity_key, trustee_id, sent_at').gte('sent_at', new Date(Date.now() - 35 * 86400000).toISOString()),
@@ -131,21 +131,27 @@ serve(async (req) => {
     db.from('bookings').select('id, occasion, start_date, guests').eq('status', 'approved').eq('start_date', toDateStr(addDays(today, 2))),
     // Compliance items due in next 30 days
     db.from('compliance_items').select('id, name, category, due_date').gte('due_date', toDateStr(today)).lte('due_date', toDateStr(addDays(today, 30))).order('due_date'),
-    // Grants with deadline in next 14 days, not approved/declined
+    // Grants: 30-day early warning (today+15 to today+30, not approved/declined)
+    db.from('grants').select('id, name, funder, amount, deadline, status').gte('deadline', toDateStr(addDays(today, 15))).lte('deadline', toDateStr(addDays(today, 30))).not('status', 'in', '("approved","declined")').order('deadline'),
+    // Grants: 14-day action reminder (today to today+14, not approved/declined)
     db.from('grants').select('id, name, funder, amount, deadline, status').gte('deadline', toDateStr(today)).lte('deadline', toDateStr(addDays(today, 14))).not('status', 'in', '("approved","declined")').order('deadline'),
+    // Grants: 7-day critical reminder (today to today+7, not submitted/approved/declined)
+    db.from('grants').select('id, name, funder, amount, deadline, status').gte('deadline', toDateStr(today)).lte('deadline', toDateStr(addDays(today, 7))).not('status', 'in', '("submitted","approved","declined")').order('deadline'),
     // Meeting actions overdue by 7+ days
     db.from('meeting_actions').select('id, description, assigned_to, due_date, status').lt('due_date', toDateStr(addDays(today, -7))).neq('status', 'Completed').order('due_date'),
     // Goals at_risk or completed
     db.from('goals').select('id, name, status, target_date, responsible_name').in('status', ['at_risk', 'completed']),
   ]);
 
-  const trustees  = trusteesRes.data  ?? [];
+  const trustees  = trusteesRes.data   ?? [];
   const log       = (logRes.data ?? []) as LogEntry[];
-  const bookings  = bookingsRes.data  ?? [];
+  const bookings  = bookingsRes.data   ?? [];
   const compItems = complianceRes.data ?? [];
-  const grants    = grantsRes.data    ?? [];
-  const actions   = actionsRes.data   ?? [];
-  const goals     = goalsRes.data     ?? [];
+  const grants30  = grants30Res.data   ?? [];
+  const grants14  = grants14Res.data   ?? [];
+  const grants7   = grants7Res.data    ?? [];
+  const actions   = actionsRes.data    ?? [];
+  const goals     = goalsRes.data      ?? [];
 
   const newLogEntries: Omit<LogEntry, 'sent_at'>[] = [];
   const result = { trustees: trustees.length, bookings: 0, compliance: 0, grants: 0, actions: 0, goals: 0, emails: 0 };
@@ -197,25 +203,72 @@ serve(async (req) => {
       }
     }
 
-    // ── 3. Grant deadlines within 14 days ─────────────────────────────────────
+    // ── 3a. Grant deadlines — 30-day early warning ────────────────────────────
     if (prefs.grants !== false) {
-      const fresh = grants.filter(g => !wasSent(log, 'grant_deadline', g.id, id, undefined, 10));
-      if (fresh.length > 0) {
-        const rows = fresh.map(g => {
+      const fresh30 = grants30.filter(g => !wasSent(log, 'grant_deadline', g.id, id, '30d'));
+      if (fresh30.length > 0) {
+        const rows = fresh30.map(g => {
+          const days = Math.ceil((new Date(g.deadline + 'T12:00:00').getTime() - today.getTime()) / 86400000);
+          return `<strong>${g.name}</strong><br>🏦 ${g.funder ?? 'Funder not set'}${fmtMoney(g.amount)}<br>📅 Deadline: ${fmtDate(g.deadline)}&nbsp; · &nbsp;<span style="color:#6b6058;">${days} days away — begin preparation</span>`;
+        });
+        await sendEmail(
+          email,
+          `Grant deadline${fresh30.length !== 1 ? 's' : ''} in 30 days — begin preparation`,
+          emailHtml(
+            `Grant Deadline${fresh30.length !== 1 ? 's' : ''} — 30 Day Warning`,
+            `Tēnā koe ${name}, the following grant deadline${fresh30.length !== 1 ? 's are' : ' is'} approximately 30 days away. Now is the time to begin preparation.`,
+            rows,
+          ),
+        );
+        for (const g of fresh30) newLogEntries.push({ notification_type: 'grant_deadline', entity_id: g.id, entity_key: '30d', trustee_id: id });
+        result.grants++; result.emails++;
+      }
+    }
+
+    // ── 3b. Grant deadlines — 14-day action reminder ──────────────────────────
+    if (prefs.grants !== false) {
+      const fresh14 = grants14.filter(g => !wasSent(log, 'grant_deadline', g.id, id, '14d'));
+      if (fresh14.length > 0) {
+        const rows = fresh14.map(g => {
           const days = Math.ceil((new Date(g.deadline + 'T12:00:00').getTime() - today.getTime()) / 86400000);
           const urgency = days <= 3 ? `<span style="color:#d9534f;font-weight:700;">${days === 0 ? 'Due today!' : `${days} day${days !== 1 ? 's' : ''} left`}</span>` : `<span style="color:#c8902a;font-weight:600;">${days} days left</span>`;
           return `<strong>${g.name}</strong><br>🏦 ${g.funder ?? 'Funder not set'}${fmtMoney(g.amount)}<br>📅 Deadline: ${fmtDate(g.deadline)}&nbsp; · &nbsp;${urgency}`;
         });
         await sendEmail(
           email,
-          `${fresh.length} grant deadline${fresh.length !== 1 ? 's' : ''} in the next 14 days`,
+          `${fresh14.length} grant deadline${fresh14.length !== 1 ? 's' : ''} in the next 14 days`,
           emailHtml(
-            `Grant Deadline${fresh.length !== 1 ? 's' : ''} Approaching`,
-            `Tēnā koe ${name}, the following grant deadline${fresh.length !== 1 ? 's are' : ' is'} within 14 days. Please ensure applications are complete and submitted.`,
+            `Grant Deadline${fresh14.length !== 1 ? 's' : ''} Approaching`,
+            `Tēnā koe ${name}, the following grant deadline${fresh14.length !== 1 ? 's are' : ' is'} within 14 days. Please ensure applications are complete and submitted.`,
             rows,
           ),
         );
-        for (const g of fresh) newLogEntries.push({ notification_type: 'grant_deadline', entity_id: g.id, entity_key: null, trustee_id: id });
+        for (const g of fresh14) newLogEntries.push({ notification_type: 'grant_deadline', entity_id: g.id, entity_key: '14d', trustee_id: id });
+        result.grants++; result.emails++;
+      }
+    }
+
+    // ── 3c. Grant deadlines — 7-day critical reminder (not yet submitted) ─────
+    if (prefs.grants !== false) {
+      const fresh7 = grants7.filter(g => !wasSent(log, 'grant_deadline', g.id, id, '7d'));
+      if (fresh7.length > 0) {
+        const rows = fresh7.map(g => {
+          const days = Math.ceil((new Date(g.deadline + 'T12:00:00').getTime() - today.getTime()) / 86400000);
+          const urgency = days === 0
+            ? `<span style="color:#d9534f;font-weight:700;">Due today — submit immediately</span>`
+            : `<span style="color:#d9534f;font-weight:700;">${days} day${days !== 1 ? 's' : ''} left — submit now</span>`;
+          return `<strong>${g.name}</strong><br>🏦 ${g.funder ?? 'Funder not set'}${fmtMoney(g.amount)}<br>📅 Deadline: ${fmtDate(g.deadline)}&nbsp; · &nbsp;${urgency}`;
+        });
+        await sendEmail(
+          email,
+          `${fresh7.length} grant${fresh7.length !== 1 ? 's' : ''} — last chance to submit`,
+          emailHtml(
+            `Grant${fresh7.length !== 1 ? 's' : ''} — 7 Day Deadline`,
+            `Tēnā koe ${name}, the following grant${fresh7.length !== 1 ? 's have' : ' has'} a deadline within 7 days and ${fresh7.length !== 1 ? 'have' : 'has'} not yet been submitted. Please act immediately.`,
+            rows,
+          ),
+        );
+        for (const g of fresh7) newLogEntries.push({ notification_type: 'grant_deadline', entity_id: g.id, entity_key: '7d', trustee_id: id });
         result.grants++; result.emails++;
       }
     }
