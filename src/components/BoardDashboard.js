@@ -84,7 +84,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -103,6 +103,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('workflow_instances').select('id, name, status, started_at, completed_at, entity_name, trigger_type').order('started_at', { ascending: false }),
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
+      supabase.from('interest_register').select('id').eq('status', 'Active'),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -121,8 +122,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       finBudgets:        finBudRes.data  || [],
       templates:         tplRes.data    || [],
       workflowInstances: wfInstRes.data  || [],
-      workflowTasks:     wfTaskRes.data  || [],
-      pendingIncome:     pendIncRes.data  || [],
+      workflowTasks:        wfTaskRes.data  || [],
+      pendingIncome:        pendIncRes.data  || [],
+      activeInterestCount:  (irRes.data || []).length,
       fyYear,
     });
     setLoading(false);
@@ -366,9 +368,14 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   const INSIGHTS = [
     ...redInsights.map(text => ({ text, level: 'red' })),
+    ...(d.activeInterestCount > 0 ? [{
+      text: `${d.activeInterestCount} active conflict of interest declaration${d.activeInterestCount !== 1 ? 's' : ''} — review before next meeting`,
+      level: 'amber',
+      navTo: 'minutes',
+    }] : []),
     ...amberInsights.map(text => ({ text, level: 'amber' })),
     ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
-  ].slice(0, 4);
+  ].slice(0, 8);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
@@ -578,9 +585,17 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
                 }[ins.level];
                 const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
                 return (
-                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8, ...s }}>
-                    <span style={{ flexShrink: 0, marginTop: 1 }}>{icon}</span>
-                    {ins.text}
+                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
+                    <span style={{ flexShrink: 0 }}>{icon}</span>
+                    <span style={{ flex: 1 }}>{ins.text}</span>
+                    {ins.navTo && onNavigate && (
+                      <button
+                        onClick={() => onNavigate(ins.navTo)}
+                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        View Minutes →
+                      </button>
+                    )}
                   </div>
                 );
               })}
