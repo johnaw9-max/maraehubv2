@@ -399,8 +399,9 @@ create table if not exists service_reminders (
                          check (recurring in (
                            'none','monthly','quarterly','biannual','annual','2years'
                          )),
-  notes      text,
-  created_at timestamptz not null default now()
+  notes                 text,
+  auto_workflow_enabled boolean     not null default true,
+  created_at            timestamptz not null default now()
 );
 
 create index if not exists idx_service_reminders_asset_id on service_reminders(asset_id);
