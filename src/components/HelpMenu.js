@@ -146,6 +146,16 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Automatic Workflows',
+      icon: '🤖',
+      items: [
+        { q: 'What are Automatic Workflows?', a: 'Automatic Workflows are workflows that MaraeHub starts on its own — without any trustee needing to click anything. When an asset service reminder falls within 14 days of its due date and no active workflow already exists for that reminder, the system checks whether a matching workflow template exists and starts it automatically. The workflow and all of its tasks appear in the Workflows tab and Task Board straight away.' },
+        { q: 'How does the system know which workflow to start?', a: 'MaraeHub matches the name of the service reminder to the most relevant workflow template. For example, a reminder called "Heat Pump Service" automatically triggers the Heat Pump Service workflow template. The match is based on the reminder type — so the more specific and consistent your reminder names are, the better the system can find the right template. If no close match exists, no workflow is started and the reminder continues to show as normal.' },
+        { q: 'Can I turn off Automatic Workflows for a specific reminder?', a: 'Yes. If you want to manage a particular service reminder manually — starting workflows yourself rather than having them start automatically — go to the Assets tab, find the asset, and open its reminders. Click "Edit" on the reminder you want to change, and toggle off "Auto-start workflow". With this turned off, the reminder will still appear and send early warnings as usual, but no workflow will be started automatically when it falls due.' },
+        { q: 'Where will I see an automatic workflow once it has started?', a: 'An automatic workflow appears in exactly the same place as one you start manually. You will see it in the Active Workflows section of the Workflows tab, with a progress bar and the first incomplete task highlighted. All of its tasks also appear on the Task Board, labelled with the workflow name. A note on the workflow card shows it was started automatically from the service reminder, so you can always trace it back to its origin.' },
+      ]
+    },
+    {
       category: 'Board View Insights',
       icon: '📈',
       items: [
