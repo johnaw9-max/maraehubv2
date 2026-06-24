@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAnonKey } from './supabase';
 
 /**
  * Fire-and-forget email notification via the send-notification Edge Function.
@@ -12,6 +12,7 @@ export async function sendNotification(to, subject, body) {
   try {
     const { error } = await supabase.functions.invoke('send-notification', {
       body: { to, subject, body },
+      headers: { Authorization: `Bearer ${supabaseAnonKey}` },
     });
     if (error) console.error('[notify]', error.message);
   } catch (err) {
