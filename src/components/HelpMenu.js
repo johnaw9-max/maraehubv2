@@ -261,6 +261,16 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Email Notifications',
+      icon: '📧',
+      items: [
+        { q: 'What are email notifications?', a: 'Email notifications are automatic emails sent to trustees every morning at 8am when something on the marae needs their attention. Instead of having to log in and check each module, MaraeHub sends a summary directly to your inbox so nothing slips through the cracks. You only receive an email on days when there is actually something to act on — there is no daily email if everything is up to date.' },
+        { q: 'What triggers an email notification?', a: 'Five types of items trigger notifications. Compliance items due within 30 days — so you have time to renew before the deadline. Bookings starting within 48 hours — a heads-up before the marae is due to be used. Grant deadlines within 14 days — an early reminder to submit or finalise applications in time. Meeting actions that are overdue by 7 or more days — flagging tasks that have been assigned but not yet completed. Goals marked as At Risk or Completed — so the full committee stays across strategic progress without needing to open the Goals tab.' },
+        { q: 'How do I turn email notifications on or off?', a: 'Go to Settings and open the "Email Notifications" section. Each notification type has its own toggle — you can turn individual types on or off independently. For example, you might keep compliance and grant reminders on but turn off booking notifications if another trustee handles approvals. Changes take effect immediately and apply only to your account — each trustee controls their own notification preferences.' },
+        { q: 'Will I get the same email about the same item every day?', a: 'No. MaraeHub tracks what has already been sent and will not email you about the same item more than once every 25 days. If a compliance item is still due in 30 days and has not been updated, you will receive one notification about it — and then not again for another 25 days. This prevents your inbox from filling up with repeated reminders about the same unresolved issue.' },
+      ]
+    },
+    {
       category: 'Privacy & Data',
       icon: '🔒',
       items: [
