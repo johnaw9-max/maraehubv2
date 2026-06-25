@@ -433,7 +433,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
         : '- None',
       ``,
       `COMMUNITY FEEDBACK:`,
-      `- ${periodFeedbackScores.length} responses, avg ${avgRatig ? Number(avgRating).toFixed(1) + '/5' : 'N/A'}`,
+      `- ${periodFeedbackScores.length} responses, avg ${avgRating ? Number(avgRating).toFixed(1) + '/5' : 'N/A'}`,
       periodComments.length
         ? periodComments.map(f => `- "${f.experience?.slice(0, 120)}"`).join('\n')
         : '- No comments this period',
