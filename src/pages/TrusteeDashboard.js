@@ -503,7 +503,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       }).length;
       const onTrack = rows.filter(r => {
         if (r.status === 'completed') return true;
-        if (r.status === 'at_risk' || r.status === 'not_started') return false;
+        if (r.status === 'at_risk') return false;
         const t = r.target_date ? new Date(r.target_date + 'T12:00:00') : null;
         if (t && t < today) return false;
         if (t && t <= in14) return false;
