@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { TASK_SOURCES, taskSource } from '../lib/taskSync';
+
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
