@@ -10,7 +10,7 @@ import { supabase, supabaseAnonKey } from './supabase';
  */
 export async function sendNotification(to, subject, body) {
   try {
-    const { error } = await supabase.functions.invoke('send-notification', {
+  const { error } = await supabase.functions.invoke('notify-hirer', {
       body: { to, subject, body },
       headers: { Authorization: `Bearer ${supabaseAnonKey}` },
     });
