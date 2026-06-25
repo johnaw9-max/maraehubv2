@@ -195,7 +195,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const t = g.target_date ? new Date(g.target_date + 'T12:00:00') : null;
     if (g.status === 'completed') return 'green';
     if (g.status === 'at_risk') return 'orange';
-    if (g.status === 'not_started') return (t && t < today) ? 'red' : 'grey';
+    if (g.status === 'not_started') return (t && t < today) ? 'red' : 'green';
     if (t && t < today) return 'red';
     if (t && t <= in14) return 'orange';
     return 'green';
