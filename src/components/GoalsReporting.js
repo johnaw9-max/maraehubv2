@@ -93,7 +93,7 @@ function getTrafficLight(goal, effectiveProgress) {
   if (goal.status === 'at_risk') return 'orange';
   if (goal.status === 'not_started') {
     if (target && target < today) return 'red';
-    return 'grey';
+    return 'green';
   }
   if (target && target < today) return 'red';
   if (target && target <= in14) return 'orange';
