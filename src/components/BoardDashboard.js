@@ -291,7 +291,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   if (overdueTasks.length > 0)
     redInsights.push(`${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately (see Tasks panel)`);
-
+const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date + 'T12:00:00') < today);
+  if (overdueActions.length > 0)
+    redInsights.push(`${overdueActions.length} meeting action${overdueActions.length !== 1 ? 's are' : ' is'} overdue — follow up before next hui (see Minutes)`);
   const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
   if (grantsUrgent.length > 0) {
     const minDays = Math.min(...grantsUrgent.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
@@ -342,7 +344,15 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   if (periodProjects.length === 0)
     amberInsights.push(`No active projects this period — consider initiating planned work`);
+if (pendingBookings.length > 0)
+    amberInsights.push(`${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`);
 
+  const nextHui = d.bookings.filter(b => b.occasion?.toLowerCase().includes('hui') && b.start_date >= todayStr).sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
+  if (nextHui) {
+    const daysToHui = Math.ceil((new Date(nextHui.start_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
+    if (daysToHui <= 7)
+      amberInsights.push(`Your next hui is in ${daysToHui} day${daysToHui !== 1 ? 's' : ''} — ${d.actions.length} open action${d.actions.length !== 1 ? 's' : ''} to resolve beforehand`);
+  }
   // GREEN (max 2)
   if (d.goals.length > 0 && goalsBehind.length === 0 && goalsAtRisk.length === 0)
     greenInsights.push(`All ${d.goals.length} strategic goal${d.goals.length !== 1 ? 's are' : ' is'} on track — excellent governance progress`);
