@@ -319,9 +319,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   else if (activeWorkflowsWithSource.length > 1)
     amberInsights.push(`${activeWorkflowsWithSource.length} active workflows running — ${activeWorkflowsWithSource.slice(0, 2).map(w => `${w.name} (from ${w.entity_name})`).join(', ')}${activeWorkflowsWithSource.length > 2 ? ` +${activeWorkflowsWithSource.length - 2} more` : ''}`);
 
-  if (upcomingAutoTasks.length > 0)
-    amberInsights.push(`${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged across your modules — review and prepare before they become overdue`);
-
+ 
   const grantsSoon = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14);
   if (grantsSoon.length > 0) {
     const minDays = Math.min(...grantsSoon.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
