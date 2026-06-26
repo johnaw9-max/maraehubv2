@@ -385,7 +385,7 @@ if (pendingBookings.length > 0)
     }] : []),
     ...amberInsights.map(text => ({ text, level: 'amber' })),
     ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
-  ].slice(0, 8);
+  ].slice(0, 10);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
