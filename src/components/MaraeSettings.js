@@ -4,7 +4,10 @@ import PrivacyPolicy from './PrivacyPolicy';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
-  use_xero: false,
+  use_xero: false, automation_level: 'assisted',
+
+};
+const NOTIF_LABELS = [
 };
 
 const NOTIF_LABELS = [
@@ -93,9 +96,14 @@ export default function MaraeSettings({ profile, isAdmin }) {
         iwi: data.iwi || '',
         hapu: data.hapu || '',
         phone: data.phone || '',
-        email: data.email || '',
+       email: data.email || '',
         website: data.website || '',
         use_xero: data.use_xero || false,
+        automation_level: data.automation_level || 'assisted',
+      });
+    }
+    setLoading(false);
+  }
       });
     }
     setLoading(false);
@@ -470,7 +478,53 @@ export default function MaraeSettings({ profile, isAdmin }) {
         </button>
       </div>
 
+      {/* ── AUTOMATION LEVEL ── */}
+      {isAdmin && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            Automation Level
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+            Choose how much MaraeHub does automatically. You can change this at any time.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            {[
+              { value: 'manual',    icon: '🔴', title: "I'll do it myself",    desc: 'Show me what needs doing — I will take it from there. Nothing happens without me.' },
+              { value: 'assisted',  icon: '🟡', title: 'Ask me first',         desc: 'Suggest what to do and I will approve before anything happens. Recommended for most marae.' },
+              { value: 'automatic', icon: '🟢', title: 'Handle it for me',     desc: 'Run in the background and let me know what happened. Best for experienced trustees who trust the platform.' },
+            ].map(opt => (
+              <div
+                key={opt.value}
+                onClick={async () => {
+                  if (!settingsId) return;
+                  await supabase.from('marae_settings').update({ automation_level: opt.value }).eq('id', settingsId);
+                  setForm(f => ({ ...f, automation_level: opt.value }));
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                  borderRadius: 10, border: `2px solid ${form.automation_level === opt.value ? 'var(--brand)' : 'var(--border)'}`,
+                  background: form.automation_level === opt.value ? 'var(--surface2)' : 'var(--surface)',
+                  cursor: 'pointer', transition: 'all 0.15s',
+                }}
+              >
+                <span style={{ fontSize: 22, flexShrink: 0 }}>{opt.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: form.automation_level === opt.value ? 'var(--brand)' : 'var(--text1)' }}>{opt.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3, lineHeight: 1.5 }}>{opt.desc}</div>
+                </div>
+                {form.automation_level === opt.value && (
+                  <span style={{ fontSize: 18, color: 'var(--brand)', flexShrink: 0 }}>✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── CHANGE PASSWORD ── */}
+      <div className="panel" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Change Password
       <div className="panel" style={{ marginTop: 20 }}>
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
           Change Password
