@@ -308,7 +308,9 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   else if (stalledWorkflows.length > 1)
     redInsights.push(`${stalledWorkflows.length} workflows have had no progress in 14+ days: ${stalledWorkflows.map(w => w.name).join(', ')}`);
 
-  // AMBER
+ // AMBER
+  if (pendingBookings.length > 0)
+    amberInsights.push(`${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`);
   if (pendingBookingIncomeCount > 0)
     amberInsights.push(`${pendingBookingIncomeCount} booking income record${pendingBookingIncomeCount !== 1 ? 's need' : ' needs'} the hire fee entered — update in Finance`);
 
@@ -344,8 +346,6 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
   if (periodProjects.length === 0)
     amberInsights.push(`No active projects this period — consider initiating planned work`);
-if (pendingBookings.length > 0)
-    amberInsights.push(`${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`);
 
   const nextHui = d.bookings.filter(b => b.occasion?.toLowerCase().includes('hui') && b.start_date >= todayStr).sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
   if (nextHui) {
