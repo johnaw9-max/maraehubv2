@@ -20,6 +20,7 @@ import FeedbackButton from '../components/FeedbackButton';
 import HelpMenu from '../components/HelpMenu';
 import WorkflowEngine from '../components/WorkflowEngine';
 import WhatsNew from '../components/WhatsNew';
+import OnboardingFlow from '../components/OnboardingFlow';
 
 const NAV_GROUPS = [
   {
@@ -538,6 +539,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {/* ── DASHBOARD ──────────────────────────────────────────────────── */}
         {activeTab === 'dashboard' && (
           <>
+            {isAdmin && (
+              <OnboardingFlow onComplete={() => setActiveTab('board')} />
+            )}
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontSize: 26, marginBottom: 4 }}>Tēnā koe, {profile?.full_name?.split(' ')[0]} 👋</h1>
               <p style={{ color: 'var(--text3)', fontSize: 13 }}>
