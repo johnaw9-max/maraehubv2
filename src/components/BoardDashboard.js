@@ -89,7 +89,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
       supabase.from('grants').select('id, name, funder, amount, status, deadline').order('deadline'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
-      supabase.from('assets').select('id, name'),
+      supabase.from('assets').select('id, name, condition, replacement_date, replacement_cost'),
       supabase.from('tasks').select('id, title, due_date, status, priority').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
@@ -301,6 +301,22 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
   if (overdueReminders.length > 0)
     redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
+
+  const criticalAssets = d.assets.filter(a => a.condition === 'critical');
+  criticalAssets.forEach(a => {
+    redInsights.push(`Asset in critical condition: ${a.name}${a.replacement_cost ? ` — est. replacement $${Number(a.replacement_cost).toLocaleString()}` : ''}`);
+  });
+
+  const in2yr = new Date(today); in2yr.setFullYear(in2yr.getFullYear() + 2);
+  const assetsNearReplacement = d.assets.filter(a =>
+    a.replacement_date &&
+    new Date(a.replacement_date + 'T12:00:00') >= today &&
+    new Date(a.replacement_date + 'T12:00:00') <= in2yr
+  );
+  assetsNearReplacement.forEach(a => {
+    const yrs = ((new Date(a.replacement_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24 * 365)).toFixed(1);
+    amberInsights.push(`${a.name} due for replacement in ${yrs} year${yrs === '1.0' ? '' : 's'}${a.replacement_cost ? ` — est. $${Number(a.replacement_cost).toLocaleString()}` : ''}`);
+  });
 
   if (stalledWorkflows.length === 1)
     redInsights.push(`Workflow "${stalledWorkflows[0].name}" has had no progress in 14+ days — check if it needs attention`);

@@ -4,11 +4,18 @@ import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
 const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Other'];
-const CONDITIONS = ['good', 'fair', 'poor'];
+const CONDITIONS = ['excellent', 'good', 'fair', 'poor', 'critical'];
+const CONDITION_STYLE = {
+  excellent: { color: '#0F6E56', bg: '#E6F4F0' },
+  good:      { color: '#1a6a3a', bg: '#e8f4ef' },
+  fair:      { color: '#BA7517', bg: '#FDF3E3' },
+  poor:      { color: '#A32D2D', bg: '#FAEAE7' },
+  critical:  { color: '#fff',    bg: '#6B0000' },
+};
 const RECURRING_LABELS = { none: 'One-time', monthly: 'Monthly', quarterly: 'Quarterly', biannual: '6-monthly', annual: 'Annual', '2years': '2-yearly' };
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
 const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technology: '💻', Grounds: '🌿', Other: '📦' };
-const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '' };
+const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '' };
 const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', notes: '' };
 
 export default function AssetsManager({ onStartWorkflow }) {
@@ -114,17 +121,50 @@ export default function AssetsManager({ onStartWorkflow }) {
     return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  function lifecycleDays(a) {
+    if (!a.replacement_date) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((new Date(a.replacement_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
+  }
+
+  function lifecycleColor(days) {
+    if (days === null) return 'var(--text3)';
+    if (days < 730)  return 'var(--danger)';
+    if (days < 1825) return 'var(--warning)';
+    return 'var(--success)';
+  }
+
+  function lifecycleLabel(days) {
+    if (days === null) return null;
+    if (days < 0) return `${Math.abs(days)}d overdue`;
+    if (days < 730) return `${Math.round(days / 30)}mo`;
+    return `${(days / 365).toFixed(1)}yr`;
+  }
+
   function openAdd() { setForm(EMPTY_FORM); setEditId(null); setError(''); setShowModal(true); }
 
   function openEdit(a) {
-    setForm({ name: a.name, category: a.category, location: a.location || '', condition: a.condition, value: a.value || '', notes: a.notes || '' });
+    setForm({
+      name: a.name, category: a.category, location: a.location || '',
+      condition: a.condition || 'good', value: a.value || '', notes: a.notes || '',
+      purchase_date: a.purchase_date || '', purchase_cost: a.purchase_cost || '',
+      lifespan_years: a.lifespan_years || '', replacement_cost: a.replacement_cost || '',
+    });
     setEditId(a.id); setError(''); setShowModal(true);
   }
 
   async function handleSave() {
     if (!form.name.trim()) { setError('Asset name is required'); return; }
     setSaving(true); setError('');
-    const payload = { ...form, value: form.value ? parseFloat(form.value) : null };
+    const payload = {
+      name: form.name, category: form.category, location: form.location,
+      condition: form.condition, notes: form.notes,
+      value:            form.value            ? parseFloat(form.value)            : null,
+      purchase_cost:    form.purchase_cost    ? parseFloat(form.purchase_cost)    : null,
+      lifespan_years:   form.lifespan_years   ? parseInt(form.lifespan_years)     : null,
+      replacement_cost: form.replacement_cost ? parseFloat(form.replacement_cost) : null,
+      purchase_date:    form.purchase_date    || null,
+    };
     const { error } = editId
       ? await supabase.from('assets').update(payload).eq('id', editId)
       : await supabase.from('assets').insert(payload);
@@ -378,6 +418,33 @@ export default function AssetsManager({ onStartWorkflow }) {
         </div>
       )}
 
+      {/* ASSET HEALTH SUMMARY */}
+      {!loading && assets.length > 0 && (() => {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const in2yr  = new Date(today); in2yr.setFullYear(in2yr.getFullYear() + 2);
+        const in5yr  = new Date(today); in5yr.setFullYear(in5yr.getFullYear() + 5);
+        const criticalOrPoor = assets.filter(a => ['critical', 'poor'].includes(a.condition));
+        const dueIn5yr = assets.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today && new Date(a.replacement_date + 'T12:00:00') <= in5yr);
+        const replacementTotal = dueIn5yr.reduce((s, a) => s + (parseFloat(a.replacement_cost) || 0), 0);
+        const nextUp = assets.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today).sort((a, b) => new Date(a.replacement_date) - new Date(b.replacement_date))[0];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+            {[
+              { label: 'Total Assets', value: assets.length, color: 'var(--text1)' },
+              { label: 'Critical / Poor Condition', value: criticalOrPoor.length, color: criticalOrPoor.length ? 'var(--danger)' : 'var(--success)' },
+              { label: 'Replacement Cost (5yr)', value: replacementTotal ? `$${Math.round(replacementTotal).toLocaleString()}` : '—', color: replacementTotal ? 'var(--warning)' : 'var(--text1)' },
+              { label: 'Next Replacement', value: nextUp ? nextUp.name : '—', sub: nextUp ? formatDate(nextUp.replacement_date) : null, color: nextUp && new Date(nextUp.replacement_date + 'T12:00:00') <= in2yr ? 'var(--danger)' : 'var(--text1)' },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
+                {sub && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sub}</div>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {loading ? <div className="loading">Loading assets...</div>
         : assets.length === 0 ? (
           <div className="empty-state">
@@ -401,16 +468,32 @@ export default function AssetsManager({ onStartWorkflow }) {
                         <div style={{ fontSize: 12, color: 'var(--text3)' }}>{a.category} · {a.location || 'No location'}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }} className={`badge badge-${a.condition}`}>{a.condition}</span>
+                    {(() => { const s = CONDITION_STYLE[a.condition] || CONDITION_STYLE.good; return (
+                      <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 700, color: s.color, background: s.bg }}>
+                        {a.condition ? a.condition.charAt(0).toUpperCase() + a.condition.slice(1) : 'Good'}
+                      </span>
+                    ); })()}
                   </div>
 
                   {overdue > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
                   {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
                     <div><span style={{ color: 'var(--text3)' }}>Value: </span>{a.value ? `$${Number(a.value).toLocaleString()}` : '—'}</div>
                     <div><span style={{ color: 'var(--text3)' }}>Reminders: </span>{aReminders.length}</div>
                   </div>
+                  {a.replacement_date && (() => {
+                    const days = lifecycleDays(a);
+                    const col  = lifecycleColor(days);
+                    const lbl  = lifecycleLabel(days);
+                    return (
+                      <div style={{ fontSize: 12, marginBottom: 8 }}>
+                        <span style={{ color: 'var(--text3)' }}>Replace by: </span>
+                        <span style={{ fontWeight: 600, color: col }}>{formatDate(a.replacement_date)} ({lbl})</span>
+                        {a.replacement_cost && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>· Est. ${Number(a.replacement_cost).toLocaleString()}</span>}
+                      </div>
+                    );
+                  })()}
                   {a.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
 
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -455,6 +538,26 @@ export default function AssetsManager({ onStartWorkflow }) {
               <div className="form-group">
                 <label className="form-label">Estimated Value ($)</label>
                 <input type="number" className="form-input" value={form.value} onChange={e => setField('value', e.target.value)} placeholder="e.g. 50000" />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Purchase Date</label>
+                <input type="date" className="form-input" value={form.purchase_date} onChange={e => setField('purchase_date', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Purchase Cost ($)</label>
+                <input type="number" className="form-input" value={form.purchase_cost} onChange={e => setField('purchase_cost', e.target.value)} placeholder="e.g. 25000" />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Expected Lifespan (years)</label>
+                <input type="number" className="form-input" value={form.lifespan_years} onChange={e => setField('lifespan_years', e.target.value)} placeholder="e.g. 20" min="1" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Replacement Cost Estimate ($)</label>
+                <input type="number" className="form-input" value={form.replacement_cost} onChange={e => setField('replacement_cost', e.target.value)} placeholder="e.g. 30000" />
               </div>
             </div>
             <div className="form-group">
