@@ -304,7 +304,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
   const criticalAssets = d.assets.filter(a => a.condition === 'critical');
   criticalAssets.forEach(a => {
-    redInsights.push(`Asset in critical condition: ${a.name}${a.replacement_cost ? ` — est. replacement $${Number(a.replacement_cost).toLocaleString()}` : ''}`);
+    redInsights.unshift(`🔴 ${a.name} is in Critical condition — arrange replacement or repair immediately${a.replacement_cost ? ` (Est. replacement cost: $${Number(a.replacement_cost).toLocaleString()})` : ''}`);
   });
 
   const in2yr = new Date(today); in2yr.setFullYear(in2yr.getFullYear() + 2);
@@ -398,7 +398,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     }] : []),
     ...amberInsights.map(text => ({ text, level: 'amber' })),
     ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
-  ].slice(0, 10);
+  ].slice(0, 15);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
