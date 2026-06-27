@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
+
 export default function Header({ profile, onLogout, activeTab, setActiveTab, tabs, groups }) {
   const [maraeName, setMaraeName] = useState('Te Marae o Tainui');
   const [maraeLocation, setMaraeLocation] = useState('Manurewa, Auckland');
@@ -61,6 +63,15 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
               ))}
             </React.Fragment>
           ))}
+          {FOUNDER_EMAILS.includes(profile?.email) && (
+            <a
+              href="/founder"
+              className={`nav-item ${window.location.pathname === '/founder' ? 'active' : ''}`}
+              style={{ textDecoration: 'none' }}
+            >
+              Founder
+            </a>
+          )}
         </div>
       ) : tabs ? (
         <div className="nav">
@@ -73,6 +84,15 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
               {tab.label}
             </div>
           ))}
+          {FOUNDER_EMAILS.includes(profile?.email) && (
+            <a
+              href="/founder"
+              className={`nav-item ${window.location.pathname === '/founder' ? 'active' : ''}`}
+              style={{ textDecoration: 'none' }}
+            >
+              Founder
+            </a>
+          )}
         </div>
       ) : null}
     </>

@@ -3,6 +3,9 @@ import { supabase } from './lib/supabase';
 import LoginPage from './pages/LoginPage';
 import TrusteeDashboard from './pages/TrusteeDashboard';
 import CommunityPortal from './pages/CommunityPortal';
+import FounderDashboard from './components/FounderDashboard';
+
+const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -90,6 +93,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (FOUNDER_EMAILS.includes(profile?.email) && window.location.pathname === '/founder') {
+    return <FounderDashboard profile={profile} />;
   }
 
   if (profile?.role === 'trustee') {
