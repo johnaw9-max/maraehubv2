@@ -7,8 +7,6 @@ const EMPTY_FORM = {
   use_xero: false, automation_level: 'assisted',
 
 };
-const NOTIF_LABELS = [
-};
 
 const NOTIF_LABELS = [
   { key: 'bookings',   icon: '📅', label: 'Booking Reminders',    desc: '48 hours before a confirmed booking' },
@@ -100,10 +98,6 @@ export default function MaraeSettings({ profile, isAdmin }) {
         website: data.website || '',
         use_xero: data.use_xero || false,
         automation_level: data.automation_level || 'assisted',
-      });
-    }
-    setLoading(false);
-  }
       });
     }
     setLoading(false);
@@ -522,9 +516,6 @@ export default function MaraeSettings({ profile, isAdmin }) {
       )}
 
       {/* ── CHANGE PASSWORD ── */}
-      <div className="panel" style={{ marginTop: 20 }}>
-        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-          Change Password
       <div className="panel" style={{ marginTop: 20 }}>
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
           Change Password

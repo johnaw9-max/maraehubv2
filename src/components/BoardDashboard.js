@@ -793,11 +793,6 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       </div>
 
 
-<<<<<<< HEAD
-
- 
-=======
->>>>>>> cd685b9 (Remove TASK_SOURCES/taskSource import and usages from BoardDashboard)
 
       {/* ── TWO-COLUMN: GRANTS + REMINDERS ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
