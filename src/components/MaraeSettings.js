@@ -496,6 +496,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     'Compliance item due → you record the renewal manually',
                     'Booking approved → you enter the income in Finance manually',
                   ],
+                  live: [
+                    'Service reminders — appear on Board View, you start workflows manually',
+                    'Compliance due dates — appear on Board View, you act manually',
+                    'Booking approvals — you approve manually, finance record created automatically (this always happens)',
+                    'Meeting actions — you create tasks manually from minutes',
+                  ],
+                  coming: [],
                 },
               },
               {
@@ -510,6 +517,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     'Compliance renewal due → MaraeHub suggests creating a task → you approve or dismiss',
                     'This is the safest option if you want to stay in control but reduce manual work',
                   ],
+                  live: [],
+                  coming: [
+                    'Service reminder due → MaraeHub will ask "Shall I start the workflow?" → you approve',
+                    'Compliance renewal due → MaraeHub suggests a task → you approve',
+                    'Grant deadline approaching → MaraeHub suggests action → you approve',
+                  ],
+                  comingSoonPill: true,
                 },
               },
               {
@@ -524,6 +538,16 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     'Booking approved → finance record created automatically',
                     'Compliance due → reminder email sent automatically to all trustees',
                   ],
+                  live: [
+                    'Booking confirmation email → sent to hirer automatically on approval',
+                    'Compliance daily check → emails fire at 8am automatically',
+                    'Grant escalating reminders → fire automatically at 30/14/7 days',
+                    'Service reminder → workflow trigger → fires automatically',
+                    'Finance income → auto-created on booking approval',
+                    'Board View insights → update automatically on every page load',
+                  ],
+                  coming: [],
+                  morePill: true,
                 },
               },
             ].map(opt => (
@@ -558,15 +582,48 @@ export default function MaraeSettings({ profile, isAdmin }) {
                   )}
                 </div>
                 {expandedInfo === opt.value && (
-                  <div
-                    onClick={e => e.stopPropagation()}
-                    style={{ marginTop: 8, padding: 10, background: '#E1F5EE', borderRadius: 6, fontSize: 12, color: 'var(--text1)', lineHeight: 1.6 }}
-                  >
-                    <div style={{ marginBottom: 8 }}>{opt.info.summary}</div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Examples:</div>
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {opt.info.examples.map((ex, i) => <li key={i} style={{ marginBottom: 3 }}>{ex}</li>)}
-                    </ul>
+                  <div onClick={e => e.stopPropagation()} style={{ marginTop: 8, fontSize: 12, color: 'var(--text1)', lineHeight: 1.6 }}>
+                    {/* Summary + examples */}
+                    <div style={{ padding: 10, background: '#E1F5EE', borderRadius: 6, marginBottom: 8 }}>
+                      <div style={{ marginBottom: 8 }}>{opt.info.summary}</div>
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>Examples:</div>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {opt.info.examples.map((ex, i) => <li key={i} style={{ marginBottom: 3 }}>{ex}</li>)}
+                      </ul>
+                    </div>
+                    {/* What this controls right now */}
+                    <div style={{ padding: 10, background: '#C8EBD8', borderRadius: 6 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text1)' }}>What this controls in MaraeHub right now:</div>
+                      {opt.info.live.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 700, color: '#0F6E56', marginBottom: 4 }}>Currently live</div>
+                          <ul style={{ margin: '0 0 8px', paddingLeft: 18 }}>
+                            {opt.info.live.map((item, i) => <li key={i} style={{ marginBottom: 3 }}>✅ {item}</li>)}
+                          </ul>
+                        </>
+                      )}
+                      {opt.info.coming.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 700, color: '#BA7517', marginBottom: 4 }}>Coming soon</div>
+                          <ul style={{ margin: 0, paddingLeft: 18 }}>
+                            {opt.info.coming.map((item, i) => <li key={i} style={{ marginBottom: 3 }}>🔜 {item}</li>)}
+                          </ul>
+                        </>
+                      )}
+                      {opt.info.live.length === 0 && opt.info.coming.length === 0 && (
+                        <div style={{ color: 'var(--text3)' }}>Nothing runs automatically at this level — you are in full control.</div>
+                      )}
+                      {opt.info.comingSoonPill && (
+                        <div style={{ marginTop: 10, display: 'inline-block', background: '#FDF3E3', border: '1px solid #E8C880', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#BA7517' }}>
+                          🔜 Coming soon — Automation Engine in development
+                        </div>
+                      )}
+                      {opt.info.morePill && (
+                        <div style={{ marginTop: 10, display: 'inline-block', background: '#FDF3E3', border: '1px solid #E8C880', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#BA7517' }}>
+                          🔜 More automations coming — Automation Engine in development
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
