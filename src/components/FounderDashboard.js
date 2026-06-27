@@ -93,6 +93,7 @@ export default function FounderDashboard({ profile }) {
 
   const [kopara, setKopara] = useState({ tenant: '', rent: '', leaseExpiry: '', maintenance: '', status: '' });
   const [liveCounts, setLiveCounts] = useState({ tasks: 0, compliance: 0, bookings: 0, activeUsers: 0 });
+  const [loginActivity, setLoginActivity] = useState([]);
 
   useEffect(() => {
     if (!FOUNDER_EMAILS.includes(profile?.email)) return;
@@ -104,12 +105,13 @@ export default function FounderDashboard({ profile }) {
   async function loadAll() {
     setLoading(true);
     const todayStr = new Date().toISOString().split('T')[0];
-    const [settingsRes, tasksRes, compRes, bookRes, profilesRes] = await Promise.all([
+    const [settingsRes, tasksRes, compRes, bookRes, profilesRes, loginRes] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('compliance_items').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.rpc('get_trustee_login_activity'),
     ]);
 
     if (settingsRes.data) {
@@ -133,6 +135,7 @@ export default function FounderDashboard({ profile }) {
       bookings:    bookRes.count     || 0,
       activeUsers: profilesRes.count || 0,
     });
+    setLoginActivity(loginRes.data || []);
 
     setLoading(false);
   }
@@ -321,6 +324,39 @@ export default function FounderDashboard({ profile }) {
             </div>
           ))}
         </div>
+      </Card>
+
+      {/* ── LOGIN ACTIVITY ─────────────────────────────────────────────── */}
+      <Card style={{ marginTop: 24 }}>
+        <SectionTitle>Login Activity — Trustees</SectionTitle>
+        {loginActivity.length === 0 ? (
+          <div style={{ fontSize: 13, color: TEXT3 }}>No trustee login data available.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, paddingBottom: 8, marginBottom: 4, borderBottom: `1px solid ${BORDER}` }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Name</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Last Login</span>
+            </div>
+            {loginActivity.map(u => {
+              const now = new Date();
+              const last = u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
+              const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
+              const color = days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
+              const label = last
+                ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                : 'Never';
+              const ago = days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
+              return (
+                <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
+                  <span style={{ fontSize: 13, color: TEXT1, fontWeight: 500 }}>{u.full_name || '—'}</span>
+                  <span style={{ fontSize: 13, color: TEXT3 }}>{u.email}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color }}>{label}{ago}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* ── FOOTER ─────────────────────────────────────────────────────── */}
