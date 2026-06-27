@@ -80,8 +80,9 @@ export default function FounderDashboard({ profile }) {
   const [mrr, setMrr]               = useState(0);
   const [payingMarae, setPayingMarae] = useState(0);
   const [shipped, setShipped]        = useState('');
-  const [iretoro, setIretoro]        = useState(3200);
-  const [wroughton, setWroughton]    = useState(1800);
+  const [iretoro, setIretoro]        = useState(312);
+  const [wroughton, setWroughton]    = useState(13);
+  const [buchanan, setBuchanan]      = useState(104);
   const [weekFocus, setWeekFocus]    = useState({ ship: '', contact: '', fix: '' });
   const [saved, setSaved]            = useState(false);
   const [loading, setLoading]        = useState(true);
@@ -122,6 +123,7 @@ export default function FounderDashboard({ profile }) {
       if (m.shipped    !== undefined) setShipped(m.shipped);
       if (m.iretoro    !== undefined) setIretoro(m.iretoro);
       if (m.wroughton  !== undefined) setWroughton(m.wroughton);
+      if (m.buchanan   !== undefined) setBuchanan(m.buchanan);
       if (m.weekFocus) setWeekFocus(m.weekFocus);
       if (m.terere)    setTerere(m.terere);
       if (m.tineka)    setTineka(m.tineka);
@@ -142,13 +144,13 @@ export default function FounderDashboard({ profile }) {
 
   async function saveMetrics() {
     if (!settingsId) return;
-    const payload = { mrr, payingMarae, shipped, iretoro, wroughton, weekFocus, terere, tineka, waioweka, kopara };
+    const payload = { mrr, payingMarae, shipped, iretoro, wroughton, buchanan, weekFocus, terere, tineka, waioweka, kopara };
     await supabase.from('marae_settings').update({ founder_metrics: payload }).eq('id', settingsId);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
 
-  const totalIncome  = mrr + iretoro + wroughton;
+  const totalIncome  = mrr + iretoro + wroughton + buchanan;
   const freedom      = Math.min(100, Math.round((totalIncome / SALARY_TARGET) * 100));
   const freedomColor = freedom >= 100 ? GREEN : freedom >= 60 ? AMBER : RED;
 
@@ -224,10 +226,11 @@ export default function FounderDashboard({ profile }) {
 
         <Card>
           <SectionTitle>Rental Income</SectionTitle>
-          <FieldInput label="Iretoro St ($/mo)"   value={iretoro}   onChange={setIretoro}   type="number" placeholder="3200" />
-          <FieldInput label="Wroughton St ($/mo)"  value={wroughton} onChange={setWroughton} type="number" placeholder="1800" />
+          <FieldInput label="Iretoro Properties (Opotiki)" value={iretoro}   onChange={setIretoro}   type="number" placeholder="312" />
+          <FieldInput label="Wroughton (Hamilton)"         value={wroughton} onChange={setWroughton} type="number" placeholder="13" />
+          <FieldInput label="CJ Trust / 58a Buchanan"      value={buchanan}  onChange={setBuchanan}  type="number" placeholder="104" />
           <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 12, marginTop: 4 }}>
-            <StatRow label="Total Rental" value={`$${(iretoro + wroughton).toLocaleString()}`} bold />
+            <StatRow label="Total Rental" value={`$${(iretoro + wroughton + buchanan).toLocaleString()}`} bold />
             <StatRow label="MRR"          value={`$${mrr.toLocaleString()}`} />
             <StatRow label="Total Income" value={`$${totalIncome.toLocaleString()}`} bold color={GREEN} />
           </div>
@@ -241,7 +244,7 @@ export default function FounderDashboard({ profile }) {
           </div>
           <ProgressBar value={totalIncome} max={SALARY_TARGET} color={freedomColor} />
           <div style={{ marginTop: 16 }}>
-            <StatRow label="Rental"        value={`$${(iretoro + wroughton).toLocaleString()}`} />
+            <StatRow label="Rental"        value={`$${(iretoro + wroughton + buchanan).toLocaleString()}`} />
             <StatRow label="MaraeHub MRR"  value={`$${mrr.toLocaleString()}`} />
             <StatRow
               label="Gap to Target"
