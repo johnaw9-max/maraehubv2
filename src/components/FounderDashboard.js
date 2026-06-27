@@ -85,7 +85,6 @@ export default function FounderDashboard({ profile }) {
   const [weekFocus, setWeekFocus]    = useState({ ship: '', contact: '', fix: '' });
   const [saved, setSaved]            = useState(false);
   const [loading, setLoading]        = useState(true);
-  const [metrics, setMetrics]        = useState({});
   const [settingsId, setSettingsId]  = useState(null);
 
   const [terere,   setTerere]   = useState({ status: 'Active',     note: '' });
@@ -116,7 +115,6 @@ export default function FounderDashboard({ profile }) {
     if (settingsRes.data) {
       setSettingsId(settingsRes.data.id);
       const m = settingsRes.data.founder_metrics || {};
-      setMetrics(m);
       if (m.mrr        !== undefined) setMrr(m.mrr);
       if (m.payingMarae !== undefined) setPayingMarae(m.payingMarae);
       if (m.shipped    !== undefined) setShipped(m.shipped);
@@ -143,7 +141,6 @@ export default function FounderDashboard({ profile }) {
     if (!settingsId) return;
     const payload = { mrr, payingMarae, shipped, iretoro, wroughton, weekFocus, terere, tineka, waioweka, kopara };
     await supabase.from('marae_settings').update({ founder_metrics: payload }).eq('id', settingsId);
-    setMetrics(payload);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
