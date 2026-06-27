@@ -89,7 +89,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
       supabase.from('grants').select('id, name, funder, amount, status, deadline').order('deadline'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
-      supabase.from('assets').select('id, name, condition, replacement_date, replacement_cost'),
+      supabase.from('assets').select('*'),
       supabase.from('tasks').select('id, title, due_date, status, priority').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
