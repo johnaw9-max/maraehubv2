@@ -27,7 +27,7 @@ export default function App() {
       setRecovering(false);
       setSession(session);
       if (session) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user.email);
       } else {
         setProfile(null);
         setProfileError(null);
@@ -37,7 +37,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function fetchProfile(userId) {
+  async function fetchProfile(userId, authEmail) {
     setLoading(true);
     setProfileError(null);
     const { data, error } = await supabase
@@ -49,7 +49,7 @@ export default function App() {
       console.error('[App] fetchProfile failed:', error.message);
       setProfileError(error.message);
     } else {
-      setProfile(data);
+      setProfile({ ...data, email: authEmail });
       console.log('[App] fetchProfile data:', data);
       console.log('[App] fetchProfile data.role:', data?.role, '| typeof:', typeof data?.role);
     }
