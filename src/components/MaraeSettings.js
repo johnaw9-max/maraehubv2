@@ -52,6 +52,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [pwSaving, setPwSaving]   = useState(false);
   const [pwSuccess, setPwSuccess] = useState(false);
   const [pwError, setPwError]     = useState('');
+  const [expandedInfo, setExpandedInfo] = useState(null);
 
   // Checklist template state
   const [templates, setTemplates] = useState([]);
@@ -483,9 +484,48 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             {[
-              { value: 'manual',    icon: '🔴', title: "I'll do it myself",    desc: 'Show me what needs doing — I will take it from there. Nothing happens without me.' },
-              { value: 'assisted',  icon: '🟡', title: 'Ask me first',         desc: 'Suggest what to do and I will approve before anything happens. Recommended for most marae.' },
-              { value: 'automatic', icon: '🟢', title: 'Handle it for me',     desc: 'Run in the background and let me know what happened. Best for experienced trustees who trust the platform.' },
+              {
+                value: 'manual',
+                icon: '🔴',
+                title: "I'll do it myself",
+                desc: 'Show me what needs doing — I will take it from there. Nothing happens without me.',
+                info: {
+                  summary: 'Nothing happens automatically. The platform shows you what needs doing — you decide when to act.',
+                  examples: [
+                    'Service reminder appears on Board View → you start the workflow manually',
+                    'Compliance item due → you record the renewal manually',
+                    'Booking approved → you enter the income in Finance manually',
+                  ],
+                },
+              },
+              {
+                value: 'assisted',
+                icon: '🟡',
+                title: 'Ask me first',
+                desc: 'Suggest what to do and I will approve before anything happens. Recommended for most marae.',
+                info: {
+                  summary: 'Before anything happens MaraeHub will ask your approval first. Recommended for most marae.',
+                  examples: [
+                    "Service reminder due → MaraeHub asks 'Shall I start the maintenance workflow?' → you click Approve",
+                    'Compliance renewal due → MaraeHub suggests creating a task → you approve or dismiss',
+                    'This is the safest option if you want to stay in control but reduce manual work',
+                  ],
+                },
+              },
+              {
+                value: 'automatic',
+                icon: '🟢',
+                title: 'Handle it for me',
+                desc: 'Run in the background and let me know what happened. Best for experienced trustees who trust the platform.',
+                info: {
+                  summary: 'MaraeHub runs in the background and handles reminders, workflows and tasks automatically. You receive a notification after it acts. Best for experienced trustees who trust the platform.',
+                  examples: [
+                    'Service reminder due → workflow starts automatically → tasks assigned → you get notified',
+                    'Booking approved → finance record created automatically',
+                    'Compliance due → reminder email sent automatically to all trustees',
+                  ],
+                },
+              },
             ].map(opt => (
               <div
                 key={opt.value}
@@ -495,19 +535,39 @@ export default function MaraeSettings({ profile, isAdmin }) {
                   setForm(f => ({ ...f, automation_level: opt.value }));
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+                  padding: '14px 16px',
                   borderRadius: 10, border: `2px solid ${form.automation_level === opt.value ? 'var(--brand)' : 'var(--border)'}`,
                   background: form.automation_level === opt.value ? 'var(--surface2)' : 'var(--surface)',
                   cursor: 'pointer', transition: 'all 0.15s',
                 }}
               >
-                <span style={{ fontSize: 22, flexShrink: 0 }}>{opt.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: form.automation_level === opt.value ? 'var(--brand)' : 'var(--text1)' }}>{opt.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3, lineHeight: 1.5 }}>{opt.desc}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontSize: 22, flexShrink: 0 }}>{opt.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: form.automation_level === opt.value ? 'var(--brand)' : 'var(--text1)' }}>{opt.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3, lineHeight: 1.5 }}>{opt.desc}</div>
+                    <button
+                      onClick={e => { e.stopPropagation(); setExpandedInfo(expandedInfo === opt.value ? null : opt.value); }}
+                      style={{ background: 'none', border: 'none', padding: '4px 0 0', fontSize: 11, color: 'var(--brand)', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    >
+                      What does this mean? {expandedInfo === opt.value ? '▴' : '▾'}
+                    </button>
+                  </div>
+                  {form.automation_level === opt.value && (
+                    <span style={{ fontSize: 18, color: 'var(--brand)', flexShrink: 0 }}>✓</span>
+                  )}
                 </div>
-                {form.automation_level === opt.value && (
-                  <span style={{ fontSize: 18, color: 'var(--brand)', flexShrink: 0 }}>✓</span>
+                {expandedInfo === opt.value && (
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    style={{ marginTop: 8, padding: 10, background: '#E1F5EE', borderRadius: 6, fontSize: 12, color: 'var(--text1)', lineHeight: 1.6 }}
+                  >
+                    <div style={{ marginBottom: 8 }}>{opt.info.summary}</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Examples:</div>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {opt.info.examples.map((ex, i) => <li key={i} style={{ marginBottom: 3 }}>{ex}</li>)}
+                    </ul>
+                  </div>
                 )}
               </div>
             ))}
