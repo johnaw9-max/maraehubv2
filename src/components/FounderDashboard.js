@@ -108,6 +108,94 @@ async function fetchEnvKPIs(client, label = '') {
   };
 }
 
+function MaraeDatesAndChecklist({
+  prefix, checklist, trialDates, setTrialDate,
+  openStepNote, setOpenStepNote, stepNotes, saveStepNote, toggleStep,
+}) {
+  const done = ONBOARDING_STEPS.filter(s => checklist[prefix]?.[s.key]).length;
+  return (
+    <>
+      {/* Trial / Live dates */}
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+        {[
+          { key: `${prefix}_trial_start` },
+          { key: `${prefix}_trial_end` },
+          { key: `${prefix}_goes_live` },
+        ].map(({ key }) => {
+          const label = key === `${prefix}_trial_start` ? 'Trial Started'
+                      : key === `${prefix}_trial_end`   ? 'Trial Ends'
+                      : 'Goes Live';
+          return (
+            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 12, color: TEXT3 }}>{label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {!trialDates[key] && <span style={{ fontSize: 11, color: TEXT3, fontStyle: 'italic' }}>Not set</span>}
+                <input
+                  type="date"
+                  value={trialDates[key] || ''}
+                  onChange={e => setTrialDate(key, e.target.value)}
+                  style={{ fontSize: 12, color: trialDates[key] ? TEXT1 : TEXT3, border: `1px solid ${BORDER}`, borderRadius: 6, padding: '4px 8px', background: WHITE, cursor: 'pointer', outline: 'none' }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Onboarding checklist */}
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: TEXT1 }}>Onboarding</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: done === ONBOARDING_STEPS.length ? GREEN : TEXT3 }}>
+            {done}/{ONBOARDING_STEPS.length} steps
+          </span>
+        </div>
+        {ONBOARDING_STEPS.map(({ key, label: sLabel }) => {
+          const checked  = checklist[prefix]?.[key] || false;
+          const noteKey  = `${prefix}__${key}`;
+          const noteOpen = openStepNote === noteKey;
+          const hasNote  = !!(stepNotes[prefix]?.[key]?.trim());
+          return (
+            <div key={key} style={{ marginBottom: 9 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleStep(prefix, key, checked)}
+                  style={{ width: 14, height: 14, accentColor: GREEN, cursor: 'pointer', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: 12, color: checked ? TEXT3 : TEXT1, textDecoration: checked ? 'line-through' : 'none', flex: 1 }}>
+                  {sLabel}
+                </span>
+                <button
+                  onClick={() => setOpenStepNote(noteOpen ? null : noteKey)}
+                  title={hasNote ? 'View note' : 'Add note'}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, lineHeight: 1, position: 'relative', display: 'inline-block', flexShrink: 0 }}
+                >
+                  💬
+                  {hasNote && (
+                    <span style={{ position: 'absolute', top: -1, right: -3, width: 6, height: 6, background: GREEN, borderRadius: '50%', border: '1.5px solid white' }} />
+                  )}
+                </button>
+              </div>
+              {noteOpen && (
+                <textarea
+                  autoFocus
+                  defaultValue={stepNotes[prefix]?.[key] || ''}
+                  onBlur={e => saveStepNote(prefix, key, e.target.value)}
+                  placeholder="Add a note for this step..."
+                  rows={2}
+                  style={{ marginTop: 6, marginLeft: 23, width: 'calc(100% - 23px)', padding: '7px 9px', border: `1px solid ${BORDER}`, borderRadius: 7, fontSize: 12, color: TEXT1, background: CREAM, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5 }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 export default function FounderDashboard({ profile }) {
   const [mrr, setMrr]               = useState(0);
   const [payingMarae, setPayingMarae] = useState(0);
@@ -347,92 +435,6 @@ export default function FounderDashboard({ profile }) {
     ...customMarae.map(m => ({ label: m.label, kpi: null, prefix: m.prefix, custom: true })),
   ];
 
-  // Shared card interior for trial dates + checklist
-  function MaraeDatesAndChecklist({ prefix }) {
-    const done = ONBOARDING_STEPS.filter(s => checklist[prefix]?.[s.key]).length;
-    return (
-      <>
-        {/* Trial / Live dates */}
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
-          {[
-            { key: `${prefix}_trial_start`, label: 'Trial Started' },
-            { key: `${prefix}_trial_end`,   label: 'Trial Ends' },
-            { key: `${prefix}_goes_live`,   label: 'Goes Live' },
-          ].map(({ key, dLabel = key }) => {
-            const label = key === `${prefix}_trial_start` ? 'Trial Started'
-                        : key === `${prefix}_trial_end`   ? 'Trial Ends'
-                        : 'Goes Live';
-            return (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <span style={{ fontSize: 12, color: TEXT3 }}>{label}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {!trialDates[key] && <span style={{ fontSize: 11, color: TEXT3, fontStyle: 'italic' }}>Not set</span>}
-                  <input
-                    type="date"
-                    value={trialDates[key] || ''}
-                    onChange={e => setTrialDate(key, e.target.value)}
-                    style={{ fontSize: 12, color: trialDates[key] ? TEXT1 : TEXT3, border: `1px solid ${BORDER}`, borderRadius: 6, padding: '4px 8px', background: WHITE, cursor: 'pointer', outline: 'none' }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Onboarding checklist */}
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: TEXT1 }}>Onboarding</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: done === ONBOARDING_STEPS.length ? GREEN : TEXT3 }}>
-              {done}/{ONBOARDING_STEPS.length} steps
-            </span>
-          </div>
-          {ONBOARDING_STEPS.map(({ key, label: sLabel }) => {
-            const checked  = checklist[prefix]?.[key] || false;
-            const noteKey  = `${prefix}__${key}`;
-            const noteOpen = openStepNote === noteKey;
-            const hasNote  = !!(stepNotes[prefix]?.[key]?.trim());
-            return (
-              <div key={key} style={{ marginBottom: 9 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleStep(prefix, key, checked)}
-                    style={{ width: 14, height: 14, accentColor: GREEN, cursor: 'pointer', flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 12, color: checked ? TEXT3 : TEXT1, textDecoration: checked ? 'line-through' : 'none', flex: 1 }}>
-                    {sLabel}
-                  </span>
-                  <button
-                    onClick={() => setOpenStepNote(noteOpen ? null : noteKey)}
-                    title={hasNote ? 'View note' : 'Add note'}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, lineHeight: 1, position: 'relative', display: 'inline-block', flexShrink: 0 }}
-                  >
-                    💬
-                    {hasNote && (
-                      <span style={{ position: 'absolute', top: -1, right: -3, width: 6, height: 6, background: GREEN, borderRadius: '50%', border: '1.5px solid white' }} />
-                    )}
-                  </button>
-                </div>
-                {noteOpen && (
-                  <textarea
-                    autoFocus
-                    defaultValue={stepNotes[prefix]?.[key] || ''}
-                    onBlur={e => saveStepNote(prefix, key, e.target.value)}
-                    placeholder="Add a note for this step..."
-                    rows={2}
-                    style={{ marginTop: 6, marginLeft: 23, width: 'calc(100% - 23px)', padding: '7px 9px', border: `1px solid ${BORDER}`, borderRadius: 7, fontSize: 12, color: TEXT1, background: CREAM, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5 }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </>
-    );
-  }
-
   const tdStyle = { fontSize: 13, color: TEXT1, padding: '9px 12px 9px 0', borderBottom: `1px solid ${BORDER}`, verticalAlign: 'top' };
   const thStyle = { fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5, padding: '0 12px 10px 0', borderBottom: `1px solid ${BORDER}`, textAlign: 'left' };
   const inStyle = { width: '100%', padding: '6px 8px', border: `1px solid ${BORDER}`, borderRadius: 6, fontSize: 12, color: TEXT1, background: WHITE, outline: 'none', boxSizing: 'border-box' };
@@ -620,7 +622,17 @@ export default function FounderDashboard({ profile }) {
             )}
 
             {/* Trial dates + checklist — always */}
-            <MaraeDatesAndChecklist prefix={prefix} />
+            <MaraeDatesAndChecklist
+              prefix={prefix}
+              checklist={checklist}
+              trialDates={trialDates}
+              setTrialDate={setTrialDate}
+              openStepNote={openStepNote}
+              setOpenStepNote={setOpenStepNote}
+              stepNotes={stepNotes}
+              saveStepNote={saveStepNote}
+              toggleStep={toggleStep}
+            />
           </Card>
         ))}
 
