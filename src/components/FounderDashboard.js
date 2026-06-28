@@ -110,6 +110,19 @@ export default function FounderDashboard({ profile }) {
 
   const [taskCount,    setTaskCount]    = useState(0);
   const [activeUsers,  setActiveUsers]  = useState(0);
+
+  const DATE_KEYS = ['terere', 'tineka', 'waioweka'].flatMap(p =>
+    [`${p}_trial_start`, `${p}_trial_end`, `${p}_goes_live`]
+  );
+  const [trialDates, setTrialDates] = useState(() =>
+    Object.fromEntries(DATE_KEYS.map(k => [k, localStorage.getItem(k) || '']))
+  );
+
+  function setTrialDate(key, value) {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+    setTrialDates(d => ({ ...d, [key]: value }));
+  }
   const [kpiTerere,   setKpiTerere]   = useState(null);
   const [kpiTineka,   setKpiTineka]   = useState(null);
   const [kpiWaioweka, setKpiWaioweka] = useState(null);
@@ -175,9 +188,9 @@ export default function FounderDashboard({ profile }) {
   }
 
   const envSections = [
-    { label: 'Terere Marae',      kpi: kpiTerere },
-    { label: 'Tineka Marae',       kpi: kpiTineka },
-    { label: 'Waioweka (Sandbox)', kpi: kpiWaioweka },
+    { label: 'Terere Marae',      kpi: kpiTerere,   prefix: 'terere' },
+    { label: 'Tineka Marae',       kpi: kpiTineka,   prefix: 'tineka' },
+    { label: 'Waioweka (Sandbox)', kpi: kpiWaioweka, prefix: 'waioweka' },
   ];
 
   return (
@@ -286,7 +299,7 @@ export default function FounderDashboard({ profile }) {
 
       {/* ── PER-ENVIRONMENT KPIs ───────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-        {envSections.map(({ label, kpi }) => (
+        {envSections.map(({ label, kpi, prefix }) => (
           <Card key={label}>
             <SectionTitle>🏛️ {label}</SectionTitle>
 
@@ -341,6 +354,28 @@ export default function FounderDashboard({ profile }) {
                     })}
                   </div>
                 )}
+
+                {/* ── Trial / Live dates ── */}
+                <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+                  {[
+                    { key: `${prefix}_trial_start`, label: 'Trial Started' },
+                    { key: `${prefix}_trial_end`,   label: 'Trial Ends' },
+                    { key: `${prefix}_goes_live`,   label: 'Goes Live' },
+                  ].map(({ key, label: dLabel }) => (
+                    <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, color: TEXT3 }}>{dLabel}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {!trialDates[key] && <span style={{ fontSize: 11, color: TEXT3, fontStyle: 'italic' }}>Not set</span>}
+                        <input
+                          type="date"
+                          value={trialDates[key]}
+                          onChange={e => setTrialDate(key, e.target.value)}
+                          style={{ fontSize: 12, color: trialDates[key] ? TEXT1 : TEXT3, border: `1px solid ${BORDER}`, borderRadius: 6, padding: '4px 8px', background: WHITE, cursor: 'pointer', outline: 'none' }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
           </Card>
