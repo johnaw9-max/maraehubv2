@@ -139,6 +139,10 @@ export default function FounderDashboard({ profile }) {
   const [newPipeline,    setNewPipeline]    = useState(BLANK_PIPELINE);
   const [openNotesId,    setOpenNotesId]    = useState(null);
 
+  // Step notes (onboarding checklist bubbles)
+  const [stepNotes,    setStepNotes]    = useState({});
+  const [openStepNote, setOpenStepNote] = useState(null);
+
   // Lost leads
   const [lostLeads,  setLostLeads]  = useState([]);
   const [addingLead, setAddingLead] = useState(false);
@@ -197,7 +201,7 @@ export default function FounderDashboard({ profile }) {
     setKpiTineka(kpiTi);
     setKpiWaioweka(kpiW);
 
-    const cl = {}, leads = [], marae = [], pipe = [];
+    const cl = {}, leads = [], marae = [], pipe = [], sn = {};
     for (const row of (notesRes.data || [])) {
       if (row.step_key === 'lost_lead') {
         leads.push({ id: row.marae_name, ...(row.data || {}) });
@@ -208,9 +212,14 @@ export default function FounderDashboard({ profile }) {
       } else {
         if (!cl[row.marae_name]) cl[row.marae_name] = {};
         cl[row.marae_name][row.step_key] = row.completed;
+        if (row.data?.note) {
+          if (!sn[row.marae_name]) sn[row.marae_name] = {};
+          sn[row.marae_name][row.step_key] = row.data.note;
+        }
       }
     }
     setChecklist(cl);
+    setStepNotes(sn);
     setLostLeads(leads);
     setCustomMarae(marae);
     setPipeline(pipe);
@@ -221,8 +230,18 @@ export default function FounderDashboard({ profile }) {
   async function toggleStep(maraeName, stepKey, current) {
     const next = !current;
     setChecklist(c => ({ ...c, [maraeName]: { ...c[maraeName], [stepKey]: next } }));
+    const existingNote = stepNotes[maraeName]?.[stepKey] || null;
     await supabase.from('founder_notes').upsert(
-      { marae_name: maraeName, step_key: stepKey, completed: next, updated_at: new Date().toISOString() },
+      { marae_name: maraeName, step_key: stepKey, completed: next, data: existingNote ? { note: existingNote } : null, updated_at: new Date().toISOString() },
+      { onConflict: 'marae_name,step_key' }
+    );
+  }
+
+  async function saveStepNote(maraeName, stepKey, text) {
+    setStepNotes(n => ({ ...n, [maraeName]: { ...n[maraeName], [stepKey]: text } }));
+    const completed = checklist[maraeName]?.[stepKey] || false;
+    await supabase.from('founder_notes').upsert(
+      { marae_name: maraeName, step_key: stepKey, completed, data: { note: text }, updated_at: new Date().toISOString() },
       { onConflict: 'marae_name,step_key' }
     );
   }
@@ -369,19 +388,44 @@ export default function FounderDashboard({ profile }) {
             </span>
           </div>
           {ONBOARDING_STEPS.map(({ key, label: sLabel }) => {
-            const checked = checklist[prefix]?.[key] || false;
+            const checked  = checklist[prefix]?.[key] || false;
+            const noteKey  = `${prefix}__${key}`;
+            const noteOpen = openStepNote === noteKey;
+            const hasNote  = !!(stepNotes[prefix]?.[key]?.trim());
             return (
-              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleStep(prefix, key, checked)}
-                  style={{ width: 14, height: 14, accentColor: GREEN, cursor: 'pointer', flexShrink: 0 }}
-                />
-                <span style={{ fontSize: 12, color: checked ? TEXT3 : TEXT1, textDecoration: checked ? 'line-through' : 'none' }}>
-                  {sLabel}
-                </span>
-              </label>
+              <div key={key} style={{ marginBottom: 9 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleStep(prefix, key, checked)}
+                    style={{ width: 14, height: 14, accentColor: GREEN, cursor: 'pointer', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 12, color: checked ? TEXT3 : TEXT1, textDecoration: checked ? 'line-through' : 'none', flex: 1 }}>
+                    {sLabel}
+                  </span>
+                  <button
+                    onClick={() => setOpenStepNote(noteOpen ? null : noteKey)}
+                    title={hasNote ? 'View note' : 'Add note'}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, lineHeight: 1, position: 'relative', display: 'inline-block', flexShrink: 0 }}
+                  >
+                    💬
+                    {hasNote && (
+                      <span style={{ position: 'absolute', top: -1, right: -3, width: 6, height: 6, background: GREEN, borderRadius: '50%', border: '1.5px solid white' }} />
+                    )}
+                  </button>
+                </div>
+                {noteOpen && (
+                  <textarea
+                    autoFocus
+                    value={stepNotes[prefix]?.[key] || ''}
+                    onChange={e => saveStepNote(prefix, key, e.target.value)}
+                    placeholder="Add a note for this step..."
+                    rows={2}
+                    style={{ marginTop: 6, marginLeft: 23, width: 'calc(100% - 23px)', padding: '7px 9px', border: `1px solid ${BORDER}`, borderRadius: 7, fontSize: 12, color: TEXT1, background: CREAM, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5 }}
+                  />
+                )}
+              </div>
             );
           })}
         </div>
