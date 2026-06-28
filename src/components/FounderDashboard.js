@@ -106,16 +106,17 @@ export default function FounderDashboard({ profile }) {
 
   if (!FOUNDER_EMAILS.includes(profile?.email)) return null;
 
-  async function fetchLoginActivity(client, withLogin = true) {
+  async function fetchLoginActivity(client, withLogin = true, label = '') {
     if (!client) return null;
     if (withLogin) {
       const { data, error } = await client.rpc('get_trustee_login_activity');
       if (!error && data) return data;
     }
-    const { data: profiles } = await client
+    const { data: profiles, error: profilesError } = await client
       .from('profiles')
       .select('id, full_name, email')
       .order('full_name');
+    console.log(`[FounderDashboard] ${label} profiles query:`, { data: profiles, error: profilesError });
     return profiles || [];
   }
 
@@ -128,9 +129,9 @@ export default function FounderDashboard({ profile }) {
       supabase.from('compliance_items').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      fetchLoginActivity(supabase, true),
-      fetchLoginActivity(supabaseTineka, false),
-      fetchLoginActivity(supabaseWaioweka, false),
+      fetchLoginActivity(supabase, true, 'Terere'),
+      fetchLoginActivity(supabaseTineka, false, 'Tineka'),
+      fetchLoginActivity(supabaseWaioweka, false, 'Waioweka'),
     ]);
 
     if (settingsRes.data) {
