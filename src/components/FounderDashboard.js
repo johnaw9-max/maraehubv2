@@ -95,7 +95,6 @@ async function fetchEnvKPIs(client, label = '') {
       .from('profiles')
       .select('id, full_name, email')
       .order('full_name');
-    console.log(`[FounderDashboard] ${label} profiles fallback:`, { data: profiles, error: pErr });
     trustees = profiles || [];
   }
 
