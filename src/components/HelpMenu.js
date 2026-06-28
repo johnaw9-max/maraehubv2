@@ -327,6 +327,17 @@ const HELP_TOPICS = {
         { q: 'Where do I see announcements?', a: 'Go to the Noticeboard tab. The committee posts notices here about upcoming events, closures, maintenance, and other important information. You can filter by category — Urgent, Event, General, or Maintenance.' },
       ]
     },
+    {
+      category: 'Asset Lifecycle',
+      icon: '🏗️',
+      items: [
+        { q: 'What is the Asset Lifecycle Module?', a: 'Track all marae assets — buildings, vehicles, equipment — including purchase date, expected lifespan, replacement cost, and current condition.' },
+        { q: 'How to add an asset:', a: 'Go to Assets in the main navigation. Click "Add Asset". Enter the asset name, purchase date, lifespan (years), replacement cost, and condition. Save — it will appear in your asset list and Board View insights.' },
+        { q: 'What are the condition ratings?', a: 'Good — asset is functioning well. Fair — showing wear, monitor closely. Poor — needs attention or replacement planning.' },
+        { q: 'What does Board View show for assets?', a: 'Assets nearing end of life or in poor condition will surface automatically in Board View so trustees are aware without having to check manually.' },
+        { q: 'How do I plan for asset replacement?', a: 'Use the replacement cost field to plan your budget. MaraeHub will flag assets approaching their expected replacement date.' },
+      ]
+    },
   ]
 };
 
