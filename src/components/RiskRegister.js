@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import useProfiles from '../lib/useProfiles';
 
 const CATEGORIES  = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
 const LIKELIHOODS = ['Low', 'Medium', 'High'];
@@ -46,14 +47,19 @@ export default function RiskRegister() {
   const [error, setError]         = useState('');
   const [catFilter, setCatFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  const allProfiles = useProfiles();
+  const trustees = allProfiles.filter(p => p.role === 'trustee');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('risk_register')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data }, { data: { user } }] = await Promise.all([
+      supabase.from('risk_register').select('*').order('created_at', { ascending: false }),
+      supabase.auth.getUser(),
+    ]);
     setRisks(data || []);
+    setCurrentUserId(user?.id || null);
     setLoading(false);
   }, []);
 
@@ -94,6 +100,7 @@ export default function RiskRegister() {
       notes:            form.notes.trim(),
       risk_rating:      calcRating(form.likelihood, form.consequence),
       review_date:      form.review_date || null,
+      trustee_id:       currentUserId || null,
     };
     const { error: err } = editRisk
       ? await supabase.from('risk_register').update(payload).eq('id', editRisk.id)
@@ -309,7 +316,12 @@ export default function RiskRegister() {
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Owner (Responsible Trustee)</label>
-                <input className="form-input" value={form.owner} onChange={e => field('owner', e.target.value)} placeholder="e.g. Hēmi Tane" />
+                <select className="form-input" value={form.owner} onChange={e => field('owner', e.target.value)}>
+                  <option value="">— Select trustee —</option>
+                  {trustees.map(t => (
+                    <option key={t.full_name} value={t.full_name}>{t.full_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Review Date</label>
