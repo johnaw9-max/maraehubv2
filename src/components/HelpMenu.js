@@ -11,6 +11,7 @@ const HELP_TOPICS = {
         { q: 'Do I have to complete setup before using MaraeHub?', a: 'No — you can skip setup and explore on your own. You can return to complete it any time from Settings.' },
         { q: 'Can I change my marae details after setup?', a: 'Yes — go to Settings at any time to update your marae name, location, iwi, hapū, and other details.' },
         { q: 'What if I made a mistake during setup?', a: 'Go to Settings and update any field. Nothing is locked after setup is complete.' },
+        { q: 'What should I do after setup is complete?', a: 'Head to Board View first — it shows everything that needs attention on your marae. From there you can approve bookings, check compliance, and see any upcoming deadlines. When you\'re ready, invite your other trustees to log in from Settings → Trustees.' },
       ]
     },
     {
@@ -314,6 +315,13 @@ const HELP_TOPICS = {
     },
   ],
   community: [
+    {
+      category: 'Getting Started',
+      icon: '🚀',
+      items: [
+        { q: 'What should I do after setup is complete?', a: 'Head to Board View first — it shows everything that needs attention on your marae. From there you can approve bookings, check compliance, and see any upcoming deadlines. When you\'re ready, invite your other trustees to log in from Settings → Trustees.' },
+      ]
+    },
     {
       category: 'Booking',
       icon: '📅',
