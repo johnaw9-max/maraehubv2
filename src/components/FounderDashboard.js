@@ -91,7 +91,7 @@ async function fetchEnvKPIs(client, label = '') {
 
   let trustees = trusteesRes.data || [];
   if (trusteesRes.error || !trustees.length) {
-    const { data: profiles, error: pErr } = await client
+    const { data: profiles } = await client
       .from('profiles')
       .select('id, full_name, email')
       .order('full_name');
