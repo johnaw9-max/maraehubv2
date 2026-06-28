@@ -13,6 +13,7 @@ import GrantsTracker from '../components/GrantsTracker';
 import FinanceManager from '../components/FinanceManager';
 import ContactsManager from '../components/ContactsManager';
 import ComplianceTracker from '../components/ComplianceTracker';
+import RiskRegister from '../components/RiskRegister';
 import GoalsReporting from '../components/GoalsReporting';
 import BoardDashboard from '../components/BoardDashboard';
 import TaskBoard from '../components/TaskBoard';
@@ -50,6 +51,7 @@ const NAV_GROUPS = [
     tabs: [
       { key: 'assets',     label: 'Assets' },
       { key: 'compliance', label: 'Compliance' },
+      { key: 'risks',      label: 'Risk Register' },
     ],
   },
   {
@@ -489,6 +491,21 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       ];
     }
 
+    if (tab === 'risks') {
+      const { data } = await supabase.from('risk_register').select('risk_rating, status');
+      const rows = data || [];
+      const total       = rows.length;
+      const highRated   = rows.filter(r => r.risk_rating === 'High').length;
+      const open        = rows.filter(r => r.status === 'Open').length;
+      const beingManaged = rows.filter(r => r.status === 'Being Managed').length;
+      tiles = [
+        { label: 'Total Risks',    value: total,        icon: '🛡️', bg: '#e8eef8' },
+        { label: 'High Rated',     value: highRated,    icon: '⚠️', bg: highRated > 0 ? '#faeae7' : '#f5f5f5', valueColor: highRated > 0 ? 'var(--danger)' : 'var(--text3)' },
+        { label: 'Open',           value: open,         icon: '🔴', bg: open > 0 ? '#fdf0dc' : '#f5f5f5',     valueColor: open > 0 ? 'var(--warning)' : 'var(--text3)' },
+        { label: 'Being Managed',  value: beingManaged, icon: '🟡', bg: '#fdf4e8', valueColor: '#7a4f00' },
+      ];
+    }
+
     if (tab === 'goals') {
       const { data } = await supabase.from('goals').select('status, target_date');
       const rows = data || [];
@@ -735,6 +752,14 @@ export default function TrusteeDashboard({ profile, onLogout }) {
           <>
             <KpiBar tiles={kpis.compliance || []} loading={kpiLoading.compliance} count={4} />
             <ComplianceTracker />
+          </>
+        )}
+
+        {/* ── RISK REGISTER ──────────────────────────────────────────────── */}
+        {activeTab === 'risks' && (
+          <>
+            <KpiBar tiles={kpis.risks || []} loading={kpiLoading.risks} count={4} />
+            <RiskRegister />
           </>
         )}
 

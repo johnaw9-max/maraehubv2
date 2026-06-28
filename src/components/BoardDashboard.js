@@ -83,7 +83,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -103,6 +103,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
       supabase.from('interest_register').select('id').eq('status', 'Active'),
+      supabase.from('risk_register').select('id, risk_description, risk_rating, category, status').order('created_at', { ascending: false }),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -124,6 +125,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       workflowTasks:        wfTaskRes.data  || [],
       pendingIncome:        pendIncRes.data  || [],
       activeInterestCount:  (irRes.data || []).length,
+      risks:                riskRes.data || [],
       fyYear,
     });
     setLoading(false);
@@ -222,9 +224,12 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const urgentGrants      = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in14);
   const pendingBookings   = d.bookings.filter(b => b.status === 'pending');
 
+  const highOpenRisks = (d.risks || []).filter(r => r.risk_rating === 'High' && r.status !== 'Closed');
+
   const ALERTS = [
     epUrgentCount              && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
     overdueCompliance.length   && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
+    highOpenRisks.length       && { label: `⚠️ ${highOpenRisks.length} high-rated risk${highOpenRisks.length !== 1 ? 's' : ''} open — review Risk Register`, level: 'red', tab: 'risks' },
     goalsBehind.length         && { label: `${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's' : ''} behind schedule`, level: 'red', tab: 'goals' },
     overdueTasks.length        && { label: `${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''}`, level: 'red', tab: 'tasks' },
     overdueProjects.length     && { label: `${overdueProjects.length} overdue project${overdueProjects.length !== 1 ? 's' : ''}`, level: 'red', tab: 'projects' },
@@ -762,6 +767,40 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           )}
         </div>
       </div>
+
+      {/* ── RISK REGISTER ──────────────────────────────────────────────── */}
+      {(d.risks || []).length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="🛡️" title="Risk Register" count={(d.risks || []).length} />
+          {highOpenRisks.length === 0 ? (
+            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+              ✅ No high-rated open risks
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {highOpenRisks.map(r => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      ⚠️ {r.risk_description}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
+                  </div>
+                  <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('risks')}
+              style={{ marginTop: 10, fontSize: 12, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+            >
+              View Risk Register →
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
