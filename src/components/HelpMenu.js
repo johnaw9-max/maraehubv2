@@ -3,6 +3,17 @@ import React, { useState } from 'react';
 const HELP_TOPICS = {
   trustee: [
     {
+      category: 'Getting Started',
+      icon: '🚀',
+      items: [
+        { q: 'What is the Marae Setup wizard?', a: 'When you first log in, MaraeHub guides you through a 5-step setup to configure your marae — name, location, iwi, hapū, and key details. This helps personalise your dashboard from day one.' },
+        { q: 'What are the 5 setup steps?', a: '1. Your Marae — name, location, iwi, hapū. 2. Your Trustees — add trustee names and roles. 3. Your Facilities — list your buildings and spaces. 4. Your Contacts — key contacts for your marae. 5. Review and confirm.' },
+        { q: 'Do I have to complete setup before using MaraeHub?', a: 'No — you can skip setup and explore on your own. You can return to complete it any time from Settings.' },
+        { q: 'Can I change my marae details after setup?', a: 'Yes — go to Settings at any time to update your marae name, location, iwi, hapū, and other details.' },
+        { q: 'What if I made a mistake during setup?', a: 'Go to Settings and update any field. Nothing is locked after setup is complete.' },
+      ]
+    },
+    {
       category: 'Bookings',
       icon: '📅',
       items: [
