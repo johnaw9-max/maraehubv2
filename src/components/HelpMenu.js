@@ -142,6 +142,17 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Incident Register',
+      icon: '⚠️',
+      items: [
+        { q: 'What is the Incident Register?', a: 'The Incident Register records accidents, near misses, injuries, property damage, and complaints that occur at your marae. It is a legal requirement under the Health and Safety at Work Act 2015 for marae operating as PCBUs.' },
+        { q: 'How do I record an incident?', a: '1. Go to Incident Register in the left navigation. 2. Click Add Incident. 3. Record the incident type, date, location, description, persons involved, and severity. 4. Record what immediate action was taken. 5. Save — the incident is logged with a timestamp.' },
+        { q: 'Who can see the Incident Register?', a: 'Trustees only. Community members cannot access the Incident Register.' },
+        { q: 'What severity levels are there?', a: 'Near Miss, Minor, Moderate, Serious, Critical — choose the level that best describes the outcome of the incident.' },
+        { q: 'Do we have to record every incident?', a: 'Yes — under HSWA 2015 marae must keep records of all workplace incidents. MaraeHub makes this simple and keeps your records safe and accessible for any audit or review.' },
+      ]
+    },
+    {
       category: 'Goals & Reporting',
       icon: '🎯',
       items: [
@@ -349,17 +360,6 @@ const HELP_TOPICS = {
       icon: '📢',
       items: [
         { q: 'Where do I see announcements?', a: 'Go to the Noticeboard tab. The committee posts notices here about upcoming events, closures, maintenance, and other important information. You can filter by category — Urgent, Event, General, or Maintenance.' },
-      ]
-    },
-    {
-      category: 'Asset Lifecycle',
-      icon: '🏗️',
-      items: [
-        { q: 'What is the Asset Lifecycle Module?', a: 'Track all marae assets — buildings, vehicles, equipment — including purchase date, expected lifespan, replacement cost, and current condition.' },
-        { q: 'How to add an asset:', a: 'Go to Assets in the main navigation. Click "Add Asset". Enter the asset name, purchase date, lifespan (years), replacement cost, and condition. Save — it will appear in your asset list and Board View insights.' },
-        { q: 'What are the condition ratings?', a: 'Good — asset is functioning well. Fair — showing wear, monitor closely. Poor — needs attention or replacement planning.' },
-        { q: 'What does Board View show for assets?', a: 'Assets nearing end of life or in poor condition will surface automatically in Board View so trustees are aware without having to check manually.' },
-        { q: 'How do I plan for asset replacement?', a: 'Use the replacement cost field to plan your budget. MaraeHub will flag assets approaching their expected replacement date.' },
       ]
     },
   ]
