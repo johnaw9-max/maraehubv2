@@ -100,7 +100,6 @@ export default function RiskRegister() {
       notes:            form.notes.trim(),
       risk_rating:      calcRating(form.likelihood, form.consequence),
       review_date:      form.review_date || null,
-      trustee_id:       currentUserId || null,
     };
     const { error: err } = editRisk
       ? await supabase.from('risk_register').update(payload).eq('id', editRisk.id)
