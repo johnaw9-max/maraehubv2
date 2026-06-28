@@ -55,7 +55,7 @@ export default function RiskRegister() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data }, { data: { user } }] = await Promise.all([
-      supabase.from('risk_register').select('*').order('created_at', { ascending: false }),
+      supabase.from('risk_register').select('id, created_at, risk_description, category, likelihood, consequence, risk_rating, controls, owner, review_date, status, notes').order('created_at', { ascending: false }),
       supabase.auth.getUser(),
     ]);
     setRisks(data || []);
