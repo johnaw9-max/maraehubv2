@@ -137,6 +137,7 @@ export default function FounderDashboard({ profile }) {
   const [pipeline,       setPipeline]       = useState([]);
   const [addingPipeline, setAddingPipeline] = useState(false);
   const [newPipeline,    setNewPipeline]    = useState(BLANK_PIPELINE);
+  const [openNotesId,    setOpenNotesId]    = useState(null);
 
   // Lost leads
   const [lostLeads,  setLostLeads]  = useState([]);
@@ -630,67 +631,97 @@ export default function FounderDashboard({ profile }) {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Marae', 'Contact', 'Status', 'Next Action', 'Next Action Date', ''].map(h => (
-                <th key={h} style={thStyle}>{h}</th>
+              {['Marae', 'Contact', 'Status', 'Next Action', 'Next Action Date', '', ''].map((h, i) => (
+                <th key={i} style={thStyle}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {pipeline.length === 0 && !addingPipeline && (
               <tr>
-                <td colSpan={6} style={{ ...tdStyle, color: TEXT3, fontStyle: 'italic' }}>No leads in pipeline.</td>
+                <td colSpan={7} style={{ ...tdStyle, color: TEXT3, fontStyle: 'italic' }}>No leads in pipeline.</td>
               </tr>
             )}
             {pipeline.map(row => {
               const statusColor = row.status === 'Warm' ? AMBER : row.status === 'Meeting Booked' ? GREEN : row.status === 'Cold' ? TEXT3 : '#4A6FA5';
+              const notesOpen   = openNotesId === row.id;
+              const hasNotes    = !!(row.notes && row.notes.trim());
               return (
-                <tr key={row.id}>
-                  <td style={{ ...tdStyle, fontWeight: 500 }}>
-                    <input
-                      value={row.name || ''}
-                      onChange={e => updatePipelineLead(row.id, 'name', e.target.value)}
-                      style={{ ...inStyle, fontWeight: 500 }}
-                    />
-                  </td>
-                  <td style={tdStyle}>
-                    <input
-                      value={row.contact || ''}
-                      onChange={e => updatePipelineLead(row.id, 'contact', e.target.value)}
-                      style={inStyle}
-                    />
-                  </td>
-                  <td style={tdStyle}>
-                    <select
-                      value={row.status || 'Warm'}
-                      onChange={e => updatePipelineLead(row.id, 'status', e.target.value)}
-                      style={{ ...inStyle, color: statusColor, fontWeight: 600 }}
-                    >
-                      {PIPELINE_STATUSES.map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  </td>
-                  <td style={tdStyle}>
-                    <input
-                      value={row.next_action || ''}
-                      onChange={e => updatePipelineLead(row.id, 'next_action', e.target.value)}
-                      style={inStyle}
-                    />
-                  </td>
-                  <td style={tdStyle}>
-                    <input
-                      type="date"
-                      value={row.next_action_date || ''}
-                      onChange={e => updatePipelineLead(row.id, 'next_action_date', e.target.value)}
-                      style={inStyle}
-                    />
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', width: 32 }}>
-                    <button
-                      onClick={() => deletePipelineLead(row.id)}
-                      style={{ background: 'none', border: 'none', color: TEXT3, fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 0 }}
-                      title="Delete"
-                    >×</button>
-                  </td>
-                </tr>
+                <React.Fragment key={row.id}>
+                  <tr>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>
+                      <input
+                        value={row.name || ''}
+                        onChange={e => updatePipelineLead(row.id, 'name', e.target.value)}
+                        style={{ ...inStyle, fontWeight: 500 }}
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <input
+                        value={row.contact || ''}
+                        onChange={e => updatePipelineLead(row.id, 'contact', e.target.value)}
+                        style={inStyle}
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <select
+                        value={row.status || 'Warm'}
+                        onChange={e => updatePipelineLead(row.id, 'status', e.target.value)}
+                        style={{ ...inStyle, color: statusColor, fontWeight: 600 }}
+                      >
+                        {PIPELINE_STATUSES.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <input
+                        value={row.next_action || ''}
+                        onChange={e => updatePipelineLead(row.id, 'next_action', e.target.value)}
+                        style={inStyle}
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <input
+                        type="date"
+                        value={row.next_action_date || ''}
+                        onChange={e => updatePipelineLead(row.id, 'next_action_date', e.target.value)}
+                        style={inStyle}
+                      />
+                    </td>
+                    <td style={{ ...tdStyle, width: 32, textAlign: 'center' }}>
+                      <button
+                        onClick={() => setOpenNotesId(notesOpen ? null : row.id)}
+                        title={hasNotes ? 'View notes' : 'Add notes'}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 15, lineHeight: 1, position: 'relative', display: 'inline-block' }}
+                      >
+                        💬
+                        {hasNotes && (
+                          <span style={{ position: 'absolute', top: -1, right: -3, width: 7, height: 7, background: GREEN, borderRadius: '50%', border: '1.5px solid white' }} />
+                        )}
+                      </button>
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'right', width: 28 }}>
+                      <button
+                        onClick={() => deletePipelineLead(row.id)}
+                        style={{ background: 'none', border: 'none', color: TEXT3, fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 0 }}
+                        title="Delete"
+                      >×</button>
+                    </td>
+                  </tr>
+                  {notesOpen && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '4px 0 14px', borderBottom: `1px solid ${BORDER}` }}>
+                        <textarea
+                          autoFocus
+                          value={row.notes || ''}
+                          onChange={e => updatePipelineLead(row.id, 'notes', e.target.value)}
+                          placeholder="Add notes or updates for this lead..."
+                          rows={3}
+                          style={{ width: '100%', padding: '8px 10px', border: `1px solid ${BORDER}`, borderRadius: 7, fontSize: 12, color: TEXT1, background: CREAM, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5 }}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
 
