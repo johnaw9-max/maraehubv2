@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 
-const CATEGORIES  = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
-const LIKELIHOODS = ['Low', 'Medium', 'High'];
+const CATEGORIES   = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
+const LIKELIHOODS  = ['Low', 'Medium', 'High'];
 const CONSEQUENCES = ['Low', 'Medium', 'High'];
-const STATUSES    = ['Open', 'Being Managed', 'Closed'];
+const STATUSES     = ['Open', 'Being Managed', 'Closed'];
 
 function calcRating(likelihood, consequence) {
-  if (!likelihood || !consequence) return '';
+  if (!likelihood || !consequence) return 'Low';
   if (likelihood === 'High' || consequence === 'High') return 'High';
   if (likelihood === 'Low'  && consequence === 'Low')  return 'Low';
   return 'Medium';
@@ -20,6 +20,12 @@ const RATING_PILL = {
   Low:    { bg: '#e8f4ef', color: '#1a4a3a', border: '1px solid #a8d8c0' },
 };
 
+const STATUS_PILL = {
+  'Open':          { bg: '#faeae7', color: '#a63020' },
+  'Being Managed': { bg: '#fdf0dc', color: '#7a4f00' },
+  'Closed':        { bg: '#e8f4ef', color: '#1a4a3a' },
+};
+
 function fmt(d) {
   if (!d) return '—';
   return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -27,14 +33,14 @@ function fmt(d) {
 
 const EMPTY = {
   risk_description: '',
-  category: 'Health & Safety',
-  likelihood: 'Low',
+  category:    'Health & Safety',
+  likelihood:  'Low',
   consequence: 'Low',
-  controls: '',
-  owner: '',
+  controls:    '',
+  owner:       '',
   review_date: '',
-  status: 'Open',
-  notes: '',
+  status:      'Open',
+  notes:       '',
 };
 
 export default function RiskRegister() {
@@ -47,19 +53,17 @@ export default function RiskRegister() {
   const [error, setError]         = useState('');
   const [catFilter, setCatFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [currentUserId, setCurrentUserId] = useState(null);
 
   const allProfiles = useProfiles();
   const trustees = allProfiles.filter(p => p.role === 'trustee');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data }, { data: { user } }] = await Promise.all([
-      supabase.from('risk_register').select('id, created_at, risk_description, category, likelihood, consequence, risk_rating, controls, owner, review_date, status, notes').order('created_at', { ascending: false }),
-      supabase.auth.getUser(),
-    ]);
+    const { data } = await supabase
+      .from('risk_register')
+      .select('*')
+      .order('created_at', { ascending: false });
     setRisks(data || []);
-    setCurrentUserId(user?.id || null);
     setLoading(false);
   }, []);
 
@@ -76,14 +80,14 @@ export default function RiskRegister() {
     setEditRisk(r);
     setForm({
       risk_description: r.risk_description || '',
-      category:         r.category         || 'Health & Safety',
-      likelihood:       r.likelihood        || 'Low',
-      consequence:      r.consequence       || 'Low',
-      controls:         r.controls          || '',
-      owner:            r.owner             || '',
-      review_date:      r.review_date       || '',
-      status:           r.status            || 'Open',
-      notes:            r.notes             || '',
+      category:    r.category    || 'Health & Safety',
+      likelihood:  r.likelihood  || 'Low',
+      consequence: r.consequence || 'Low',
+      controls:    r.controls    || '',
+      owner:       r.owner       || '',
+      review_date: r.review_date || '',
+      status:      r.status      || 'Open',
+      notes:       r.notes       || '',
     });
     setError('');
     setShowModal(true);
@@ -92,28 +96,37 @@ export default function RiskRegister() {
   async function save() {
     if (!form.risk_description.trim()) { setError('Risk description is required'); return; }
     setSaving(true); setError('');
+
     const payload = {
-      ...form,
       risk_description: form.risk_description.trim(),
-      controls:         form.controls.trim(),
-      owner:            form.owner.trim(),
-      notes:            form.notes.trim(),
-      risk_rating:      calcRating(form.likelihood, form.consequence),
-      review_date:      form.review_date || null,
+      category:    form.category,
+      likelihood:  form.likelihood,
+      consequence: form.consequence,
+      risk_rating: calcRating(form.likelihood, form.consequence),
+      controls:    form.controls.trim() || null,
+      owner:       form.owner || null,
+      review_date: form.review_date || null,
+      status:      form.status,
+      notes:       form.notes.trim() || null,
     };
-    const { error: err } = editRisk
-      ? await supabase.from('risk_register').update(payload).eq('id', editRisk.id)
-      : await supabase.from('risk_register').insert(payload);
-    setSaving(false);
-    if (err) { setError(err.message); return; }
+
+    if (editRisk) {
+      const { error: err } = await supabase.from('risk_register').update(payload).eq('id', editRisk.id);
+      if (err) { setError(err.message); setSaving(false); return; }
+    } else {
+      const { error: err } = await supabase.from('risk_register').insert(payload);
+      if (err) { setError(err.message); setSaving(false); return; }
+    }
+
+    await load();
     setShowModal(false);
-    load();
+    setSaving(false);
   }
 
   async function deleteRisk(id) {
     if (!window.confirm('Delete this risk? This cannot be undone.')) return;
     await supabase.from('risk_register').delete().eq('id', id);
-    load();
+    setRisks(prev => prev.filter(r => r.id !== id));
   }
 
   function field(key, val) { setForm(f => ({ ...f, [key]: val })); }
@@ -146,21 +159,11 @@ export default function RiskRegister() {
 
       {/* ── FILTERS ── */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <select
-          className="form-input"
-          style={{ width: 'auto', fontSize: 13 }}
-          value={catFilter}
-          onChange={e => setCatFilter(e.target.value)}
-        >
+        <select className="form-input" style={{ width: 'auto', fontSize: 13 }} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
           <option value="all">All Categories</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
-        <select
-          className="form-input"
-          style={{ width: 'auto', fontSize: 13 }}
-          value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
-        >
+        <select className="form-input" style={{ width: 'auto', fontSize: 13 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All Statuses</option>
           {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
@@ -185,10 +188,11 @@ export default function RiskRegister() {
             </thead>
             <tbody>
               {filtered.map((r, i) => {
-                const rp = RATING_PILL[r.risk_rating] || {};
+                const rp = RATING_PILL[r.risk_rating] || RATING_PILL.Low;
+                const sp = STATUS_PILL[r.status]      || STATUS_PILL['Open'];
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
-                    <td style={{ padding: '12px 14px', maxWidth: 280 }}>
+                    <td style={{ padding: '12px 14px', maxWidth: 260 }}>
                       <div style={{ fontWeight: 500, color: 'var(--text1)', lineHeight: 1.4 }}>
                         {r.risk_rating === 'High' && r.status !== 'Closed' && <span style={{ marginRight: 5 }}>⚠️</span>}
                         {r.risk_description}
@@ -199,20 +203,14 @@ export default function RiskRegister() {
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.likelihood}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.consequence}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      {r.risk_rating && (
-                        <span style={{ ...rp, padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontSize: 11, display: 'inline-block' }}>
-                          {r.risk_rating}
-                        </span>
-                      )}
+                      <span style={{ ...rp, padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontSize: 11, display: 'inline-block' }}>
+                        {r.risk_rating || '—'}
+                      </span>
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.owner || '—'}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{fmt(r.review_date)}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                        background: r.status === 'Closed' ? '#e8f4ef' : r.status === 'Being Managed' ? '#fdf0dc' : '#faeae7',
-                        color: r.status === 'Closed' ? '#1a4a3a' : r.status === 'Being Managed' ? '#7a4f00' : '#a63020',
-                      }}>
+                      <span style={{ ...sp, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
                         {r.status}
                       </span>
                     </td>
@@ -246,14 +244,9 @@ export default function RiskRegister() {
 
             <div className="form-group">
               <label className="form-label">Risk Description *</label>
-              <textarea
-                className="form-input"
-                rows={3}
-                style={{ resize: 'vertical' }}
-                value={form.risk_description}
-                onChange={e => field('risk_description', e.target.value)}
-                placeholder="Describe the risk clearly and concisely"
-              />
+              <textarea className="form-input" rows={3} style={{ resize: 'vertical' }}
+                value={form.risk_description} onChange={e => field('risk_description', e.target.value)}
+                placeholder="Describe the risk clearly and concisely" />
             </div>
 
             <div className="grid-2">
@@ -287,29 +280,20 @@ export default function RiskRegister() {
             </div>
 
             {/* Auto-calculated rating preview */}
-            {form.likelihood && form.consequence && (
-              <div style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 13, color: 'var(--text2)' }}>Auto-calculated risk rating:</span>
-                {(() => {
-                  const rating = calcRating(form.likelihood, form.consequence);
-                  const rp = RATING_PILL[rating] || {};
-                  return (
-                    <span style={{ ...rp, padding: '3px 12px', borderRadius: 20, fontWeight: 700, fontSize: 12 }}>{rating}</span>
-                  );
-                })()}
-              </div>
-            )}
+            <div style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--text2)' }}>Auto-calculated risk rating:</span>
+              {(() => {
+                const rating = calcRating(form.likelihood, form.consequence);
+                const rp = RATING_PILL[rating];
+                return <span style={{ ...rp, padding: '3px 12px', borderRadius: 20, fontWeight: 700, fontSize: 12 }}>{rating}</span>;
+              })()}
+            </div>
 
             <div className="form-group">
               <label className="form-label">Controls in Place</label>
-              <textarea
-                className="form-input"
-                rows={2}
-                style={{ resize: 'vertical' }}
-                value={form.controls}
-                onChange={e => field('controls', e.target.value)}
-                placeholder="What is currently in place to manage this risk?"
-              />
+              <textarea className="form-input" rows={2} style={{ resize: 'vertical' }}
+                value={form.controls} onChange={e => field('controls', e.target.value)}
+                placeholder="What is currently in place to manage this risk?" />
             </div>
 
             <div className="grid-2">
@@ -330,14 +314,9 @@ export default function RiskRegister() {
 
             <div className="form-group">
               <label className="form-label">Notes</label>
-              <textarea
-                className="form-input"
-                rows={2}
-                style={{ resize: 'vertical' }}
-                value={form.notes}
-                onChange={e => field('notes', e.target.value)}
-                placeholder="Any additional context or notes"
-              />
+              <textarea className="form-input" rows={2} style={{ resize: 'vertical' }}
+                value={form.notes} onChange={e => field('notes', e.target.value)}
+                placeholder="Any additional context or notes" />
             </div>
 
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
