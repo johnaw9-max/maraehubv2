@@ -418,8 +418,8 @@ export default function FounderDashboard({ profile }) {
                 {noteOpen && (
                   <textarea
                     autoFocus
-                    value={stepNotes[prefix]?.[key] || ''}
-                    onChange={e => saveStepNote(prefix, key, e.target.value)}
+                    defaultValue={stepNotes[prefix]?.[key] || ''}
+                    onBlur={e => saveStepNote(prefix, key, e.target.value)}
                     placeholder="Add a note for this step..."
                     rows={2}
                     style={{ marginTop: 6, marginLeft: 23, width: 'calc(100% - 23px)', padding: '7px 9px', border: `1px solid ${BORDER}`, borderRadius: 7, fontSize: 12, color: TEXT1, background: CREAM, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.5 }}
