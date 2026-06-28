@@ -106,14 +106,15 @@ export default function FounderDashboard({ profile }) {
 
   if (!FOUNDER_EMAILS.includes(profile?.email)) return null;
 
-  async function fetchLoginActivity(client) {
+  async function fetchLoginActivity(client, withLogin = true) {
     if (!client) return null;
-    const { data, error } = await client.rpc('get_trustee_login_activity');
-    if (!error && data) return data;
+    if (withLogin) {
+      const { data, error } = await client.rpc('get_trustee_login_activity');
+      if (!error && data) return data;
+    }
     const { data: profiles } = await client
       .from('profiles')
       .select('id, full_name, email')
-      .eq('role', 'trustee')
       .order('full_name');
     return profiles || [];
   }
@@ -127,9 +128,9 @@ export default function FounderDashboard({ profile }) {
       supabase.from('compliance_items').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      fetchLoginActivity(supabase),
-      fetchLoginActivity(supabaseTineka),
-      fetchLoginActivity(supabaseWaioweka),
+      fetchLoginActivity(supabase, true),
+      fetchLoginActivity(supabaseTineka, false),
+      fetchLoginActivity(supabaseWaioweka, false),
     ]);
 
     if (settingsRes.data) {
@@ -351,10 +352,10 @@ export default function FounderDashboard({ profile }) {
       {/* ── LOGIN ACTIVITY ─────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 24 }}>
         {[
-          { label: 'Terere Marae',        users: loginTerere },
-          { label: 'Tineka Marae',         users: loginTineka },
-          { label: 'Waioweka (Sandbox)',   users: loginWaioweka },
-        ].map(({ label, users }) => (
+          { label: 'Terere Marae',       users: loginTerere,   hasLoginDates: true },
+          { label: 'Tineka Marae',        users: loginTineka,   hasLoginDates: false },
+          { label: 'Waioweka (Sandbox)',  users: loginWaioweka, hasLoginDates: false },
+        ].map(({ label, users, hasLoginDates }) => (
           <Card key={label}>
             <SectionTitle>🏛️ {label} — last login activity</SectionTitle>
             {users === null ? (
@@ -370,13 +371,15 @@ export default function FounderDashboard({ profile }) {
                 </div>
                 {users.map(u => {
                   const now  = new Date();
-                  const last = u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
+                  const last = hasLoginDates && u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
                   const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
-                  const color = days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
-                  const dateLabel = last
-                    ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : 'Never';
-                  const ago = days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
+                  const color = !hasLoginDates ? TEXT3 : days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
+                  const dateLabel = !hasLoginDates
+                    ? 'not available'
+                    : last
+                      ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                      : 'Never';
+                  const ago = !hasLoginDates || days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
                   return (
                     <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
                       <span style={{ fontSize: 13, color: TEXT1, fontWeight: 500 }}>{u.full_name || '—'}</span>
