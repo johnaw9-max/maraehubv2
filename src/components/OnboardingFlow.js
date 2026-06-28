@@ -213,21 +213,73 @@ export default function OnboardingFlow({ onComplete }) {
   if (loading || hidden) return null;
 
   if (celebrating) {
+    const weekDays = [
+      {
+        label: 'Day 1 — Get oriented',
+        steps: [
+          'Go to Board View — your marae command centre',
+          'Check anything flagged — bookings, compliance, assets',
+          'Familiarise yourself with the left navigation menu',
+        ],
+      },
+      {
+        label: 'Day 2 — Set up your core records',
+        steps: [
+          'Compliance — add insurance, licenses, certificates',
+          'Assets — add buildings, vehicles, equipment',
+          'Contacts — add your key contacts',
+        ],
+      },
+      {
+        label: 'Day 3 — Run your first process',
+        steps: [
+          'Bookings — add or approve your first booking',
+          'Finance — check income was created automatically',
+          'Workflows — start a workflow if needed',
+        ],
+      },
+    ];
+
     return (
-      <div style={{ background: WHITE, border: `2px solid ${GREEN}`, borderRadius: 14, padding: '40px 32px', marginBottom: 24, textAlign: 'center' }}>
-        <div style={{ fontSize: 52, marginBottom: 14 }}>🎉</div>
-        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: GREEN, marginBottom: 8 }}>
-          Your marae is set up. Welcome to MaraeHub.
+      <div style={{ background: WHITE, border: `2px solid ${GREEN}`, borderRadius: 14, padding: '40px 32px', marginBottom: 24 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 52, marginBottom: 14 }}>🎉</div>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: GREEN, marginBottom: 8 }}>
+            Your marae is set up. Welcome to MaraeHub.
+          </div>
+          <div style={{ fontSize: 14, color: TEXT3 }}>
+            You're all set to manage your marae from one place.
+          </div>
         </div>
-        <div style={{ fontSize: 14, color: TEXT3, marginBottom: 28 }}>
-          You're all set to manage your marae from one place.
+
+        <div style={{ background: CREAM, borderRadius: 10, padding: '20px 24px', marginBottom: 28 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 700, color: GREEN, marginBottom: 16 }}>
+            Your First Week
+          </div>
+          {weekDays.map(day => (
+            <div key={day.label} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, marginBottom: 6 }}>{day.label}</div>
+              <ol style={{ margin: 0, paddingLeft: 20 }}>
+                {day.steps.map(s => (
+                  <li key={s} style={{ fontSize: 13, color: TEXT3, lineHeight: 1.7 }}>{s}</li>
+                ))}
+              </ol>
+            </div>
+          ))}
+          <div style={{ marginTop: 4, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, marginBottom: 4 }}>Then — invite your trustees</div>
+            <div style={{ fontSize: 13, color: TEXT3 }}>Settings → Trustees → invite your team</div>
+          </div>
         </div>
-        <button
-          onClick={() => { setHidden(true); onComplete?.(); }}
-          style={{ padding: '11px 32px', background: GREEN, color: WHITE, border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-        >
-          Go to Board View →
-        </button>
+
+        <div style={{ textAlign: 'center' }}>
+          <button
+            onClick={() => { setHidden(true); onComplete?.(); }}
+            style={{ padding: '11px 32px', background: GREEN, color: WHITE, border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            Go to Board View →
+          </button>
+        </div>
       </div>
     );
   }
