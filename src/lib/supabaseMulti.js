@@ -7,10 +7,9 @@ export const supabaseTerere = createClient(
 
 export const supabaseTineka = createClient(
   'https://zfefukxaliuximizjkwa.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZWZ1a3hhbGl1eGltaXpqa3dhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNTc4OTgsImV4cCI6MjA5NTczMzg5OH0.HMwi6ARjVM270WdXUYvgIiD2M1SwZ7Dfa7pfCcoEDt0'
+  process.env.REACT_APP_TINEKA_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZWZ1a3hhbGl1eGltaXpqa3dhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNTc4OTgsImV4cCI6MjA5NTczMzg5OH0.HMwi6ARjVM270WdXUYvgIiD2M1SwZ7Dfa7pfCcoEDt0'
 );
 
-const waiowekaKey = process.env.REACT_APP_WAIOWEKA_ANON_KEY;
-export const supabaseWaioweka = waiowekaKey
-  ? createClient('https://kifqftelvliywqkizsho.supabase.co', waiowekaKey)
+export const supabaseWaioweka = process.env.REACT_APP_WAIOWEKA_ANON_KEY
+  ? createClient('https://kifqftelvliywqkizsho.supabase.co', process.env.REACT_APP_WAIOWEKA_ANON_KEY)
   : null;

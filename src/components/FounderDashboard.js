@@ -61,11 +61,39 @@ function FieldInput({ label, value, onChange, type = 'text', placeholder = '' })
 }
 
 const MARAE_PILL = {
-  Active:     { color: GREEN,       bg: '#E6F4F0' },
-  Trial:      { color: AMBER,       bg: '#FDF3E3' },
-  Interested: { color: '#4A6FA5',   bg: '#EAF0FA' },
-  Cold:       { color: TEXT3,       bg: CREAM },
+  Active:     { color: GREEN,     bg: '#E6F4F0' },
+  Trial:      { color: AMBER,     bg: '#FDF3E3' },
+  Interested: { color: '#4A6FA5', bg: '#EAF0FA' },
+  Cold:       { color: TEXT3,     bg: CREAM },
 };
+
+async function fetchEnvKPIs(client, label = '') {
+  if (!client) return null;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [trusteesRes, compRes, bookRes, assetsRes] = await Promise.all([
+    client.rpc('get_trustee_login_activity'),
+    client.from('compliance_items').select('id', { count: 'exact', head: true }),
+    client.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
+    client.from('assets').select('id', { count: 'exact', head: true }),
+  ]);
+
+  let trustees = trusteesRes.data || [];
+  if (trusteesRes.error || !trustees.length) {
+    const { data: profiles, error: pErr } = await client
+      .from('profiles')
+      .select('id, full_name, email')
+      .order('full_name');
+    console.log(`[FounderDashboard] ${label} profiles fallback:`, { data: profiles, error: pErr });
+    trustees = profiles || [];
+  }
+
+  return {
+    trustees,
+    compliance: compRes.count || 0,
+    bookings:   bookRes.count || 0,
+    assets:     assetsRes.count || 0,
+  };
+}
 
 export default function FounderDashboard({ profile }) {
   const [mrr, setMrr]               = useState(0);
@@ -80,10 +108,11 @@ export default function FounderDashboard({ profile }) {
   const [tineka,   setTineka]   = useState({ status: 'Trial',      note: '' });
   const [waioweka, setWaioweka] = useState({ status: 'Interested', note: '' });
 
-  const [liveCounts, setLiveCounts] = useState({ tasks: 0, compliance: 0, bookings: 0, activeUsers: 0 });
-  const [loginTerere,   setLoginTerere]   = useState([]);
-  const [loginTineka,   setLoginTineka]   = useState([]);
-  const [loginWaioweka, setLoginWaioweka] = useState([]);
+  const [taskCount,    setTaskCount]    = useState(0);
+  const [activeUsers,  setActiveUsers]  = useState(0);
+  const [kpiTerere,   setKpiTerere]   = useState(null);
+  const [kpiTineka,   setKpiTineka]   = useState(null);
+  const [kpiWaioweka, setKpiWaioweka] = useState(null);
 
   useEffect(() => {
     if (!FOUNDER_EMAILS.includes(profile?.email)) return;
@@ -92,32 +121,15 @@ export default function FounderDashboard({ profile }) {
 
   if (!FOUNDER_EMAILS.includes(profile?.email)) return null;
 
-  async function fetchLoginActivity(client, withLogin = true, label = '') {
-    if (!client) return null;
-    if (withLogin) {
-      const { data, error } = await client.rpc('get_trustee_login_activity');
-      if (!error && data) return data;
-    }
-    const { data: profiles, error: profilesError } = await client
-      .from('profiles')
-      .select('id, full_name, email')
-      .order('full_name');
-    console.log(`[FounderDashboard] ${label} profiles query:`, { data: profiles, error: profilesError });
-    return profiles || [];
-  }
-
   async function loadAll() {
     setLoading(true);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const [settingsRes, tasksRes, compRes, bookRes, profilesRes, loginT, loginTi, loginW] = await Promise.all([
+    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, kpiW] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
-      supabase.from('compliance_items').select('id', { count: 'exact', head: true }),
-      supabase.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      fetchLoginActivity(supabase, true, 'Terere'),
-      fetchLoginActivity(supabaseTineka, false, 'Tineka'),
-      fetchLoginActivity(supabaseWaioweka, false, 'Waioweka'),
+      fetchEnvKPIs(supabase, 'Terere'),
+      fetchEnvKPIs(supabaseTineka, 'Tineka'),
+      fetchEnvKPIs(supabaseWaioweka, 'Waioweka'),
     ]);
 
     if (settingsRes.data) {
@@ -132,15 +144,11 @@ export default function FounderDashboard({ profile }) {
       if (m.waioweka)  setWaioweka(m.waioweka);
     }
 
-    setLiveCounts({
-      tasks:       tasksRes.count    || 0,
-      compliance:  compRes.count     || 0,
-      bookings:    bookRes.count     || 0,
-      activeUsers: profilesRes.count || 0,
-    });
-    setLoginTerere(loginT || []);
-    setLoginTineka(loginTi || []);
-    setLoginWaioweka(loginW);
+    setTaskCount(tasksRes.count || 0);
+    setActiveUsers(profilesRes.count || 0);
+    setKpiTerere(kpiT);
+    setKpiTineka(kpiTi);
+    setKpiWaioweka(kpiW);
 
     setLoading(false);
   }
@@ -165,6 +173,12 @@ export default function FounderDashboard({ profile }) {
       </div>
     );
   }
+
+  const envSections = [
+    { label: 'Terere Marae',      kpi: kpiTerere },
+    { label: 'Tineka Marae',       kpi: kpiTineka },
+    { label: 'Waioweka (Sandbox)', kpi: kpiWaioweka },
+  ];
 
   return (
     <div style={{ background: CREAM, minHeight: '100vh', padding: '28px 32px', fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -199,7 +213,7 @@ export default function FounderDashboard({ profile }) {
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: TEXT3, marginBottom: 6 }}>Active This Week</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: TEXT1 }}>{liveCounts.activeUsers}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: TEXT1 }}>{activeUsers}</div>
           <div style={{ fontSize: 11, color: TEXT3, marginTop: 4 }}>Total users in system</div>
         </Card>
       </div>
@@ -214,9 +228,10 @@ export default function FounderDashboard({ profile }) {
             <FieldInput label="Last Shipped" value={shipped} onChange={setShipped} placeholder="e.g. Workflow automation" />
           </div>
           <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 24 }}>
-            <StatRow label="Open Tasks"        value={liveCounts.tasks} />
-            <StatRow label="Upcoming Bookings" value={liveCounts.bookings} />
-            <StatRow label="Compliance Items"  value={liveCounts.compliance} />
+            <StatRow label="Open Tasks"        value={taskCount} />
+            <StatRow label="Upcoming Bookings" value={kpiTerere?.bookings ?? '—'} />
+            <StatRow label="Compliance Items"  value={kpiTerere?.compliance ?? '—'} />
+            <StatRow label="Assets"            value={kpiTerere?.assets ?? '—'} />
           </div>
           <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ fontSize: 11, color: TEXT3, marginBottom: 4 }}>Days to Sep 7 launch</div>
@@ -269,46 +284,64 @@ export default function FounderDashboard({ profile }) {
         </Card>
       </div>
 
-      {/* ── LOGIN ACTIVITY ─────────────────────────────────────────────── */}
+      {/* ── PER-ENVIRONMENT KPIs ───────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-        {[
-          { label: 'Terere Marae',       users: loginTerere,   hasLoginDates: true },
-          { label: 'Tineka Marae',        users: loginTineka,   hasLoginDates: false },
-          { label: 'Waioweka (Sandbox)',  users: loginWaioweka, hasLoginDates: false },
-        ].map(({ label, users, hasLoginDates }) => (
+        {envSections.map(({ label, kpi }) => (
           <Card key={label}>
-            <SectionTitle>🏛️ {label} — last login activity</SectionTitle>
-            {users === null ? (
+            <SectionTitle>🏛️ {label}</SectionTitle>
+
+            {kpi === null ? (
               <div style={{ fontSize: 13, color: TEXT3 }}>Not configured — add REACT_APP_WAIOWEKA_ANON_KEY to enable.</div>
-            ) : users.length === 0 ? (
-              <div style={{ fontSize: 13, color: TEXT3 }}>No trustee data available.</div>
             ) : (
-              <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', paddingBottom: 8, marginBottom: 4, borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Name</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Last Login</span>
-                </div>
-                {users.map(u => {
-                  const now  = new Date();
-                  const last = hasLoginDates && u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
-                  const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
-                  const color = !hasLoginDates ? TEXT3 : days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
-                  const dateLabel = !hasLoginDates
-                    ? 'not available'
-                    : last
-                      ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-                      : 'Never';
-                  const ago = !hasLoginDates || days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
-                  return (
-                    <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
-                      <span style={{ fontSize: 13, color: TEXT1, fontWeight: 500 }}>{u.full_name || '—'}</span>
-                      <span style={{ fontSize: 12, color: TEXT3 }}>{u.email}</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color }}>{dateLabel}{ago}</span>
+              <>
+                {/* ── KPI mini-stats ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${BORDER}` }}>
+                  {[
+                    { label: 'Trustees',    value: kpi.trustees.length },
+                    { label: 'Compliance',  value: kpi.compliance },
+                    { label: 'Bookings',    value: kpi.bookings },
+                    { label: 'Assets',      value: kpi.assets },
+                  ].map(({ label: kLabel, value }) => (
+                    <div key={kLabel} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: value > 0 ? GREEN : TEXT3 }}>{value}</div>
+                      <div style={{ fontSize: 10, color: TEXT3, marginTop: 2 }}>{kLabel}</div>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+
+                {/* ── Trustee list ── */}
+                {kpi.trustees.length === 0 ? (
+                  <div style={{ fontSize: 13, color: TEXT3 }}>No trustees found.</div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', paddingBottom: 8, marginBottom: 4, borderBottom: `1px solid ${BORDER}` }}>
+                      {['Name', 'Email', 'Last Login'].map(h => (
+                        <span key={h} style={{ fontSize: 10, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</span>
+                      ))}
+                    </div>
+                    {kpi.trustees.map(u => {
+                      const now  = new Date();
+                      const last = u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
+                      const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
+                      const hasDate = 'last_sign_in_at' in u;
+                      const color = !hasDate ? TEXT3 : days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
+                      const dateLabel = !hasDate
+                        ? 'not available'
+                        : last
+                          ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'Never';
+                      const ago = !hasDate || days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
+                      return (
+                        <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '9px 0', borderBottom: `1px solid ${BORDER}` }}>
+                          <span style={{ fontSize: 12, color: TEXT1, fontWeight: 500 }}>{u.full_name || '—'}</span>
+                          <span style={{ fontSize: 11, color: TEXT3 }}>{u.email}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color }}>{dateLabel}{ago}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </Card>
         ))}
