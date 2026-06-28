@@ -3,6 +3,16 @@ import { supabase } from '../lib/supabase';
 import { supabaseTineka, supabaseWaioweka } from '../lib/supabaseMulti';
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
+
+const ONBOARDING_STEPS = [
+  { key: 'demo_completed',    label: 'Demo completed' },
+  { key: 'email_1_sent',      label: 'Email 1 sent' },
+  { key: 'week_1_session',    label: 'Week 1 session done' },
+  { key: 'email_3_sent',      label: 'Email 3 sent' },
+  { key: 'feedback_received', label: 'Feedback received' },
+  { key: 'converted',         label: 'Converted to paying' },
+];
+
 const GREEN  = '#0F6E56';
 const AMBER  = '#BA7517';
 const RED    = '#A32D2D';
@@ -110,6 +120,7 @@ export default function FounderDashboard({ profile }) {
 
   const [taskCount,    setTaskCount]    = useState(0);
   const [activeUsers,  setActiveUsers]  = useState(0);
+  const [checklist,    setChecklist]    = useState({});
 
   const DATE_KEYS = ['terere', 'tineka', 'waioweka'].flatMap(p =>
     [`${p}_trial_start`, `${p}_trial_end`, `${p}_goes_live`]
@@ -136,13 +147,14 @@ export default function FounderDashboard({ profile }) {
 
   async function loadAll() {
     setLoading(true);
-    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, kpiW] = await Promise.all([
+    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, kpiW, notesRes] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       fetchEnvKPIs(supabase, 'Terere'),
       fetchEnvKPIs(supabaseTineka, 'Tineka'),
       fetchEnvKPIs(supabaseWaioweka, 'Waioweka'),
+      supabase.from('founder_notes').select('marae_name, step_key, completed'),
     ]);
 
     if (settingsRes.data) {
@@ -163,7 +175,23 @@ export default function FounderDashboard({ profile }) {
     setKpiTineka(kpiTi);
     setKpiWaioweka(kpiW);
 
+    const cl = {};
+    for (const { marae_name, step_key, completed } of (notesRes.data || [])) {
+      if (!cl[marae_name]) cl[marae_name] = {};
+      cl[marae_name][step_key] = completed;
+    }
+    setChecklist(cl);
+
     setLoading(false);
+  }
+
+  async function toggleStep(maraeName, stepKey, current) {
+    const next = !current;
+    setChecklist(c => ({ ...c, [maraeName]: { ...c[maraeName], [stepKey]: next } }));
+    await supabase.from('founder_notes').upsert(
+      { marae_name: maraeName, step_key: stepKey, completed: next, updated_at: new Date().toISOString() },
+      { onConflict: 'marae_name,step_key' }
+    );
   }
 
   async function saveMetrics() {
@@ -375,6 +403,39 @@ export default function FounderDashboard({ profile }) {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* ── Onboarding checklist ── */}
+                <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+                  {(() => {
+                    const done = ONBOARDING_STEPS.filter(s => checklist[prefix]?.[s.key]).length;
+                    return (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: TEXT1 }}>Onboarding</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: done === ONBOARDING_STEPS.length ? GREEN : TEXT3 }}>
+                            {done}/{ONBOARDING_STEPS.length} steps
+                          </span>
+                        </div>
+                        {ONBOARDING_STEPS.map(({ key, label: sLabel }) => {
+                          const checked = checklist[prefix]?.[key] || false;
+                          return (
+                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleStep(prefix, key, checked)}
+                                style={{ width: 14, height: 14, accentColor: GREEN, cursor: 'pointer', flexShrink: 0 }}
+                              />
+                              <span style={{ fontSize: 12, color: checked ? TEXT3 : TEXT1, textDecoration: checked ? 'line-through' : 'none' }}>
+                                {sLabel}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
                 </div>
               </>
             )}
