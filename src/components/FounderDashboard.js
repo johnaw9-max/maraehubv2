@@ -502,7 +502,7 @@ export default function FounderDashboard({ profile }) {
                           <span key={h} style={{ fontSize: 10, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</span>
                         ))}
                       </div>
-                      {kpi.trustees.map(u => {
+                      {kpi.trustees.slice(0, 10).map(u => {
                         const now  = new Date();
                         const last = u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
                         const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
@@ -519,6 +519,11 @@ export default function FounderDashboard({ profile }) {
                           </div>
                         );
                       })}
+                      {kpi.trustees.length > 10 && (
+                        <div style={{ fontSize: 11, color: TEXT3, fontStyle: 'italic', paddingTop: 10 }}>
+                          {kpi.trustees.length - 10} more trustees — view all in Supabase
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
