@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { supabaseTineka, supabaseWaioweka } from '../lib/supabaseMulti';
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 const SALARY_TARGET = 6000;
@@ -94,7 +95,9 @@ export default function FounderDashboard({ profile }) {
 
   const [kopara, setKopara] = useState({ tenant: '', rent: '', leaseExpiry: '', maintenance: '', status: '' });
   const [liveCounts, setLiveCounts] = useState({ tasks: 0, compliance: 0, bookings: 0, activeUsers: 0 });
-  const [loginActivity, setLoginActivity] = useState([]);
+  const [loginTerere,   setLoginTerere]   = useState([]);
+  const [loginTineka,   setLoginTineka]   = useState([]);
+  const [loginWaioweka, setLoginWaioweka] = useState([]);
 
   useEffect(() => {
     if (!FOUNDER_EMAILS.includes(profile?.email)) return;
@@ -103,16 +106,30 @@ export default function FounderDashboard({ profile }) {
 
   if (!FOUNDER_EMAILS.includes(profile?.email)) return null;
 
+  async function fetchLoginActivity(client) {
+    if (!client) return null;
+    const { data, error } = await client.rpc('get_trustee_login_activity');
+    if (!error && data) return data;
+    const { data: profiles } = await client
+      .from('profiles')
+      .select('id, full_name, email')
+      .eq('role', 'trustee')
+      .order('full_name');
+    return profiles || [];
+  }
+
   async function loadAll() {
     setLoading(true);
     const todayStr = new Date().toISOString().split('T')[0];
-    const [settingsRes, tasksRes, compRes, bookRes, profilesRes, loginRes] = await Promise.all([
+    const [settingsRes, tasksRes, compRes, bookRes, profilesRes, loginT, loginTi, loginW] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('compliance_items').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      supabase.rpc('get_trustee_login_activity'),
+      fetchLoginActivity(supabase),
+      fetchLoginActivity(supabaseTineka),
+      fetchLoginActivity(supabaseWaioweka),
     ]);
 
     if (settingsRes.data) {
@@ -137,7 +154,9 @@ export default function FounderDashboard({ profile }) {
       bookings:    bookRes.count     || 0,
       activeUsers: profilesRes.count || 0,
     });
-    setLoginActivity(loginRes.data || []);
+    setLoginTerere(loginT || []);
+    setLoginTineka(loginTi || []);
+    setLoginWaioweka(loginW);
 
     setLoading(false);
   }
@@ -330,37 +349,47 @@ export default function FounderDashboard({ profile }) {
       </Card>
 
       {/* ── LOGIN ACTIVITY ─────────────────────────────────────────────── */}
-      <Card style={{ marginTop: 24 }}>
-        <SectionTitle>Login Activity — Trustees</SectionTitle>
-        {loginActivity.length === 0 ? (
-          <div style={{ fontSize: 13, color: TEXT3 }}>No trustee login data available.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, paddingBottom: 8, marginBottom: 4, borderBottom: `1px solid ${BORDER}` }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Name</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Last Login</span>
-            </div>
-            {loginActivity.map(u => {
-              const now = new Date();
-              const last = u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
-              const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
-              const color = days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
-              const label = last
-                ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-                : 'Never';
-              const ago = days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
-              return (
-                <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 13, color: TEXT1, fontWeight: 500 }}>{u.full_name || '—'}</span>
-                  <span style={{ fontSize: 13, color: TEXT3 }}>{u.email}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color }}>{label}{ago}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 24 }}>
+        {[
+          { label: 'Terere Marae',        users: loginTerere },
+          { label: 'Tineka Marae',         users: loginTineka },
+          { label: 'Waioweka (Sandbox)',   users: loginWaioweka },
+        ].map(({ label, users }) => (
+          <Card key={label}>
+            <SectionTitle>🏛️ {label} — last login activity</SectionTitle>
+            {users === null ? (
+              <div style={{ fontSize: 13, color: TEXT3 }}>Not configured — add REACT_APP_WAIOWEKA_ANON_KEY to enable.</div>
+            ) : users.length === 0 ? (
+              <div style={{ fontSize: 13, color: TEXT3 }}>No trustee data available.</div>
+            ) : (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', paddingBottom: 8, marginBottom: 4, borderBottom: `1px solid ${BORDER}` }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Name</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Email</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.5 }}>Last Login</span>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
+                {users.map(u => {
+                  const now  = new Date();
+                  const last = u.last_sign_in_at ? new Date(u.last_sign_in_at) : null;
+                  const days = last ? Math.floor((now - last) / (1000 * 60 * 60 * 24)) : null;
+                  const color = days === null ? TEXT3 : days <= 7 ? GREEN : days <= 30 ? AMBER : RED;
+                  const dateLabel = last
+                    ? last.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : 'Never';
+                  const ago = days === null ? '' : days === 0 ? ' (today)' : ` (${days}d ago)`;
+                  return (
+                    <div key={u.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
+                      <span style={{ fontSize: 13, color: TEXT1, fontWeight: 500 }}>{u.full_name || '—'}</span>
+                      <span style={{ fontSize: 12, color: TEXT3 }}>{u.email}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color }}>{dateLabel}{ago}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
 
       {/* ── FOOTER ─────────────────────────────────────────────────────── */}
       <div style={{ marginTop: 24, textAlign: 'center', fontSize: 11, color: TEXT3 }}>
