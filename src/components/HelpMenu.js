@@ -11,7 +11,7 @@ const HELP_TOPICS = {
         { q: 'Do I have to complete setup before using MaraeHub?', a: 'No — you can skip setup and explore on your own. You can return to complete it any time from Settings.' },
         { q: 'Can I change my marae details after setup?', a: 'Yes — go to Settings at any time to update your marae name, location, iwi, hapū, and other details.' },
         { q: 'What if I made a mistake during setup?', a: 'Go to Settings and update any field. Nothing is locked after setup is complete.' },
-        { q: 'What should I do after setup is complete?', a: 'Head to Board View first — it shows everything that needs attention on your marae. From there you can approve bookings, check compliance, and see any upcoming deadlines. When you\'re ready, invite your other trustees to log in from Settings → Trustees.' },
+        { q: 'What should I do after setup is complete?', a: 'Here\'s your recommended first week on MaraeHub.\n\nDay 1 — Get oriented: 1. Go to Board View — this is your marae command centre. 2. Check anything flagged — bookings, compliance, assets. 3. Familiarise yourself with the left navigation menu.\n\nDay 2 — Set up your core records: 1. Go to Compliance — add your key compliance items (insurance, licenses, certificates). 2. Go to Assets — add your main marae assets (buildings, vehicles, equipment). 3. Go to Contacts — add your key contacts.\n\nDay 3 — Run your first process: 1. Go to Bookings — add your first booking or approve a pending one. 2. Go to Finance — check the income record was created automatically. 3. Go to Workflows — start a workflow if needed.\n\nInvite your trustees: Go to Settings → Trustees and invite your other trustees to log in. The more trustees using MaraeHub, the more useful it becomes.' },
       ]
     },
     {
@@ -319,7 +319,7 @@ const HELP_TOPICS = {
       category: 'Getting Started',
       icon: '🚀',
       items: [
-        { q: 'What should I do after setup is complete?', a: 'Head to Board View first — it shows everything that needs attention on your marae. From there you can approve bookings, check compliance, and see any upcoming deadlines. When you\'re ready, invite your other trustees to log in from Settings → Trustees.' },
+        { q: 'What should I do after setup is complete?', a: 'Here\'s your recommended first week on MaraeHub.\n\nDay 1 — Get oriented: 1. Go to Board View — this is your marae command centre. 2. Check anything flagged — bookings, compliance, assets. 3. Familiarise yourself with the left navigation menu.\n\nDay 2 — Set up your core records: 1. Go to Compliance — add your key compliance items (insurance, licenses, certificates). 2. Go to Assets — add your main marae assets (buildings, vehicles, equipment). 3. Go to Contacts — add your key contacts.\n\nDay 3 — Run your first process: 1. Go to Bookings — add your first booking or approve a pending one. 2. Go to Finance — check the income record was created automatically. 3. Go to Workflows — start a workflow if needed.\n\nInvite your trustees: Go to Settings → Trustees and invite your other trustees to log in. The more trustees using MaraeHub, the more useful it becomes.' },
       ]
     },
     {
