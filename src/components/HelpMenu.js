@@ -108,6 +108,18 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Risk Register',
+      icon: '🛡️',
+      items: [
+        { q: 'What is the Risk Register?', a: 'The Risk Register is a formal record of every risk your marae has identified — from health and safety hazards to financial exposure, governance gaps, environmental risks, and reputational concerns. It gives trustees a single place to track what the risks are, who is responsible for managing them, and what controls are in place.' },
+        { q: 'How do I add a risk?', a: 'Go to Risk Register in the main navigation and click "+ Add Risk". Enter a description of the risk, select a category, set the likelihood and consequence using the dropdowns, and the risk rating will be calculated for you automatically. Add the controls currently in place, assign an owner (the trustee responsible), set a review date, and save.' },
+        { q: 'How is the risk rating calculated?', a: 'MaraeHub calculates the rating automatically from the likelihood and consequence you select — you do not need to work it out yourself. If either likelihood or consequence is High, the rating is High. If both are Low, the rating is Low. Any other combination gives a Medium rating. The rating is shown as a colour-coded pill: red for High, amber for Medium, green for Low.' },
+        { q: 'What appears on Board View?', a: 'Any High-rated risk with a status of Open or Being Managed will surface automatically in Board View so trustees see it at every meeting without having to open the Risk Register tab. A red alert will also appear in the alert strip at the top of Board View if high-rated open risks exist.' },
+        { q: 'Who can see the Risk Register?', a: 'Trustees only. Community members cannot access the Risk Register. This is intentional — risk management is a governance responsibility and the register may contain sensitive information about the marae\'s financial, legal, or operational exposure.' },
+        { q: 'How often should we review our risks?', a: 'Set a review date for each risk when you add it — at minimum, review high-rated risks quarterly and lower-rated risks annually. Use the owner field to make sure every risk has a named trustee responsible for monitoring it. The Board View will surface open high-rated risks at every meeting as a prompt to review.' },
+      ]
+    },
+    {
       category: 'Contacts',
       icon: '👥',
       items: [
