@@ -77,7 +77,9 @@ const MARAE_PILL = {
   Cold:       { color: TEXT3,     bg: CREAM },
 };
 
-const BLANK_LEAD = { name: '', date: '', reason: '', lesson: '' };
+const BLANK_LEAD     = { name: '', date: '', reason: '', lesson: '' };
+const BLANK_PIPELINE = { name: '', contact: '', status: 'Warm', next_action: '', next_action_date: '' };
+const PIPELINE_STATUSES = ['Warm', 'Cold', 'Meeting Booked', 'Waiting on Committee'];
 
 async function fetchEnvKPIs(client, label = '') {
   if (!client) return null;
@@ -130,6 +132,11 @@ export default function FounderDashboard({ profile }) {
   const [customMarae,    setCustomMarae]    = useState([]);
   const [addingMarae,    setAddingMarae]    = useState(false);
   const [newMaraeName,   setNewMaraeName]   = useState('');
+
+  // Pipeline
+  const [pipeline,       setPipeline]       = useState([]);
+  const [addingPipeline, setAddingPipeline] = useState(false);
+  const [newPipeline,    setNewPipeline]    = useState(BLANK_PIPELINE);
 
   // Lost leads
   const [lostLeads,  setLostLeads]  = useState([]);
@@ -189,12 +196,14 @@ export default function FounderDashboard({ profile }) {
     setKpiTineka(kpiTi);
     setKpiWaioweka(kpiW);
 
-    const cl = {}, leads = [], marae = [];
+    const cl = {}, leads = [], marae = [], pipe = [];
     for (const row of (notesRes.data || [])) {
       if (row.step_key === 'lost_lead') {
         leads.push({ id: row.marae_name, ...(row.data || {}) });
       } else if (row.step_key === 'custom_marae') {
         marae.push({ prefix: row.marae_name, label: row.data?.label || row.marae_name });
+      } else if (row.step_key === 'pipeline') {
+        pipe.push({ id: row.marae_name, ...(row.data || {}) });
       } else {
         if (!cl[row.marae_name]) cl[row.marae_name] = {};
         cl[row.marae_name][row.step_key] = row.completed;
@@ -203,6 +212,7 @@ export default function FounderDashboard({ profile }) {
     setChecklist(cl);
     setLostLeads(leads);
     setCustomMarae(marae);
+    setPipeline(pipe);
 
     setLoading(false);
   }
@@ -235,6 +245,36 @@ export default function FounderDashboard({ profile }) {
     setCustomMarae(m => m.filter(e => e.prefix !== prefix));
     await supabase.from('founder_notes').delete()
       .eq('marae_name', prefix).eq('step_key', 'custom_marae');
+  }
+
+  async function addPipelineLead() {
+    if (!newPipeline.name.trim()) return;
+    const id = `pl_${Date.now()}`;
+    const row = { id, ...newPipeline };
+    setPipeline(p => [...p, row]);
+    setNewPipeline(BLANK_PIPELINE);
+    setAddingPipeline(false);
+    await supabase.from('founder_notes').insert({
+      marae_name: id, step_key: 'pipeline', completed: false,
+      data: newPipeline, updated_at: new Date().toISOString(),
+    });
+  }
+
+  async function updatePipelineLead(id, field, value) {
+    setPipeline(p => p.map(r => r.id === id ? { ...r, [field]: value } : r));
+    const row = pipeline.find(r => r.id === id);
+    if (!row) return;
+    const updated = { ...row, [field]: value };
+    const { id: _id, ...data } = updated;
+    await supabase.from('founder_notes')
+      .update({ data, updated_at: new Date().toISOString() })
+      .eq('marae_name', id).eq('step_key', 'pipeline');
+  }
+
+  async function deletePipelineLead(id) {
+    setPipeline(p => p.filter(r => r.id !== id));
+    await supabase.from('founder_notes').delete()
+      .eq('marae_name', id).eq('step_key', 'pipeline');
   }
 
   async function addLostLead() {
@@ -572,6 +612,119 @@ export default function FounderDashboard({ profile }) {
           </button>
         )}
       </div>
+
+      {/* ── PIPELINE ───────────────────────────────────────────────────── */}
+      <Card style={{ marginTop: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <SectionTitle style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>Pipeline</SectionTitle>
+          {!addingPipeline && (
+            <button
+              onClick={() => setAddingPipeline(true)}
+              style={{ padding: '6px 14px', background: GREEN, color: WHITE, border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Add Lead
+            </button>
+          )}
+        </div>
+
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {['Marae', 'Contact', 'Status', 'Next Action', 'Next Action Date', ''].map(h => (
+                <th key={h} style={thStyle}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pipeline.length === 0 && !addingPipeline && (
+              <tr>
+                <td colSpan={6} style={{ ...tdStyle, color: TEXT3, fontStyle: 'italic' }}>No leads in pipeline.</td>
+              </tr>
+            )}
+            {pipeline.map(row => {
+              const statusColor = row.status === 'Warm' ? AMBER : row.status === 'Meeting Booked' ? GREEN : row.status === 'Cold' ? TEXT3 : '#4A6FA5';
+              return (
+                <tr key={row.id}>
+                  <td style={{ ...tdStyle, fontWeight: 500 }}>
+                    <input
+                      value={row.name || ''}
+                      onChange={e => updatePipelineLead(row.id, 'name', e.target.value)}
+                      style={{ ...inStyle, fontWeight: 500 }}
+                    />
+                  </td>
+                  <td style={tdStyle}>
+                    <input
+                      value={row.contact || ''}
+                      onChange={e => updatePipelineLead(row.id, 'contact', e.target.value)}
+                      style={inStyle}
+                    />
+                  </td>
+                  <td style={tdStyle}>
+                    <select
+                      value={row.status || 'Warm'}
+                      onChange={e => updatePipelineLead(row.id, 'status', e.target.value)}
+                      style={{ ...inStyle, color: statusColor, fontWeight: 600 }}
+                    >
+                      {PIPELINE_STATUSES.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td style={tdStyle}>
+                    <input
+                      value={row.next_action || ''}
+                      onChange={e => updatePipelineLead(row.id, 'next_action', e.target.value)}
+                      style={inStyle}
+                    />
+                  </td>
+                  <td style={tdStyle}>
+                    <input
+                      type="date"
+                      value={row.next_action_date || ''}
+                      onChange={e => updatePipelineLead(row.id, 'next_action_date', e.target.value)}
+                      style={inStyle}
+                    />
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'right', width: 32 }}>
+                    <button
+                      onClick={() => deletePipelineLead(row.id)}
+                      style={{ background: 'none', border: 'none', color: TEXT3, fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 0 }}
+                      title="Delete"
+                    >×</button>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {/* Inline add row */}
+            {addingPipeline && (
+              <tr>
+                <td style={{ ...tdStyle, paddingRight: 8 }}>
+                  <input autoFocus value={newPipeline.name} onChange={e => setNewPipeline(p => ({ ...p, name: e.target.value }))} placeholder="Marae name" style={inStyle} />
+                </td>
+                <td style={{ ...tdStyle, paddingRight: 8 }}>
+                  <input value={newPipeline.contact} onChange={e => setNewPipeline(p => ({ ...p, contact: e.target.value }))} placeholder="Contact name" style={inStyle} />
+                </td>
+                <td style={{ ...tdStyle, paddingRight: 8 }}>
+                  <select value={newPipeline.status} onChange={e => setNewPipeline(p => ({ ...p, status: e.target.value }))} style={inStyle}>
+                    {PIPELINE_STATUSES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </td>
+                <td style={{ ...tdStyle, paddingRight: 8 }}>
+                  <input value={newPipeline.next_action} onChange={e => setNewPipeline(p => ({ ...p, next_action: e.target.value }))} placeholder="Next action" style={inStyle} />
+                </td>
+                <td style={{ ...tdStyle, paddingRight: 8 }}>
+                  <input type="date" value={newPipeline.next_action_date} onChange={e => setNewPipeline(p => ({ ...p, next_action_date: e.target.value }))} style={inStyle} onKeyDown={e => e.key === 'Enter' && addPipelineLead()} />
+                </td>
+                <td style={{ ...tdStyle, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={addPipelineLead} style={{ padding: '5px 10px', background: GREEN, color: WHITE, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+                    <button onClick={() => { setAddingPipeline(false); setNewPipeline(BLANK_PIPELINE); }} style={{ padding: '5px 10px', border: `1px solid ${BORDER}`, background: WHITE, borderRadius: 6, fontSize: 12, cursor: 'pointer', color: TEXT3 }}>Cancel</button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
 
       {/* ── LOST LEADS ─────────────────────────────────────────────────── */}
       <Card style={{ marginTop: 8 }}>
