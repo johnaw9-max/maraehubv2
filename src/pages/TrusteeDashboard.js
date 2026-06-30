@@ -172,6 +172,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [recentBookings, setRecentBookings] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
   const [feedbackStats, setFeedbackStats] = useState({ total: 0, avgOverall: null, avgCleanliness: null, avgFacilities: null, recent: [] });
+  const [priorities, setPriorities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Per-tab KPI state
@@ -196,12 +197,18 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   async function fetchDashboardData() {
     setLoading(true);
-    const [bookingsRes, projectsRes, assetsRes, pendingRes, feedbackRes] = await Promise.all([
+    const [bookingsRes, projectsRes, assetsRes, pendingRes, feedbackRes,
+           compRes, riskRes, taskRes, reminderRes, grantRes] = await Promise.all([
       supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
       supabase.from('projects').select('*').order('created_at', { ascending: false }).limit(3),
-      supabase.from('assets').select('id'),
+      supabase.from('assets').select('id, name, condition, replacement_cost'),
       supabase.from('bookings').select('id').eq('status', 'pending'),
       supabase.from('booking_feedback').select('rating_overall, rating_cleanliness, rating_facilities, experience, created_at').order('created_at', { ascending: false }),
+      supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
+      supabase.from('risk_register').select('id, risk_description, risk_rating, status'),
+      supabase.from('tasks').select('id, title, due_date, status').neq('status', 'cancelled').neq('status', 'completed'),
+      supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
+      supabase.from('grants').select('id, name, deadline, status').order('deadline'),
     ]);
     setRecentBookings(bookingsRes.data || []);
     setRecentProjects(projectsRes.data || []);
@@ -219,6 +226,90 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       avgFacilities: avg(fb.map(f => f.rating_facilities)),
       recent: fb.filter(f => f.experience).slice(0, 4),
     });
+
+    // ── COMPUTE TOP 3 PRIORITIES ──────────────────────────────────────────────
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const in7  = new Date(now); in7.setDate(in7.getDate() + 7);
+    const in14 = new Date(now); in14.setDate(in14.getDate() + 14);
+    const msPerDay = 86400000;
+
+    const compliance    = compRes.data     || [];
+    const risks         = riskRes.data     || [];
+    const tasks         = taskRes.data     || [];
+    const reminders     = reminderRes.data || [];
+    const grants        = grantRes.data    || [];
+    const assets        = assetsRes.data   || [];
+    const pendingBk     = pendingRes.data  || [];
+
+    const pItems = [];
+
+    // RED — overdue compliance items (one entry per item, sorted by days overdue)
+    compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < now).forEach(c => {
+      const days = Math.ceil((now - new Date(c.due_date + 'T12:00:00')) / msPerDay);
+      pItems.push({ level: 'red', score: days, title: c.name, reason: `${days} day${days !== 1 ? 's' : ''} overdue — compliance obligations must be renewed promptly.`, tab: 'compliance', module: 'Compliance' });
+    });
+
+    // RED — high-rated open risks
+    risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed').forEach(r => {
+      const desc = r.risk_description || 'Unspecified risk';
+      pItems.push({ level: 'red', score: 200, title: desc.length > 70 ? desc.slice(0, 70) + '…' : desc, reason: 'Rated High risk and still open — immediate action required to protect the marae.', tab: 'risks', module: 'Risk Register' });
+    });
+
+    // RED — overdue tasks (grouped)
+    const overdueTasks = tasks.filter(t => !t.title?.startsWith('UPCOMING: ') && t.due_date && new Date(t.due_date + 'T12:00:00') < now);
+    if (overdueTasks.length > 0) {
+      const maxDays = Math.max(...overdueTasks.map(t => Math.ceil((now - new Date(t.due_date + 'T12:00:00')) / msPerDay)));
+      pItems.push({ level: 'red', score: maxDays, title: `${overdueTasks.length} task${overdueTasks.length !== 1 ? 's' : ''} overdue`, reason: `${overdueTasks.length} task${overdueTasks.length !== 1 ? 's' : ''} past their due date — follow up with assignees immediately.`, tab: 'tasks', module: 'Tasks' });
+    }
+
+    // RED — overdue service reminders (grouped)
+    const overdueRem = reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < now);
+    if (overdueRem.length > 0) {
+      const maxDays = Math.max(...overdueRem.map(r => Math.ceil((now - new Date(r.due_date + 'T12:00:00')) / msPerDay)));
+      pItems.push({ level: 'red', score: maxDays, title: `${overdueRem.length} service reminder${overdueRem.length !== 1 ? 's' : ''} overdue`, reason: 'Asset maintenance is overdue — arrange servicing to avoid breakdowns and safety risks.', tab: 'assets', module: 'Assets' });
+    }
+
+    // RED — grant deadlines within 7 days
+    grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= now && new Date(g.deadline + 'T12:00:00') <= in7).forEach(g => {
+      const daysLeft = Math.ceil((new Date(g.deadline + 'T12:00:00') - now) / msPerDay);
+      pItems.push({ level: 'red', score: 57 - daysLeft, title: g.name, reason: `Grant deadline in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — submit application immediately to secure this funding.`, tab: 'grants', module: 'Grants' });
+    });
+
+    // RED — critical condition assets
+    assets.filter(a => a.condition === 'critical').forEach(a => {
+      pItems.push({ level: 'red', score: 300, title: `${a.name} — Critical condition`, reason: `Asset is in critical condition${a.replacement_cost ? ` — estimated $${Number(a.replacement_cost).toLocaleString()} replacement cost` : ''}. Arrange replacement or repair immediately.`, tab: 'assets', module: 'Assets' });
+    });
+
+    // AMBER — pending bookings
+    if (pendingBk.length > 0) {
+      pItems.push({ level: 'amber', score: pendingBk.length * 10, title: `${pendingBk.length} booking${pendingBk.length !== 1 ? 's' : ''} awaiting approval`, reason: `${pendingBk.length} booking request${pendingBk.length !== 1 ? 's' : ''} pending — review and approve before next hui.`, tab: 'bookings', module: 'Bookings' });
+    }
+
+    // AMBER — compliance due within 7 days
+    compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= now && new Date(c.due_date + 'T12:00:00') <= in7).forEach(c => {
+      const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - now) / msPerDay);
+      pItems.push({ level: 'amber', score: 7 - daysLeft + 5, title: c.name, reason: `Due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — begin renewal process now to avoid non-compliance.`, tab: 'compliance', module: 'Compliance' });
+    });
+
+    // AMBER — grant deadlines 7–14 days
+    grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14).forEach(g => {
+      const daysLeft = Math.ceil((new Date(g.deadline + 'T12:00:00') - now) / msPerDay);
+      pItems.push({ level: 'amber', score: 14 - daysLeft, title: g.name, reason: `Grant deadline in ${daysLeft} days — begin preparation to secure this funding.`, tab: 'grants', module: 'Grants' });
+    });
+
+    // AMBER — service reminders due within 7 days (grouped)
+    const soonRem = reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= now && new Date(r.due_date + 'T12:00:00') <= in7);
+    if (soonRem.length > 0) {
+      pItems.push({ level: 'amber', score: soonRem.length, title: `${soonRem.length} service reminder${soonRem.length !== 1 ? 's' : ''} due this week`, reason: 'Asset servicing is coming up — schedule maintenance now before it becomes overdue.', tab: 'assets', module: 'Assets' });
+    }
+
+    // Sort: red first, then by score descending within level
+    pItems.sort((a, b) => {
+      if (a.level !== b.level) return a.level === 'red' ? -1 : 1;
+      return b.score - a.score;
+    });
+    setPriorities(pItems.slice(0, 3));
+
     setLoading(false);
   }
 
@@ -564,6 +655,49 @@ export default function TrusteeDashboard({ profile, onLogout }) {
               <p style={{ color: 'var(--text3)', fontSize: 13 }}>
                 Welcome to your Trustee Dashboard · <em style={{ color: 'var(--brand)' }}>Ngā mihi nui ki a koutou katoa</em>
               </p>
+            </div>
+
+            {/* ── TOP 3 PRIORITIES ──────────────────────────────────────────── */}
+            <div className="panel" style={{ marginBottom: 24, borderTop: '3px solid var(--brand)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid var(--cream2)' }}>
+                <span style={{ fontSize: 20 }}>🎯</span>
+                <div>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 700, color: 'var(--brand)' }}>Your Top 3 Priorities This Week</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Rule-based analysis across compliance, risks, bookings, tasks, grants &amp; assets</div>
+                </div>
+              </div>
+              {loading ? (
+                <div className="loading">Analysing priorities…</div>
+              ) : priorities.length === 0 ? (
+                <div style={{ fontSize: 13, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '10px 14px', fontWeight: 500 }}>✅ No urgent items this week — great work!</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {priorities.map((p, i) => {
+                    const isRed = p.level === 'red';
+                    const bg        = isRed ? '#faeae7' : '#fdf0dc';
+                    const border    = isRed ? '1px solid #f0b8b0' : '1px solid #e8c880';
+                    const leftBar   = isRed ? '4px solid var(--danger)' : '4px solid var(--warning)';
+                    const badgeBg   = isRed ? '#d9534f' : '#c8902a';
+                    const btnBorder = isRed ? '1px solid #f0b8b0' : '1px solid #e8c880';
+                    const btnColor  = isRed ? '#a63020' : '#7a4f00';
+                    return (
+                      <div key={i} style={{ borderRadius: 8, padding: '12px 14px', fontSize: 13, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 12, background: bg, border, borderLeft: leftBar }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: badgeBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, marginBottom: 3, color: 'var(--text1)', fontSize: 13 }}>{isRed ? '🔴' : '🟡'} {p.title}</div>
+                          <div style={{ color: 'var(--text2)', fontSize: 12 }}>{p.reason}</div>
+                        </div>
+                        <button
+                          onClick={() => setActiveTab(p.tab)}
+                          style={{ fontSize: 11, background: 'rgba(255,255,255,0.8)', color: btnColor, border: btnBorder, borderRadius: 6, padding: '5px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+                        >
+                          View {p.module} →
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
