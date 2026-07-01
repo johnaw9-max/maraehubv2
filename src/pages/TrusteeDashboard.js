@@ -349,8 +349,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       positiveMsg = `All ${tasks.length} active task${tasks.length !== 1 ? 's' : ''} are on schedule — no overdue items.`;
     } else if (assets.length > 0 && poorOrCriticalAssets.length === 0) {
       positiveMsg = `All ${assets.length} asset${assets.length !== 1 ? 's' : ''} are in good condition.`;
-    } else if (goalsTotal > 0 && goalsOnTrack === goalsTotal) {
-      positiveMsg = `All ${goalsTotal} strategic goal${goalsTotal !== 1 ? 's' : ''} are on track.`;
     } else if (monthlyBkCount > 0) {
       positiveMsg = `${monthlyBkCount} booking${monthlyBkCount !== 1 ? 's' : ''} confirmed this month.`;
     }
