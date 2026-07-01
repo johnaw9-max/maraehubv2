@@ -176,6 +176,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [maraeName, setMaraeName]           = useState('');
   const [positiveInsight, setPositiveInsight] = useState('');
   const [goalsProgress, setGoalsProgress]   = useState({ onTrack: 0, total: 0 });
+  const [healthScore, setHealthScore]        = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Per-tab KPI state
@@ -204,9 +205,14 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     const monthStart = new Date(_d.getFullYear(), _d.getMonth(), 1).toISOString().split('T')[0];
     const monthEnd   = new Date(_d.getFullYear(), _d.getMonth() + 1, 0).toISOString().split('T')[0];
 
+    const fyYear = _d.getMonth() >= 3 ? _d.getFullYear() : _d.getFullYear() - 1;
+    const fyFrom = `${fyYear}-04-01`;
+    const fyTo   = `${fyYear + 1}-03-31`;
+
     const [bookingsRes, projectsRes, assetsRes, pendingRes, feedbackRes,
            compRes, riskRes, taskRes, reminderRes, grantRes,
-           settingsRes, goalsRes, monthlyBkRes] = await Promise.all([
+           settingsRes, goalsRes, monthlyBkRes,
+           finIncRes, finExpRes] = await Promise.all([
       supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
       supabase.from('projects').select('*').order('created_at', { ascending: false }).limit(3),
       supabase.from('assets').select('id, name, condition, replacement_cost'),
@@ -220,6 +226,8 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       supabase.from('marae_settings').select('marae_name').single(),
       supabase.from('goals').select('id, status, target_date'),
       supabase.from('bookings').select('id').eq('status', 'approved').gte('start_date', monthStart).lte('start_date', monthEnd),
+      supabase.from('finance_income').select('amount').gte('date', fyFrom).lte('date', fyTo),
+      supabase.from('finance_expenses').select('amount').gte('date', fyFrom).lte('date', fyTo),
     ]);
     setRecentBookings(bookingsRes.data || []);
     setRecentProjects(projectsRes.data || []);
@@ -353,6 +361,51 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       positiveMsg = `${monthlyBkCount} booking${monthlyBkCount !== 1 ? 's' : ''} confirmed this month.`;
     }
     setPositiveInsight(positiveMsg);
+
+    // ── HEALTH SCORE ──────────────────────────────────────────────────────────
+    const scorableTasks  = tasks.filter(t => !t.title?.startsWith('UPCOMING: '));
+    const finIncome      = (finIncRes.data  || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const finExpenses    = (finExpRes.data  || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const finRecordCount = (finIncRes.data  || []).length + (finExpRes.data || []).length;
+
+    const hsCategories = [];
+
+    if (compliance.length >= 3) {
+      const overdueComp = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < now).length;
+      hsCategories.push({ name: 'Compliance', score: Math.round(25 * ((compliance.length - overdueComp) / compliance.length)), max: 25 });
+    }
+
+    if (risks.length >= 1) {
+      const highOpen = risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed').length;
+      hsCategories.push({ name: 'Risk', score: highOpen === 0 ? 20 : Math.max(0, Math.round(20 * (1 - highOpen / risks.length))), max: 20 });
+    }
+
+    if (scorableTasks.length >= 3) {
+      hsCategories.push({ name: 'Tasks', score: Math.round(20 * ((scorableTasks.length - overdueTasks.length) / scorableTasks.length)), max: 20 });
+    }
+
+    if (finRecordCount >= 3) {
+      const finNet = finIncome - finExpenses;
+      let finScore = 0;
+      if (finNet >= 0) finScore = 20;
+      else if (finIncome > 0 && Math.abs(finNet) < finIncome * 0.1) finScore = 10;
+      hsCategories.push({ name: 'Finance', score: finScore, max: 20 });
+    }
+
+    if (goalsTotal >= 1) {
+      hsCategories.push({ name: 'Goals', score: Math.round(15 * (goalsOnTrack / goalsTotal)), max: 15 });
+    }
+
+    if (hsCategories.length < 2) {
+      setHealthScore({ insufficient: true });
+    } else {
+      const rawTotal   = hsCategories.reduce((s, c) => s + c.score, 0);
+      const maxTotal   = hsCategories.reduce((s, c) => s + c.max, 0);
+      const finalScore = Math.round((rawTotal / maxTotal) * 100);
+      const monthKey   = `mhs_${profile?.marae_id || 'default'}_${now.getFullYear()}_${now.getMonth()}`;
+      try { localStorage.setItem(monthKey, JSON.stringify({ score: finalScore, computed: new Date().toISOString() })); } catch (_) {}
+      setHealthScore({ score: finalScore, categories: hsCategories.map(c => c.name), insufficient: false });
+    }
 
     setLoading(false);
   }
@@ -770,6 +823,57 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                   </div>
                 </>
               )}
+            </div>
+
+            {/* ── MARAE HEALTH SCORE ──────────────────────────────────────────── */}
+            <div className="panel" style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid var(--cream2)' }}>
+                <span style={{ fontSize: 20 }}>🌿</span>
+                <div>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 700, color: 'var(--brand)' }}>Marae Health Score</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>An overall measure of your marae's governance and operational health.</div>
+                </div>
+              </div>
+              {loading || !healthScore ? (
+                <div className="loading">Calculating score…</div>
+              ) : healthScore.insufficient ? (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#f5f5f5', borderRadius: 8, padding: '14px 16px' }}>
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>📋</span>
+                  <div>
+                    <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+                      Health Score unavailable — complete your marae setup to receive your first score.
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('settings')}
+                      style={{ marginTop: 8, fontSize: 12, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                    >
+                      Go to Setup →
+                    </button>
+                  </div>
+                </div>
+              ) : (() => {
+                const s = healthScore.score;
+                const color = s >= 80 ? '#1baf7a' : s >= 60 ? '#c8902a' : '#d9534f';
+                const label = s >= 80 ? 'Strong' : s >= 60 ? 'Developing' : 'Needs Attention';
+                return (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+                      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 52, fontWeight: 700, color, lineHeight: 1 }}>{s}</span>
+                      <span style={{ fontSize: 20, color: 'var(--text3)', fontWeight: 400 }}>/ 100</span>
+                      <span style={{ marginLeft: 4, fontSize: 13, fontWeight: 700, color, background: color + '20', borderRadius: 6, padding: '2px 10px' }}>{label}</span>
+                    </div>
+                    <div style={{ height: 10, background: 'var(--cream2)', borderRadius: 5, overflow: 'hidden', marginBottom: 12 }}>
+                      <div style={{ height: '100%', width: `${s}%`, background: color, borderRadius: 5, transition: 'width 0.4s ease' }} />
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>
+                      Based on: {healthScore.categories.join(' · ')}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                      Score updates automatically as your marae data changes
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
