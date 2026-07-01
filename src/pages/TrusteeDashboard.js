@@ -345,7 +345,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     let positiveMsg = 'Your marae data is up to date.';
     if (compliance.length > 0 && overdueCompCount === 0) {
       positiveMsg = `All ${compliance.length} compliance item${compliance.length !== 1 ? 's' : ''} are current — great governance.`;
-    } else if (tasks.length > 0 && overdueTasks.length === 0) {
+    } else if (overdueTasks.length === 0 && tasks.length > 0) {
       positiveMsg = `All ${tasks.length} active task${tasks.length !== 1 ? 's' : ''} are on schedule — no overdue items.`;
     } else if (assets.length > 0 && poorOrCriticalAssets.length === 0) {
       positiveMsg = `All ${assets.length} asset${assets.length !== 1 ? 's' : ''} are in good condition.`;
@@ -755,16 +755,15 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                   </div>
 
                   {/* Goals progress */}
-                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--cream2)', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 2px' }}>
-                    <span style={{ fontSize: 16 }}>🎯</span>
-                    <span style={{ fontSize: 13, color: 'var(--text2)', flex: 1 }}>
-                      {goalsProgress.total === 0
+                  <div style={{ marginTop: 10, background: '#1baf7a', borderRadius: 8, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, color: '#fff', flex: 1, fontWeight: 600 }}>
+                      🎯 {goalsProgress.total === 0
                         ? 'No strategic goals set yet'
                         : `${goalsProgress.onTrack} of ${goalsProgress.total} strategic goal${goalsProgress.total !== 1 ? 's' : ''} on track`}
                     </span>
                     <button
                       onClick={() => setActiveTab('goals')}
-                      style={{ fontSize: 12, background: '#2e7d52', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}
+                      style={{ fontSize: 14, background: '#fff', color: '#1baf7a', border: 'none', borderRadius: 6, padding: '4px 14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}
                     >
                       View Goals →
                     </button>
