@@ -173,6 +173,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [recentProjects, setRecentProjects] = useState([]);
   const [feedbackStats, setFeedbackStats] = useState({ total: 0, avgOverall: null, avgCleanliness: null, avgFacilities: null, recent: [] });
   const [priorities, setPriorities] = useState([]);
+  const [maraeName, setMaraeName]           = useState('');
+  const [positiveInsight, setPositiveInsight] = useState('');
+  const [goalsProgress, setGoalsProgress]   = useState({ onTrack: 0, total: 0 });
   const [loading, setLoading] = useState(true);
 
   // Per-tab KPI state
@@ -197,8 +200,13 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   async function fetchDashboardData() {
     setLoading(true);
+    const _d = new Date();
+    const monthStart = new Date(_d.getFullYear(), _d.getMonth(), 1).toISOString().split('T')[0];
+    const monthEnd   = new Date(_d.getFullYear(), _d.getMonth() + 1, 0).toISOString().split('T')[0];
+
     const [bookingsRes, projectsRes, assetsRes, pendingRes, feedbackRes,
-           compRes, riskRes, taskRes, reminderRes, grantRes] = await Promise.all([
+           compRes, riskRes, taskRes, reminderRes, grantRes,
+           settingsRes, goalsRes, monthlyBkRes] = await Promise.all([
       supabase.from('bookings').select('*').order('created_at', { ascending: false }).limit(5),
       supabase.from('projects').select('*').order('created_at', { ascending: false }).limit(3),
       supabase.from('assets').select('id, name, condition, replacement_cost'),
@@ -209,6 +217,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       supabase.from('tasks').select('id, title, due_date, status').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
       supabase.from('grants').select('id, name, deadline, status').order('deadline'),
+      supabase.from('marae_settings').select('marae_name').single(),
+      supabase.from('goals').select('id, status, target_date'),
+      supabase.from('bookings').select('id').eq('status', 'approved').gte('start_date', monthStart).lte('start_date', monthEnd),
     ]);
     setRecentBookings(bookingsRes.data || []);
     setRecentProjects(projectsRes.data || []);
@@ -309,6 +320,41 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       return b.score - a.score;
     });
     setPriorities(pItems.slice(0, 3));
+
+    // ── MARAE NAME ────────────────────────────────────────────────────────────
+    setMaraeName(settingsRes.data?.marae_name || '');
+
+    // ── GOALS PROGRESS ────────────────────────────────────────────────────────
+    const goalsArr = goalsRes.data || [];
+    const goalsTotal = goalsArr.length;
+    const goalsOnTrack = goalsArr.filter(g => {
+      if (g.status === 'completed') return true;
+      if (g.status === 'at_risk') return false;
+      const t = g.target_date ? new Date(g.target_date + 'T12:00:00') : null;
+      if (t && t < now) return false;
+      if (t && t <= in14) return false;
+      return true;
+    }).length;
+    setGoalsProgress({ onTrack: goalsOnTrack, total: goalsTotal });
+
+    // ── POSITIVE INSIGHT ──────────────────────────────────────────────────────
+    const overdueCompCount    = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < now).length;
+    const poorOrCriticalAssets = assets.filter(a => ['poor', 'critical'].includes(a.condition));
+    const monthlyBkCount      = (monthlyBkRes.data || []).length;
+
+    let positiveMsg = 'Your marae data is up to date.';
+    if (compliance.length > 0 && overdueCompCount === 0) {
+      positiveMsg = `All ${compliance.length} compliance item${compliance.length !== 1 ? 's' : ''} are current — great governance.`;
+    } else if (tasks.length > 0 && overdueTasks.length === 0) {
+      positiveMsg = `All ${tasks.length} active task${tasks.length !== 1 ? 's' : ''} are on schedule — no overdue items.`;
+    } else if (assets.length > 0 && poorOrCriticalAssets.length === 0) {
+      positiveMsg = `All ${assets.length} asset${assets.length !== 1 ? 's' : ''} are in good condition.`;
+    } else if (goalsTotal > 0 && goalsOnTrack === goalsTotal) {
+      positiveMsg = `All ${goalsTotal} strategic goal${goalsTotal !== 1 ? 's' : ''} are on track.`;
+    } else if (monthlyBkCount > 0) {
+      positiveMsg = `${monthlyBkCount} booking${monthlyBkCount !== 1 ? 's' : ''} confirmed this month.`;
+    }
+    setPositiveInsight(positiveMsg);
 
     setLoading(false);
   }
@@ -662,41 +708,70 @@ export default function TrusteeDashboard({ profile, onLogout }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid var(--cream2)' }}>
                 <span style={{ fontSize: 20 }}>🎯</span>
                 <div>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 700, color: 'var(--brand)' }}>Your Top 3 Priorities This Week</div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Rule-based analysis across compliance, risks, bookings, tasks, grants &amp; assets</div>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 700, color: 'var(--brand)' }}>This Week — {maraeName || profile?.full_name?.split(' ')[0] + "'s Marae" || 'Your Marae'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Here's what needs your attention, and what's going well.</div>
                 </div>
               </div>
               {loading ? (
                 <div className="loading">Analysing priorities…</div>
-              ) : priorities.length === 0 ? (
-                <div style={{ fontSize: 13, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '10px 14px', fontWeight: 500 }}>✅ No urgent items this week — great work!</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {priorities.map((p, i) => {
-                    const isRed = p.level === 'red';
-                    const bg        = isRed ? '#faeae7' : '#fdf0dc';
-                    const border    = isRed ? '1px solid #f0b8b0' : '1px solid #e8c880';
-                    const leftBar   = isRed ? '4px solid var(--danger)' : '4px solid var(--warning)';
-                    const badgeBg   = isRed ? '#d9534f' : '#c8902a';
-                    const btnBorder = isRed ? '1px solid #f0b8b0' : '1px solid #e8c880';
-                    const btnColor  = isRed ? '#a63020' : '#7a4f00';
-                    return (
-                      <div key={i} style={{ borderRadius: 8, padding: '12px 14px', fontSize: 13, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 12, background: bg, border, borderLeft: leftBar }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: badgeBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, marginBottom: 3, color: 'var(--text1)', fontSize: 13 }}>{isRed ? '🔴' : '🟡'} {p.title}</div>
-                          <div style={{ color: 'var(--text2)', fontSize: 12 }}>{p.reason}</div>
-                        </div>
-                        <button
-                          onClick={() => setActiveTab(p.tab)}
-                          style={{ fontSize: 11, background: 'rgba(255,255,255,0.8)', color: btnColor, border: btnBorder, borderRadius: 6, padding: '5px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
-                        >
-                          View {p.module} →
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <>
+                  {priorities.length === 0 ? (
+                    <div style={{ fontSize: 13, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '10px 14px', fontWeight: 500, marginBottom: 10 }}>✅ No urgent items this week — great work!</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {priorities.map((p, i) => {
+                        const isRed = p.level === 'red';
+                        const bg        = isRed ? '#faeae7' : '#fdf0dc';
+                        const border    = isRed ? '1px solid #f0b8b0' : '1px solid #e8c880';
+                        const leftBar   = isRed ? '4px solid var(--danger)' : '4px solid var(--warning)';
+                        const badgeBg   = isRed ? '#d9534f' : '#c8902a';
+                        const btnBorder = isRed ? '1px solid #f0b8b0' : '1px solid #e8c880';
+                        const btnColor  = isRed ? '#a63020' : '#7a4f00';
+                        return (
+                          <div key={i} style={{ borderRadius: 8, padding: '12px 14px', fontSize: 13, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 12, background: bg, border, borderLeft: leftBar }}>
+                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: badgeBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, marginBottom: 3, color: 'var(--text1)', fontSize: 13 }}>{isRed ? '🔴' : '🟡'} {p.title}</div>
+                              <div style={{ color: 'var(--text2)', fontSize: 12 }}>{p.reason}</div>
+                            </div>
+                            <button
+                              onClick={() => setActiveTab(p.tab)}
+                              style={{ fontSize: 11, background: 'rgba(255,255,255,0.8)', color: btnColor, border: btnBorder, borderRadius: 6, padding: '5px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+                            >
+                              View {p.module} →
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* What's going well */}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--cream2)', display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+                    <span style={{ flexShrink: 0 }}>✅</span>
+                    <div style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
+                      <span style={{ fontWeight: 700, color: '#1a4a3a' }}>What's going well — </span>
+                      {positiveInsight || 'Your marae data is up to date.'}
+                    </div>
+                  </div>
+
+                  {/* Goals progress */}
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)' }}>
+                    <span>🎯</span>
+                    <span>
+                      {goalsProgress.total === 0
+                        ? 'No strategic goals set yet'
+                        : `${goalsProgress.onTrack} of ${goalsProgress.total} strategic goal${goalsProgress.total !== 1 ? 's' : ''} on track`}
+                    </span>
+                    <button
+                      onClick={() => setActiveTab('goals')}
+                      style={{ fontSize: 11, background: 'none', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 9px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginLeft: 2 }}
+                    >
+                      View Goals →
+                    </button>
+                  </div>
+                </>
               )}
             </div>
 
