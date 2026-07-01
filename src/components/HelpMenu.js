@@ -15,6 +15,15 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Posting to Facebook',
+      icon: '📘',
+      items: [
+        { q: 'How do I share an event to Facebook?', a: 'Open Calendar, find your event, and click "📋 Copy to Facebook". This copies pre-formatted text to your clipboard. Open Facebook, create a new post, and paste. Done.' },
+        { q: 'How do I share a notice to Facebook?', a: 'Open Notices, find your notice, and click "📋 Copy to Facebook". Paste into a new Facebook post.' },
+        { q: 'Can I edit the text before posting?', a: 'Yes — once pasted into Facebook you can edit it before publishing.' },
+      ]
+    },
+    {
       category: 'Bookings',
       icon: '📅',
       items: [
@@ -167,6 +176,17 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Marae Health Score',
+      icon: '🌿',
+      items: [
+        { q: 'What is the Marae Health Score?', a: 'An automatic score out of 100 measuring your marae\'s governance and operational health across compliance, risk, tasks, finance and goals.' },
+        { q: 'How is it calculated?', a: 'Five categories contribute: Compliance (25pts), Risk (20pts), Tasks (20pts), Finance (20pts), Goals (15pts). Each category only scores if enough data exists — you are never penalised for incomplete setup. The score is proportionally scaled to 100 based on the categories that qualify.' },
+        { q: 'What do the colours mean?', a: 'Green (80+) = Strong · Amber (60–79) = Developing · Red (below 60) = Needs Attention.' },
+        { q: 'How do I improve my score?', a: 'Complete your compliance items, resolve high-rated risks, keep tasks on schedule, maintain a financial surplus, and set strategic goals.' },
+        { q: 'How often does it update?', a: 'Automatically every time you load the Dashboard.' },
+      ]
+    },
+    {
       category: 'Workflows',
       icon: '⚙️',
       items: [
@@ -202,6 +222,16 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Your Top 3 Priorities',
+      icon: '🎯',
+      items: [
+        { q: 'What is the "This Week" card?', a: 'A rule-based summary at the top of your Dashboard showing the 3 most urgent items across compliance, risks, bookings, tasks, grants and assets.' },
+        { q: 'How are priorities ranked?', a: 'Overdue items appear first (red), followed by items due within 7 days (amber). The most urgent item is always ranked number 1.' },
+        { q: 'What does "What\'s going well" mean?', a: 'Below the urgent items MaraeHub shows one positive update — something your marae is doing well right now.' },
+        { q: 'Can I dismiss or change the priorities?', a: 'No — they update automatically based on your real data. Resolve the underlying issue and it will clear from the list.' },
+      ]
+    },
+    {
       category: 'Board View Insights',
       icon: '📈',
       items: [
@@ -230,6 +260,16 @@ const HELP_TOPICS = {
         { q: 'Does Finance update automatically when a grant is approved?', a: 'Yes. When a grant is marked as Approved in the Grants tab, MaraeHub automatically creates a confirmed income record in Finance for the full grant amount. Because the amount is already recorded in the grant, no manual entry is needed — the income record is created with the correct figure, funder name, and category automatically.' },
         { q: 'What happens to the Finance record if a booking is declined or cancelled?', a: 'If a booking that already has a placeholder income record is later declined or cancelled, MaraeHub automatically removes that placeholder from Finance. You do not need to go in and delete it manually. This keeps your income records accurate and prevents incomplete placeholder entries from appearing in your financial reports.' },
         { q: 'Why does the booking income record show $0?', a: 'The $0 placeholder is created at the point of approval so the booking is immediately reflected in Finance — but the exact hire fee is often not confirmed until after the committee has spoken to the hirer. Open the income record in the Finance tab, enter the agreed hire fee, and save. The FY Summary totals will update straight away.' },
+      ]
+    },
+    {
+      category: 'Financial Reports',
+      icon: '📊',
+      items: [
+        { q: 'What reports are available?', a: 'Profit & Loss summary and General Ledger, both accessible from Finance → Reports tab.' },
+        { q: 'What is the General Ledger?', a: 'A chronological list of every income and expense transaction with a running balance — the same format your accountant expects to see.' },
+        { q: 'Can I change the date range?', a: 'Yes. Use the period selector to view This Financial Year, Previous Financial Year, or a Custom Range.' },
+        { q: 'How do I print or export?', a: 'Click Generate AGM Report to open a print-ready view. Click General Ledger to open and print the full transaction list. Use your browser\'s print-to-PDF option to save as PDF.' },
       ]
     },
     {

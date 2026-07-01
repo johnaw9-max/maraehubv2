@@ -39,12 +39,16 @@ export default function CalendarView({ isTrustee }) {
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const [selected, setSelected] = useState(null);
+  const [maraeName, setMaraeName]   = useState('');
+  const [maraeEmail, setMaraeEmail] = useState('');
+  const [maraePhone, setMaraePhone] = useState('');
+  const [copiedId, setCopiedId]     = useState(null);
 
   useEffect(() => { fetchData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchData() {
     if (isTrustee) {
-      const [bookRes, blockRes, projRes, remRes, taskRes, grantRes, meetRes] = await Promise.all([
+      const [bookRes, blockRes, projRes, remRes, taskRes, grantRes, meetRes, settingsRes] = await Promise.all([
         supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
         supabase.from('blocked_dates').select('*').order('from_date'),
         supabase.from('projects').select('name, due_date'),
@@ -52,6 +56,7 @@ export default function CalendarView({ isTrustee }) {
         supabase.from('tasks').select('title, due_date').neq('status', 'cancelled').neq('status', 'completed'),
         supabase.from('grants').select('name, deadline'),
         supabase.from('meetings').select('title, meeting_date'),
+        supabase.from('marae_settings').select('marae_name, email, phone').maybeSingle(),
       ]);
       if (projRes.error)  console.error('[CalendarView] projects:', projRes.error);
       if (taskRes.error) {
@@ -72,6 +77,9 @@ export default function CalendarView({ isTrustee }) {
       setTasks(taskRes.data || []);
       setGrants(grantRes.data || []);
       setMeetings(meetRes.data || []);
+      setMaraeName(settingsRes.data?.marae_name || '');
+      setMaraeEmail(settingsRes.data?.email || '');
+      setMaraePhone(settingsRes.data?.phone || '');
     } else {
       const [bookRes, blockRes] = await Promise.all([
         supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
@@ -165,6 +173,24 @@ export default function CalendarView({ isTrustee }) {
   }
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  function copyToFacebook(id, text) {
+    const finish = () => { setCopiedId(id); setTimeout(() => setCopiedId(null), 2000); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(finish); }
+    else {
+      const el = document.createElement('textarea');
+      el.value = text; document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el); finish();
+    }
+  }
+
+  function buildEventFbText(name, ds) {
+    const contact = [maraeEmail, maraePhone].filter(Boolean).join(' or ');
+    const parts = [`📅 ${name}`, `🕐 ${formatDate(ds)}`];
+    if (contact) parts.push(`For bookings or enquiries contact us at ${contact}`);
+    parts.push(`— ${maraeName || 'Our Marae'}`);
+    return parts.join('\n');
+  }
 
   // ─── SELECTED DAY DATA ────────────────────────────────────────────────────────
   // Computed here (not inside JSX IIFE) so React tracks them normally.
@@ -360,20 +386,30 @@ export default function CalendarView({ isTrustee }) {
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>{dayBookingInfo.occasion}</div>
               </div>
               {isTrustee && (
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new CustomEvent('marae:navigate', { detail: 'bookings' }))}
-                  style={{ fontSize: 12, fontWeight: 700, color: '#1a4a3a', background: 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
-                >
-                  View →
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => copyToFacebook('bk', buildEventFbText(dayBookingInfo.occasion, selected))}
+                    style={{ fontSize: 11, fontWeight: 700, color: '#1a4a3a', background: copiedId === 'bk' ? '#d4edda' : 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {copiedId === 'bk' ? 'Copied ✅' : '📋 Copy to Facebook'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('marae:navigate', { detail: 'bookings' }))}
+                    style={{ fontSize: 12, fontWeight: 700, color: '#1a4a3a', background: 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+                  >
+                    View →
+                  </button>
+                </>
               )}
             </div>
           )}
 
           {dayTevents.map((ev, idx) => {
-            const et  = EVENT_TYPES[ev.type];
-            const tab = TAB_FOR_EVENT[ev.type];
+            const et    = EVENT_TYPES[ev.type];
+            const tab   = TAB_FOR_EVENT[ev.type];
+            const cpId  = `ev-${idx}`;
             return (
               <div
                 key={idx}
@@ -388,6 +424,13 @@ export default function CalendarView({ isTrustee }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
                   <div style={{ fontSize: 12, color: 'var(--text2)' }}>{ev.name}</div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => copyToFacebook(cpId, buildEventFbText(ev.name, selected))}
+                  style={{ fontSize: 11, fontWeight: 700, color: et.text, background: copiedId === cpId ? '#d4edda' : 'none', border: `1px solid ${et.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  {copiedId === cpId ? 'Copied ✅' : '📋 Copy to Facebook'}
+                </button>
                 {tab && (
                   <button
                     type="button"

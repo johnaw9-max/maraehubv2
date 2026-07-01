@@ -19,17 +19,30 @@ export default function NoticeboardManager({ isTrustee, profile }) {
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [maraeName, setMaraeName] = useState('');
+  const [copiedId, setCopiedId]   = useState(null);
 
   useEffect(() => { fetchNotices(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchNotices() {
     setLoading(true);
-    const { data } = await supabase
-      .from('notices')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setNotices(data || []);
+    const [noticeRes, settingsRes] = await Promise.all([
+      supabase.from('notices').select('*').order('created_at', { ascending: false }),
+      supabase.from('marae_settings').select('marae_name').maybeSingle(),
+    ]);
+    setNotices(noticeRes.data || []);
+    setMaraeName(settingsRes.data?.marae_name || '');
     setLoading(false);
+  }
+
+  function copyToFacebook(id, text) {
+    const finish = () => { setCopiedId(id); setTimeout(() => setCopiedId(null), 2000); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(finish); }
+    else {
+      const el = document.createElement('textarea');
+      el.value = text; document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el); finish();
+    }
   }
 
   async function handlePost() {
@@ -147,7 +160,15 @@ export default function NoticeboardManager({ isTrustee, profile }) {
                   )}
                 </div>
                 <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 10 }}>{n.body}</p>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{n.author} · {formatDate(n.created_at)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{n.author} · {formatDate(n.created_at)}</div>
+                  <button
+                    onClick={() => copyToFacebook(n.id, `📢 ${n.title}\n${n.body}\n— ${maraeName || 'Our Marae'}`)}
+                    style={{ fontSize: 11, fontWeight: 700, color: '#1a4a3a', background: copiedId === n.id ? '#d4edda' : '#f5f5f5', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    {copiedId === n.id ? 'Copied ✅' : '📋 Copy to Facebook'}
+                  </button>
+                </div>
               </div>
             );
           })}
