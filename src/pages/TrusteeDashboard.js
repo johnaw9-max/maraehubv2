@@ -748,25 +748,25 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                   )}
 
                   {/* What's going well */}
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--cream2)', display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
-                    <span style={{ flexShrink: 0 }}>✅</span>
-                    <div style={{ color: 'var(--text2)', lineHeight: 1.5 }}>
-                      <span style={{ fontWeight: 700, color: '#1a4a3a' }}>What's going well — </span>
-                      {positiveInsight || 'Your marae data is up to date.'}
+                  <div style={{ marginTop: 14, background: '#E1F5EE', border: '1px solid #a8d8c0', borderLeft: '4px solid #2e7d52', borderRadius: 8, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <span style={{ flexShrink: 0, fontSize: 17, lineHeight: 1 }}>✅</span>
+                    <div style={{ lineHeight: 1.5 }}>
+                      <div style={{ fontWeight: 700, color: '#1a4a3a', fontSize: 14, marginBottom: 2 }}>What's going well</div>
+                      <div style={{ color: '#1a4a3a', fontSize: 14 }}>{positiveInsight || 'Your marae data is up to date.'}</div>
                     </div>
                   </div>
 
                   {/* Goals progress */}
-                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)' }}>
-                    <span>🎯</span>
-                    <span>
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--cream2)', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 2px' }}>
+                    <span style={{ fontSize: 16 }}>🎯</span>
+                    <span style={{ fontSize: 13, color: 'var(--text2)', flex: 1 }}>
                       {goalsProgress.total === 0
                         ? 'No strategic goals set yet'
                         : `${goalsProgress.onTrack} of ${goalsProgress.total} strategic goal${goalsProgress.total !== 1 ? 's' : ''} on track`}
                     </span>
                     <button
                       onClick={() => setActiveTab('goals')}
-                      style={{ fontSize: 11, background: 'none', color: 'var(--brand)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 9px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginLeft: 2 }}
+                      style={{ fontSize: 12, background: '#2e7d52', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 14px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}
                     >
                       View Goals →
                     </button>
