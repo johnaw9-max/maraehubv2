@@ -46,6 +46,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
 
+  // Add trustee directly state
+  const EMPTY_ADD = { fullName: '', email: '', committeeRole: 'Trustee', permissionLevel: 'standard' };
+  const [addForm, setAddForm]       = useState(EMPTY_ADD);
+  const [addSaving, setAddSaving]   = useState(false);
+  const [addError, setAddError]     = useState('');
+  const [addSuccess, setAddSuccess] = useState(null);
+
   // Change password state
   const [pwNew, setPwNew]         = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
@@ -203,6 +210,22 @@ export default function MaraeSettings({ profile, isAdmin }) {
       setInviteSuccess(`Invite sent to ${email}. They will appear below once they accept.`);
     }
     setInviteEmail('');
+    fetchTrustees();
+  }
+
+  async function createTrustee() {
+    const { fullName, email, committeeRole, permissionLevel } = addForm;
+    if (!fullName.trim())            { setAddError('Full name is required'); return; }
+    if (!email.trim() || !email.includes('@')) { setAddError('Enter a valid email address'); return; }
+    setAddSaving(true); setAddError(''); setAddSuccess(null);
+    const { data, error } = await supabase.functions.invoke('create-trustee', {
+      body: { fullName: fullName.trim(), email: email.trim().toLowerCase(), committeeRole, permissionLevel },
+    });
+    setAddSaving(false);
+    if (error) { setAddError(error.message || 'Failed to create account'); return; }
+    if (data?.error) { setAddError(data.error); return; }
+    setAddSuccess({ name: fullName.trim(), email: email.trim().toLowerCase(), tempPassword: data.tempPassword });
+    setAddForm(EMPTY_ADD);
     fetchTrustees();
   }
 
@@ -706,6 +729,74 @@ export default function MaraeSettings({ profile, isAdmin }) {
           {inviteError && (
             <div className="alert alert-error" style={{ marginBottom: 12 }}>{inviteError}</div>
           )}
+
+          {/* ── ADD TRUSTEE DIRECTLY ── */}
+          <div style={{ marginBottom: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Add Trustee Directly</div>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
+              Create a trustee account instantly. A temporary password is generated — share it with the trustee so they can log in and change it from Settings.
+            </p>
+
+            {addError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{addError}</div>}
+
+            {addSuccess && (
+              <div style={{ background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid #2e7d52', borderRadius: 8, padding: '14px 16px', marginBottom: 14 }}>
+                <div style={{ fontWeight: 700, color: '#1a4a3a', marginBottom: 8, fontSize: 13 }}>✓ Account created for {addSuccess.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>Share these login details with the trustee:</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 13, background: '#fff', border: '1px solid #a8d8c0', borderRadius: 6, padding: '10px 14px', marginBottom: 8, lineHeight: 1.8 }}>
+                  <div><strong>Email:</strong> {addSuccess.email}</div>
+                  <div><strong>Temporary Password:</strong> {addSuccess.tempPassword}</div>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>They can update their password any time from Settings → Change Password.</div>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Full Name *</label>
+              <input
+                className="form-input"
+                value={addForm.fullName}
+                onChange={e => setAddForm(f => ({ ...f, fullName: e.target.value }))}
+                placeholder="e.g. Hēni Smith"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email Address *</label>
+              <input
+                type="email"
+                className="form-input"
+                value={addForm.email}
+                onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="e.g. heni@example.co.nz"
+              />
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Committee Role</label>
+                <select className="form-input" value={addForm.committeeRole} onChange={e => setAddForm(f => ({ ...f, committeeRole: e.target.value }))}>
+                  <option>Chairperson</option>
+                  <option>Secretary</option>
+                  <option>Treasurer</option>
+                  <option>Trustee</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Permission Level</label>
+                <select className="form-input" value={addForm.permissionLevel} onChange={e => setAddForm(f => ({ ...f, permissionLevel: e.target.value }))}>
+                  <option value="standard">Standard</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <button
+              className="btn-primary"
+              onClick={createTrustee}
+              disabled={addSaving}
+              style={{ fontSize: 13 }}
+            >
+              {addSaving ? 'Creating account…' : '+ Create Trustee Account'}
+            </button>
+          </div>
 
           {trusteePermsError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{trusteePermsError}</div>}
 
