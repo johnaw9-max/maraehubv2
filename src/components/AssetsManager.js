@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 
-const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Other'];
+const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Inventory', 'Other'];
+const INVENTORY_CATEGORIES = ['Linen', 'Crockery', 'Kitchen', 'Other'];
 const CONDITIONS = ['excellent', 'good', 'fair', 'poor', 'critical'];
 const CONDITION_STYLE = {
   excellent: { color: '#0F6E56', bg: '#E6F4F0' },
@@ -14,8 +15,8 @@ const CONDITION_STYLE = {
 };
 const RECURRING_LABELS = { none: 'One-time', monthly: 'Monthly', quarterly: 'Quarterly', biannual: '6-monthly', annual: 'Annual', '2years': '2-yearly' };
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
-const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technology: '💻', Grounds: '🌿', Other: '📦' };
-const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '' };
+const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technology: '💻', Grounds: '🌿', Inventory: '📦', Other: '📁' };
+const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '', inventory_category: 'Linen', quantity: '', last_stocktake: '' };
 const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', notes: '' };
 
 export default function AssetsManager({ onStartWorkflow }) {
@@ -32,6 +33,7 @@ export default function AssetsManager({ onStartWorkflow }) {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
+  const [view, setView] = useState('assets'); // 'assets' | 'inventory'
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,7 +143,7 @@ export default function AssetsManager({ onStartWorkflow }) {
     return `${(days / 365).toFixed(1)}yr`;
   }
 
-  function openAdd() { setForm(EMPTY_FORM); setEditId(null); setError(''); setShowModal(true); }
+  function openAdd() { setForm({ ...EMPTY_FORM, category: view === 'inventory' ? 'Inventory' : 'Building' }); setEditId(null); setError(''); setShowModal(true); }
 
   function openEdit(a) {
     setForm({
@@ -149,6 +151,9 @@ export default function AssetsManager({ onStartWorkflow }) {
       condition: a.condition || 'good', value: a.value || '', notes: a.notes || '',
       purchase_date: a.purchase_date || '', purchase_cost: a.purchase_cost || '',
       lifespan_years: a.lifespan_years || '', replacement_cost: a.replacement_cost || '',
+      inventory_category: a.inventory_category || 'Linen',
+      quantity: a.quantity != null ? String(a.quantity) : '',
+      last_stocktake: a.last_stocktake || '',
     });
     setEditId(a.id); setError(''); setShowModal(true);
   }
@@ -156,14 +161,18 @@ export default function AssetsManager({ onStartWorkflow }) {
   async function handleSave() {
     if (!form.name.trim()) { setError('Asset name is required'); return; }
     setSaving(true); setError('');
+    const isInventory = form.category === 'Inventory';
     const payload = {
       name: form.name, category: form.category, location: form.location,
       condition: form.condition, notes: form.notes,
-      value:            form.value            ? parseFloat(form.value)            : null,
-      purchase_cost:    form.purchase_cost    ? parseFloat(form.purchase_cost)    : null,
-      lifespan_years:   form.lifespan_years   ? parseInt(form.lifespan_years)     : null,
-      replacement_cost: form.replacement_cost ? parseFloat(form.replacement_cost) : null,
-      purchase_date:    form.purchase_date    || null,
+      value:            !isInventory && form.value            ? parseFloat(form.value)            : null,
+      purchase_cost:    !isInventory && form.purchase_cost    ? parseFloat(form.purchase_cost)    : null,
+      lifespan_years:   !isInventory && form.lifespan_years   ? parseInt(form.lifespan_years)     : null,
+      replacement_cost: !isInventory && form.replacement_cost ? parseFloat(form.replacement_cost) : null,
+      purchase_date:    !isInventory ? (form.purchase_date || null) : null,
+      inventory_category: isInventory ? form.inventory_category : null,
+      quantity:           isInventory && form.quantity !== '' ? parseInt(form.quantity) : null,
+      last_stocktake:     isInventory && form.last_stocktake  ? form.last_stocktake  : null,
     };
     const { error } = editId
       ? await supabase.from('assets').update(payload).eq('id', editId)
@@ -227,6 +236,58 @@ export default function AssetsManager({ onStartWorkflow }) {
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
   function setRField(k, v) { setReminderForm(f => ({ ...f, [k]: v })); }
+
+  function printStocktake() {
+    const items = assets.filter(a => a.category === 'Inventory');
+    const rows = items.map(a => `
+      <tr>
+        <td>${a.name}</td>
+        <td>${a.inventory_category || '—'}</td>
+        <td>${a.location || '—'}</td>
+        <td style="text-transform:capitalize">${a.condition || '—'}</td>
+        <td style="text-align:center">${a.quantity != null ? a.quantity : '—'}</td>
+        <td>${a.last_stocktake ? new Date(a.last_stocktake + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
+        <td style="text-align:center">&nbsp;</td>
+        <td>&nbsp;</td>
+      </tr>`).join('');
+    const html = `<!DOCTYPE html><html><head><title>Inventory Stocktake</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; padding: 24px; }
+        h1 { font-size: 18px; margin: 0 0 4px; }
+        .hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .meta p { margin: 3px 0; }
+        .sign p { margin: 6px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #bbb; padding: 5px 8px; text-align: left; }
+        th { background: #f0f0f0; font-weight: 600; font-size: 11px; }
+      </style></head>
+      <body>
+        <div class="hdr">
+          <div class="meta">
+            <h1>Inventory Stocktake List</h1>
+            <p>Date: ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p>${items.length} item${items.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div class="sign">
+            <p>Completed by: ___________________________</p>
+            <p>Booking / occasion: ___________________________</p>
+            <p>&#9675;&nbsp;Before booking &nbsp;&nbsp; &#9675;&nbsp;After booking</p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th><th>Category</th><th>Location</th>
+              <th>Condition</th><th>On Hand</th><th>Last Stocktake</th>
+              <th>Counted Qty</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
+  }
 
   // Alerts — all overdue/due-soon across all assets
   const alerts = reminders.filter(r => getReminderStatus(r) !== 'ok');
@@ -358,18 +419,63 @@ export default function AssetsManager({ onStartWorkflow }) {
     );
   }
 
+  const inventoryItems  = assets.filter(a => a.category === 'Inventory');
+  const physicalItems   = assets.filter(a => a.category !== 'Inventory');
+  const zeroStockItems  = inventoryItems.filter(a => a.quantity != null && a.quantity === 0);
+  const displayedAssets = view === 'inventory' ? inventoryItems : physicalItems;
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Assets Register</h2>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Click an asset to manage service reminders</p>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+            {view === 'assets' ? 'Click an asset to manage service reminders' : 'Track quantities and print stocktake lists'}
+          </p>
         </div>
-        <button className="btn-primary" onClick={openAdd}>+ Add Asset</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {view === 'inventory' && inventoryItems.length > 0 && (
+            <button className="btn-secondary" onClick={printStocktake} style={{ fontSize: 13, padding: '7px 14px' }}>🖨️ Print Stocktake</button>
+          )}
+          <button className="btn-primary" onClick={openAdd}>+ {view === 'inventory' ? 'Add Item' : 'Add Asset'}</button>
+        </div>
       </div>
 
+      {/* View tabs */}
+      <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 20, width: 'fit-content' }}>
+        {[
+          { key: 'assets',    label: '🏛️ Physical Assets', count: physicalItems.length },
+          { key: 'inventory', label: '📦 Inventory',        count: inventoryItems.length },
+        ].map((tab, i) => (
+          <button key={tab.key} onClick={() => setView(tab.key)} style={{
+            padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            background: view === tab.key ? 'var(--brand)' : 'var(--surface)',
+            color: view === tab.key ? '#fff' : 'var(--text2)',
+            border: 'none', borderRight: i === 0 ? '1px solid var(--border)' : 'none',
+            fontFamily: 'DM Sans, sans-serif',
+          }}>
+            {tab.label} <span style={{ opacity: 0.8, marginLeft: 4, fontSize: 11 }}>({tab.count})</span>
+          </button>
+        ))}
+      </div>
+
+      {/* INVENTORY OUT-OF-STOCK ALERT */}
+      {view === 'inventory' && zeroStockItems.length > 0 && (
+        <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            📦 Out of Stock ({zeroStockItems.length})
+          </div>
+          {zeroStockItems.map(a => (
+            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid rgba(166,48,32,0.1)' }}>
+              <span><strong>{a.name}</strong>{a.inventory_category ? ` — ${a.inventory_category}` : ''}</span>
+              <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{a.location || 'No location'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ALERTS */}
-      {alerts.length > 0 && (
+      {view === 'assets' && alerts.length > 0 && (
         <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             🔔 Service Alerts ({alerts.length})
@@ -390,7 +496,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       )}
 
       {/* WORKFLOW SUGGESTIONS */}
-      {workflowSuggestions.length > 0 && onStartWorkflow && (
+      {view === 'assets' && workflowSuggestions.length > 0 && onStartWorkflow && (
         <div style={{ background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#7a5500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             ⚙️ Workflows Available ({workflowSuggestions.length})
@@ -419,18 +525,18 @@ export default function AssetsManager({ onStartWorkflow }) {
       )}
 
       {/* ASSET HEALTH SUMMARY */}
-      {!loading && assets.length > 0 && (() => {
+      {view === 'assets' && !loading && physicalItems.length > 0 && (() => {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const in2yr  = new Date(today); in2yr.setFullYear(in2yr.getFullYear() + 2);
         const in5yr  = new Date(today); in5yr.setFullYear(in5yr.getFullYear() + 5);
-        const criticalOrPoor = assets.filter(a => ['critical', 'poor'].includes(a.condition));
-        const dueIn5yr = assets.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today && new Date(a.replacement_date + 'T12:00:00') <= in5yr);
+        const criticalOrPoor = physicalItems.filter(a => ['critical', 'poor'].includes(a.condition));
+        const dueIn5yr = physicalItems.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today && new Date(a.replacement_date + 'T12:00:00') <= in5yr);
         const replacementTotal = dueIn5yr.reduce((s, a) => s + (parseFloat(a.replacement_cost) || 0), 0);
-        const nextUp = assets.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today).sort((a, b) => new Date(a.replacement_date) - new Date(b.replacement_date))[0];
+        const nextUp = physicalItems.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today).sort((a, b) => new Date(a.replacement_date) - new Date(b.replacement_date))[0];
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
             {[
-              { label: 'Total Assets', value: assets.length, color: 'var(--text1)' },
+              { label: 'Total Assets', value: physicalItems.length, color: 'var(--text1)' },
               { label: 'Critical / Poor Condition', value: criticalOrPoor.length, color: criticalOrPoor.length ? 'var(--danger)' : 'var(--success)' },
               { label: 'Replacement Cost (5yr)', value: replacementTotal ? `$${Math.round(replacementTotal).toLocaleString()}` : '—', color: replacementTotal ? 'var(--warning)' : 'var(--text1)' },
               { label: 'Next Replacement', value: nextUp ? nextUp.name : '—', sub: nextUp ? formatDate(nextUp.replacement_date) : null, color: nextUp && new Date(nextUp.replacement_date + 'T12:00:00') <= in2yr ? 'var(--danger)' : 'var(--text1)' },
@@ -446,18 +552,20 @@ export default function AssetsManager({ onStartWorkflow }) {
       })()}
 
       {loading ? <div className="loading">Loading assets...</div>
-        : assets.length === 0 ? (
+        : displayedAssets.length === 0 ? (
           <div className="empty-state">
-            <div className="emoji">🏗️</div>
-            <div>No assets yet. Add your first one!</div>
-            <button className="btn-primary" style={{ marginTop: 16 }} onClick={openAdd}>+ Add Asset</button>
+            <div className="emoji">{view === 'inventory' ? '📦' : '🏗️'}</div>
+            <div>{view === 'inventory' ? 'No inventory items yet. Add your first one!' : 'No assets yet. Add your first one!'}</div>
+            <button className="btn-primary" style={{ marginTop: 16 }} onClick={openAdd}>+ {view === 'inventory' ? 'Add Item' : 'Add Asset'}</button>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-            {assets.map(a => {
+            {displayedAssets.map(a => {
+              const isInv = a.category === 'Inventory';
               const aReminders = getAssetReminders(a.id);
               const overdue = aReminders.filter(r => getReminderStatus(r) === 'overdue').length;
               const dueSoon = aReminders.filter(r => getReminderStatus(r) === 'due-soon').length;
+              const isZeroStock = isInv && a.quantity != null && a.quantity === 0;
               return (
                 <div key={a.id} className="panel">
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -465,7 +573,9 @@ export default function AssetsManager({ onStartWorkflow }) {
                       <div style={{ fontSize: 28 }}>{ICONS[a.category] || '📦'}</div>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 600 }}>{a.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>{a.category} · {a.location || 'No location'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                          {isInv ? (a.inventory_category || 'Inventory') : a.category} · {a.location || 'No location'}
+                        </div>
                       </div>
                     </div>
                     {(() => { const s = CONDITION_STYLE[a.condition] || CONDITION_STYLE.good; return (
@@ -475,29 +585,49 @@ export default function AssetsManager({ onStartWorkflow }) {
                     ); })()}
                   </div>
 
-                  {overdue > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
-                  {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
-                    <div><span style={{ color: 'var(--text3)' }}>Value: </span>{a.value ? `$${Number(a.value).toLocaleString()}` : '—'}</div>
-                    <div><span style={{ color: 'var(--text3)' }}>Reminders: </span>{aReminders.length}</div>
-                  </div>
-                  {a.replacement_date && (() => {
-                    const days = lifecycleDays(a);
-                    const col  = lifecycleColor(days);
-                    const lbl  = lifecycleLabel(days);
-                    return (
-                      <div style={{ fontSize: 12, marginBottom: 8 }}>
-                        <span style={{ color: 'var(--text3)' }}>Replace by: </span>
-                        <span style={{ fontWeight: 600, color: col }}>{formatDate(a.replacement_date)} ({lbl})</span>
-                        {a.replacement_cost && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>· Est. ${Number(a.replacement_cost).toLocaleString()}</span>}
+                  {isInv ? (
+                    <>
+                      {isZeroStock && (
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>
+                          ⚠ Out of stock
+                        </div>
+                      )}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+                        <div>
+                          <span style={{ color: 'var(--text3)' }}>Qty on hand: </span>
+                          <span style={{ fontWeight: 600, color: isZeroStock ? 'var(--danger)' : 'inherit' }}>
+                            {a.quantity != null ? a.quantity : '—'}
+                          </span>
+                        </div>
+                        <div><span style={{ color: 'var(--text3)' }}>Last stocktake: </span>{a.last_stocktake ? formatDate(a.last_stocktake) : '—'}</div>
                       </div>
-                    );
-                  })()}
+                    </>
+                  ) : (
+                    <>
+                      {overdue > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
+                      {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+                        <div><span style={{ color: 'var(--text3)' }}>Value: </span>{a.value ? `$${Number(a.value).toLocaleString()}` : '—'}</div>
+                        <div><span style={{ color: 'var(--text3)' }}>Reminders: </span>{aReminders.length}</div>
+                      </div>
+                      {a.replacement_date && (() => {
+                        const days = lifecycleDays(a);
+                        const col  = lifecycleColor(days);
+                        const lbl  = lifecycleLabel(days);
+                        return (
+                          <div style={{ fontSize: 12, marginBottom: 8 }}>
+                            <span style={{ color: 'var(--text3)' }}>Replace by: </span>
+                            <span style={{ fontWeight: 600, color: col }}>{formatDate(a.replacement_date)} ({lbl})</span>
+                            {a.replacement_cost && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>· Est. ${Number(a.replacement_cost).toLocaleString()}</span>}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
                   {a.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
 
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => openReminders(a)} style={{ fontSize: 12, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>
+                    {!isInv && <button onClick={() => openReminders(a)} style={{ fontSize: 12, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>}
                     <button onClick={() => openEdit(a)} style={{ fontSize: 12, color: 'var(--brand-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Edit</button>
                     <button onClick={() => handleDelete(a.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
                   </div>
@@ -510,7 +640,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
-            <div className="modal-title">{editId ? 'Edit Asset' : 'Add New Asset'}</div>
+            <div className="modal-title">{editId ? (form.category === 'Inventory' ? 'Edit Inventory Item' : 'Edit Asset') : (view === 'inventory' ? 'Add Inventory Item' : 'Add New Asset')}</div>
             {error && <div className="alert alert-error">{error}</div>}
             <div className="form-group">
               <label className="form-label">Asset Name *</label>
@@ -535,38 +665,62 @@ export default function AssetsManager({ onStartWorkflow }) {
                 <label className="form-label">Location</label>
                 <input className="form-input" value={form.location} onChange={e => setField('location', e.target.value)} placeholder="e.g. Main grounds" />
               </div>
-              <div className="form-group">
-                <label className="form-label">Estimated Value ($)</label>
-                <input type="number" className="form-input" value={form.value} onChange={e => setField('value', e.target.value)} placeholder="e.g. 50000" />
-              </div>
+              {form.category === 'Inventory' ? (
+                <div className="form-group">
+                  <label className="form-label">Sub-category</label>
+                  <select className="form-input" value={form.inventory_category} onChange={e => setField('inventory_category', e.target.value)}>
+                    {INVENTORY_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">Estimated Value ($)</label>
+                  <input type="number" className="form-input" value={form.value} onChange={e => setField('value', e.target.value)} placeholder="e.g. 50000" />
+                </div>
+              )}
             </div>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Purchase Date</label>
-                <input type="date" className="form-input" value={form.purchase_date} onChange={e => setField('purchase_date', e.target.value)} />
+            {form.category === 'Inventory' ? (
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">Quantity on Hand</label>
+                  <input type="number" className="form-input" value={form.quantity} onChange={e => setField('quantity', e.target.value)} placeholder="e.g. 24" min="0" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last Stocktake Date</label>
+                  <input type="date" className="form-input" value={form.last_stocktake} onChange={e => setField('last_stocktake', e.target.value)} />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Purchase Cost ($)</label>
-                <input type="number" className="form-input" value={form.purchase_cost} onChange={e => setField('purchase_cost', e.target.value)} placeholder="e.g. 25000" />
-              </div>
-            </div>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Expected Lifespan (years)</label>
-                <input type="number" className="form-input" value={form.lifespan_years} onChange={e => setField('lifespan_years', e.target.value)} placeholder="e.g. 20" min="1" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Replacement Cost Estimate ($)</label>
-                <input type="number" className="form-input" value={form.replacement_cost} onChange={e => setField('replacement_cost', e.target.value)} placeholder="e.g. 30000" />
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Purchase Date</label>
+                    <input type="date" className="form-input" value={form.purchase_date} onChange={e => setField('purchase_date', e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Purchase Cost ($)</label>
+                    <input type="number" className="form-input" value={form.purchase_cost} onChange={e => setField('purchase_cost', e.target.value)} placeholder="e.g. 25000" />
+                  </div>
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Expected Lifespan (years)</label>
+                    <input type="number" className="form-input" value={form.lifespan_years} onChange={e => setField('lifespan_years', e.target.value)} placeholder="e.g. 20" min="1" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Replacement Cost Estimate ($)</label>
+                    <input type="number" className="form-input" value={form.replacement_cost} onChange={e => setField('replacement_cost', e.target.value)} placeholder="e.g. 30000" />
+                  </div>
+                </div>
+              </>
+            )}
             <div className="form-group">
               <label className="form-label">Notes</label>
               <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Condition details, maintenance notes..." style={{ resize: 'vertical' }} />
             </div>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editId ? 'Save Changes' : 'Add Asset'}</button>
+              <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editId ? 'Save Changes' : view === 'inventory' ? 'Add Item' : 'Add Asset'}</button>
             </div>
           </div>
         </div>

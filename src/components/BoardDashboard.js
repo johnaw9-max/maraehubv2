@@ -182,6 +182,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     .map(([cat]) => cat);
   const fyLabelStr = `${d.fyYear}/${String(d.fyYear + 1).slice(2)}`;
 
+  const zeroStockItems     = d.assets.filter(a => a.category === 'Inventory' && a.quantity != null && a.quantity === 0);
   const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
   const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
 
@@ -240,6 +241,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     upcomingAutoTasks.length   && { label: `${upcomingAutoTasks.length} upcoming deadline${upcomingAutoTasks.length !== 1 ? 's' : ''} flagged — review before they become overdue`, level: 'amber', tab: 'tasks' },
     finOverBudgetCats.length   && { label: `${finOverBudgetCats.length} budget categor${finOverBudgetCats.length !== 1 ? 'ies' : 'y'} over limit — review finance`, level: 'amber', tab: 'finance' },
     pendingBookings.length     && { label: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting approval`, level: 'amber', tab: 'bookings' },
+    zeroStockItems.length      && { label: `📦 ${zeroStockItems.length} inventory item${zeroStockItems.length !== 1 ? 's' : ''} out of stock — restock before next booking`, level: 'amber', tab: 'assets' },
   ].filter(Boolean);
 
 
@@ -329,6 +331,9 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     redInsights.push(`${stalledWorkflows.length} workflows have had no progress in 14+ days: ${stalledWorkflows.map(w => w.name).join(', ')}`);
 
  // AMBER
+  if (zeroStockItems.length > 0)
+    amberInsights.push(`📦 ${zeroStockItems.length} inventory item${zeroStockItems.length !== 1 ? 's are' : ' is'} out of stock — ${zeroStockItems.map(a => a.name).join(', ')} — restock before next booking`);
+
   if (pendingBookings.length > 0)
     amberInsights.push(`${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`);
   if (pendingBookingIncomeCount > 0)
