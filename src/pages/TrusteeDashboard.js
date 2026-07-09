@@ -159,8 +159,9 @@ function StarBar({ label, value }) {
 
 export default function TrusteeDashboard({ profile, onLogout }) {
   const isAdmin = profile?.trustee_role === 'admin';
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('board');
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
+  const [boardKey, setBoardKey] = useState(0);
 
   function handleStartWorkflow(suggestion) {
     setPendingWorkflow(suggestion);
@@ -744,9 +745,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {/* ── DASHBOARD ──────────────────────────────────────────────────── */}
         {activeTab === 'dashboard' && (
           <>
-            {isAdmin && (
-              <OnboardingFlow onComplete={() => setActiveTab('board')} />
-            )}
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontSize: 26, marginBottom: 4 }}>Tēnā koe, {profile?.full_name?.split(' ')[0]} 👋</h1>
               <p style={{ color: 'var(--text3)', fontSize: 13 }}>
@@ -986,7 +984,12 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         )}
 
         {/* ── BOARD VIEW ─────────────────────────────────────────────────── */}
-        {activeTab === 'board' && <BoardDashboard onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} />}
+        {activeTab === 'board' && (
+          <>
+            {isAdmin && <OnboardingFlow onComplete={() => setBoardKey(k => k + 1)} />}
+            <BoardDashboard key={boardKey} onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} />
+          </>
+        )}
 
         {/* ── BOOKINGS ───────────────────────────────────────────────────── */}
         {activeTab === 'bookings' && (

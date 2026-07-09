@@ -267,7 +267,7 @@ export default function FounderDashboard({ profile }) {
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       fetchEnvKPIs(supabase, 'Terere'),
       fetchEnvKPIs(supabaseTineka, 'Tineka'),
-      fetchEnvKPIs(supabaseWaioweka, 'Waioweka'),
+      fetchEnvKPIs(supabaseWaioweka, 'Opeke'),
       supabase.from('founder_notes').select('marae_name, step_key, completed, data'),
     ]);
 

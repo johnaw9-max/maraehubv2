@@ -159,7 +159,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const periodFeedback      = d.feedback.filter(f => inPeriod(f.created_at));
   const periodFeedbackScores = periodFeedback.filter(f => f.rating_overall);
   const periodApprovedGrants = d.grants.filter(g => g.status === 'approved' && inPeriod(g.deadline));
-  const periodProjects      = d.projects.filter(p => p.status === 'active' && inPeriod(p.created_at));
+  const periodProjects      = d.projects.filter(p => p.status === 'active');
   const periodUpcoming      = periodBookings.filter(b => b.start_date >= todayStr).slice(0, 5);
   const periodPipeline      = d.grants.filter(g => !['approved','declined'].includes(g.status) && inPeriod(g.deadline));
   const periodComments      = periodFeedback.filter(f => f.experience).slice(0, 3);
@@ -368,7 +368,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     amberInsights.push(`Community rating is ${Number(avgRating).toFixed(1)}/5 — review recent feedback and identify areas for improvement`);
 
   if (periodProjects.length === 0)
-    amberInsights.push(`No active projects this period — consider initiating planned work`);
+    amberInsights.push(`No active projects — consider initiating planned work`);
 
   const nextHui = d.bookings.filter(b => b.occasion?.toLowerCase().includes('hui') && b.start_date >= todayStr).sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
   if (nextHui) {
@@ -408,7 +408,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     }] : []),
     ...amberInsights.map(text => ({ text, level: 'amber' })),
     ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
-  ].slice(0, 15);
+  ].slice(0, 5);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
@@ -580,6 +580,69 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         </div>
       )}
 
+
+      {/* ── MARAE AT A GLANCE ──────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
+        {[
+          {
+            label: 'Compliance',
+            value: overdueCompliance.length > 0 ? `${overdueCompliance.length} overdue` : dueSoonCompliance.length > 0 ? `${dueSoonCompliance.length} due soon` : 'All current',
+            icon: overdueCompliance.length > 0 ? '⚠️' : '✅',
+            bg: overdueCompliance.length > 0 ? '#faeae7' : dueSoonCompliance.length > 0 ? '#fdf0dc' : '#e8f4ef',
+            color: overdueCompliance.length > 0 ? 'var(--danger)' : dueSoonCompliance.length > 0 ? '#7a4f00' : 'var(--brand)',
+            tab: 'compliance',
+          },
+          {
+            label: 'Strategic Goals',
+            value: d.goals.length === 0 ? 'Not set' : goalsBehind.length > 0 ? `${goalsBehind.length} behind` : goalsAtRisk.length > 0 ? `${goalsAtRisk.length} at risk` : 'On track',
+            icon: goalsBehind.length > 0 ? '🔴' : goalsAtRisk.length > 0 ? '🟡' : '🎯',
+            bg: goalsBehind.length > 0 ? '#faeae7' : goalsAtRisk.length > 0 ? '#fdf0dc' : '#e8f4ef',
+            color: goalsBehind.length > 0 ? 'var(--danger)' : goalsAtRisk.length > 0 ? '#7a4f00' : 'var(--brand)',
+            tab: 'goals',
+          },
+          {
+            label: `Finance (FY ${fyLabelStr})`,
+            value: (finTotalIncome === 0 && finTotalExpenses === 0) ? 'No data yet' : finNet >= 0 ? `+${fmtMoney(finNet)} net` : `-${fmtMoney(Math.abs(finNet))} deficit`,
+            icon: (finTotalIncome === 0 && finTotalExpenses === 0) ? '📊' : finNet >= 0 ? '💵' : '⚠️',
+            bg: (finTotalIncome === 0 && finTotalExpenses === 0) ? '#f5f0e8' : finNet >= 0 ? '#e8f4ef' : '#faeae7',
+            color: (finTotalIncome === 0 && finTotalExpenses === 0) ? 'var(--text3)' : finNet >= 0 ? 'var(--brand)' : 'var(--danger)',
+            tab: 'finance',
+          },
+          {
+            label: 'Risk Register',
+            value: (d.risks || []).length === 0 ? 'Not set up' : highOpenRisks.length > 0 ? `${highOpenRisks.length} high-rated open` : 'No high risks',
+            icon: highOpenRisks.length > 0 ? '🛡️' : '✅',
+            bg: highOpenRisks.length > 0 ? '#faeae7' : '#e8f4ef',
+            color: highOpenRisks.length > 0 ? 'var(--danger)' : 'var(--brand)',
+            tab: 'risks',
+          },
+        ].map((tile, i) => (
+          <div
+            key={i}
+            onClick={() => onNavigate && onNavigate(tile.tab)}
+            style={{
+              textAlign: 'center',
+              padding: '12px 8px',
+              background: tile.bg,
+              borderRadius: 10,
+              cursor: onNavigate ? 'pointer' : 'default',
+              border: '1px solid rgba(0,0,0,0.05)',
+            }}
+          >
+            <div style={{ fontSize: 20, marginBottom: 4 }}>{tile.icon}</div>
+            <div style={{
+              fontFamily: 'Playfair Display, serif',
+              fontSize: 14,
+              fontWeight: 700,
+              color: tile.color,
+              lineHeight: 1.3,
+              marginBottom: 3,
+            }}>{tile.value}</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>{tile.label}</div>
+          </div>
+        ))}
+      </div>
+
       {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
@@ -604,6 +667,151 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         </div>
       </div>
 
+      {(pendingBookings.length > 0 || overdueActions.length > 0 || grantsUrgent.length > 0) && (
+        <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--danger)' }}>
+          <SectionTitle
+            icon="🔔"
+            title="Decisions Required"
+            count={pendingBookings.length + overdueActions.length + grantsUrgent.length}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendingBookings.map(b => (
+              <div key={b.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: '#fdf0dc',
+                border: '1px solid #e8c880',
+                borderLeft: '4px solid var(--warning)',
+                borderRadius: 7,
+                gap: 12,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: 'var(--text1)',
+                  }}>
+                    Booking awaiting approval — {b.occasion}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                    {fmt(b.start_date)} · {b.guests} guests
+                  </div>
+                </div>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate('bookings')}
+                    style={{
+                      fontSize: 11,
+                      background: '#fff',
+                      color: '#7a4f00',
+                      border: '1px solid #e8c880',
+                      borderRadius: 6,
+                      padding: '5px 12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >Review →</button>
+                )}
+              </div>
+            ))}
+            {overdueActions.map(a => (
+              <div key={a.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: '#faeae7',
+                border: '1px solid #f0b8b0',
+                borderLeft: '4px solid var(--danger)',
+                borderRadius: 7,
+                gap: 12,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: 'var(--text1)',
+                  }}>
+                    Meeting action overdue — {a.description}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
+                    Assigned to {a.assigned_to || 'unassigned'} · Due {fmt(a.due_date)}
+                  </div>
+                </div>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate('minutes')}
+                    style={{
+                      fontSize: 11,
+                      background: '#fff',
+                      color: '#a63020',
+                      border: '1px solid #f0b8b0',
+                      borderRadius: 6,
+                      padding: '5px 12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >View Minutes →</button>
+                )}
+              </div>
+            ))}
+            {grantsUrgent.map(g => {
+              const daysLeft = Math.ceil(
+                (new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24)
+              );
+              return (
+                <div key={g.id} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  background: '#faeae7',
+                  border: '1px solid #f0b8b0',
+                  borderLeft: '4px solid var(--danger)',
+                  borderRadius: 7,
+                  gap: 12,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--text1)',
+                    }}>
+                      Grant deadline in {daysLeft} day{daysLeft !== 1 ? 's' : ''} — {g.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
+                      {g.funder} · {fmtMoney(g.amount)} · Due {fmt(g.deadline)}
+                    </div>
+                  </div>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('grants')}
+                      style={{
+                        fontSize: 11,
+                        background: '#fff',
+                        color: '#a63020',
+                        border: '1px solid #f0b8b0',
+                        borderRadius: 6,
+                        padding: '5px 12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        fontFamily: 'DM Sans, sans-serif',
+                      }}
+                    >View Grants →</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
       {(INSIGHTS.length > 0 || d.workflowInstances.length > 0) && (
         <div className="panel" style={{ marginBottom: 20 }}>
@@ -806,6 +1014,78 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           )}
         </div>
       )}
+      {/* ── OPEN MEETING ACTIONS ───────────────────────────────────────── */}
+      {d.actions.length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="📋" title="Open Meeting Actions" count={d.actions.length} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {actionsSorted.slice(0, 5).map(a => {
+              const overdue = a.due_date && new Date(a.due_date + 'T12:00:00') < today;
+              const daysOver = overdue
+                ? Math.ceil((today - new Date(a.due_date + 'T12:00:00')) / 86400000)
+                : 0;
+              return (
+                <div key={a.id} style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  padding: '9px 12px',
+                  background: overdue ? '#faeae7' : 'var(--surface2)',
+                  borderRadius: 7,
+                  borderLeft: overdue ? '3px solid var(--danger)' : '3px solid var(--border)',
+                  gap: 10,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: overdue ? 600 : 400,
+                      color: 'var(--text1)',
+                      lineHeight: 1.4,
+                    }}>
+                      {a.description}
+                    </div>
+                    <div style={{
+                      fontSize: 11,
+                      color: overdue ? 'var(--danger)' : 'var(--text3)',
+                      marginTop: 2,
+                    }}>
+                      {a.assigned_to && `👤 ${a.assigned_to}`}
+                      {a.assigned_to && a.due_date && ' · '}
+                      {a.due_date && (overdue
+                        ? `⚠️ ${daysOver}d overdue`
+                        : `Due ${fmt(a.due_date)}`
+                      )}
+                      {a.status && ` · ${a.status}`}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {d.actions.length > 5 && (
+              <div style={{ fontSize: 12, color: 'var(--text3)', paddingTop: 2 }}>
+                +{d.actions.length - 5} more open actions
+              </div>
+            )}
+          </div>
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('minutes')}
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                background: 'none',
+                border: '1px solid var(--border)',
+                color: 'var(--brand)',
+                borderRadius: 6,
+                padding: '5px 12px',
+                cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif',
+                fontWeight: 600,
+              }}
+            >View all in Minutes →</button>
+          )}
+        </div>
+      )}
+
 
       {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
@@ -828,7 +1108,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
         {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
         <div className="panel">
-          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} note={`(started ${pl.toLowerCase()})`} />
+          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
           {periodProjects.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
           ) : periodProjects.map(p => {
