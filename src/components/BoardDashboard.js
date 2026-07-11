@@ -33,6 +33,15 @@ const PERIODS = [
 
 const PERIOD_LABEL = { month: 'This Month', quarter: 'This Quarter', year: 'This Year', all: 'All Time' };
 
+const NAV_LABELS = {
+  minutes:    'View Minutes →',
+  compliance: 'View Compliance →',
+  goals:      'View Goals →',
+  tasks:      'View Tasks →',
+  grants:     'View Grants →',
+  assets:     'View Assets →',
+};
+
 function Stars({ rating }) {
   if (!rating) return <span style={{ color: 'var(--text3)' }}>—</span>;
   const r = Math.round(rating);
@@ -90,7 +99,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('grants').select('id, name, funder, amount, status, deadline').order('deadline'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
       supabase.from('assets').select('*'),
-      supabase.from('tasks').select('id, title, due_date, status, priority').neq('status', 'cancelled').neq('status', 'completed'),
+      supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
       supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
@@ -289,25 +298,76 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   if (epUrgentCount > 0)
     redInsights.unshift(`🆘 Emergency Preparedness: ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} are overdue or not yet scheduled — marae may not be ready for a civil defence event`);
 
-  if (overdueCompliance.length > 0)
-    redInsights.push(`${overdueCompliance.length} compliance obligation${overdueCompliance.length !== 1 ? 's are' : ' is'} overdue — arrange renewals immediately (see Compliance panel)`);
+  if (overdueCompliance.length > 0) {
+    if (overdueCompliance.length <= 3) {
+      const names = overdueCompliance.map(c => c.name);
+      const text = overdueCompliance.length === 1
+        ? `${names[0]} overdue ${Math.floor((today - new Date(overdueCompliance[0].due_date + 'T12:00:00')) / 86400000)} days`
+        : `${names.join(', ')} overdue — arrange renewals immediately`;
+      redInsights.push({ text, navTo: 'compliance' });
+    } else {
+      redInsights.push(`${overdueCompliance.length} compliance obligations are overdue — arrange renewals immediately (see Compliance panel)`);
+    }
+  }
 
-  if (goalsBehind.length > 0)
-    redInsights.push(`${goalsBehind.length} strategic goal${goalsBehind.length !== 1 ? 's are' : ' is'} behind schedule — review and update plans (see Strategic Goals panel)`);
+  if (goalsBehind.length > 0) {
+    if (goalsBehind.length <= 3) {
+      const names = goalsBehind.map(g => g.name);
+      const text = goalsBehind.length === 1
+        ? `${names[0]} is behind schedule`
+        : `${names.join(', ')} are behind schedule — review and update plans`;
+      redInsights.push({ text, navTo: 'goals' });
+    } else {
+      redInsights.push(`${goalsBehind.length} strategic goals are behind schedule — review and update plans (see Strategic Goals panel)`);
+    }
+  }
 
-  if (overdueTasks.length > 0)
-    redInsights.push(`${overdueTasks.length} overdue task${overdueTasks.length !== 1 ? 's' : ''} — follow up with assignees immediately (see Tasks panel)`);
+  if (overdueTasks.length > 0) {
+    if (overdueTasks.length <= 3) {
+      const text = overdueTasks.length === 1
+        ? `'${overdueTasks[0].title}' overdue${overdueTasks[0].assigned_to ? ` — ${overdueTasks[0].assigned_to}` : ''}`
+        : `${overdueTasks.map(t => `'${t.title}'`).join(', ')} overdue — follow up with assignees immediately`;
+      redInsights.push({ text, navTo: 'tasks' });
+    } else {
+      redInsights.push(`${overdueTasks.length} overdue tasks — follow up with assignees immediately (see Tasks panel)`);
+    }
+  }
 const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date + 'T12:00:00') < today);
-  if (overdueActions.length > 0)
-    redInsights.push(`${overdueActions.length} meeting action${overdueActions.length !== 1 ? 's are' : ' is'} overdue — follow up before next hui (see Minutes)`);
+  if (overdueActions.length > 0) {
+    if (overdueActions.length <= 3) {
+      const text = overdueActions.length === 1
+        ? `'${overdueActions[0].description}' overdue${overdueActions[0].assigned_to ? ` — ${overdueActions[0].assigned_to}` : ''}`
+        : `${overdueActions.map(a => `'${a.description}'`).join(', ')} overdue — follow up before next hui`;
+      redInsights.push({ text, navTo: 'minutes' });
+    } else {
+      redInsights.push(`${overdueActions.length} meeting actions are overdue — follow up before next hui (see Minutes)`);
+    }
+  }
   const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
   if (grantsUrgent.length > 0) {
     const minDays = Math.min(...grantsUrgent.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
-    redInsights.push(`${grantsUrgent.length} grant deadline${grantsUrgent.length !== 1 ? 's' : ''} within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`);
+    if (grantsUrgent.length <= 3) {
+      const text = grantsUrgent.length === 1
+        ? `${grantsUrgent[0].name} grant deadline in ${minDays} day${minDays !== 1 ? 's' : ''} — action required today`
+        : `${grantsUrgent.map(g => g.name).join(', ')} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today`;
+      redInsights.push({ text, navTo: 'grants' });
+    } else {
+      redInsights.push(`${grantsUrgent.length} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`);
+    }
   }
 
-  if (overdueReminders.length > 0)
-    redInsights.push(`${overdueReminders.length} asset service${overdueReminders.length !== 1 ? 's' : ''} are overdue — arrange maintenance now`);
+  if (overdueReminders.length > 0) {
+    const assetById = Object.fromEntries(d.assets.map(a => [a.id, a]));
+    if (overdueReminders.length <= 3) {
+      const names = overdueReminders.map(r => assetById[r.asset_id]?.name || 'an asset');
+      const text = overdueReminders.length === 1
+        ? `${names[0]} — service overdue ${Math.floor((today - new Date(overdueReminders[0].due_date + 'T12:00:00')) / 86400000)} days`
+        : `${names.join(', ')} — services overdue, arrange maintenance now`;
+      redInsights.push({ text, navTo: 'assets' });
+    } else {
+      redInsights.push(`${overdueReminders.length} asset services are overdue — arrange maintenance now`);
+    }
+  }
 
   const criticalAssets = d.assets.filter(a => a.condition === 'critical');
   criticalAssets.forEach(a => {
@@ -399,15 +459,18 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   if (totalPeriodBookings > 0 && Math.round((periodBookings.length / totalPeriodBookings) * 100) >= 90)
     greenInsights.push(`${Math.round((periodBookings.length / totalPeriodBookings) * 100)}% of bookings this period have been approved`);
 
+  const normalizeInsight = (item, level) =>
+    typeof item === 'string' ? { text: item, level } : { ...item, level };
+
   const INSIGHTS = [
-    ...redInsights.map(text => ({ text, level: 'red' })),
+    ...redInsights.map(item => normalizeInsight(item, 'red')),
     ...(d.activeInterestCount > 0 ? [{
       text: `${d.activeInterestCount} active conflict of interest declaration${d.activeInterestCount !== 1 ? 's' : ''} — review before next meeting`,
       level: 'amber',
       navTo: 'minutes',
     }] : []),
-    ...amberInsights.map(text => ({ text, level: 'amber' })),
-    ...greenInsights.slice(0, 1).map(text => ({ text, level: 'green' })),
+    ...amberInsights.map(item => normalizeInsight(item, 'amber')),
+    ...greenInsights.slice(0, 1).map(item => normalizeInsight(item, 'green')),
   ].slice(0, 5);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
@@ -834,7 +897,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                         onClick={() => onNavigate(ins.navTo)}
                         style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
                       >
-                        View Minutes →
+                        {NAV_LABELS[ins.navTo] || 'View →'}
                       </button>
                     )}
                   </div>

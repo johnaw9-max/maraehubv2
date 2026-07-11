@@ -159,7 +159,7 @@ function StarBar({ label, value }) {
 
 export default function TrusteeDashboard({ profile, onLogout }) {
   const isAdmin = profile?.trustee_role === 'admin';
-  const [activeTab, setActiveTab] = useState('board');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
   const [boardKey, setBoardKey] = useState(0);
 
@@ -373,16 +373,31 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
     if (compliance.length >= 3) {
       const overdueComp = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < now).length;
-      hsCategories.push({ name: 'Compliance', score: Math.round(25 * ((compliance.length - overdueComp) / compliance.length)), max: 25 });
+      hsCategories.push({
+        name: 'Compliance',
+        score: Math.round(25 * ((compliance.length - overdueComp) / compliance.length)),
+        max: 25,
+        detail: overdueComp > 0 ? `${overdueComp} compliance item${overdueComp !== 1 ? 's' : ''} overdue` : 'All compliance items up to date',
+      });
     }
 
     if (risks.length >= 1) {
       const highOpen = risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed').length;
-      hsCategories.push({ name: 'Risk', score: highOpen === 0 ? 20 : Math.max(0, Math.round(20 * (1 - highOpen / risks.length))), max: 20 });
+      hsCategories.push({
+        name: 'Risk',
+        score: highOpen === 0 ? 20 : Math.max(0, Math.round(20 * (1 - highOpen / risks.length))),
+        max: 20,
+        detail: highOpen > 0 ? `${highOpen} high-rated risk${highOpen !== 1 ? 's' : ''} still open` : 'No open high-rated risks',
+      });
     }
 
     if (scorableTasks.length >= 3) {
-      hsCategories.push({ name: 'Tasks', score: Math.round(20 * ((scorableTasks.length - overdueTasks.length) / scorableTasks.length)), max: 20 });
+      hsCategories.push({
+        name: 'Tasks',
+        score: Math.round(20 * ((scorableTasks.length - overdueTasks.length) / scorableTasks.length)),
+        max: 20,
+        detail: overdueTasks.length > 0 ? `${overdueTasks.length} task${overdueTasks.length !== 1 ? 's' : ''} overdue` : 'No overdue tasks',
+      });
     }
 
     if (finRecordCount >= 3) {
@@ -390,11 +405,22 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       let finScore = 0;
       if (finNet >= 0) finScore = 20;
       else if (finIncome > 0 && Math.abs(finNet) < finIncome * 0.1) finScore = 10;
-      hsCategories.push({ name: 'Finance', score: finScore, max: 20 });
+      hsCategories.push({
+        name: 'Finance',
+        score: finScore,
+        max: 20,
+        detail: finNet >= 0 ? 'Finances in surplus' : `Running a deficit of $${Math.abs(Math.round(finNet)).toLocaleString()}`,
+      });
     }
 
     if (goalsTotal >= 1) {
-      hsCategories.push({ name: 'Goals', score: Math.round(15 * (goalsOnTrack / goalsTotal)), max: 15 });
+      const goalsBehindCount = goalsTotal - goalsOnTrack;
+      hsCategories.push({
+        name: 'Goals',
+        score: Math.round(15 * (goalsOnTrack / goalsTotal)),
+        max: 15,
+        detail: goalsBehindCount > 0 ? `${goalsBehindCount} goal${goalsBehindCount !== 1 ? 's' : ''} not on track` : 'All goals on track',
+      });
     }
 
     if (hsCategories.length < 2) {
@@ -405,7 +431,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       const finalScore = Math.round((rawTotal / maxTotal) * 100);
       const monthKey   = `mhs_${profile?.marae_id || 'default'}_${now.getFullYear()}_${now.getMonth()}`;
       try { localStorage.setItem(monthKey, JSON.stringify({ score: finalScore, computed: new Date().toISOString() })); } catch (_) {}
-      setHealthScore({ score: finalScore, categories: hsCategories.map(c => c.name), insufficient: false });
+      setHealthScore({ score: finalScore, categories: hsCategories, insufficient: false });
     }
 
     setLoading(false);
@@ -851,8 +877,31 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                 </div>
               ) : (() => {
                 const s = healthScore.score;
-                const color = s >= 80 ? '#1baf7a' : s >= 60 ? '#c8902a' : '#d9534f';
-                const label = s >= 80 ? 'Strong' : s >= 60 ? 'Developing' : 'Needs Attention';
+                const bands = [
+                  { min: 90, label: 'Excellent', color: '#1baf7a' },
+                  { min: 80, label: 'Healthy',   color: '#1baf7a' },
+                  { min: 60, label: 'Good',      color: '#c8902a' },
+                  { min: 30, label: 'At Risk',   color: '#d9534f' },
+                  { min: 0,  label: 'Critical',  color: '#a63020' },
+                ];
+                const bandIndex = bands.findIndex(b => s >= b.min);
+                const { label, color } = bands[bandIndex];
+                const nextBand = bandIndex > 0 ? bands[bandIndex - 1] : null;
+
+                const draggingDown = [...healthScore.categories]
+                  .filter(c => c.max - c.score > 0)
+                  .sort((a, b) => (b.max - b.score) - (a.max - a.score))
+                  .slice(0, 2);
+
+                const CATEGORY_TAB = { Compliance: 'compliance', Risk: 'risks', Tasks: 'tasks', Finance: 'finance', Goals: 'goals' };
+                const CATEGORY_ACTION = {
+                  Compliance: 'Resolve overdue compliance items',
+                  Risk:       'Close out open high-rated risks',
+                  Tasks:      'Follow up on overdue tasks',
+                  Finance:    'Review finances to close the deficit',
+                  Goals:      'Review goals that are behind',
+                };
+
                 return (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
@@ -863,10 +912,35 @@ export default function TrusteeDashboard({ profile, onLogout }) {
                     <div style={{ height: 10, background: 'var(--cream2)', borderRadius: 5, overflow: 'hidden', marginBottom: 12 }}>
                       <div style={{ height: '100%', width: `${s}%`, background: color, borderRadius: 5, transition: 'width 0.4s ease' }} />
                     </div>
+                    {nextBand && (
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+                        {nextBand.min - s} point{nextBand.min - s !== 1 ? 's' : ''} from {nextBand.label} (target {nextBand.min})
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>
-                      Based on: {healthScore.categories.join(' · ')}
+                      Based on: {healthScore.categories.map(c => c.name).join(' · ')}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                    {draggingDown.length > 0 && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--cream2)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                          What's dragging down the score
+                        </div>
+                        {draggingDown.map((c, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>
+                            <span>{c.name}: {c.detail} ({c.score}/{c.max})</span>
+                            {CATEGORY_TAB[c.name] && (
+                              <button
+                                onClick={() => setActiveTab(CATEGORY_TAB[c.name])}
+                                style={{ fontSize: 11, background: 'rgba(0,0,0,0.04)', color: 'var(--brand)', border: '1px solid var(--cream2)', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+                              >
+                                {CATEGORY_ACTION[c.name] || `View ${c.name} →`}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>
                       Score updates automatically as your marae data changes
                     </div>
                   </div>
