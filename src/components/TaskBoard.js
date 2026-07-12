@@ -194,7 +194,6 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, c
                 flex: 1, fontSize: 11, minWidth: 0,
                 color: sub.status === 'completed' ? 'var(--text3)' : 'var(--text2)',
                 textDecoration: sub.status === 'completed' ? 'line-through' : 'none',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {sub.title}
               </span>
