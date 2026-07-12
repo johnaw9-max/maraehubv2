@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { supabaseTineka, supabaseWaioweka } from '../lib/supabaseMulti';
+import { supabaseTineka } from '../lib/supabaseMulti';
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
@@ -198,23 +198,21 @@ function MaraeDatesAndChecklist({
 
 export default function FounderDashboard({ profile }) {
   const [mrr, setMrr]               = useState(0);
-  const [payingMarae, setPayingMarae] = useState(0);
+  const [signedMarae, setSignedMarae] = useState(0);
   const [shipped, setShipped]        = useState('');
   const [weekFocus, setWeekFocus]    = useState({ ship: '', contact: '', fix: '' });
   const [saved, setSaved]            = useState(false);
   const [loading, setLoading]        = useState(true);
   const [settingsId, setSettingsId]  = useState(null);
 
-  const [terere,   setTerere]   = useState({ status: 'Active',     note: '' });
-  const [tineka,   setTineka]   = useState({ status: 'Trial',      note: '' });
-  const [waioweka, setWaioweka] = useState({ status: 'Interested', note: '' });
+  const [opeke,    setOpeke]    = useState({ status: 'Active', note: '' });
+  const [tineka,   setTineka]   = useState({ status: 'Trial',  note: '' });
 
   const [taskCount,    setTaskCount]    = useState(0);
   const [activeUsers,  setActiveUsers]  = useState(0);
   const [checklist,    setChecklist]    = useState({});
-  const [kpiTerere,   setKpiTerere]   = useState(null);
-  const [kpiTineka,   setKpiTineka]   = useState(null);
-  const [kpiWaioweka, setKpiWaioweka] = useState(null);
+  const [kpiOpeke,  setKpiOpeke]  = useState(null);
+  const [kpiTineka, setKpiTineka] = useState(null);
 
   // Custom marae added by founder
   const [customMarae,    setCustomMarae]    = useState([]);
@@ -261,13 +259,12 @@ export default function FounderDashboard({ profile }) {
 
   async function loadAll() {
     setLoading(true);
-    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, kpiW, notesRes] = await Promise.all([
+    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
-      fetchEnvKPIs(supabase, 'Terere'),
+      fetchEnvKPIs(supabase, 'Opeke'),
       fetchEnvKPIs(supabaseTineka, 'Tineka'),
-      fetchEnvKPIs(supabaseWaioweka, 'Opeke'),
       supabase.from('founder_notes').select('marae_name, step_key, completed, data'),
     ]);
 
@@ -275,19 +272,17 @@ export default function FounderDashboard({ profile }) {
       setSettingsId(settingsRes.data.id);
       const m = settingsRes.data.founder_metrics || {};
       if (m.mrr         !== undefined) setMrr(m.mrr);
-      if (m.payingMarae !== undefined) setPayingMarae(m.payingMarae);
+      if (m.signedMarae !== undefined) setSignedMarae(m.signedMarae);
       if (m.shipped     !== undefined) setShipped(m.shipped);
       if (m.weekFocus) setWeekFocus(m.weekFocus);
-      if (m.terere)    setTerere(m.terere);
+      if (m.opeke)     setOpeke(m.opeke);
       if (m.tineka)    setTineka(m.tineka);
-      if (m.waioweka)  setWaioweka(m.waioweka);
     }
 
     setTaskCount(tasksRes.count || 0);
     setActiveUsers(profilesRes.count || 0);
-    setKpiTerere(kpiT);
+    setKpiOpeke(kpiT);
     setKpiTineka(kpiTi);
-    setKpiWaioweka(kpiW);
 
     const cl = {}, leads = [], marae = [], pipe = [], sn = {};
     for (const row of (notesRes.data || [])) {
@@ -406,7 +401,7 @@ export default function FounderDashboard({ profile }) {
 
   async function saveMetrics() {
     if (!settingsId) return;
-    const payload = { mrr, payingMarae, shipped, weekFocus, terere, tineka, waioweka };
+    const payload = { mrr, signedMarae, shipped, weekFocus, opeke, tineka };
     await supabase.from('marae_settings').update({ founder_metrics: payload }).eq('id', settingsId);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -426,9 +421,8 @@ export default function FounderDashboard({ profile }) {
   }
 
   const fixedSections = [
-    { label: 'Terere Marae',      kpi: kpiTerere,   prefix: 'terere',   custom: false },
-    { label: 'Tineka Marae',       kpi: kpiTineka,   prefix: 'tineka',   custom: false },
-    { label: 'Waioweka (Sandbox)', kpi: kpiWaioweka, prefix: 'waioweka', custom: false },
+    { label: 'Opeke Marae',  kpi: kpiOpeke,  prefix: 'opeke',  custom: false },
+    { label: 'Tineka Marae', kpi: kpiTineka, prefix: 'tineka', custom: false },
   ];
   const envSections = [
     ...fixedSections,
@@ -466,9 +460,9 @@ export default function FounderDashboard({ profile }) {
           <div style={{ fontSize: 11, color: TEXT3, marginTop: 4 }}>Monthly recurring</div>
         </Card>
         <Card>
-          <div style={{ fontSize: 12, color: TEXT3, marginBottom: 6 }}>Paying Marae</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: payingMarae > 0 ? GREEN : RED }}>{payingMarae}</div>
-          <div style={{ fontSize: 11, color: TEXT3, marginTop: 4 }}>Active subscriptions</div>
+          <div style={{ fontSize: 12, color: TEXT3, marginBottom: 6 }}>Signed Marae</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: signedMarae > 0 ? GREEN : RED }}>{signedMarae}</div>
+          <div style={{ fontSize: 11, color: TEXT3, marginTop: 4 }}>Signed agreements</div>
         </Card>
         <Card>
           <div style={{ fontSize: 12, color: TEXT3, marginBottom: 6 }}>Active This Week</div>
@@ -483,14 +477,14 @@ export default function FounderDashboard({ profile }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
           <div>
             <FieldInput label="MRR ($)" value={mrr} onChange={setMrr} type="number" placeholder="0" />
-            <FieldInput label="Paying Marae" value={payingMarae} onChange={setPayingMarae} type="number" placeholder="0" />
+            <FieldInput label="Signed Marae" value={signedMarae} onChange={setSignedMarae} type="number" placeholder="0" />
             <FieldInput label="Last Shipped" value={shipped} onChange={setShipped} placeholder="e.g. Workflow automation" />
           </div>
           <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 24 }}>
             <StatRow label="Open Tasks"        value={taskCount} />
-            <StatRow label="Upcoming Bookings" value={kpiTerere?.bookings ?? '—'} />
-            <StatRow label="Compliance Items"  value={kpiTerere?.compliance ?? '—'} />
-            <StatRow label="Assets"            value={kpiTerere?.assets ?? '—'} />
+            <StatRow label="Upcoming Bookings" value={kpiOpeke?.bookings ?? '—'} />
+            <StatRow label="Compliance Items"  value={kpiOpeke?.compliance ?? '—'} />
+            <StatRow label="Assets"            value={kpiOpeke?.assets ?? '—'} />
           </div>
           <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ fontSize: 11, color: TEXT3, marginBottom: 4 }}>Days to Sep 7 launch</div>
@@ -505,9 +499,8 @@ export default function FounderDashboard({ profile }) {
         <Card>
           <SectionTitle>Marae Status</SectionTitle>
           {[
-            { label: 'Terere',   state: terere,   set: setTerere },
+            { label: 'Opeke',    state: opeke,    set: setOpeke },
             { label: 'Tineka',   state: tineka,   set: setTineka },
-            { label: 'Waioweka', state: waioweka, set: setWaioweka },
           ].map(({ label, state, set }, i, arr) => {
             const pill = MARAE_PILL[state.status] || { color: TEXT3, bg: CREAM };
             return (
@@ -562,7 +555,7 @@ export default function FounderDashboard({ profile }) {
             {!custom && (
               kpi === null ? (
                 <div style={{ fontSize: 13, color: TEXT3, marginBottom: 16 }}>
-                  Not configured — add REACT_APP_WAIOWEKA_ANON_KEY to enable live data.
+                  Not configured — check the API connection for this project.
                 </div>
               ) : (
                 <>
