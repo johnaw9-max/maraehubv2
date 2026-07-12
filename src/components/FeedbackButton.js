@@ -12,6 +12,7 @@ export default function FeedbackButton({ profile }) {
   async function handleSubmit() {
     if (!message.trim()) { setError('Please describe the issue or feedback'); return; }
     setSaving(true); setError('');
+    const { data: settings } = await supabase.from('marae_settings').select('marae_name').single();
     const { error } = await supabase.from('feedback').insert({
       user_id: profile?.id,
       user_name: profile?.full_name,
@@ -19,6 +20,7 @@ export default function FeedbackButton({ profile }) {
       type,
       message: message.trim(),
       page: window.location.href,
+      marae: settings?.marae_name || null,
     });
     if (error) { setError(error.message); setSaving(false); return; }
     setSuccess(true);

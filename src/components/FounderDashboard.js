@@ -213,6 +213,7 @@ export default function FounderDashboard({ profile }) {
   const [checklist,    setChecklist]    = useState({});
   const [kpiOpeke,  setKpiOpeke]  = useState(null);
   const [kpiTineka, setKpiTineka] = useState(null);
+  const [recentFeedback, setRecentFeedback] = useState([]);
 
   // Custom marae added by founder
   const [customMarae,    setCustomMarae]    = useState([]);
@@ -259,13 +260,15 @@ export default function FounderDashboard({ profile }) {
 
   async function loadAll() {
     setLoading(true);
-    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes] = await Promise.all([
+    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes, fbOpekeRes, fbTinekaRes] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       fetchEnvKPIs(supabase, 'Opeke'),
       fetchEnvKPIs(supabaseTineka, 'Tineka'),
       supabase.from('founder_notes').select('marae_name, step_key, completed, data'),
+      supabase.from('feedback').select('id, type, user_name, user_email, message, created_at').order('created_at', { ascending: false }).limit(20),
+      supabaseTineka.from('feedback').select('id, type, user_name, user_email, message, created_at').order('created_at', { ascending: false }).limit(20),
     ]);
 
     if (settingsRes.data) {
@@ -283,6 +286,10 @@ export default function FounderDashboard({ profile }) {
     setActiveUsers(profilesRes.count || 0);
     setKpiOpeke(kpiT);
     setKpiTineka(kpiTi);
+
+    const fbOpeke  = (fbOpekeRes.data  || []).map(f => ({ ...f, envLabel: 'Opeke' }));
+    const fbTineka = (fbTinekaRes.data || []).map(f => ({ ...f, envLabel: 'Tineka' }));
+    setRecentFeedback([...fbOpeke, ...fbTineka].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20));
 
     const cl = {}, leads = [], marae = [], pipe = [], sn = {};
     for (const row of (notesRes.data || [])) {
@@ -535,6 +542,27 @@ export default function FounderDashboard({ profile }) {
           <FieldInput label="Fix this week"     value={weekFocus.fix}     onChange={v => setWeekFocus(f => ({ ...f, fix: v }))}     placeholder="What to fix" />
         </Card>
       </div>
+
+      {/* ── RECENT FEEDBACK ────────────────────────────────────────────── */}
+      <Card style={{ marginBottom: 24 }}>
+        <SectionTitle>Recent Feedback</SectionTitle>
+        {recentFeedback.length === 0 ? (
+          <div style={{ fontSize: 13, color: TEXT3 }}>No feedback submitted yet.</div>
+        ) : (
+          recentFeedback.map((f, i) => {
+            const icon = f.type === 'bug' ? '🐛' : f.type === 'suggestion' ? '💡' : f.type === 'question' ? '❓' : '🌟';
+            return (
+              <div key={f.id} style={{ padding: '10px 0', borderBottom: i < recentFeedback.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1 }}>{icon} {f.user_name || f.user_email || 'Unknown'} · {f.envLabel}</span>
+                  <span style={{ fontSize: 11, color: TEXT3 }}>{new Date(f.created_at).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div style={{ fontSize: 13, color: TEXT1 }}>{f.message}</div>
+              </div>
+            );
+          })
+        )}
+      </Card>
 
       {/* ── PER-ENVIRONMENT CARDS ──────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
