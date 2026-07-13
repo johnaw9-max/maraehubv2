@@ -34,6 +34,7 @@ export default function AssetsManager({ onStartWorkflow }) {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
   const [view, setView] = useState('assets'); // 'assets' | 'inventory'
+  const [expandedIds, setExpandedIds] = useState(new Set());
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -187,6 +188,14 @@ export default function AssetsManager({ onStartWorkflow }) {
     await supabase.from('assets').delete().eq('id', id);
     if (selectedAsset?.id === id) setSelectedAsset(null);
     fetchAll();
+  }
+
+  function toggleExpand(id) {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }
 
   function openReminders(asset) { setSelectedAsset(asset); }
@@ -559,78 +568,84 @@ export default function AssetsManager({ onStartWorkflow }) {
             <button className="btn-primary" style={{ marginTop: 16 }} onClick={openAdd}>+ {view === 'inventory' ? 'Add Item' : 'Add Asset'}</button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {displayedAssets.map(a => {
               const isInv = a.category === 'Inventory';
               const aReminders = getAssetReminders(a.id);
               const overdue = aReminders.filter(r => getReminderStatus(r) === 'overdue').length;
               const dueSoon = aReminders.filter(r => getReminderStatus(r) === 'due-soon').length;
               const isZeroStock = isInv && a.quantity != null && a.quantity === 0;
+              const isExpanded = expandedIds.has(a.id);
+              const condStyle = CONDITION_STYLE[a.condition] || CONDITION_STYLE.good;
+              const dotColor = overdue > 0 ? 'var(--danger)' : dueSoon > 0 ? 'var(--warning)' : null;
               return (
-                <div key={a.id} className="panel">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <div style={{ fontSize: 28 }}>{ICONS[a.category] || '📦'}</div>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 600 }}>{a.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>
-                          {isInv ? (a.inventory_category || 'Inventory') : a.category} · {a.location || 'No location'}
-                        </div>
-                      </div>
+                <div key={a.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div
+                    onClick={() => toggleExpand(a.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', cursor: 'pointer' }}
+                  >
+                    <div style={{ fontSize: 18, flexShrink: 0 }}>{ICONS[a.category] || '📦'}</div>
+                    <div style={{ flex: '1 1 180px', minWidth: 0, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {a.name}
                     </div>
-                    {(() => { const s = CONDITION_STYLE[a.condition] || CONDITION_STYLE.good; return (
-                      <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 700, color: s.color, background: s.bg }}>
-                        {a.condition ? a.condition.charAt(0).toUpperCase() + a.condition.slice(1) : 'Good'}
-                      </span>
-                    ); })()}
+                    <div style={{ flex: '1 1 200px', minWidth: 0, fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {isInv ? (a.inventory_category || 'Inventory') : a.category} · {a.location || 'No location'}
+                    </div>
+                    <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 700, color: condStyle.color, background: condStyle.bg, flexShrink: 0 }}>
+                      {a.condition ? a.condition.charAt(0).toUpperCase() + a.condition.slice(1) : 'Good'}
+                    </span>
+                    <div style={{ width: 110, textAlign: 'right', fontSize: 13, fontWeight: 600, flexShrink: 0, color: isZeroStock ? 'var(--danger)' : 'inherit' }}>
+                      {isInv
+                        ? (isZeroStock ? '⚠ Out of stock' : `${a.quantity != null ? a.quantity : '—'} on hand`)
+                        : (a.value ? `$${Number(a.value).toLocaleString()}` : '—')}
+                    </div>
+                    <div style={{ width: 10, flexShrink: 0 }}>
+                      {!isInv && dotColor && (
+                        <span
+                          title={overdue > 0 ? `${overdue} overdue reminder${overdue > 1 ? 's' : ''}` : `${dueSoon} due soon`}
+                          style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: dotColor }}
+                        />
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>{isExpanded ? '▲' : '▼'}</div>
                   </div>
 
-                  {isInv ? (
-                    <>
-                      {isZeroStock && (
-                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>
-                          ⚠ Out of stock
+                  {isExpanded && (
+                    <div style={{ padding: '0 14px 14px 44px', borderTop: '1px solid var(--border)' }}>
+                      {isInv ? (
+                        <div style={{ fontSize: 12, color: 'var(--text2)', margin: '10px 0 8px' }}>
+                          <span style={{ color: 'var(--text3)' }}>Last stocktake: </span>{a.last_stocktake ? formatDate(a.last_stocktake) : '—'}
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 10 }}>
+                          {overdue > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
+                          {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
+                          <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+                            <span style={{ color: 'var(--text3)' }}>Reminders: </span>{aReminders.length}
+                          </div>
+                          {a.replacement_date && (() => {
+                            const days = lifecycleDays(a);
+                            const col  = lifecycleColor(days);
+                            const lbl  = lifecycleLabel(days);
+                            return (
+                              <div style={{ fontSize: 12, marginBottom: 8 }}>
+                                <span style={{ color: 'var(--text3)' }}>Replace by: </span>
+                                <span style={{ fontWeight: 600, color: col }}>{formatDate(a.replacement_date)} ({lbl})</span>
+                                {a.replacement_cost && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>· Est. ${Number(a.replacement_cost).toLocaleString()}</span>}
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
-                        <div>
-                          <span style={{ color: 'var(--text3)' }}>Qty on hand: </span>
-                          <span style={{ fontWeight: 600, color: isZeroStock ? 'var(--danger)' : 'inherit' }}>
-                            {a.quantity != null ? a.quantity : '—'}
-                          </span>
-                        </div>
-                        <div><span style={{ color: 'var(--text3)' }}>Last stocktake: </span>{a.last_stocktake ? formatDate(a.last_stocktake) : '—'}</div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {overdue > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
-                      {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
-                        <div><span style={{ color: 'var(--text3)' }}>Value: </span>{a.value ? `$${Number(a.value).toLocaleString()}` : '—'}</div>
-                        <div><span style={{ color: 'var(--text3)' }}>Reminders: </span>{aReminders.length}</div>
-                      </div>
-                      {a.replacement_date && (() => {
-                        const days = lifecycleDays(a);
-                        const col  = lifecycleColor(days);
-                        const lbl  = lifecycleLabel(days);
-                        return (
-                          <div style={{ fontSize: 12, marginBottom: 8 }}>
-                            <span style={{ color: 'var(--text3)' }}>Replace by: </span>
-                            <span style={{ fontWeight: 600, color: col }}>{formatDate(a.replacement_date)} ({lbl})</span>
-                            {a.replacement_cost && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>· Est. ${Number(a.replacement_cost).toLocaleString()}</span>}
-                          </div>
-                        );
-                      })()}
-                    </>
-                  )}
-                  {a.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
+                      {a.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
 
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {!isInv && <button onClick={() => openReminders(a)} style={{ fontSize: 12, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>}
-                    <button onClick={() => openEdit(a)} style={{ fontSize: 12, color: 'var(--brand-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Edit</button>
-                    <button onClick={() => handleDelete(a.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
-                  </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {!isInv && <button onClick={() => openReminders(a)} style={{ fontSize: 12, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>}
+                        <button onClick={() => openEdit(a)} style={{ fontSize: 12, color: 'var(--brand-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => handleDelete(a.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
