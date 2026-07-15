@@ -7,6 +7,9 @@ import StatusPill from './StatusPill';
 
 const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
 
+const ADD_OCCASIONS = ['Tangi', 'Wedding/Hakari', 'Birthday', 'Hui', 'Fundraiser', 'Whanau Reunion', 'Other'];
+const ADD_FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
+
 function isPast(booking) {
   const d = booking.end_date || booking.start_date;
   return d && new Date(d) < new Date();
@@ -31,6 +34,10 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   const [filter, setFilter] = useState('all');
   const [checklistBooking, setChecklistBooking] = useState(null);
   const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'' });
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState('');
 
   useEffect(() => { fetchBookings(); }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -131,6 +138,49 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     setFeedback(prev => ({ ...prev, [bookingId]: { booking_id: bookingId, rating_overall: rating } }));
   }
 
+  function openAddModal() {
+    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'' });
+    setAddError('');
+    setShowAddModal(true);
+  }
+
+  function setAddField(k, v) { setAddForm(f => ({ ...f, [k]: v })); }
+
+  function toggleAddFacility(f) {
+    setAddForm(prev => ({
+      ...prev,
+      facilities: prev.facilities.includes(f) ? prev.facilities.filter(x => x !== f) : [...prev.facilities, f],
+    }));
+  }
+
+  async function handleAddBooking() {
+    if (!addForm.occasion || !addForm.startDate || !addForm.endDate) {
+      setAddError('Occasion, start date, and end date are required.');
+      return;
+    }
+    setAddSaving(true);
+    setAddError('');
+    const ref = 'MH-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
+    const { error } = await supabase.from('bookings').insert({
+      user_id: null,
+      occasion: addForm.occasion,
+      start_date: addForm.startDate,
+      end_date: addForm.endDate,
+      guests: parseInt(addForm.guests) || 0,
+      overnight: addForm.overnight,
+      facilities: addForm.facilities,
+      notes: addForm.notes || null,
+      contact_name: addForm.contactName || null,
+      contact_phone: addForm.contactPhone || null,
+      status: canApprove ? 'approved' : 'pending',
+      reference: ref,
+    });
+    setAddSaving(false);
+    if (error) { setAddError('Something went wrong: ' + error.message); return; }
+    setShowAddModal(false);
+    fetchBookings();
+  }
+
   const filters = ['all', 'pending', 'approved', 'declined'];
 
   const facilityHireTpl = isTrustee && onStartWorkflow
@@ -141,7 +191,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ fontSize: 22 }}>{isTrustee ? 'Booking Requests' : 'My Bookings'}</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {filters.map(f => (
             <button key={f} onClick={() => setFilter(f)}
               style={{
@@ -153,6 +203,9 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
               {f}
             </button>
           ))}
+          {isTrustee && (
+            <button className="btn-primary" onClick={openAddModal} style={{ marginLeft: 8 }}>+ Add Booking</button>
+          )}
         </div>
       </div>
 
@@ -293,6 +346,81 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
           onClose={() => setFeedbackBooking(null)}
           onSubmitted={handleFeedbackSubmitted}
         />
+      )}
+
+      {showAddModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddModal(false)}>
+          <div className="modal">
+            <div className="modal-title">Add Booking</div>
+            {addError && <div className="alert alert-error">{addError}</div>}
+
+            <div className="form-group">
+              <label className="form-label">Occasion *</label>
+              <select className="form-input" value={addForm.occasion} onChange={e => setAddField('occasion', e.target.value)}>
+                <option value="" disabled>Select an occasion</option>
+                {ADD_OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Start Date *</label>
+                <input type="date" className="form-input" value={addForm.startDate} onChange={e => setAddField('startDate', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">End Date *</label>
+                <input type="date" className="form-input" value={addForm.endDate} onChange={e => setAddField('endDate', e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Contact Name</label>
+                <input className="form-input" value={addForm.contactName} onChange={e => setAddField('contactName', e.target.value)} placeholder="Who is this booking for?" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contact Phone</label>
+                <input className="form-input" value={addForm.contactPhone} onChange={e => setAddField('contactPhone', e.target.value)} placeholder="Optional" />
+              </div>
+            </div>
+
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Guests</label>
+                <input type="number" min="0" className="form-input" value={addForm.guests} onChange={e => setAddField('guests', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Overnight?</label>
+                <select className="form-input" value={addForm.overnight ? 'yes' : 'no'} onChange={e => setAddField('overnight', e.target.value === 'yes')}>
+                  <option value="no">No – Day event</option>
+                  <option value="yes">Yes – Overnight</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Facilities Needed</label>
+              <div className="grid-2">
+                {ADD_FACILITIES.map(f => (
+                  <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', background: 'var(--surface2)', fontSize: 13 }}>
+                    <input type="checkbox" checked={addForm.facilities.includes(f)} onChange={() => toggleAddFacility(f)} />
+                    {f}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <textarea className="form-input" rows={3} value={addForm.notes} onChange={e => setAddField('notes', e.target.value)} style={{ resize: 'vertical' }} />
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={handleAddBooking} disabled={addSaving}>{addSaving ? 'Saving...' : 'Add Booking'}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

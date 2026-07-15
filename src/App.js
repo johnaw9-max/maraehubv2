@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import TrusteeDashboard from './pages/TrusteeDashboard';
 import CommunityPortal from './pages/CommunityPortal';
 import FounderDashboard from './components/FounderDashboard';
+import PublicBookingRequest from './pages/PublicBookingRequest';
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
@@ -58,6 +59,10 @@ export default function App() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
+  }
+
+  if (window.location.pathname === '/request-booking') {
+    return <PublicBookingRequest />;
   }
 
   if (loading) {
