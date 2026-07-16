@@ -149,6 +149,19 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchTemplates();
   }
 
+  async function handleBulkAddItems(lines) {
+    const clean = lines.map(l => l.trim()).filter(Boolean);
+    if (!clean.length) return;
+    setAddingItem(true); setTemplateError('');
+    const maxOrder = templates.length ? Math.max(...templates.map(t => t.sort_order || 0)) : 0;
+    const rows = clean.map((label, i) => ({ label, sort_order: maxOrder + i + 1, active: true }));
+    const { error } = await supabase.from('checklist_templates').insert(rows);
+    if (error) { setTemplateError(error.message); setAddingItem(false); return; }
+    setNewItem('');
+    setAddingItem(false);
+    fetchTemplates();
+  }
+
   async function handleSaveEdit(id) {
     if (!editLabel.trim()) return;
     await supabase.from('checklist_templates').update({ label: editLabel.trim() }).eq('id', id);
@@ -373,10 +386,17 @@ export default function MaraeSettings({ profile, isAdmin }) {
               <input
                 className="form-input"
                 style={{ flex: 1 }}
-                placeholder="Add a new checklist item..."
+                placeholder="Add an item, or paste multiple lines at once"
                 value={newItem}
                 onChange={e => setNewItem(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddItem(); }}
+                onPaste={e => {
+                  const text = e.clipboardData.getData('text');
+                  if (text.includes('\n')) {
+                    e.preventDefault();
+                    handleBulkAddItems(text.split('\n'));
+                  }
+                }}
               />
               <button
                 className="btn-primary"
