@@ -647,6 +647,19 @@ const HELP_TOPICS = {
         { q: 'Does Finance update automatically when a grant is approved?', a: 'Yes. When a grant is marked as Approved in the Grants tab, MaraeHub automatically creates a confirmed income record in Finance for the full grant amount. Because the amount is already recorded in the grant, no manual entry is needed — the income record is created with the correct figure, funder name, and category automatically.' },
         { q: 'What happens to the Finance record if a booking is declined or cancelled?', a: 'If a booking that already has a placeholder income record is later declined or cancelled, MaraeHub automatically removes that placeholder from Finance. You do not need to go in and delete it manually. This keeps your income records accurate and prevents incomplete placeholder entries from appearing in your financial reports.' },
         { q: 'Why does the booking income record show $0?', a: 'The $0 placeholder is created at the point of approval so the booking is immediately reflected in Finance — but the exact hire fee is often not confirmed until after the committee has spoken to the hirer. Open the income record in the Finance tab, enter the agreed hire fee, and save. The FY Summary totals will update straight away.' },
+        { q: 'How do I send an invoice for a hire fee?', a: [
+          { text: 'Go to the Bookings tab and find an approved booking, then click "🧾 Invoice".' },
+          { text: 'Enter or confirm the hire fee — this updates the same income record already created in Finance, so nothing is duplicated.' },
+          { header: 'From there you can:', items: [
+            'Print or save the invoice as a PDF to send yourself',
+            'Email it directly to the customer',
+            'Mark it as Sent if you deliver it another way',
+            'Mark it as Paid once payment is received',
+          ]},
+          { text: 'Add your bank account or payment instructions once in Settings → Payment Details, and they will appear on every invoice automatically.' },
+        ] },
+        { q: 'Can I email an invoice directly to a customer?', a: 'Yes, using the "✉️ Email Invoice" button — but email delivery is still being finalised on our end, so it may not yet reach every customer reliably. Printing or saving the invoice as a PDF and sending it yourself works reliably right now, and is the safer option until email delivery is confirmed.' },
+        { q: 'Does marking an invoice as Paid update my Finance totals?', a: 'Marking an invoice as Paid updates the same income record Finance already created for that booking — it does not create a separate entry. Your FY Summary and Balance Sheet totals count the income amount as soon as it is entered, regardless of invoice status, so Paid simply confirms the money has actually come in rather than changing any total.' },
       ]
     },
     {
@@ -973,6 +986,7 @@ const HELP_TOPICS = {
       icon: '⚙️',
       items: [
         { q: 'How do I change the marae name?', a: 'Go to the Settings tab. You can update the marae name, location, iwi, hapū, and contact details. Click "Save Settings" and the name will update across the whole platform immediately.' },
+        { q: 'Can I add multiple checklist items at once?', a: 'Yes — go to Settings and open the Exit Checklist Template section. If you paste text containing more than one line into the "Add an item, or paste multiple lines at once" field, MaraeHub automatically splits it into separate checklist items instead of adding it as one long item. Pasting or typing a single line still works as before.' },
       ]
     },
     {
