@@ -3,3 +3,4 @@ build/
 .env
 .env.local
 .env.production.local
+supabase/.temp/

@@ -1,5 +1,5 @@
 // MaraeHub Committee Minutes & Resolutions
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
@@ -95,6 +95,8 @@ function SummaryTile({ icon, iconBg, value, label, valueColor, sub }) {
 function MeetingForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
   const [form, setForm] = useState(initial || EMPTY_MEETING);
+  const [attachmentFile, setAttachmentFile] = useState(null);
+  const attachmentRef = useRef();
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   return (
@@ -169,9 +171,17 @@ function MeetingForm({ initial, onSave, onCancel, saving, error }) {
         <textarea className="form-input" rows={6} value={form.minutes} onChange={e => setField('minutes', e.target.value)} placeholder="Enter the meeting minutes here..." style={{ resize: 'vertical' }} />
       </div>
 
+      <div className="form-group">
+        <label className="form-label">Attachment</label>
+        <input type="file" ref={attachmentRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx" onChange={e => setAttachmentFile(e.target.files[0] || null)} />
+        <button type="button" onClick={() => attachmentRef.current?.click()} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, cursor: 'pointer', color: 'var(--text2)' }}>
+          {attachmentFile ? `📎 ${attachmentFile.name}` : initial?.attachment_name ? `📎 ${initial.attachment_name} (replace)` : '📎 Attach file'}
+        </button>
+      </div>
+
       <div className="modal-actions">
         <button className="btn-secondary" onClick={onCancel}>Cancel</button>
-        <button className="btn-primary" onClick={() => onSave(form)} disabled={saving}>
+        <button className="btn-primary" onClick={() => onSave(form, attachmentFile)} disabled={saving}>
           {saving ? 'Saving...' : initial?.id ? 'Save Changes' : 'Add Meeting'}
         </button>
       </div>
@@ -299,6 +309,12 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
   }, [meeting.id]);
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
+
+  async function handleOpenAttachment() {
+    if (!meeting.attachment_url) return;
+    const { data } = await supabase.storage.from('meeting-attachments').createSignedUrl(meeting.attachment_url, 3600);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  }
 
   async function saveResolution(form) {
     if (!form.description.trim()) { setResError('Description is required'); return; }
@@ -456,6 +472,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
             <div style={{ fontSize: 13 }}>{meeting.apologies}</div>
           </div>
         )}
+        {meeting.attachment_name && <span onClick={handleOpenAttachment} style={{ fontSize: 10, color: 'var(--brand)', cursor: 'pointer' }}>📎 {meeting.attachment_name}</span>}
       </div>
 
       {loadingDetail ? <div className="loading">Loading...</div> : (
@@ -699,10 +716,21 @@ export default function CommitteeMinutes() {
     }
   }
 
-  async function handleSaveMeeting(form) {
+  async function handleSaveMeeting(form, attachmentFile) {
     if (!form.title.trim()) { setError('Meeting title is required'); return; }
     if (!form.meeting_date) { setError('Meeting date is required'); return; }
     setSaving(true); setError('');
+
+    let attachment_url = editMeeting?.attachment_url || null;
+    let attachment_name = editMeeting?.attachment_name || null;
+    if (attachmentFile) {
+      const path = `attachments/${Date.now()}-${attachmentFile.name.replace(/\s+/g, '_')}`;
+      const { error: upErr } = await supabase.storage.from('meeting-attachments').upload(path, attachmentFile);
+      if (!upErr) {
+        attachment_url = path;
+        attachment_name = attachmentFile.name;
+      }
+    }
 
     const payload = {
       title: form.title.trim(),
@@ -714,6 +742,8 @@ export default function CommitteeMinutes() {
       apologies: form.apologies.trim() || null,
       minutes: form.minutes.trim() || null,
       created_by: form.created_by.trim() || null,
+      attachment_url,
+      attachment_name,
     };
 
     if (editMeeting?.id) {
