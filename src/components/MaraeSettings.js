@@ -4,6 +4,7 @@ import PrivacyPolicy from './PrivacyPolicy';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
+  payment_details: '',
   use_xero: false, automation_level: 'assisted',
 
 };
@@ -104,6 +105,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
         phone: data.phone || '',
        email: data.email || '',
         website: data.website || '',
+        payment_details: data.payment_details || '',
         use_xero: data.use_xero || false,
         automation_level: data.automation_level || 'assisted',
       });
@@ -458,6 +460,23 @@ export default function MaraeSettings({ profile, isAdmin }) {
         <div className="form-group">
           <label className="form-label">Website (optional)</label>
           <input className="form-input" value={form.website} onChange={e => setField('website', e.target.value)} placeholder="e.g. www.marae.co.nz" />
+        </div>
+
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, margin: '20px 0 16px', paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Payment Details
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Payment Instructions</label>
+          <textarea
+            className="form-input"
+            rows={3}
+            value={form.payment_details}
+            onChange={e => setField('payment_details', e.target.value)}
+            placeholder="e.g. Bank account: 12-3456-7890123-00 (Te Marae o Tainui Trust)"
+            style={{ resize: 'vertical' }}
+          />
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Shown on invoices so customers know how to pay the hire fee.</div>
         </div>
 
         <div style={{ marginTop: 8 }}>

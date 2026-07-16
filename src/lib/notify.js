@@ -101,6 +101,22 @@ export function bookingStatusBody(booking, status) {
   );
 }
 
+export function invoiceBody(booking, income, marae) {
+  const amount = `$${(income.amount || 0).toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return (
+    `Tēnā koe,\n\n` +
+    `Please find your invoice for the hire fee below.\n\n` +
+    `Occasion: ${booking.occasion}\n` +
+    `Dates: ${fmtDate(booking.start_date)} → ${fmtDate(booking.end_date)}\n` +
+    `Guests: ${booking.guests}\n` +
+    `Reference: ${booking.reference || '—'}\n` +
+    `Amount Due: ${amount}\n` +
+    (marae?.payment_details ? `\nPayment Details:\n${marae.payment_details}\n` : '') +
+    `\nIf you have any questions about this invoice, please get in touch.` +
+    FOOTER
+  );
+}
+
 export function meetingActionBody(action, meeting) {
   return (
     `Tēnā koe ${action.assigned_to},\n\n` +

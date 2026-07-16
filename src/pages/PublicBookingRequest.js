@@ -7,7 +7,7 @@ const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen /
 export default function PublicBookingRequest() {
   const [form, setForm] = useState({
     occasion: '', startDate: '', endDate: '', guests: 50, overnight: false,
-    facilities: [], notes: '', contactName: '', contactPhone: '',
+    facilities: [], notes: '', contactName: '', contactPhone: '', contactEmail: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -95,6 +95,11 @@ export default function PublicBookingRequest() {
               <label className="form-label">Contact Phone</label>
               <input className="form-input" value={form.contactPhone} onChange={e => setField('contactPhone', e.target.value)} placeholder="Optional" />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Contact Email</label>
+            <input type="email" className="form-input" value={form.contactEmail} onChange={e => setField('contactEmail', e.target.value)} placeholder="So we can send you an invoice" />
           </div>
 
           <div className="form-group">

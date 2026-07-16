@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
+import BookingInvoice from './BookingInvoice';
 import { sendNotification, bookingStatusBody, bookingConfirmedBody } from '../lib/notify';
 import StatusPill from './StatusPill';
 
@@ -34,8 +35,9 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   const [filter, setFilter] = useState('all');
   const [checklistBooking, setChecklistBooking] = useState(null);
   const [feedbackBooking, setFeedbackBooking] = useState(null);
+  const [invoiceBooking, setInvoiceBooking] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'' });
+  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'' });
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -73,6 +75,26 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     setChecklists(clMap);
   }
 
+  async function ensureFinanceIncomeForBooking(booking) {
+    const { data: existing } = await supabase
+      .from('finance_income')
+      .select('id')
+      .eq('source_type', 'booking')
+      .eq('source_id', booking.id)
+      .maybeSingle();
+    if (existing) return;
+    await supabase.from('finance_income').insert({
+      date: booking.start_date || new Date().toISOString().split('T')[0],
+      description: `Booking income — ${booking.occasion}`,
+      amount: 0,
+      category: 'Booking Income',
+      status: 'Pending',
+      source_type: 'booking',
+      source_id: booking.id,
+      notes: 'Auto-created on approval — update amount to record hire fee',
+    });
+  }
+
   async function updateStatus(booking, status) {
     const { error } = await supabase.from('bookings').update({ status }).eq('id', booking.id);
     if (error) return;
@@ -94,24 +116,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
         });
     }
     if (status === 'approved') {
-      const { data: existing } = await supabase
-        .from('finance_income')
-        .select('id')
-        .eq('source_type', 'booking')
-        .eq('source_id', booking.id)
-        .maybeSingle();
-      if (!existing) {
-        await supabase.from('finance_income').insert({
-          date: booking.start_date || new Date().toISOString().split('T')[0],
-          description: `Booking income — ${booking.occasion}`,
-          amount: 0,
-          category: 'Booking Income',
-          status: 'Pending',
-          source_type: 'booking',
-          source_id: booking.id,
-          notes: 'Auto-created on approval — update amount to record hire fee',
-        });
-      }
+      await ensureFinanceIncomeForBooking(booking);
     } else if (status === 'declined' || status === 'cancelled') {
       await supabase
         .from('finance_income')
@@ -139,7 +144,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   }
 
   function openAddModal() {
-    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'' });
+    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'' });
     setAddError('');
     setShowAddModal(true);
   }
@@ -161,7 +166,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     setAddSaving(true);
     setAddError('');
     const ref = 'MH-' + new Date().getFullYear() + '-' + Math.floor(Math.random() * 9000 + 1000);
-    const { error } = await supabase.from('bookings').insert({
+    const { data: newBooking, error } = await supabase.from('bookings').insert({
       user_id: null,
       occasion: addForm.occasion,
       start_date: addForm.startDate,
@@ -172,11 +177,15 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
       notes: addForm.notes || null,
       contact_name: addForm.contactName || null,
       contact_phone: addForm.contactPhone || null,
+      contact_email: addForm.contactEmail || null,
       status: canApprove ? 'approved' : 'pending',
       reference: ref,
-    });
+    }).select().single();
     setAddSaving(false);
     if (error) { setAddError('Something went wrong: ' + error.message); return; }
+    if (newBooking?.status === 'approved') {
+      await ensureFinanceIncomeForBooking(newBooking);
+    }
     setShowAddModal(false);
     fetchBookings();
   }
@@ -295,6 +304,14 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                       🗑 Delete
                     </button>
                   )}
+                  {isTrustee && b.status === 'approved' && (
+                    <button
+                      onClick={() => setInvoiceBooking(b)}
+                      style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                    >
+                      🧾 Invoice
+                    </button>
+                  )}
                   {showChecklist && (
                     <button
                       onClick={() => setChecklistBooking(b)}
@@ -348,6 +365,13 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
         />
       )}
 
+      {invoiceBooking && (
+        <BookingInvoice
+          booking={invoiceBooking}
+          onClose={() => setInvoiceBooking(null)}
+        />
+      )}
+
       {showAddModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddModal(false)}>
           <div className="modal">
@@ -382,6 +406,11 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                 <label className="form-label">Contact Phone</label>
                 <input className="form-input" value={addForm.contactPhone} onChange={e => setAddField('contactPhone', e.target.value)} placeholder="Optional" />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Contact Email</label>
+              <input type="email" className="form-input" value={addForm.contactEmail} onChange={e => setAddField('contactEmail', e.target.value)} placeholder="For sending an invoice" />
             </div>
 
             <div className="grid-2">

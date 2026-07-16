@@ -24,7 +24,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
-    const { occasion, startDate, endDate, guests, overnight, facilities, notes, contactName, contactPhone } = body;
+    const { occasion, startDate, endDate, guests, overnight, facilities, notes, contactName, contactPhone, contactEmail } = body;
 
     // Server-side validation — never trust the anon client
     if (!OCCASIONS.includes(occasion)) return json({ error: 'Invalid occasion' }, 400);
@@ -53,6 +53,7 @@ serve(async (req) => {
       notes: notes || null,
       contact_name: contactName.trim(),
       contact_phone: contactPhone?.trim() || null,
+      contact_email: contactEmail?.trim() || null,
       status: 'pending', // forced server-side, never from the client
       reference,
     });
