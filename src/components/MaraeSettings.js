@@ -293,62 +293,6 @@ export default function MaraeSettings({ profile, isAdmin }) {
         <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Manage your marae details and system configuration</p>
       </div>
 
-      {/* ── MARAE IDENTITY ── */}
-      {error && <div className="alert alert-error">{error}</div>}
-      {success && <div className="alert alert-success">✓ Settings saved successfully!</div>}
-
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-          Marae Identity
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Marae Name *</label>
-          <input className="form-input" value={form.marae_name} onChange={e => setField('marae_name', e.target.value)} placeholder="e.g. Te Marae o Tainui" />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Location</label>
-          <input className="form-input" value={form.location} onChange={e => setField('location', e.target.value)} placeholder="e.g. Manurewa, Auckland" />
-        </div>
-
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">Iwi</label>
-            <input className="form-input" value={form.iwi} onChange={e => setField('iwi', e.target.value)} placeholder="e.g. Tainui" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Hapū</label>
-            <input className="form-input" value={form.hapu} onChange={e => setField('hapu', e.target.value)} placeholder="e.g. Ngāti Whātua" />
-          </div>
-        </div>
-
-        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, margin: '20px 0 16px', paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-          Contact Details
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Phone</label>
-          <input className="form-input" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="e.g. 09 123 4567" />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Email</label>
-          <input type="email" className="form-input" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="e.g. kaitiaki@marae.co.nz" />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Website (optional)</label>
-          <input className="form-input" value={form.website} onChange={e => setField('website', e.target.value)} placeholder="e.g. www.marae.co.nz" />
-        </div>
-
-        <div style={{ marginTop: 8 }}>
-          <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '11px 28px', fontSize: 14 }}>
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
-        </div>
-      </div>
-
       {/* ── CHECKLIST TEMPLATE ── */}
       <div className="panel">
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
@@ -446,6 +390,63 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </>
         )}
       </div>
+
+      {/* ── MARAE IDENTITY ── */}
+      {error && <div className="alert alert-error">{error}</div>}
+      {success && <div className="alert alert-success">✓ Settings saved successfully!</div>}
+
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Marae Identity
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Marae Name *</label>
+          <input className="form-input" value={form.marae_name} onChange={e => setField('marae_name', e.target.value)} placeholder="e.g. Te Marae o Tainui" />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Location</label>
+          <input className="form-input" value={form.location} onChange={e => setField('location', e.target.value)} placeholder="e.g. Manurewa, Auckland" />
+        </div>
+
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="form-label">Iwi</label>
+            <input className="form-input" value={form.iwi} onChange={e => setField('iwi', e.target.value)} placeholder="e.g. Tainui" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Hapū</label>
+            <input className="form-input" value={form.hapu} onChange={e => setField('hapu', e.target.value)} placeholder="e.g. Ngāti Whātua" />
+          </div>
+        </div>
+
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, margin: '20px 0 16px', paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Contact Details
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Phone</label>
+          <input className="form-input" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="e.g. 09 123 4567" />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Email</label>
+          <input type="email" className="form-input" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="e.g. kaitiaki@marae.co.nz" />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Website (optional)</label>
+          <input className="form-input" value={form.website} onChange={e => setField('website', e.target.value)} placeholder="e.g. www.marae.co.nz" />
+        </div>
+
+        <div style={{ marginTop: 8 }}>
+          <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '11px 28px', fontSize: 14 }}>
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
+
       {/* ── EMAIL NOTIFICATIONS ── */}
       <div className="panel" style={{ marginTop: 20 }}>
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
