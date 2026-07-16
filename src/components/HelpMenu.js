@@ -3,244 +3,6 @@ import React, { useState } from 'react';
 const HELP_TOPICS = {
   trustee: [
     {
-      category: 'Getting Started',
-      icon: '🚀',
-      items: [
-        { q: 'What is the Marae Setup wizard?', a: 'When you first log in, MaraeHub guides you through a 5-step setup to configure your marae — name, location, iwi, hapū, and key details. This helps personalise your dashboard from day one.' },
-        { q: 'What are the 5 setup steps?', a: [
-          { items: [
-            'Your Marae — name, location, iwi, hapū.',
-            'Your Trustees — add trustee names and roles.',
-            'Your Facilities — list your buildings and spaces.',
-            'Your Contacts — key contacts for your marae.',
-            'Review and confirm.',
-          ]},
-        ] },
-        { q: 'Do I have to complete setup before using MaraeHub?', a: 'No — you can skip setup and explore on your own. You can return to complete it any time from Settings.' },
-        { q: 'Can I change my marae details after setup?', a: 'Yes — go to Settings at any time to update your marae name, location, iwi, hapū, and other details.' },
-        { q: 'What if I made a mistake during setup?', a: 'Go to Settings and update any field. Nothing is locked after setup is complete.' },
-        { q: 'What should I do after setup is complete?', a: [
-          { text: "Here's your recommended first week on MaraeHub." },
-          { header: 'Day 1 — Get oriented', items: [
-            'Go to Board View — this is your marae command centre.',
-            'Check anything flagged — bookings, compliance, assets.',
-            'Familiarise yourself with the left navigation menu.',
-          ]},
-          { header: 'Day 2 — Set up your core records', items: [
-            'Go to Compliance — add your key compliance items (insurance, licenses, certificates).',
-            'Go to Assets — add your main marae assets (buildings, vehicles, equipment).',
-            'Go to Contacts — add your key contacts.',
-          ]},
-          { header: 'Day 3 — Run your first process', items: [
-            'Go to Bookings — add your first booking or approve a pending one.',
-            'Go to Finance — check the income record was created automatically.',
-            'Go to Workflows — start a workflow if needed.',
-          ]},
-          { header: 'Invite your trustees', text: 'Go to Settings → Trustees and invite your other trustees to log in. The more trustees using MaraeHub, the more useful it becomes.' },
-        ] },
-      ]
-    },
-    {
-      category: 'Posting to Facebook',
-      icon: '📘',
-      items: [
-        { q: 'How do I share an event to Facebook?', a: 'Open Calendar, find your event, and click "📋 Copy to Facebook". This copies pre-formatted text to your clipboard. Open Facebook, create a new post, and paste. Done.' },
-        { q: 'How do I share a notice to Facebook?', a: 'Open Notices, find your notice, and click "📋 Copy to Facebook". Paste into a new Facebook post.' },
-        { q: 'Can I edit the text before posting?', a: 'Yes — once pasted into Facebook you can edit it before publishing.' },
-      ]
-    },
-    {
-      category: 'Bookings',
-      icon: '📅',
-      items: [
-        { q: 'How do I approve a booking?', a: 'Go to the Bookings tab. You will see all pending requests. Click the green "Approve" button to confirm a booking, or the red "Decline" button to reject it. The community member will need to check back to see the status.' },
-        { q: 'How do I block dates so no one can book?', a: 'Go to the Calendar tab and click "Block Dates" in the top right. Enter the dates and a reason (e.g. Maintenance, Private event). Blocked dates show in red on the calendar and prevent community members from booking those days.' },
-        { q: 'Can I see all upcoming bookings?', a: 'Yes — go to the Calendar tab to see a visual overview of all approved bookings and blocked dates. You can also go to the Bookings tab and filter by status (pending, approved, declined).' },
-        { q: 'How do I complete the exit checklist?', a: 'After a booking, go to the Bookings tab, find the relevant booking, and click "Checklist". Tick off each item — cleaning, securing the building, returning keys, etc — and submit. This creates an accountability record for the marae and confirms the hirers met their obligations.' },
-        { q: 'How do I view feedback ratings?', a: 'After a booking, community members can submit star ratings and comments. Go to the Bookings tab and click on a completed booking to see any feedback received. An overall summary of ratings across all bookings is also shown on the main Dashboard under Community Feedback Reports.' },
-      ]
-    },
-    {
-      category: 'Minutes',
-      icon: '📝',
-      items: [
-        { q: 'How do I record a meeting?', a: [
-          { text: 'Go to the Minutes tab and click "+ New Meeting".' },
-          { header: 'Fill in:', items: [
-            'Meeting title',
-            'Date',
-            'Type (Trustee Meeting, AGM, Special Meeting, etc)',
-            'Chairperson',
-            'Secretary',
-            'Attendees',
-          ]},
-          { text: 'Click "Save Meeting" to create the record. You can then open the meeting to add resolutions and action items.' },
-        ] },
-        { q: 'How do I add a resolution?', a: [
-          { text: 'Open a meeting from the Minutes tab and click the "Resolutions" section, then "+ Add Resolution".' },
-          { header: 'Enter:', items: [
-            'The resolution number',
-            'A description of what was resolved',
-            'The date it was passed',
-          ]},
-          { header: 'As progress is made, update the status:', items: [
-            'Open',
-            'In Progress',
-            'Completed',
-            'Cancelled',
-          ]},
-        ] },
-        { q: 'How do I assign an action?', a: [
-          { text: 'Open a meeting and go to the "Actions" section, then click "+ Add Action".' },
-          { items: [
-            'Describe the action required',
-            'Assign it to a trustee or community member using the dropdown',
-            'Set a due date',
-          ]},
-          { text: 'Actions show as Open until marked complete — click "Edit" on any action to update its status.' },
-        ] },
-      ]
-    },
-    {
-      category: 'Decision Register',
-      icon: '📋',
-      items: [
-        { q: 'What is the Decision Register?', a: 'The Decision Register is a single searchable list of every resolution passed across all of your marae\'s meetings. Instead of opening individual meeting records to find a past decision, you can search by keyword and filter by status — Active, Implemented, or Superseded — to find exactly what you need. The register updates automatically whenever a resolution is recorded in any meeting. There are no extra steps and nothing to set up — if a resolution exists in a meeting, it appears in the Decision Register.' },
-        { q: 'How do I filter the Decision Register?', a: [
-          { text: 'Go to the Minutes tab and open the Decision Register section.' },
-          { text: 'Use the search bar to find resolutions by keyword — the search checks both the resolution number and description.' },
-          { header: 'Use the status filter buttons to show:', items: [
-            'Active resolutions (decisions that are still current)',
-            'Implemented (decisions that have been carried out)',
-            'Superseded (decisions that have been replaced by a later resolution)',
-          ]},
-          { text: 'Select "All" to clear the filter and see every resolution at once.' },
-        ] },
-      ]
-    },
-    {
-      category: 'Interest Register',
-      icon: '⚖️',
-      items: [
-        { q: 'What is the Interest Register?', a: [
-          { text: 'The Interest Register is a formal record of every conflict of interest declared by trustees.' },
-          { text: 'A conflict of interest happens when a trustee has a personal, financial, or family connection to a decision or contract the marae is considering — which means they may not be able to vote or advise on that matter impartially.' },
-          { text: 'Recording these declarations is a requirement of good governance practice and expected under New Zealand law, including the principles that apply to charitable trusts and incorporated societies.' },
-          { text: 'It shows that your committee is operating transparently and in the best interests of the marae, not individual trustees.' },
-        ] },
-        { q: 'When should a trustee declare an interest?', a: [
-          { text: 'Declare an interest whenever you have a personal stake in something the committee is deciding.' },
-          { header: 'Common examples:', items: [
-            'A contractor being considered for marae work is your family member, friend, or your own business.',
-            'A grant application would benefit an organisation you are involved with.',
-            'A trustee is being paid for services and the committee is setting or reviewing that arrangement.',
-            'A decision affects land or property you have a personal interest in.',
-          ]},
-          { text: 'The rule of thumb is: if you would benefit — or someone close to you would benefit — from the outcome of a committee decision, declare it.' },
-          { text: 'It is always better to declare and step back than to stay silent and have it questioned later.' },
-        ] },
-        { q: 'How do I add a declaration to the Interest Register?', a: [
-          { text: 'Go to the Minutes tab and open the Interest Register section, then click "+ Add Declaration".' },
-          { header: 'Fill in:', items: [
-            "The trustee's name",
-            'The nature of the interest (what the conflict is and how it relates to the trustee)',
-            'The date it was declared',
-            'The meeting or decision it relates to',
-          ]},
-          { text: 'Save the declaration — it will appear in the register straight away with an Active status.' },
-          { text: 'Once the matter has been fully resolved or the decision is complete, click "Resolve" to close it. Resolved declarations stay on the register permanently as a record — they do not disappear.' },
-        ] },
-        { q: 'Why does declaring an interest matter?', a: [
-          { text: 'Declaring an interest protects individual trustees personally.' },
-          { text: 'If a decision is ever challenged — by a beneficiary, an auditor, or the Māori Land Court — a properly kept Interest Register shows that your committee followed the right process.' },
-          { text: 'It is exactly the kind of record the Māori Land Court looks for when assessing whether a trust has been managed properly.' },
-          { text: 'It also protects the marae itself: decisions made without managing conflicts of interest can be overturned or create serious legal exposure.' },
-          { text: 'Good governance is not just about making good decisions — it is about being able to show that you made them the right way.' },
-        ] },
-        { q: 'What should a trustee do after declaring an interest?', a: [
-          { text: 'Once a declaration is made, the trustee with the conflict should step back from discussing and voting on that specific matter.' },
-          { items: [
-            'They can leave the room during that part of the meeting if needed.',
-            'The committee then makes the decision without their involvement.',
-            'Record in the meeting minutes that the trustee declared an interest and did not participate in the vote.',
-          ]},
-          { text: 'This protects everyone — the trustee, the other trustees, and the marae.' },
-        ] },
-      ]
-    },
-    {
-      category: 'Recording a Meeting',
-      icon: '📝',
-      items: [
-        { q: 'How does the meeting page work?', a: 'When you open a meeting in the Minutes tab, everything is on one page — meeting details, minutes, resolutions, and actions. There is no tab switching or separate screens to navigate. Scroll down to move between sections and add to any of them as the meeting progresses. Once you are done, all the information is saved together under that meeting record.' },
-        { q: 'Do actions and resolutions connect to other modules automatically?', a: [
-          { text: 'Yes — both connect automatically.' },
-          { header: 'Actions', text: 'Any action item you add to a meeting appears straight away on the Task Board, assigned to the person you nominated and showing the due date you set. You do not need to create a separate task.' },
-          { header: 'Resolutions', text: 'Any resolution you record in a meeting appears straight away in the Decision Register, where it can be searched and filtered across all meetings.' },
-          { text: 'Neither connection requires any extra steps — it happens as soon as you save the action or resolution.' },
-        ] },
-      ]
-    },
-    {
-      category: 'Projects',
-      icon: '📋',
-      items: [
-        { q: 'How do I add a new project?', a: 'Go to the Projects tab and click "+ Add Project". Fill in the project name, status, lead person, and due date. You can update the progress percentage as work gets done.' },
-        { q: 'How do I add subtasks to a project?', a: 'Click on any project to open it, then click "+ Add Subtask". You can set a subtask name, assignee, due date, and priority. Tick subtasks off as they are completed — the project progress updates automatically.' },
-        { q: 'How do I switch to board view?', a: 'In the Projects tab, look for the view toggle near the top right of the page. Click "Board" to switch to the kanban-style column view which organises projects by status: Planning, Active, Review, and Completed. Click "List" to return to the list view.' },
-        { q: 'How do I move a project between columns?', a: 'In Board view, each project card has ← and → arrow buttons. Click → to advance the project to the next status column (e.g. Planning → Active → Review → Completed), or ← to move it back. You can also edit the project and change the status directly from the form.' },
-      ]
-    },
-    {
-      category: 'Grants',
-      icon: '💰',
-      items: [
-        { q: 'How do I track a grant?', a: 'Go to the Grants tab and click "+ Add Grant". Enter the grant name, funder, amount, category, and deadline. As you progress, update the status to reflect where you are in the process. The KPI tiles at the top show your overall success rate, total approved funding, and any urgent upcoming deadlines.' },
-        { q: 'What do the status options mean?', a: [
-          { items: [
-            'Researching — you are looking into whether to apply.',
-            'In-Progress — you are actively writing the application.',
-            'Submitted — the application has been sent and you are waiting for a decision.',
-            'Approved or Declined — the outcome.',
-            'Reporting — funding has been received and you are completing required progress reports.',
-          ]},
-        ] },
-      ]
-    },
-    {
-      category: 'Tasks',
-      icon: '✅',
-      items: [
-        { q: 'How do I add a task?', a: [
-          { text: 'Go to the Tasks tab and click "+ Add Task".' },
-          { header: 'Enter:', items: [
-            'A title',
-            'Optional description',
-            'Assign it to someone from the dropdown',
-            'Set a due date',
-            'Choose a priority — High, Medium, or Low',
-          ]},
-          { text: 'New tasks start in the Open column.' },
-          { items: [
-            'High priority tasks show a red left border',
-            'Medium is amber',
-            'Low is green',
-          ]},
-          { text: 'Overdue tasks are flagged with a red OVERDUE label.' },
-        ] },
-        { q: 'How do I move a task between columns?', a: 'Each task card has ← and → arrow buttons at the bottom. Click → to move the task forward through the columns: Open → In Progress → Completed → Cancelled. Click ← to move it back. Tasks moved into Completed are automatically time-stamped, which updates the "Completed Today" KPI tile.' },
-        { q: 'What is the Task Archive?', a: 'When the Completed column contains more than 50 tasks, older completed tasks are automatically moved to a collapsible Archive section below the kanban board. The Completed column always shows the 50 most recent completed tasks. Click "📦 Completed Task Archive" at the bottom of the Tasks tab to expand the archive and view or reopen older tasks.' },
-      ]
-    },
-    {
-      category: 'Assets',
-      icon: '🏗️',
-      items: [
-        { q: 'How do I add a service reminder?', a: 'Go to the Assets tab, find the asset you want to set a reminder for, and click the "🔔 Reminders" button. Click "+ Add Reminder", enter the service type, due date, and how often it repeats (monthly, annually, etc).' },
-        { q: 'What does "Mark as Serviced" do?', a: 'When a reminder is overdue, you can click "Mark as Serviced" to confirm the service was done. If the reminder is recurring (e.g. annual), it will automatically set the next due date forward by the correct interval.' },
-      ]
-    },
-    {
       category: 'Asset Lifecycle',
       icon: '🏗️',
       items: [
@@ -265,65 +27,54 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Risk Register',
-      icon: '🛡️',
+      category: 'Assets',
+      icon: '🏗️',
       items: [
-        { q: 'What is the Risk Register?', a: 'The Risk Register is a formal record of every risk your marae has identified — from health and safety hazards to financial exposure, governance gaps, environmental risks, and reputational concerns. It gives trustees a single place to track what the risks are, who is responsible for managing them, and what controls are in place.' },
-        { q: 'How do I add a risk?', a: [
-          { text: 'Go to Risk Register in the main navigation and click "+ Add Risk".' },
-          { items: [
-            'Enter a description of the risk',
-            'Select a category',
-            'Set the likelihood and consequence using the dropdowns, and the risk rating will be calculated for you automatically',
-            'Add the controls currently in place',
-            'Assign an owner (the trustee responsible)',
-            'Set a review date',
-            'Save',
-          ]},
-        ] },
-        { q: 'How is the risk rating calculated?', a: [
-          { text: 'MaraeHub calculates the rating automatically from the likelihood and consequence you select — you do not need to work it out yourself.' },
-          { items: [
-            'If either likelihood or consequence is High, the rating is High.',
-            'If both are Low, the rating is Low.',
-            'Any other combination gives a Medium rating.',
-          ]},
-          { text: 'The rating is shown as a colour-coded pill: red for High, amber for Medium, green for Low.' },
-        ] },
-        { q: 'What appears on Board View?', a: 'Any High-rated risk with a status of Open or Being Managed will surface automatically in Board View so trustees see it at every meeting without having to open the Risk Register tab. A red alert will also appear in the alert strip at the top of Board View if high-rated open risks exist.' },
-        { q: 'Who can see the Risk Register?', a: 'Trustees only. Community members cannot access the Risk Register. This is intentional — risk management is a governance responsibility and the register may contain sensitive information about the marae\'s financial, legal, or operational exposure.' },
-        { q: 'How often should we review our risks?', a: 'Set a review date for each risk when you add it — at minimum, review high-rated risks quarterly and lower-rated risks annually. Use the owner field to make sure every risk has a named trustee responsible for monitoring it. The Board View will surface open high-rated risks at every meeting as a prompt to review.' },
+        { q: 'How do I add a service reminder?', a: 'Go to the Assets tab, find the asset you want to set a reminder for, and click the "🔔 Reminders" button. Click "+ Add Reminder", enter the service type, due date, and how often it repeats (monthly, annually, etc).' },
+        { q: 'What does "Mark as Serviced" do?', a: 'When a reminder is overdue, you can click "Mark as Serviced" to confirm the service was done. If the reminder is recurring (e.g. annual), it will automatically set the next due date forward by the correct interval.' },
       ]
     },
     {
-      category: 'Contacts',
-      icon: '👥',
+      category: 'Automatic Workflows',
+      icon: '🤖',
       items: [
-        { q: 'How do I add a new trustee or community member?', a: [
-          { text: 'Go to the Contacts tab and click "+ Add User".' },
-          { header: 'Enter:', items: [
-            'Their full name',
-            'Email address',
-            'A temporary password',
-            'Choose their role — Trustee or Community Member',
+        { q: 'What are Automatic Workflows?', a: 'Automatic Workflows are workflows that MaraeHub starts on its own — without any trustee needing to click anything. When an asset service reminder falls within 14 days of its due date and no active workflow already exists for that reminder, the system checks whether a matching workflow template exists and starts it automatically. The workflow and all of its tasks appear in the Workflows tab and Task Board straight away.' },
+        { q: 'How does the system know which workflow to start?', a: 'MaraeHub matches the name of the service reminder to the most relevant workflow template. For example, a reminder called "Heat Pump Service" automatically triggers the Heat Pump Service workflow template. The match is based on the reminder type — so the more specific and consistent your reminder names are, the better the system can find the right template. If no close match exists, no workflow is started and the reminder continues to show as normal.' },
+        { q: 'Can I turn off Automatic Workflows for a specific reminder?', a: [
+          { text: 'Yes. If you want to manage a particular service reminder manually — starting workflows yourself rather than having them start automatically:' },
+          { items: [
+            'Go to the Assets tab, find the asset, and open its reminders',
+            'Click "Edit" on the reminder you want to change, and toggle off "Auto-start workflow"',
           ]},
-          { text: 'They can log in straight away with those details.' },
-          { text: 'You can change their role at any time using the "Make Trustee" or "Make Community" buttons on their row.' },
+          { text: 'With this turned off, the reminder will still appear and send early warnings as usual, but no workflow will be started automatically when it falls due.' },
         ] },
-        { q: 'How do I add a contractor?', a: [
-          { text: 'Go to the Contacts tab and click "+ Add Contractor" (visible when the "All" or "Contractors" filter is selected).' },
-          { header: 'Fill in:', items: [
-            'Their name',
-            'Trade (Plumber, Electrician, Builder, etc)',
-            'Company',
-            'Phone',
-            'Email',
-            'Address',
-            'Any notes such as rates or availability',
+        { q: 'Where will I see an automatic workflow once it has started?', a: 'An automatic workflow appears in exactly the same place as one you start manually. You will see it in the Active Workflows section of the Workflows tab, with a progress bar and the first incomplete task highlighted. All of its tasks also appear on the Task Board, labelled with the workflow name. A note on the workflow card shows it was started automatically from the service reminder, so you can always trace it back to its origin.' },
+      ]
+    },
+    {
+      category: 'Board View Insights',
+      icon: '📈',
+      items: [
+        { q: 'What is the Workflow Activity panel in Board View?', a: 'Board View includes a Workflow Activity section that gives trustees a quick read on how workflows are tracking across the marae. It shows the number of currently active workflows and how many workflows were completed this month — useful for seeing whether your committee is keeping on top of recurring processes without having to open the Workflows tab.' },
+        { q: 'What alerts appear in the Workflow Activity section?', a: [
+          { text: 'Two types of alerts appear automatically.' },
+          { items: [
+            'If a workflow has had no progress in 14 or more days — meaning none of its tasks have been completed — Board View will flag it as stalled so a trustee can follow up.',
+            'If a booking income record has been created automatically but the hire fee has not yet been entered (it still shows as $0), an alert will appear reminding trustees to open that Finance record and enter the agreed amount.',
           ]},
-          { text: 'Use the Preferred toggle to mark them as your go-to for that trade.' },
+          { text: 'Both alerts clear automatically once the issue is resolved.' },
         ] },
-        { q: 'How do I mark a contractor as preferred?', a: 'On any contractor card in the Contacts tab, click the ☆ star icon in the top-right corner to toggle their preferred status on or off. Preferred contractors display a ⭐ Preferred badge on their card. You can also set this when adding or editing a contractor using the toggle switch in the form.' },
+      ]
+    },
+    {
+      category: 'Bookings',
+      icon: '📅',
+      items: [
+        { q: 'How do I approve a booking?', a: 'Go to the Bookings tab. You will see all pending requests. Click the green "Approve" button to confirm a booking, or the red "Decline" button to reject it. The community member will need to check back to see the status.' },
+        { q: 'How do I block dates so no one can book?', a: 'Go to the Calendar tab and click "Block Dates" in the top right. Enter the dates and a reason (e.g. Maintenance, Private event). Blocked dates show in red on the calendar and prevent community members from booking those days.' },
+        { q: 'Can I see all upcoming bookings?', a: 'Yes — go to the Calendar tab to see a visual overview of all approved bookings and blocked dates. You can also go to the Bookings tab and filter by status (pending, approved, declined).' },
+        { q: 'How do I complete the exit checklist?', a: 'After a booking, go to the Bookings tab, find the relevant booking, and click "Checklist". Tick off each item — cleaning, securing the building, returning keys, etc — and submit. This creates an accountability record for the marae and confirms the hirers met their obligations.' },
+        { q: 'How do I view feedback ratings?', a: 'After a booking, community members can submit star ratings and comments. Go to the Bookings tab and click on a completed booking to see any feedback received. An overall summary of ratings across all bookings is also shown on the main Dashboard under Community Feedback Reports.' },
       ]
     },
     {
@@ -377,207 +128,140 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Incident Register',
-      icon: '⚠️',
+      category: 'Contacts',
+      icon: '👥',
       items: [
-        { q: 'What is the Incident Register?', a: 'The Incident Register records accidents, near misses, injuries, property damage, and complaints that occur at your marae. It is a legal requirement under the Health and Safety at Work Act 2015 for marae operating as PCBUs.' },
-        { q: 'How do I record an incident?', a: [
-          { items: [
-            'Go to Incident Register in the left navigation.',
-            'Click Add Incident.',
-            'Record the incident type, date, location, description, persons involved, and severity.',
-            'Record what immediate action was taken.',
-            'Save — the incident is logged with a timestamp.',
+        { q: 'How do I add a new trustee or community member?', a: [
+          { text: 'Go to the Contacts tab and click "+ Add User".' },
+          { header: 'Enter:', items: [
+            'Their full name',
+            'Email address',
+            'A temporary password',
+            'Choose their role — Trustee or Community Member',
           ]},
+          { text: 'They can log in straight away with those details.' },
+          { text: 'You can change their role at any time using the "Make Trustee" or "Make Community" buttons on their row.' },
         ] },
-        { q: 'Who can see the Incident Register?', a: 'Trustees only. Community members cannot access the Incident Register.' },
-        { q: 'What severity levels are there?', a: [
-          { items: ['Near Miss', 'Minor', 'Moderate', 'Serious', 'Critical'] },
-          { text: 'Choose the level that best describes the outcome of the incident.' },
+        { q: 'How do I add a contractor?', a: [
+          { text: 'Go to the Contacts tab and click "+ Add Contractor" (visible when the "All" or "Contractors" filter is selected).' },
+          { header: 'Fill in:', items: [
+            'Their name',
+            'Trade (Plumber, Electrician, Builder, etc)',
+            'Company',
+            'Phone',
+            'Email',
+            'Address',
+            'Any notes such as rates or availability',
+          ]},
+          { text: 'Use the Preferred toggle to mark them as your go-to for that trade.' },
         ] },
-        { q: 'Do we have to record every incident?', a: 'Yes — under HSWA 2015 marae must keep records of all workplace incidents. MaraeHub makes this simple and keeps your records safe and accessible for any audit or review.' },
+        { q: 'How do I mark a contractor as preferred?', a: 'On any contractor card in the Contacts tab, click the ☆ star icon in the top-right corner to toggle their preferred status on or off. Preferred contractors display a ⭐ Preferred badge on their card. You can also set this when adding or editing a contractor using the toggle switch in the form.' },
       ]
     },
     {
-      category: 'Goals & Reporting',
-      icon: '🎯',
+      category: 'Decision Register',
+      icon: '📋',
       items: [
-        { q: 'What does Goals & Reporting do?', a: 'Goals & Reporting helps your committee track strategic goals and see progress automatically using data already stored in MaraeHub. It is not a task list — it is a governance and reporting tool that gives trustees a clear view of how the marae is tracking against its plans. You can set goals, link them to existing projects, compliance items and grants, and watch progress update automatically.' },
-        { q: 'What are the Goal Categories?', a: [
-          { items: [
-            'Governance — committee structure, elections, handover.',
-            'Compliance — WOFs, insurance, H&S, Civil Defence.',
-            'Projects — capital works, renovation, infrastructure.',
-            'Funding — grants, applications, income targets.',
-            'Community — events, engagement, whānau.',
-            'Assets — equipment, maintenance, vehicles.',
+        { q: 'What is the Decision Register?', a: 'The Decision Register is a single searchable list of every resolution passed across all of your marae\'s meetings. Instead of opening individual meeting records to find a past decision, you can search by keyword and filter by status — Active, Implemented, or Superseded — to find exactly what you need. The register updates automatically whenever a resolution is recorded in any meeting. There are no extra steps and nothing to set up — if a resolution exists in a meeting, it appears in the Decision Register.' },
+        { q: 'How do I filter the Decision Register?', a: [
+          { text: 'Go to the Minutes tab and open the Decision Register section.' },
+          { text: 'Use the search bar to find resolutions by keyword — the search checks both the resolution number and description.' },
+          { header: 'Use the status filter buttons to show:', items: [
+            'Active resolutions (decisions that are still current)',
+            'Implemented (decisions that have been carried out)',
+            'Superseded (decisions that have been replaced by a later resolution)',
           ]},
-          { text: 'Finance and Whakapapa categories are planned for a future release.' },
+          { text: 'Select "All" to clear the filter and see every resolution at once.' },
         ] },
-        { q: 'How do I add a goal?', a: [
-          { text: 'Go to the Goals tab and click "+ Add Goal".' },
-          { items: [
-            'Enter the goal name, description, and category',
-            'Set a target date and assign a responsible trustee',
-            'Optionally link the goal to related projects, compliance items, or grants — you can select multiple from each category using the chip selector',
-          ]},
-          { text: 'Progress will update automatically from linked data.' },
-          { text: 'Set an initial progress percentage and status, then save.' },
-        ] },
-        { q: 'How do I use the Board Report?', a: 'Click the "📊 Board Report" toggle button at the top of the Goals tab to switch to the board report view. This shows all strategic goals in a summary table with a traffic light status indicator, progress percentage, category, status, target date, and responsible trustee — ready for reading out at a board meeting. Click "🎯 Manage Goals" to return to the goals management view.' },
-        { q: 'What do the status options mean?', a: [
-          { items: [
-            'Not Started — the goal is in the planning phase and work has not begun.',
-            'In Progress — the committee is actively working toward this goal.',
-            'At Risk — progress has fallen behind schedule or faces an obstacle.',
-            'Completed — the goal has been achieved.',
-          ]},
-        ] },
-        { q: 'What do the traffic light colours mean in the Board Report?', a: [
-          { items: [
-            'Green (On Track) — the goal is progressing well and the target date is not at risk.',
-            'Orange (At Risk) — the goal is flagged as at risk, or the target date is within 14 days.',
-            'Red (Behind Schedule) — the target date has passed and the goal is not yet complete.',
-            'Grey means the goal has not started and the target date is still in the future.',
-          ]},
-        ] },
-        { q: 'Why does progress update automatically?', a: [
-          { items: [
-            "When you link a goal to a project, the project's progress percentage is used directly.",
-            'When linked to a compliance item, the status (Compliant, Due Soon, Overdue) is converted to a progress score.',
-            "When linked to a grant, the grant's stage (Researching through to Approved) is converted to a percentage.",
-          ]},
-          { text: 'This means trustees do not need to manually update every goal — MaraeHub does it for them.' },
-        ] },
-        { q: 'Who can see Goals & Reporting?', a: 'Trustees only. The community role cannot access this module. Goals & Reporting exists to keep the committee accountable and give every trustee visibility of progress — without anyone needing to manually chase updates.' },
       ]
     },
     {
-      category: 'Marae Health Score',
-      icon: '🌿',
+      category: 'Documents',
+      icon: '📁',
       items: [
-        { q: 'What is the Marae Health Score?', a: 'An automatic score out of 100 measuring your marae\'s governance and operational health across compliance, risk, tasks, finance and goals.' },
-        { q: 'How is it calculated?', a: [
-          { header: 'Five categories contribute:', items: [
-            'Compliance (25pts)',
-            'Risk (20pts)',
-            'Tasks (20pts)',
-            'Finance (20pts)',
-            'Goals (15pts)',
-          ]},
-          { text: 'Each category only scores if enough data exists — you are never penalised for incomplete setup.' },
-          { text: 'The score is proportionally scaled to 100 based on the categories that qualify.' },
-        ] },
-        { q: 'What do the colours mean?', a: [
+        { q: 'How do I upload a document?', a: [
           { items: [
-            'Green (80+) = Strong',
-            'Amber (60–79) = Developing',
-            'Red (below 60) = Needs Attention',
+            'Go to the Documents tab and click "+ Upload Document".',
+            'You can drag and drop a file or click to browse.',
+            'Add a title and category (Governance, Finance, Legal, etc) then click Save.',
           ]},
         ] },
-        { q: 'How do I improve my score?', a: [
-          { items: [
-            'Complete your compliance items',
-            'Resolve high-rated risks',
-            'Keep tasks on schedule',
-            'Maintain a financial surplus',
-            'Set strategic goals',
-          ]},
-        ] },
-        { q: 'How often does it update?', a: 'Automatically every time you load the Dashboard.' },
+        { q: 'What file types can I upload?', a: 'You can upload PDFs, Word documents, Excel spreadsheets, and images. All important marae documents like the charter, trust deed, and policies can be stored here.' },
       ]
     },
     {
-      category: 'Workflows',
-      icon: '⚙️',
+      category: 'Email Notifications',
+      icon: '📧',
       items: [
-        { q: 'What is the Workflows tab?', a: 'Workflows is a step-by-step task engine for managing recurring marae processes. Instead of creating tasks from scratch each time, you pick a pre-built template, give the workflow a name, and click Start — MaraeHub automatically creates all the tasks in the right order and tracks progress for you.' },
-        { q: 'Where do I find it?', a: 'Go to the main navigation and click Operations. Workflows is listed in that group alongside Bookings, Calendar, Notices, and Contacts.' },
-        { q: 'How do I start a workflow?', a: [
+        { q: 'What are email notifications?', a: 'Email notifications are automatic emails sent to trustees every morning at 8am when something on the marae needs their attention. Instead of having to log in and check each module, MaraeHub sends a summary directly to your inbox so nothing slips through the cracks. You only receive an email on days when there is actually something to act on — there is no daily email if everything is up to date.' },
+        { q: 'What triggers an email notification?', a: [
+          { text: 'Five types of items trigger notifications.' },
           { items: [
-            'In the Workflows tab, use the dropdown under "Start New Workflow" to pick a template — for example, Tangihanga Preparation or Marae Insurance Renewal.',
-            'Once a template is selected, a name field will appear.',
-            'Type a name for this specific run (e.g. "Hēni Smith Tangihanga — July 2026"), then click Start Workflow.',
+            'Compliance items due within 30 days — so you have time to renew before the deadline.',
+            'Bookings starting within 48 hours — a heads-up before the marae is due to be used.',
+            'Grant deadlines within 14 days — an early reminder to submit or finalise applications in time.',
+            'Meeting actions that are overdue by 7 or more days — flagging tasks that have been assigned but not yet completed.',
+            'Goals marked as At Risk or Completed — so the full committee stays across strategic progress without needing to open the Goals tab.',
           ]},
-          { text: 'All tasks are created immediately and appear in the Active Workflows panel and in the Tasks tab.' },
         ] },
-        { q: 'How many templates are available?', a: [
-          { header: 'MaraeHub currently includes 18 built-in templates covering five areas:', items: [
-            'Governance (trustee meetings, AGM preparation, trustee onboarding)',
-            'Compliance (insurance renewal, fire safety, WOF review)',
-            'Maintenance (building inspection, equipment servicing)',
-            'Operations (tangihanga preparation, contractor vetting, event setup, Facility Hire Agreement)',
-            'Funding (grant application, funding report)',
+        { q: 'How do I turn email notifications on or off?', a: 'Go to Settings and open the "Email Notifications" section. Each notification type has its own toggle — you can turn individual types on or off independently. For example, you might keep compliance and grant reminders on but turn off booking notifications if another trustee handles approvals. Changes take effect immediately and apply only to your account — each trustee controls their own notification preferences.' },
+        { q: 'Will I get the same email about the same item every day?', a: 'No. MaraeHub tracks what has already been sent and will not email you about the same item more than once every 25 days. If a compliance item is still due in 30 days and has not been updated, you will receive one notification about it — and then not again for another 25 days. This prevents your inbox from filling up with repeated reminders about the same unresolved issue.' },
+      ]
+    },
+    {
+      category: 'Emergency Preparedness',
+      icon: '🆘',
+      items: [
+        { q: 'Why does Emergency Preparedness have its own section?', a: 'Marae are recognised welfare centres under the New Zealand Civil Defence and Emergency Management Act 2002. Your marae may be called upon to house whānau during a flood, earthquake, or storm — often with little warning. Emergency Preparedness is treated separately because it carries the highest community risk if neglected. The tracker highlights these items in deep red to ensure they are never overlooked.' },
+        { q: 'What items are automatically set up for me?', a: [
+          { header: 'MaraeHub pre-loads ten standard emergency preparedness items when you first open the Compliance tab:', items: [
+            'Civil Defence Emergency Plan',
+            'Emergency contact list',
+            'Generator check',
+            'Water supply inspection',
+            'Food and supply kit',
+            'Community welfare register',
+            'First aid kit',
+            'Evacuation routes',
+            'Emergency communications plan',
+            'A structural storm-readiness check',
           ]},
-          { text: 'The most recent addition is the Marae Emergency Readiness Starter Pack, which covers insurance, first aid kit checks, generator testing, water supply inspection, fire safety, and Civil Defence registration.' },
-          { text: 'More templates will be added in future releases.' },
+          { text: 'These reflect standard Civil Defence guidance for marae welfare centres.' },
         ] },
-        { q: 'How do I track progress?', a: 'The Active Workflows section shows all currently running workflows with a progress bar and the next incomplete task highlighted. As you complete tasks in the Tasks tab, the progress bar updates automatically. When all tasks in a workflow are completed, the workflow is marked as complete and moves out of the Active Workflows view.' },
-        { q: 'Do workflow tasks appear in the Task Board?', a: 'Yes. Every task created by a workflow appears in the Tasks tab alongside your other open tasks. Workflow tasks are labelled with the workflow name so you can tell them apart. Complete them from the Task Board as normal — the workflow progress updates automatically each time a step is ticked off.' },
-        { q: 'Can I create my own workflow templates?', a: 'Custom templates are planned for a future release. For now, all 15 templates are built in and pre-loaded. If you need a template added, use the Feedback button to request it.' },
-        { q: 'Do workflows show where they came from?', a: 'Yes. Every active workflow displays a source record link so you can always trace it back to its origin. For example, a Facility Hire Agreement workflow will show the booking it was started from, and a maintenance workflow started from an asset service reminder will link back to that asset. Click the link on the workflow card to jump straight to the source record.' },
-        { q: 'How do workflow tasks appear on the Task Board?', a: 'Workflow tasks use a parent and subtask structure to keep the Task Board tidy. Each workflow appears as a single parent task card on the board — the workflow name and overall progress are shown on that card. The individual steps inside the workflow appear as subtasks underneath, expandable from the card. This means a 10-step workflow takes up one card on the board instead of ten, so the board stays readable no matter how many workflows are running.' },
-        { q: 'Can I edit or reorder steps in a workflow template?', a: [
-          { text: 'Yes. Go to the Workflows tab and click "Manage Templates".' },
+        { q: 'How do I mark an item as done?', a: 'Open the Compliance tab, find the Emergency Preparedness item, and click the "✓ Done" button on the right. If the item has a renewal schedule (e.g. every 3 or 6 months), MaraeHub will automatically set the next due date forward by that interval. The item moves from Overdue or Due Soon to Compliant immediately.' },
+        { q: 'Does it create a task automatically?', a: 'Yes. If an Emergency Preparedness item is overdue, MaraeHub automatically creates a High-priority task in the Task Board — prefixed with "OVERDUE:" — so it appears alongside all other open work for your committee. When a trustee marks the compliance item as done from the Compliance tab, or completes the task from the Task Board, both records are updated automatically.' },
+        { q: 'How often should each item be reviewed?', a: [
+          { header: 'Renewal periods vary by item:', items: [
+            'The Civil Defence Emergency Plan and community welfare register should be reviewed annually.',
+            'Emergency contact lists, water supply, food kits, and first aid kits every 6 months.',
+            'The generator should be tested quarterly.',
+          ]},
+          { text: 'MaraeHub tracks these cycles for you — once you record a completion date, the next due date is set automatically.' },
+        ] },
+        { q: 'Where does it show in the Board View?', a: 'Any overdue or unscheduled Emergency Preparedness item appears as a red alert at the very top of the Board View — above all other alerts — because it is treated as the highest-risk category. The Smart Insights panel also surfaces a specific message about Civil Defence readiness so it is visible at every board meeting.' },
+      ]
+    },
+    {
+      category: 'Finance Automation',
+      icon: '⚡',
+      items: [
+        { q: 'Does Finance update automatically when a booking is approved?', a: 'Yes. When a trustee approves a booking, MaraeHub automatically creates a placeholder income record in the Finance tab under the Hire Income category. The amount is set to $0 because the actual hire fee may not be confirmed yet — a trustee just needs to open that record and enter the correct amount once it is agreed. This means the booking is always reflected in Finance straight away, without anyone needing to remember to add it manually.' },
+        { q: 'Does Finance update automatically when a grant is approved?', a: 'Yes. When a grant is marked as Approved in the Grants tab, MaraeHub automatically creates a confirmed income record in Finance for the full grant amount. Because the amount is already recorded in the grant, no manual entry is needed — the income record is created with the correct figure, funder name, and category automatically.' },
+        { q: 'What happens to the Finance record if a booking is declined or cancelled?', a: 'If a booking that already has a placeholder income record is later declined or cancelled, MaraeHub automatically removes that placeholder from Finance. You do not need to go in and delete it manually. This keeps your income records accurate and prevents incomplete placeholder entries from appearing in your financial reports.' },
+        { q: 'Why does the booking income record show $0?', a: 'The $0 placeholder is created at the point of approval so the booking is immediately reflected in Finance — but the exact hire fee is often not confirmed until after the committee has spoken to the hirer. Open the income record in the Finance tab, enter the agreed hire fee, and save. The FY Summary totals will update straight away.' },
+        { q: 'How do I send an invoice for a hire fee?', a: [
+          { text: 'Go to the Bookings tab and find an approved booking, then click "🧾 Invoice".' },
+          { text: 'Enter or confirm the hire fee — this updates the same income record already created in Finance, so nothing is duplicated.' },
           { header: 'From there you can:', items: [
-            'Open any template and reorder its steps by dragging them up or down',
-            'Edit the name or description of any step',
-            'Add a new step at any point in the sequence',
-            'Delete a step you do not need',
+            'Print or save the invoice as a PDF to send yourself',
+            'Email it directly to the customer',
+            'Mark it as Sent if you deliver it another way',
+            'Mark it as Paid once payment is received',
           ]},
-          { text: 'Changes to a template apply to future workflows started from that template — they do not affect workflows already in progress.' },
+          { text: 'Add your bank account or payment instructions once in Settings → Payment Details, and they will appear on every invoice automatically.' },
         ] },
-      ]
-    },
-    {
-      category: 'Smart Suggestions',
-      icon: '💡',
-      items: [
-        { q: 'What are Smart Suggestions?', a: 'Smart Suggestions are prompts that appear automatically when MaraeHub detects that a workflow might be relevant to something happening on your marae. Instead of having to remember to start a workflow yourself, the system notices a trigger — like a service reminder becoming due, a booking being approved, or a trustee flagging a booking as commercial or external hire — and offers to start the matching workflow for you. The Facility Hire Agreement workflow is one example that can be triggered this way.' },
-        { q: 'When does a service reminder suggest a workflow?', a: 'When an asset service reminder becomes due, MaraeHub checks whether a matching workflow template exists. If one is found — for example, a Heat Pump Service reminder triggers the Heat Pump Service template, or a Building Maintenance and Repair reminder triggers the matching maintenance workflow — a suggestion will appear prompting you to start that workflow. You can accept the suggestion to launch the workflow immediately, or dismiss it if you want to handle it another way.' },
-        { q: 'How does the Facility Hire Agreement workflow get triggered?', a: 'When a trustee approves a booking, they are given the option to flag it as a commercial hire or external hire. If that flag is set, MaraeHub automatically suggests starting the Facility Hire Agreement workflow for that booking. The workflow is pre-linked to the booking so all the relevant details are carried through. This ensures the right paperwork and sign-off process is followed every time the marae is hired out for external or commercial purposes.' },
-      ]
-    },
-    {
-      category: 'Automatic Workflows',
-      icon: '🤖',
-      items: [
-        { q: 'What are Automatic Workflows?', a: 'Automatic Workflows are workflows that MaraeHub starts on its own — without any trustee needing to click anything. When an asset service reminder falls within 14 days of its due date and no active workflow already exists for that reminder, the system checks whether a matching workflow template exists and starts it automatically. The workflow and all of its tasks appear in the Workflows tab and Task Board straight away.' },
-        { q: 'How does the system know which workflow to start?', a: 'MaraeHub matches the name of the service reminder to the most relevant workflow template. For example, a reminder called "Heat Pump Service" automatically triggers the Heat Pump Service workflow template. The match is based on the reminder type — so the more specific and consistent your reminder names are, the better the system can find the right template. If no close match exists, no workflow is started and the reminder continues to show as normal.' },
-        { q: 'Can I turn off Automatic Workflows for a specific reminder?', a: [
-          { text: 'Yes. If you want to manage a particular service reminder manually — starting workflows yourself rather than having them start automatically:' },
-          { items: [
-            'Go to the Assets tab, find the asset, and open its reminders',
-            'Click "Edit" on the reminder you want to change, and toggle off "Auto-start workflow"',
-          ]},
-          { text: 'With this turned off, the reminder will still appear and send early warnings as usual, but no workflow will be started automatically when it falls due.' },
-        ] },
-        { q: 'Where will I see an automatic workflow once it has started?', a: 'An automatic workflow appears in exactly the same place as one you start manually. You will see it in the Active Workflows section of the Workflows tab, with a progress bar and the first incomplete task highlighted. All of its tasks also appear on the Task Board, labelled with the workflow name. A note on the workflow card shows it was started automatically from the service reminder, so you can always trace it back to its origin.' },
-      ]
-    },
-    {
-      category: 'Your Top 3 Priorities',
-      icon: '🎯',
-      items: [
-        { q: 'What is the "This Week" card?', a: 'A rule-based summary at the top of your Dashboard showing the 3 most urgent items across compliance, risks, bookings, tasks, grants and assets.' },
-        { q: 'How are priorities ranked?', a: 'Overdue items appear first (red), followed by items due within 7 days (amber). The most urgent item is always ranked number 1.' },
-        { q: 'What does "What\'s going well" mean?', a: 'Below the urgent items MaraeHub shows one positive update — something your marae is doing well right now.' },
-        { q: 'Can I dismiss or change the priorities?', a: 'No — they update automatically based on your real data. Resolve the underlying issue and it will clear from the list.' },
-      ]
-    },
-    {
-      category: 'Board View Insights',
-      icon: '📈',
-      items: [
-        { q: 'What is the Workflow Activity panel in Board View?', a: 'Board View includes a Workflow Activity section that gives trustees a quick read on how workflows are tracking across the marae. It shows the number of currently active workflows and how many workflows were completed this month — useful for seeing whether your committee is keeping on top of recurring processes without having to open the Workflows tab.' },
-        { q: 'What alerts appear in the Workflow Activity section?', a: [
-          { text: 'Two types of alerts appear automatically.' },
-          { items: [
-            'If a workflow has had no progress in 14 or more days — meaning none of its tasks have been completed — Board View will flag it as stalled so a trustee can follow up.',
-            'If a booking income record has been created automatically but the hire fee has not yet been entered (it still shows as $0), an alert will appear reminding trustees to open that Finance record and enter the agreed amount.',
-          ]},
-          { text: 'Both alerts clear automatically once the issue is resolved.' },
-        ] },
+        { q: 'Can I email an invoice directly to a customer?', a: 'Yes, using the "✉️ Email Invoice" button — but email delivery is still being finalised on our end, so it may not yet reach every customer reliably. Printing or saving the invoice as a PDF and sending it yourself works reliably right now, and is the safer option until email delivery is confirmed.' },
+        { q: 'Does marking an invoice as Paid update my Finance totals?', a: 'Marking an invoice as Paid updates the same income record Finance already created for that booking — it does not create a separate entry. Your FY Summary and Balance Sheet totals count the income amount as soon as it is entered, regardless of invoice status, so Paid simply confirms the money has actually come in rather than changing any total.' },
       ]
     },
     {
@@ -640,29 +324,6 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Finance Automation',
-      icon: '⚡',
-      items: [
-        { q: 'Does Finance update automatically when a booking is approved?', a: 'Yes. When a trustee approves a booking, MaraeHub automatically creates a placeholder income record in the Finance tab under the Hire Income category. The amount is set to $0 because the actual hire fee may not be confirmed yet — a trustee just needs to open that record and enter the correct amount once it is agreed. This means the booking is always reflected in Finance straight away, without anyone needing to remember to add it manually.' },
-        { q: 'Does Finance update automatically when a grant is approved?', a: 'Yes. When a grant is marked as Approved in the Grants tab, MaraeHub automatically creates a confirmed income record in Finance for the full grant amount. Because the amount is already recorded in the grant, no manual entry is needed — the income record is created with the correct figure, funder name, and category automatically.' },
-        { q: 'What happens to the Finance record if a booking is declined or cancelled?', a: 'If a booking that already has a placeholder income record is later declined or cancelled, MaraeHub automatically removes that placeholder from Finance. You do not need to go in and delete it manually. This keeps your income records accurate and prevents incomplete placeholder entries from appearing in your financial reports.' },
-        { q: 'Why does the booking income record show $0?', a: 'The $0 placeholder is created at the point of approval so the booking is immediately reflected in Finance — but the exact hire fee is often not confirmed until after the committee has spoken to the hirer. Open the income record in the Finance tab, enter the agreed hire fee, and save. The FY Summary totals will update straight away.' },
-        { q: 'How do I send an invoice for a hire fee?', a: [
-          { text: 'Go to the Bookings tab and find an approved booking, then click "🧾 Invoice".' },
-          { text: 'Enter or confirm the hire fee — this updates the same income record already created in Finance, so nothing is duplicated.' },
-          { header: 'From there you can:', items: [
-            'Print or save the invoice as a PDF to send yourself',
-            'Email it directly to the customer',
-            'Mark it as Sent if you deliver it another way',
-            'Mark it as Paid once payment is received',
-          ]},
-          { text: 'Add your bank account or payment instructions once in Settings → Payment Details, and they will appear on every invoice automatically.' },
-        ] },
-        { q: 'Can I email an invoice directly to a customer?', a: 'Yes, using the "✉️ Email Invoice" button — but email delivery is still being finalised on our end, so it may not yet reach every customer reliably. Printing or saving the invoice as a PDF and sending it yourself works reliably right now, and is the safer option until email delivery is confirmed.' },
-        { q: 'Does marking an invoice as Paid update my Finance totals?', a: 'Marking an invoice as Paid updates the same income record Finance already created for that booking — it does not create a separate entry. Your FY Summary and Balance Sheet totals count the income amount as soon as it is entered, regardless of invoice status, so Paid simply confirms the money has actually come in rather than changing any total.' },
-      ]
-    },
-    {
       category: 'Financial Reports',
       icon: '📊',
       items: [
@@ -673,36 +334,158 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Emergency Preparedness',
-      icon: '🆘',
+      category: 'Finding Your Way Around',
+      icon: '🗺️',
       items: [
-        { q: 'Why does Emergency Preparedness have its own section?', a: 'Marae are recognised welfare centres under the New Zealand Civil Defence and Emergency Management Act 2002. Your marae may be called upon to house whānau during a flood, earthquake, or storm — often with little warning. Emergency Preparedness is treated separately because it carries the highest community risk if neglected. The tracker highlights these items in deep red to ensure they are never overlooked.' },
-        { q: 'What items are automatically set up for me?', a: [
-          { header: 'MaraeHub pre-loads ten standard emergency preparedness items when you first open the Compliance tab:', items: [
-            'Civil Defence Emergency Plan',
-            'Emergency contact list',
-            'Generator check',
-            'Water supply inspection',
-            'Food and supply kit',
-            'Community welfare register',
-            'First aid kit',
-            'Evacuation routes',
-            'Emergency communications plan',
-            'A structural storm-readiness check',
+        { q: 'How is the navigation organised?', a: [
+          { text: 'The navigation is grouped into five sections.' },
+          { items: [
+            'The Dashboard is your starting point — a summary of recent bookings, active projects, and community feedback.',
+            'Governance covers the Board View, Minutes, and Goals.',
+            'Operations covers Bookings, Calendar, Notices, Contacts, and Workflows.',
+            'Assets & Compliance covers the Assets register and Compliance Tracker.',
+            'Funding & Projects covers Grants, Projects, and the Task Board.',
+            'Admin covers Documents and Settings.',
           ]},
-          { text: 'These reflect standard Civil Defence guidance for marae welfare centres.' },
         ] },
-        { q: 'How do I mark an item as done?', a: 'Open the Compliance tab, find the Emergency Preparedness item, and click the "✓ Done" button on the right. If the item has a renewal schedule (e.g. every 3 or 6 months), MaraeHub will automatically set the next due date forward by that interval. The item moves from Overdue or Due Soon to Compliant immediately.' },
-        { q: 'Does it create a task automatically?', a: 'Yes. If an Emergency Preparedness item is overdue, MaraeHub automatically creates a High-priority task in the Task Board — prefixed with "OVERDUE:" — so it appears alongside all other open work for your committee. When a trustee marks the compliance item as done from the Compliance tab, or completes the task from the Task Board, both records are updated automatically.' },
-        { q: 'How often should each item be reviewed?', a: [
-          { header: 'Renewal periods vary by item:', items: [
-            'The Civil Defence Emergency Plan and community welfare register should be reviewed annually.',
-            'Emergency contact lists, water supply, food kits, and first aid kits every 6 months.',
-            'The generator should be tested quarterly.',
+        { q: 'What is the Board View?', a: [
+          { text: 'Board View is a single-screen summary designed for trustee meetings.' },
+          { header: 'It shows:', items: [
+            'Red and amber alerts for anything urgent',
+            'Smart Insights with recommended actions',
+            'KPI tiles for bookings and ratings',
+            'Strategic goals progress',
+            'Compliance status',
+            'Upcoming bookings',
+            'Active projects',
+            'Open meeting actions',
+            'The grants pipeline',
+            'Asset service reminders',
+            'All open tasks grouped by source',
           ]},
-          { text: 'MaraeHub tracks these cycles for you — once you record a completion date, the next due date is set automatically.' },
+          { text: 'You can print it directly from the browser using the Print button.' },
         ] },
-        { q: 'Where does it show in the Board View?', a: 'Any overdue or unscheduled Emergency Preparedness item appears as a red alert at the very top of the Board View — above all other alerts — because it is treated as the highest-risk category. The Smart Insights panel also surfaces a specific message about Civil Defence readiness so it is visible at every board meeting.' },
+        { q: 'What is the Dashboard?', a: [
+          { text: 'The Dashboard is your personal landing page when you log in.' },
+          { header: 'It shows:', items: [
+            'A quick count of pending bookings, active projects, and assets',
+            'A list of recent booking requests you can click through to',
+            'A progress view of active projects',
+            'A summary of community feedback ratings',
+          ]},
+          { text: 'Click any stat tile to jump straight to that module.' },
+        ] },
+        { q: 'What does the Goals tab do?', a: 'Goals & Reporting lets your committee set strategic goals and track them automatically using data from other modules. Link a goal to a project, compliance item, or grant and the progress percentage updates without any manual entry. Goals appear in the Board View with a traffic light — green for on track, orange for at risk, red for behind schedule.' },
+        { q: 'What is the Notices tab?', a: 'The Noticeboard is where trustees post announcements for the whole community. Community members can read notices when they log in but cannot edit them. Categories include General, Urgent, Event, and Maintenance. Use Urgent for anything requiring immediate action or awareness.' },
+        { q: 'Can community members see all of this?', a: 'No. Community members see a simplified portal with three sections: Book the Marae (3-step booking wizard), My Bookings (their booking history and feedback), and the Calendar and Noticeboard. All governance modules — Compliance, Goals, Board View, Minutes, Tasks, Assets, Grants, Projects, Contacts, Documents — are trustee-only.' },
+      ]
+    },
+    {
+      category: 'Getting Started',
+      icon: '🚀',
+      items: [
+        { q: 'What is the Marae Setup wizard?', a: 'When you first log in, MaraeHub guides you through a 5-step setup to configure your marae — name, location, iwi, hapū, and key details. This helps personalise your dashboard from day one.' },
+        { q: 'What are the 5 setup steps?', a: [
+          { items: [
+            'Your Marae — name, location, iwi, hapū.',
+            'Your Trustees — add trustee names and roles.',
+            'Your Facilities — list your buildings and spaces.',
+            'Your Contacts — key contacts for your marae.',
+            'Review and confirm.',
+          ]},
+        ] },
+        { q: 'Do I have to complete setup before using MaraeHub?', a: 'No — you can skip setup and explore on your own. You can return to complete it any time from Settings.' },
+        { q: 'Can I change my marae details after setup?', a: 'Yes — go to Settings at any time to update your marae name, location, iwi, hapū, and other details.' },
+        { q: 'What if I made a mistake during setup?', a: 'Go to Settings and update any field. Nothing is locked after setup is complete.' },
+        { q: 'What should I do after setup is complete?', a: [
+          { text: "Here's your recommended first week on MaraeHub." },
+          { header: 'Day 1 — Get oriented', items: [
+            'Go to Board View — this is your marae command centre.',
+            'Check anything flagged — bookings, compliance, assets.',
+            'Familiarise yourself with the left navigation menu.',
+          ]},
+          { header: 'Day 2 — Set up your core records', items: [
+            'Go to Compliance — add your key compliance items (insurance, licenses, certificates).',
+            'Go to Assets — add your main marae assets (buildings, vehicles, equipment).',
+            'Go to Contacts — add your key contacts.',
+          ]},
+          { header: 'Day 3 — Run your first process', items: [
+            'Go to Bookings — add your first booking or approve a pending one.',
+            'Go to Finance — check the income record was created automatically.',
+            'Go to Workflows — start a workflow if needed.',
+          ]},
+          { header: 'Invite your trustees', text: 'Go to Settings → Trustees and invite your other trustees to log in. The more trustees using MaraeHub, the more useful it becomes.' },
+        ] },
+      ]
+    },
+    {
+      category: 'Goals & Reporting',
+      icon: '🎯',
+      items: [
+        { q: 'What does Goals & Reporting do?', a: 'Goals & Reporting helps your committee track strategic goals and see progress automatically using data already stored in MaraeHub. It is not a task list — it is a governance and reporting tool that gives trustees a clear view of how the marae is tracking against its plans. You can set goals, link them to existing projects, compliance items and grants, and watch progress update automatically.' },
+        { q: 'What are the Goal Categories?', a: [
+          { items: [
+            'Governance — committee structure, elections, handover.',
+            'Compliance — WOFs, insurance, H&S, Civil Defence.',
+            'Projects — capital works, renovation, infrastructure.',
+            'Funding — grants, applications, income targets.',
+            'Community — events, engagement, whānau.',
+            'Assets — equipment, maintenance, vehicles.',
+          ]},
+          { text: 'Finance and Whakapapa categories are planned for a future release.' },
+        ] },
+        { q: 'How do I add a goal?', a: [
+          { text: 'Go to the Goals tab and click "+ Add Goal".' },
+          { items: [
+            'Enter the goal name, description, and category',
+            'Set a target date and assign a responsible trustee',
+            'Optionally link the goal to related projects, compliance items, or grants — you can select multiple from each category using the chip selector',
+          ]},
+          { text: 'Progress will update automatically from linked data.' },
+          { text: 'Set an initial progress percentage and status, then save.' },
+        ] },
+        { q: 'How do I use the Board Report?', a: 'Click the "📊 Board Report" toggle button at the top of the Goals tab to switch to the board report view. This shows all strategic goals in a summary table with a traffic light status indicator, progress percentage, category, status, target date, and responsible trustee — ready for reading out at a board meeting. Click "🎯 Manage Goals" to return to the goals management view.' },
+        { q: 'What do the status options mean?', a: [
+          { items: [
+            'Not Started — the goal is in the planning phase and work has not begun.',
+            'In Progress — the committee is actively working toward this goal.',
+            'At Risk — progress has fallen behind schedule or faces an obstacle.',
+            'Completed — the goal has been achieved.',
+          ]},
+        ] },
+        { q: 'What do the traffic light colours mean in the Board Report?', a: [
+          { items: [
+            'Green (On Track) — the goal is progressing well and the target date is not at risk.',
+            'Orange (At Risk) — the goal is flagged as at risk, or the target date is within 14 days.',
+            'Red (Behind Schedule) — the target date has passed and the goal is not yet complete.',
+            'Grey means the goal has not started and the target date is still in the future.',
+          ]},
+        ] },
+        { q: 'Why does progress update automatically?', a: [
+          { items: [
+            "When you link a goal to a project, the project's progress percentage is used directly.",
+            'When linked to a compliance item, the status (Compliant, Due Soon, Overdue) is converted to a progress score.',
+            "When linked to a grant, the grant's stage (Researching through to Approved) is converted to a percentage.",
+          ]},
+          { text: 'This means trustees do not need to manually update every goal — MaraeHub does it for them.' },
+        ] },
+        { q: 'Who can see Goals & Reporting?', a: 'Trustees only. The community role cannot access this module. Goals & Reporting exists to keep the committee accountable and give every trustee visibility of progress — without anyone needing to manually chase updates.' },
+      ]
+    },
+    {
+      category: 'Grants',
+      icon: '💰',
+      items: [
+        { q: 'How do I track a grant?', a: 'Go to the Grants tab and click "+ Add Grant". Enter the grant name, funder, amount, category, and deadline. As you progress, update the status to reflect where you are in the process. The KPI tiles at the top show your overall success rate, total approved funding, and any urgent upcoming deadlines.' },
+        { q: 'What do the status options mean?', a: [
+          { items: [
+            'Researching — you are looking into whether to apply.',
+            'In-Progress — you are actively writing the application.',
+            'Submitted — the application has been sent and you are waiting for a decision.',
+            'Approved or Declined — the outcome.',
+            'Reporting — funding has been received and you are completing required progress reports.',
+          ]},
+        ] },
       ]
     },
     {
@@ -784,50 +567,241 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Finding Your Way Around',
-      icon: '🗺️',
+      category: 'Incident Register',
+      icon: '⚠️',
       items: [
-        { q: 'How is the navigation organised?', a: [
-          { text: 'The navigation is grouped into five sections.' },
+        { q: 'What is the Incident Register?', a: 'The Incident Register records accidents, near misses, injuries, property damage, and complaints that occur at your marae. It is a legal requirement under the Health and Safety at Work Act 2015 for marae operating as PCBUs.' },
+        { q: 'How do I record an incident?', a: [
           { items: [
-            'The Dashboard is your starting point — a summary of recent bookings, active projects, and community feedback.',
-            'Governance covers the Board View, Minutes, and Goals.',
-            'Operations covers Bookings, Calendar, Notices, Contacts, and Workflows.',
-            'Assets & Compliance covers the Assets register and Compliance Tracker.',
-            'Funding & Projects covers Grants, Projects, and the Task Board.',
-            'Admin covers Documents and Settings.',
+            'Go to Incident Register in the left navigation.',
+            'Click Add Incident.',
+            'Record the incident type, date, location, description, persons involved, and severity.',
+            'Record what immediate action was taken.',
+            'Save — the incident is logged with a timestamp.',
           ]},
         ] },
-        { q: 'What is the Board View?', a: [
-          { text: 'Board View is a single-screen summary designed for trustee meetings.' },
-          { header: 'It shows:', items: [
-            'Red and amber alerts for anything urgent',
-            'Smart Insights with recommended actions',
-            'KPI tiles for bookings and ratings',
-            'Strategic goals progress',
-            'Compliance status',
-            'Upcoming bookings',
-            'Active projects',
-            'Open meeting actions',
-            'The grants pipeline',
-            'Asset service reminders',
-            'All open tasks grouped by source',
-          ]},
-          { text: 'You can print it directly from the browser using the Print button.' },
+        { q: 'Who can see the Incident Register?', a: 'Trustees only. Community members cannot access the Incident Register.' },
+        { q: 'What severity levels are there?', a: [
+          { items: ['Near Miss', 'Minor', 'Moderate', 'Serious', 'Critical'] },
+          { text: 'Choose the level that best describes the outcome of the incident.' },
         ] },
-        { q: 'What is the Dashboard?', a: [
-          { text: 'The Dashboard is your personal landing page when you log in.' },
-          { header: 'It shows:', items: [
-            'A quick count of pending bookings, active projects, and assets',
-            'A list of recent booking requests you can click through to',
-            'A progress view of active projects',
-            'A summary of community feedback ratings',
-          ]},
-          { text: 'Click any stat tile to jump straight to that module.' },
+        { q: 'Do we have to record every incident?', a: 'Yes — under HSWA 2015 marae must keep records of all workplace incidents. MaraeHub makes this simple and keeps your records safe and accessible for any audit or review.' },
+      ]
+    },
+    {
+      category: 'Interest Register',
+      icon: '⚖️',
+      items: [
+        { q: 'What is the Interest Register?', a: [
+          { text: 'The Interest Register is a formal record of every conflict of interest declared by trustees.' },
+          { text: 'A conflict of interest happens when a trustee has a personal, financial, or family connection to a decision or contract the marae is considering — which means they may not be able to vote or advise on that matter impartially.' },
+          { text: 'Recording these declarations is a requirement of good governance practice and expected under New Zealand law, including the principles that apply to charitable trusts and incorporated societies.' },
+          { text: 'It shows that your committee is operating transparently and in the best interests of the marae, not individual trustees.' },
         ] },
-        { q: 'What does the Goals tab do?', a: 'Goals & Reporting lets your committee set strategic goals and track them automatically using data from other modules. Link a goal to a project, compliance item, or grant and the progress percentage updates without any manual entry. Goals appear in the Board View with a traffic light — green for on track, orange for at risk, red for behind schedule.' },
-        { q: 'What is the Notices tab?', a: 'The Noticeboard is where trustees post announcements for the whole community. Community members can read notices when they log in but cannot edit them. Categories include General, Urgent, Event, and Maintenance. Use Urgent for anything requiring immediate action or awareness.' },
-        { q: 'Can community members see all of this?', a: 'No. Community members see a simplified portal with three sections: Book the Marae (3-step booking wizard), My Bookings (their booking history and feedback), and the Calendar and Noticeboard. All governance modules — Compliance, Goals, Board View, Minutes, Tasks, Assets, Grants, Projects, Contacts, Documents — are trustee-only.' },
+        { q: 'When should a trustee declare an interest?', a: [
+          { text: 'Declare an interest whenever you have a personal stake in something the committee is deciding.' },
+          { header: 'Common examples:', items: [
+            'A contractor being considered for marae work is your family member, friend, or your own business.',
+            'A grant application would benefit an organisation you are involved with.',
+            'A trustee is being paid for services and the committee is setting or reviewing that arrangement.',
+            'A decision affects land or property you have a personal interest in.',
+          ]},
+          { text: 'The rule of thumb is: if you would benefit — or someone close to you would benefit — from the outcome of a committee decision, declare it.' },
+          { text: 'It is always better to declare and step back than to stay silent and have it questioned later.' },
+        ] },
+        { q: 'How do I add a declaration to the Interest Register?', a: [
+          { text: 'Go to the Minutes tab and open the Interest Register section, then click "+ Add Declaration".' },
+          { header: 'Fill in:', items: [
+            "The trustee's name",
+            'The nature of the interest (what the conflict is and how it relates to the trustee)',
+            'The date it was declared',
+            'The meeting or decision it relates to',
+          ]},
+          { text: 'Save the declaration — it will appear in the register straight away with an Active status.' },
+          { text: 'Once the matter has been fully resolved or the decision is complete, click "Resolve" to close it. Resolved declarations stay on the register permanently as a record — they do not disappear.' },
+        ] },
+        { q: 'Why does declaring an interest matter?', a: [
+          { text: 'Declaring an interest protects individual trustees personally.' },
+          { text: 'If a decision is ever challenged — by a beneficiary, an auditor, or the Māori Land Court — a properly kept Interest Register shows that your committee followed the right process.' },
+          { text: 'It is exactly the kind of record the Māori Land Court looks for when assessing whether a trust has been managed properly.' },
+          { text: 'It also protects the marae itself: decisions made without managing conflicts of interest can be overturned or create serious legal exposure.' },
+          { text: 'Good governance is not just about making good decisions — it is about being able to show that you made them the right way.' },
+        ] },
+        { q: 'What should a trustee do after declaring an interest?', a: [
+          { text: 'Once a declaration is made, the trustee with the conflict should step back from discussing and voting on that specific matter.' },
+          { items: [
+            'They can leave the room during that part of the meeting if needed.',
+            'The committee then makes the decision without their involvement.',
+            'Record in the meeting minutes that the trustee declared an interest and did not participate in the vote.',
+          ]},
+          { text: 'This protects everyone — the trustee, the other trustees, and the marae.' },
+        ] },
+      ]
+    },
+    {
+      category: 'Marae Health Score',
+      icon: '🌿',
+      items: [
+        { q: 'What is the Marae Health Score?', a: 'An automatic score out of 100 measuring your marae\'s governance and operational health across compliance, risk, tasks, finance and goals.' },
+        { q: 'How is it calculated?', a: [
+          { header: 'Five categories contribute:', items: [
+            'Compliance (25pts)',
+            'Risk (20pts)',
+            'Tasks (20pts)',
+            'Finance (20pts)',
+            'Goals (15pts)',
+          ]},
+          { text: 'Each category only scores if enough data exists — you are never penalised for incomplete setup.' },
+          { text: 'The score is proportionally scaled to 100 based on the categories that qualify.' },
+        ] },
+        { q: 'What do the colours mean?', a: [
+          { items: [
+            'Green (80+) = Strong',
+            'Amber (60–79) = Developing',
+            'Red (below 60) = Needs Attention',
+          ]},
+        ] },
+        { q: 'How do I improve my score?', a: [
+          { items: [
+            'Complete your compliance items',
+            'Resolve high-rated risks',
+            'Keep tasks on schedule',
+            'Maintain a financial surplus',
+            'Set strategic goals',
+          ]},
+        ] },
+        { q: 'How often does it update?', a: 'Automatically every time you load the Dashboard.' },
+      ]
+    },
+    {
+      category: 'Minutes',
+      icon: '📝',
+      items: [
+        { q: 'How do I record a meeting?', a: [
+          { text: 'Go to the Minutes tab and click "+ New Meeting".' },
+          { header: 'Fill in:', items: [
+            'Meeting title',
+            'Date',
+            'Type (Trustee Meeting, AGM, Special Meeting, etc)',
+            'Chairperson',
+            'Secretary',
+            'Attendees',
+          ]},
+          { text: 'Click "Save Meeting" to create the record. You can then open the meeting to add resolutions and action items.' },
+        ] },
+        { q: 'How do I add a resolution?', a: [
+          { text: 'Open a meeting from the Minutes tab and click the "Resolutions" section, then "+ Add Resolution".' },
+          { header: 'Enter:', items: [
+            'The resolution number',
+            'A description of what was resolved',
+            'The date it was passed',
+          ]},
+          { header: 'As progress is made, update the status:', items: [
+            'Open',
+            'In Progress',
+            'Completed',
+            'Cancelled',
+          ]},
+        ] },
+        { q: 'How do I assign an action?', a: [
+          { text: 'Open a meeting and go to the "Actions" section, then click "+ Add Action".' },
+          { items: [
+            'Describe the action required',
+            'Assign it to a trustee or community member using the dropdown',
+            'Set a due date',
+          ]},
+          { text: 'Actions show as Open until marked complete — click "Edit" on any action to update its status.' },
+        ] },
+      ]
+    },
+    {
+      category: 'Posting to Facebook',
+      icon: '📘',
+      items: [
+        { q: 'How do I share an event to Facebook?', a: 'Open Calendar, find your event, and click "📋 Copy to Facebook". This copies pre-formatted text to your clipboard. Open Facebook, create a new post, and paste. Done.' },
+        { q: 'How do I share a notice to Facebook?', a: 'Open Notices, find your notice, and click "📋 Copy to Facebook". Paste into a new Facebook post.' },
+        { q: 'Can I edit the text before posting?', a: 'Yes — once pasted into Facebook you can edit it before publishing.' },
+      ]
+    },
+    {
+      category: 'Privacy & Data',
+      icon: '🔒',
+      items: [
+        { q: 'Where can I find information about how our marae data is protected?', a: 'Go to Settings and open the "Privacy & Data" section. This page gives a full plain-language explanation of how MaraeHub handles your marae\'s information — covering data ownership, your rights under the Privacy Act 2020, and what happens to your data if you ever leave the platform.' },
+        { q: 'Who owns our marae\'s data?', a: 'Your marae owns its data. MaraeHub stores it securely on your behalf — but it belongs to you, not to us. The Privacy & Data page in Settings explains exactly what information is stored, how it is protected, and what rights your committee has over it.' },
+        { q: 'What does the Privacy Act 2020 mean for our marae?', a: 'New Zealand\'s Privacy Act 2020 governs how personal information must be collected, stored, and used. The Privacy & Data page in Settings explains how MaraeHub complies with the Act and what this means in practice for trustees and community members whose information is held on the platform.' },
+        { q: 'What happens to our data if we leave MaraeHub?', a: 'If your marae ever decides to leave MaraeHub, your data does not disappear or get retained without your consent. The Privacy & Data page in Settings explains the full process — including how to request an export of your records and what happens to stored data after an account is closed.' },
+      ]
+    },
+    {
+      category: 'Projects',
+      icon: '📋',
+      items: [
+        { q: 'How do I add a new project?', a: 'Go to the Projects tab and click "+ Add Project". Fill in the project name, status, lead person, and due date. You can update the progress percentage as work gets done.' },
+        { q: 'How do I add subtasks to a project?', a: 'Click on any project to open it, then click "+ Add Subtask". You can set a subtask name, assignee, due date, and priority. Tick subtasks off as they are completed — the project progress updates automatically.' },
+        { q: 'How do I switch to board view?', a: 'In the Projects tab, look for the view toggle near the top right of the page. Click "Board" to switch to the kanban-style column view which organises projects by status: Planning, Active, Review, and Completed. Click "List" to return to the list view.' },
+        { q: 'How do I move a project between columns?', a: 'In Board view, each project card has ← and → arrow buttons. Click → to advance the project to the next status column (e.g. Planning → Active → Review → Completed), or ← to move it back. You can also edit the project and change the status directly from the form.' },
+      ]
+    },
+    {
+      category: 'Recording a Meeting',
+      icon: '📝',
+      items: [
+        { q: 'How does the meeting page work?', a: 'When you open a meeting in the Minutes tab, everything is on one page — meeting details, minutes, resolutions, and actions. There is no tab switching or separate screens to navigate. Scroll down to move between sections and add to any of them as the meeting progresses. Once you are done, all the information is saved together under that meeting record.' },
+        { q: 'Do actions and resolutions connect to other modules automatically?', a: [
+          { text: 'Yes — both connect automatically.' },
+          { header: 'Actions', text: 'Any action item you add to a meeting appears straight away on the Task Board, assigned to the person you nominated and showing the due date you set. You do not need to create a separate task.' },
+          { header: 'Resolutions', text: 'Any resolution you record in a meeting appears straight away in the Decision Register, where it can be searched and filtered across all meetings.' },
+          { text: 'Neither connection requires any extra steps — it happens as soon as you save the action or resolution.' },
+        ] },
+      ]
+    },
+    {
+      category: 'Risk Register',
+      icon: '🛡️',
+      items: [
+        { q: 'What is the Risk Register?', a: 'The Risk Register is a formal record of every risk your marae has identified — from health and safety hazards to financial exposure, governance gaps, environmental risks, and reputational concerns. It gives trustees a single place to track what the risks are, who is responsible for managing them, and what controls are in place.' },
+        { q: 'How do I add a risk?', a: [
+          { text: 'Go to Risk Register in the main navigation and click "+ Add Risk".' },
+          { items: [
+            'Enter a description of the risk',
+            'Select a category',
+            'Set the likelihood and consequence using the dropdowns, and the risk rating will be calculated for you automatically',
+            'Add the controls currently in place',
+            'Assign an owner (the trustee responsible)',
+            'Set a review date',
+            'Save',
+          ]},
+        ] },
+        { q: 'How is the risk rating calculated?', a: [
+          { text: 'MaraeHub calculates the rating automatically from the likelihood and consequence you select — you do not need to work it out yourself.' },
+          { items: [
+            'If either likelihood or consequence is High, the rating is High.',
+            'If both are Low, the rating is Low.',
+            'Any other combination gives a Medium rating.',
+          ]},
+          { text: 'The rating is shown as a colour-coded pill: red for High, amber for Medium, green for Low.' },
+        ] },
+        { q: 'What appears on Board View?', a: 'Any High-rated risk with a status of Open or Being Managed will surface automatically in Board View so trustees see it at every meeting without having to open the Risk Register tab. A red alert will also appear in the alert strip at the top of Board View if high-rated open risks exist.' },
+        { q: 'Who can see the Risk Register?', a: 'Trustees only. Community members cannot access the Risk Register. This is intentional — risk management is a governance responsibility and the register may contain sensitive information about the marae\'s financial, legal, or operational exposure.' },
+        { q: 'How often should we review our risks?', a: 'Set a review date for each risk when you add it — at minimum, review high-rated risks quarterly and lower-rated risks annually. Use the owner field to make sure every risk has a named trustee responsible for monitoring it. The Board View will surface open high-rated risks at every meeting as a prompt to review.' },
+      ]
+    },
+    {
+      category: 'Settings',
+      icon: '⚙️',
+      items: [
+        { q: 'How do I change the marae name?', a: 'Go to the Settings tab. You can update the marae name, location, iwi, hapū, and contact details. Click "Save Settings" and the name will update across the whole platform immediately.' },
+        { q: 'Can I add multiple checklist items at once?', a: 'Yes — go to Settings and open the Exit Checklist Template section. If you paste text containing more than one line into the "Add an item, or paste multiple lines at once" field, MaraeHub automatically splits it into separate checklist items instead of adding it as one long item. Pasting or typing a single line still works as before.' },
+      ]
+    },
+    {
+      category: 'Smart Suggestions',
+      icon: '💡',
+      items: [
+        { q: 'What are Smart Suggestions?', a: 'Smart Suggestions are prompts that appear automatically when MaraeHub detects that a workflow might be relevant to something happening on your marae. Instead of having to remember to start a workflow yourself, the system notices a trigger — like a service reminder becoming due, a booking being approved, or a trustee flagging a booking as commercial or external hire — and offers to start the matching workflow for you. The Facility Hire Agreement workflow is one example that can be triggered this way.' },
+        { q: 'When does a service reminder suggest a workflow?', a: 'When an asset service reminder becomes due, MaraeHub checks whether a matching workflow template exists. If one is found — for example, a Heat Pump Service reminder triggers the Heat Pump Service template, or a Building Maintenance and Repair reminder triggers the matching maintenance workflow — a suggestion will appear prompting you to start that workflow. You can accept the suggestion to launch the workflow immediately, or dismiss it if you want to handle it another way.' },
+        { q: 'How does the Facility Hire Agreement workflow get triggered?', a: 'When a trustee approves a booking, they are given the option to flag it as a commercial hire or external hire. If that flag is set, MaraeHub automatically suggests starting the Facility Hire Agreement workflow for that booking. The workflow is pre-linked to the booking so all the relevant details are carried through. This ensures the right paperwork and sign-off process is followed every time the marae is hired out for external or commercial purposes.' },
       ]
     },
     {
@@ -893,17 +867,28 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Documents',
-      icon: '📁',
+      category: 'Tasks',
+      icon: '✅',
       items: [
-        { q: 'How do I upload a document?', a: [
-          { items: [
-            'Go to the Documents tab and click "+ Upload Document".',
-            'You can drag and drop a file or click to browse.',
-            'Add a title and category (Governance, Finance, Legal, etc) then click Save.',
+        { q: 'How do I add a task?', a: [
+          { text: 'Go to the Tasks tab and click "+ Add Task".' },
+          { header: 'Enter:', items: [
+            'A title',
+            'Optional description',
+            'Assign it to someone from the dropdown',
+            'Set a due date',
+            'Choose a priority — High, Medium, or Low',
           ]},
+          { text: 'New tasks start in the Open column.' },
+          { items: [
+            'High priority tasks show a red left border',
+            'Medium is amber',
+            'Low is green',
+          ]},
+          { text: 'Overdue tasks are flagged with a red OVERDUE label.' },
         ] },
-        { q: 'What file types can I upload?', a: 'You can upload PDFs, Word documents, Excel spreadsheets, and images. All important marae documents like the charter, trust deed, and policies can be stored here.' },
+        { q: 'How do I move a task between columns?', a: 'Each task card has ← and → arrow buttons at the bottom. Click → to move the task forward through the columns: Open → In Progress → Completed → Cancelled. Click ← to move it back. Tasks moved into Completed are automatically time-stamped, which updates the "Completed Today" KPI tile.' },
+        { q: 'What is the Task Archive?', a: 'When the Completed column contains more than 50 tasks, older completed tasks are automatically moved to a collapsible Archive section below the kanban board. The Completed column always shows the 50 most recent completed tasks. Click "📦 Completed Task Archive" at the bottom of the Tasks tab to expand the archive and view or reopen older tasks.' },
       ]
     },
     {
@@ -982,40 +967,55 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Settings',
+      category: 'Workflows',
       icon: '⚙️',
       items: [
-        { q: 'How do I change the marae name?', a: 'Go to the Settings tab. You can update the marae name, location, iwi, hapū, and contact details. Click "Save Settings" and the name will update across the whole platform immediately.' },
-        { q: 'Can I add multiple checklist items at once?', a: 'Yes — go to Settings and open the Exit Checklist Template section. If you paste text containing more than one line into the "Add an item, or paste multiple lines at once" field, MaraeHub automatically splits it into separate checklist items instead of adding it as one long item. Pasting or typing a single line still works as before.' },
-      ]
-    },
-    {
-      category: 'Email Notifications',
-      icon: '📧',
-      items: [
-        { q: 'What are email notifications?', a: 'Email notifications are automatic emails sent to trustees every morning at 8am when something on the marae needs their attention. Instead of having to log in and check each module, MaraeHub sends a summary directly to your inbox so nothing slips through the cracks. You only receive an email on days when there is actually something to act on — there is no daily email if everything is up to date.' },
-        { q: 'What triggers an email notification?', a: [
-          { text: 'Five types of items trigger notifications.' },
+        { q: 'What is the Workflows tab?', a: 'Workflows is a step-by-step task engine for managing recurring marae processes. Instead of creating tasks from scratch each time, you pick a pre-built template, give the workflow a name, and click Start — MaraeHub automatically creates all the tasks in the right order and tracks progress for you.' },
+        { q: 'Where do I find it?', a: 'Go to the main navigation and click Operations. Workflows is listed in that group alongside Bookings, Calendar, Notices, and Contacts.' },
+        { q: 'How do I start a workflow?', a: [
           { items: [
-            'Compliance items due within 30 days — so you have time to renew before the deadline.',
-            'Bookings starting within 48 hours — a heads-up before the marae is due to be used.',
-            'Grant deadlines within 14 days — an early reminder to submit or finalise applications in time.',
-            'Meeting actions that are overdue by 7 or more days — flagging tasks that have been assigned but not yet completed.',
-            'Goals marked as At Risk or Completed — so the full committee stays across strategic progress without needing to open the Goals tab.',
+            'In the Workflows tab, use the dropdown under "Start New Workflow" to pick a template — for example, Tangihanga Preparation or Marae Insurance Renewal.',
+            'Once a template is selected, a name field will appear.',
+            'Type a name for this specific run (e.g. "Hēni Smith Tangihanga — July 2026"), then click Start Workflow.',
           ]},
+          { text: 'All tasks are created immediately and appear in the Active Workflows panel and in the Tasks tab.' },
         ] },
-        { q: 'How do I turn email notifications on or off?', a: 'Go to Settings and open the "Email Notifications" section. Each notification type has its own toggle — you can turn individual types on or off independently. For example, you might keep compliance and grant reminders on but turn off booking notifications if another trustee handles approvals. Changes take effect immediately and apply only to your account — each trustee controls their own notification preferences.' },
-        { q: 'Will I get the same email about the same item every day?', a: 'No. MaraeHub tracks what has already been sent and will not email you about the same item more than once every 25 days. If a compliance item is still due in 30 days and has not been updated, you will receive one notification about it — and then not again for another 25 days. This prevents your inbox from filling up with repeated reminders about the same unresolved issue.' },
+        { q: 'How many templates are available?', a: [
+          { header: 'MaraeHub currently includes 18 built-in templates covering five areas:', items: [
+            'Governance (trustee meetings, AGM preparation, trustee onboarding)',
+            'Compliance (insurance renewal, fire safety, WOF review)',
+            'Maintenance (building inspection, equipment servicing)',
+            'Operations (tangihanga preparation, contractor vetting, event setup, Facility Hire Agreement)',
+            'Funding (grant application, funding report)',
+          ]},
+          { text: 'The most recent addition is the Marae Emergency Readiness Starter Pack, which covers insurance, first aid kit checks, generator testing, water supply inspection, fire safety, and Civil Defence registration.' },
+          { text: 'More templates will be added in future releases.' },
+        ] },
+        { q: 'How do I track progress?', a: 'The Active Workflows section shows all currently running workflows with a progress bar and the next incomplete task highlighted. As you complete tasks in the Tasks tab, the progress bar updates automatically. When all tasks in a workflow are completed, the workflow is marked as complete and moves out of the Active Workflows view.' },
+        { q: 'Do workflow tasks appear in the Task Board?', a: 'Yes. Every task created by a workflow appears in the Tasks tab alongside your other open tasks. Workflow tasks are labelled with the workflow name so you can tell them apart. Complete them from the Task Board as normal — the workflow progress updates automatically each time a step is ticked off.' },
+        { q: 'Can I create my own workflow templates?', a: 'Custom templates are planned for a future release. For now, all 15 templates are built in and pre-loaded. If you need a template added, use the Feedback button to request it.' },
+        { q: 'Do workflows show where they came from?', a: 'Yes. Every active workflow displays a source record link so you can always trace it back to its origin. For example, a Facility Hire Agreement workflow will show the booking it was started from, and a maintenance workflow started from an asset service reminder will link back to that asset. Click the link on the workflow card to jump straight to the source record.' },
+        { q: 'How do workflow tasks appear on the Task Board?', a: 'Workflow tasks use a parent and subtask structure to keep the Task Board tidy. Each workflow appears as a single parent task card on the board — the workflow name and overall progress are shown on that card. The individual steps inside the workflow appear as subtasks underneath, expandable from the card. This means a 10-step workflow takes up one card on the board instead of ten, so the board stays readable no matter how many workflows are running.' },
+        { q: 'Can I edit or reorder steps in a workflow template?', a: [
+          { text: 'Yes. Go to the Workflows tab and click "Manage Templates".' },
+          { header: 'From there you can:', items: [
+            'Open any template and reorder its steps by dragging them up or down',
+            'Edit the name or description of any step',
+            'Add a new step at any point in the sequence',
+            'Delete a step you do not need',
+          ]},
+          { text: 'Changes to a template apply to future workflows started from that template — they do not affect workflows already in progress.' },
+        ] },
       ]
     },
     {
-      category: 'Privacy & Data',
-      icon: '🔒',
+      category: 'Your Top 3 Priorities',
+      icon: '🎯',
       items: [
-        { q: 'Where can I find information about how our marae data is protected?', a: 'Go to Settings and open the "Privacy & Data" section. This page gives a full plain-language explanation of how MaraeHub handles your marae\'s information — covering data ownership, your rights under the Privacy Act 2020, and what happens to your data if you ever leave the platform.' },
-        { q: 'Who owns our marae\'s data?', a: 'Your marae owns its data. MaraeHub stores it securely on your behalf — but it belongs to you, not to us. The Privacy & Data page in Settings explains exactly what information is stored, how it is protected, and what rights your committee has over it.' },
-        { q: 'What does the Privacy Act 2020 mean for our marae?', a: 'New Zealand\'s Privacy Act 2020 governs how personal information must be collected, stored, and used. The Privacy & Data page in Settings explains how MaraeHub complies with the Act and what this means in practice for trustees and community members whose information is held on the platform.' },
-        { q: 'What happens to our data if we leave MaraeHub?', a: 'If your marae ever decides to leave MaraeHub, your data does not disappear or get retained without your consent. The Privacy & Data page in Settings explains the full process — including how to request an export of your records and what happens to stored data after an account is closed.' },
+        { q: 'What is the "This Week" card?', a: 'A rule-based summary at the top of your Dashboard showing the 3 most urgent items across compliance, risks, bookings, tasks, grants and assets.' },
+        { q: 'How are priorities ranked?', a: 'Overdue items appear first (red), followed by items due within 7 days (amber). The most urgent item is always ranked number 1.' },
+        { q: 'What does "What\'s going well" mean?', a: 'Below the urgent items MaraeHub shows one positive update — something your marae is doing well right now.' },
+        { q: 'Can I dismiss or change the priorities?', a: 'No — they update automatically based on your real data. Resolve the underlying issue and it will clear from the list.' },
       ]
     },
   ],
