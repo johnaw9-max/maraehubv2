@@ -61,6 +61,14 @@ function SectionTitle({ icon, title, count, note }) {
   );
 }
 
+function GroupHeading({ title }) {
+  return (
+    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '32px 0 14px', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
+      {title}
+    </div>
+  );
+}
+
 const STATUS_STYLES = {
   researching:   { bg: '#f0ecf8', color: '#6b42a8' },
   'in-progress': { bg: '#e8eef8', color: '#1a4a8a' },
@@ -730,6 +738,106 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         </div>
       </div>
 
+      {/* ══════════════════════════ COMPLIANCE ══════════════════════════ */}
+      <GroupHeading title="Compliance" />
+
+      {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20, ...(d.compliance.length > 0 && overdueCompliance.length > 0 ? { borderTop: '3px solid var(--danger)' } : {}) }}>
+        <SectionTitle icon={d.compliance.length > 0 && overdueCompliance.length > 0 ? '⚠️' : '✅'} title="Compliance Tracker" count={d.compliance.length} />
+        {d.compliance.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
+        ) : overdueCompliance.length === 0 ? (
+          // COLLAPSED — calm, small, all-clear state
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>✅</span>
+            <div>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>All clear</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                {d.compliance.length} item{d.compliance.length !== 1 ? 's' : ''} tracked, none overdue
+                {dueSoonCompliance.length > 0 ? ` · ${dueSoonCompliance.length} due within 30 days` : ''}
+              </div>
+            </div>
+          </div>
+        ) : (
+          // EXPANDED — prominent, red state naming specific overdue items
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+              {[
+                { label: 'Overdue',   count: overdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+                { label: 'Due Soon',  count: dueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                { label: 'Compliant', count: d.compliance.length - overdueCompliance.length - dueSoonCompliance.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                  <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>
+              🔴 {overdueCompliance.length} item{overdueCompliance.length !== 1 ? 's' : ''} overdue — needs immediate attention:
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[...overdueCompliance, ...dueSoonCompliance].map(c => {
+                const overdue = new Date(c.due_date + 'T12:00:00') < today;
+                const dot   = overdue ? '#d9534f' : '#c8902a';
+                const bg    = overdue ? '#faeae7' : '#fdf0dc';
+                const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
+                return (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: overdue ? '9px 12px' : '7px 10px', background: bg, borderRadius: 7, borderLeft: `${overdue ? 4 : 3}px solid ${dot}`, gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: overdue ? 14 : 13, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                      <div style={{ fontSize: 11, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
+                        {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>
+                      {overdue ? 'Overdue' : 'Due Soon'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
+      {(d.risks || []).length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="🛡️" title="Risk Register" count={(d.risks || []).length} />
+          {highOpenRisks.length === 0 ? (
+            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+              ✅ No high-rated open risks
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {highOpenRisks.map(r => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      ⚠️ {r.risk_description}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
+                  </div>
+                  <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {onNavigate && (
+            <button
+              onClick={() => onNavigate('risks')}
+              style={{ marginTop: 10, fontSize: 12, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+            >
+              View Risk Register →
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════ DECISIONS REQUIRED ══════════════════════════ */}
+      <GroupHeading title="Decisions Required" />
+
       {(pendingBookings.length > 0 || overdueActions.length > 0 || grantsUrgent.length > 0) && (
         <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--danger)' }}>
           <SectionTitle
@@ -875,10 +983,13 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           </div>
         </div>
       )}
+      {/* ══════════════════════════ TOP PRIORITIES ══════════════════════════ */}
+      <GroupHeading title="Top Priorities" />
+
       {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
       {(INSIGHTS.length > 0 || d.workflowInstances.length > 0) && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="💡" title="Insights and Recommendations" count={INSIGHTS.length || undefined} />
+          <SectionTitle icon="💡" title="Top Priorities" count={INSIGHTS.length || undefined} />
           {INSIGHTS.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {INSIGHTS.map((ins, i) => {
@@ -934,7 +1045,58 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         </div>
       )}
 
-      {/* ── GOALS & COMPLIANCE ROW ─────────────────────────────────────── */}
+      {/* ══════════════════════════ OPERATIONS ══════════════════════════ */}
+      <GroupHeading title="Operations" />
+
+      {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+
+        {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
+        <div className="panel">
+          <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
+          {periodUpcoming.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
+          ) : periodUpcoming.map(b => (
+            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{b.occasion}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
+              </div>
+              <span style={{ fontSize: 10, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
+        <div className="panel">
+          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
+          {periodProjects.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
+          ) : periodProjects.map(p => {
+            const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
+            return (
+              <div key={p.id} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>
+                    {p.name}
+                    {overdue && <span style={{ fontSize: 9, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
+                </div>
+                {p.lead && <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
+                <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ══════════════════════════ GOVERNANCE ══════════════════════════ */}
+      <GroupHeading title="Governance" />
+
+      {/* ── GOVERNANCE ROW: STRATEGIC GOALS + OPEN MEETING ACTIONS ─────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
 
         {/* ── STRATEGIC GOALS SUMMARY ────────────────────────────────── */}
@@ -991,144 +1153,61 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           )}
         </div>
 
-        {/* ── COMPLIANCE TRACKER ─────────────────────────────────────── */}
+        {/* ── OPEN MEETING ACTIONS (Minutes) ─────────────────────────── */}
         <div className="panel">
-          <SectionTitle icon="✅" title="Compliance Tracker" count={d.compliance.length} />
-          {d.compliance.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
-          ) : (
-            <>
-              {/* Status summary */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-                {[
-                  { label: 'Overdue',   count: overdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
-                  { label: 'Due Soon',  count: dueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
-                  { label: 'Compliant', count: d.compliance.length - overdueCompliance.length - dueSoonCompliance.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
-                ].map(s => (
-                  <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
-                    <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-                    <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              {/* Overdue and due-soon items */}
-              {[...overdueCompliance, ...dueSoonCompliance].length === 0 ? (
-                <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-                  ✅ All compliance obligations are up to date
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {[...overdueCompliance, ...dueSoonCompliance].map(c => {
-                    const overdue = new Date(c.due_date + 'T12:00:00') < today;
-                    const dot   = overdue ? '#d9534f' : '#c8902a';
-                    const bg    = overdue ? '#faeae7' : '#fdf0dc';
-                    const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
-                    return (
-                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}`, gap: 8 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                          <div style={{ fontSize: 11, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
-                            {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
-                          </div>
-                        </div>
-                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>
-                          {overdue ? 'Overdue' : 'Due Soon'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── RISK REGISTER ──────────────────────────────────────────────── */}
-      {(d.risks || []).length > 0 && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="🛡️" title="Risk Register" count={(d.risks || []).length} />
-          {highOpenRisks.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-              ✅ No high-rated open risks
-            </div>
+          <SectionTitle icon="📋" title="Open Meeting Actions" count={d.actions.length} />
+          {d.actions.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No open meeting actions</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {highOpenRisks.map(r => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      ⚠️ {r.risk_description}
+              {actionsSorted.slice(0, 5).map(a => {
+                const overdue = a.due_date && new Date(a.due_date + 'T12:00:00') < today;
+                const daysOver = overdue
+                  ? Math.ceil((today - new Date(a.due_date + 'T12:00:00')) / 86400000)
+                  : 0;
+                return (
+                  <div key={a.id} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    padding: '9px 12px',
+                    background: overdue ? '#faeae7' : 'var(--surface2)',
+                    borderRadius: 7,
+                    borderLeft: overdue ? '3px solid var(--danger)' : '3px solid var(--border)',
+                    gap: 10,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: overdue ? 600 : 400,
+                        color: 'var(--text1)',
+                        lineHeight: 1.4,
+                      }}>
+                        {a.description}
+                      </div>
+                      <div style={{
+                        fontSize: 11,
+                        color: overdue ? 'var(--danger)' : 'var(--text3)',
+                        marginTop: 2,
+                      }}>
+                        {a.assigned_to && `👤 ${a.assigned_to}`}
+                        {a.assigned_to && a.due_date && ' · '}
+                        {a.due_date && (overdue
+                          ? `⚠️ ${daysOver}d overdue`
+                          : `Due ${fmt(a.due_date)}`
+                        )}
+                        {a.status && ` · ${a.status}`}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                   </div>
-                  <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
+                );
+              })}
+              {d.actions.length > 5 && (
+                <div style={{ fontSize: 12, color: 'var(--text3)', paddingTop: 2 }}>
+                  +{d.actions.length - 5} more open actions
                 </div>
-              ))}
+              )}
             </div>
           )}
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('risks')}
-              style={{ marginTop: 10, fontSize: 12, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
-            >
-              View Risk Register →
-            </button>
-          )}
-        </div>
-      )}
-      {/* ── OPEN MEETING ACTIONS ───────────────────────────────────────── */}
-      {d.actions.length > 0 && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="📋" title="Open Meeting Actions" count={d.actions.length} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {actionsSorted.slice(0, 5).map(a => {
-              const overdue = a.due_date && new Date(a.due_date + 'T12:00:00') < today;
-              const daysOver = overdue
-                ? Math.ceil((today - new Date(a.due_date + 'T12:00:00')) / 86400000)
-                : 0;
-              return (
-                <div key={a.id} style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  padding: '9px 12px',
-                  background: overdue ? '#faeae7' : 'var(--surface2)',
-                  borderRadius: 7,
-                  borderLeft: overdue ? '3px solid var(--danger)' : '3px solid var(--border)',
-                  gap: 10,
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: overdue ? 600 : 400,
-                      color: 'var(--text1)',
-                      lineHeight: 1.4,
-                    }}>
-                      {a.description}
-                    </div>
-                    <div style={{
-                      fontSize: 11,
-                      color: overdue ? 'var(--danger)' : 'var(--text3)',
-                      marginTop: 2,
-                    }}>
-                      {a.assigned_to && `👤 ${a.assigned_to}`}
-                      {a.assigned_to && a.due_date && ' · '}
-                      {a.due_date && (overdue
-                        ? `⚠️ ${daysOver}d overdue`
-                        : `Due ${fmt(a.due_date)}`
-                      )}
-                      {a.status && ` · ${a.status}`}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-            {d.actions.length > 5 && (
-              <div style={{ fontSize: 12, color: 'var(--text3)', paddingTop: 2 }}>
-                +{d.actions.length - 5} more open actions
-              </div>
-            )}
-          </div>
           {onNavigate && (
             <button
               onClick={() => onNavigate('minutes')}
@@ -1147,57 +1226,49 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             >View all in Minutes →</button>
           )}
         </div>
-      )}
-
-
-      {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-
-        {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
-          {periodUpcoming.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
-          ) : periodUpcoming.map(b => (
-            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{b.occasion}</div>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
-              </div>
-              <span style={{ fontSize: 10, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
-            </div>
-          ))}
-        </div>
-
-        {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
-          {periodProjects.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
-          ) : periodProjects.map(p => {
-            const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
-            return (
-              <div key={p.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>
-                    {p.name}
-                    {overdue && <span style={{ fontSize: 9, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
-                </div>
-                {p.lead && <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
-                <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
 
 
-      {/* ── TWO-COLUMN: GRANTS + REMINDERS ─────────────────────────────── */}
+      {/* ══════════════════════════ RESOURCES ══════════════════════════ */}
+      <GroupHeading title="Resources" />
+
+      {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <SectionTitle icon="📊" title="Financial Health" note={`(FY ${fyLabelStr})`} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: finOverBudgetCats.length > 0 ? 14 : 0 }}>
+          {[
+            { label: 'Total Income', value: `$${(finTotalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', color: 'var(--brand)' },
+            { label: 'Total Expenses', value: `$${(finTotalExpenses/1000).toFixed(1)}k`, icon: '📤', bg: '#faeae7', color: finTotalExpenses > finTotalIncome ? 'var(--danger)' : 'var(--text1)' },
+            { label: finNet >= 0 ? 'Net Surplus' : 'Net Deficit', value: `$${(Math.abs(finNet)/1000).toFixed(1)}k`, icon: finNet >= 0 ? '✅' : '⚠️', bg: finNet >= 0 ? '#e8f4ef' : '#faeae7', color: finNet >= 0 ? 'var(--brand)' : 'var(--danger)' },
+          ].map((t, i) => (
+            <div key={i} style={{ textAlign: 'center', padding: '12px 8px', background: t.bg, borderRadius: 8 }}>
+              <div style={{ fontSize: 16, marginBottom: 4 }}>{t.icon}</div>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 700, color: t.color }}>{t.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{t.label}</div>
+            </div>
+          ))}
+        </div>
+        {finOverBudgetCats.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {finOverBudgetCats.map(cat => (
+              <span key={cat} onClick={() => onNavigate && onNavigate('finance')} style={{ fontSize: 11, fontWeight: 600, background: '#faeae7', color: 'var(--danger)', border: '1px solid #f0b8b0', borderRadius: 20, padding: '3px 10px', cursor: onNavigate ? 'pointer' : 'default' }}>
+                🔴 Over budget — {cat}
+              </span>
+            ))}
+          </div>
+        ) : (
+          finTotalIncome > 0 || finTotalExpenses > 0 ? (
+            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '7px 12px', fontWeight: 500 }}>
+              ✅ All budget categories within limits
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>No finance data recorded for this financial year — add income and expenses in the Finance tab</div>
+          )
+        )}
+      </div>
+
+      {/* ── TWO-COLUMN: GRANTS + SERVICE REMINDERS (ASSETS) ────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
 
         {/* ── GRANTS PIPELINE ────────────────────────────────────────── */}
@@ -1267,40 +1338,8 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         </div>
       </div>
 
-      {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <SectionTitle icon="📊" title="Financial Health" note={`(FY ${fyLabelStr})`} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: finOverBudgetCats.length > 0 ? 14 : 0 }}>
-          {[
-            { label: 'Total Income', value: `$${(finTotalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', color: 'var(--brand)' },
-            { label: 'Total Expenses', value: `$${(finTotalExpenses/1000).toFixed(1)}k`, icon: '📤', bg: '#faeae7', color: finTotalExpenses > finTotalIncome ? 'var(--danger)' : 'var(--text1)' },
-            { label: finNet >= 0 ? 'Net Surplus' : 'Net Deficit', value: `$${(Math.abs(finNet)/1000).toFixed(1)}k`, icon: finNet >= 0 ? '✅' : '⚠️', bg: finNet >= 0 ? '#e8f4ef' : '#faeae7', color: finNet >= 0 ? 'var(--brand)' : 'var(--danger)' },
-          ].map((t, i) => (
-            <div key={i} style={{ textAlign: 'center', padding: '12px 8px', background: t.bg, borderRadius: 8 }}>
-              <div style={{ fontSize: 16, marginBottom: 4 }}>{t.icon}</div>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 700, color: t.color }}>{t.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{t.label}</div>
-            </div>
-          ))}
-        </div>
-        {finOverBudgetCats.length > 0 ? (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {finOverBudgetCats.map(cat => (
-              <span key={cat} onClick={() => onNavigate && onNavigate('finance')} style={{ fontSize: 11, fontWeight: 600, background: '#faeae7', color: 'var(--danger)', border: '1px solid #f0b8b0', borderRadius: 20, padding: '3px 10px', cursor: onNavigate ? 'pointer' : 'default' }}>
-                🔴 Over budget — {cat}
-              </span>
-            ))}
-          </div>
-        ) : (
-          finTotalIncome > 0 || finTotalExpenses > 0 ? (
-            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '7px 12px', fontWeight: 500 }}>
-              ✅ All budget categories within limits
-            </div>
-          ) : (
-            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>No finance data recorded for this financial year — add income and expenses in the Finance tab</div>
-          )
-        )}
-      </div>
+      {/* ══════════════════════════ COMMUNITY ══════════════════════════ */}
+      <GroupHeading title="Community" />
 
       {/* ── COMMUNITY FEEDBACK ─────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 8 }}>
