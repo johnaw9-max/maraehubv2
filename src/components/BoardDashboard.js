@@ -790,9 +790,19 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                         {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
                       </div>
                     </div>
-                    <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>
-                      {overdue ? 'Overdue' : 'Due Soon'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
+                        {overdue ? 'Overdue' : 'Due Soon'}
+                      </span>
+                      {onNavigate && (
+                        <button
+                          onClick={() => onNavigate('compliance')}
+                          style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                        >
+                          {NAV_LABELS.compliance}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
