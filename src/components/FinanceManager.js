@@ -2,20 +2,21 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
+import BankReconciliation from './BankReconciliation';
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../lib/financeCategories';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
-const INCOME_CATEGORIES  = ['Booking Income','Grant Income','Koha','Hire Equipment','Fundraiser','Other'];
-const EXPENSE_CATEGORIES = ['Maintenance and Repairs','Utilities','Insurance','Events','Administration','Wages','Equipment','Cleaning','Other'];
 const INCOME_STATUSES  = ['Confirmed','Pending'];
 const EXPENSE_STATUSES = ['Paid','Pending'];
 
 const SECTIONS = [
-  { key: 'income',        label: 'Income',        icon: '💵' },
-  { key: 'expenses',      label: 'Expenses',       icon: '📤' },
-  { key: 'budget',        label: 'Budget',         icon: '📊' },
-  { key: 'balance-sheet', label: 'Balance Sheet',  icon: '⚖️' },
-  { key: 'reports',       label: 'Reports',        icon: '📋' },
+  { key: 'income',         label: 'Income',              icon: '💵' },
+  { key: 'expenses',       label: 'Expenses',             icon: '📤' },
+  { key: 'budget',         label: 'Budget',                icon: '📊' },
+  { key: 'balance-sheet',  label: 'Balance Sheet',         icon: '⚖️' },
+  { key: 'reports',        label: 'Reports',               icon: '📋' },
+  { key: 'reconciliation', label: 'Bank Reconciliation',   icon: '🏦' },
 ];
 
 const INCOME_CAT_COLORS = {
@@ -1365,6 +1366,11 @@ ${loanHtml}
           </div>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SECTION: BANK RECONCILIATION
+      ══════════════════════════════════════════════════════════════════════ */}
+      {section === 'reconciliation' && <BankReconciliation />}
 
       {/* ══════════════════════════════════════════════════════════════════════
           MODAL: ADD / EDIT INCOME
