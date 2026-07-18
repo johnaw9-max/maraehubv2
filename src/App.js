@@ -5,6 +5,7 @@ import TrusteeDashboard from './pages/TrusteeDashboard';
 import CommunityPortal from './pages/CommunityPortal';
 import FounderDashboard from './components/FounderDashboard';
 import PublicBookingRequest from './pages/PublicBookingRequest';
+import CommunityAutoLogin from './pages/CommunityAutoLogin';
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
@@ -63,6 +64,10 @@ export default function App() {
 
   if (window.location.pathname === '/request-booking') {
     return <PublicBookingRequest />;
+  }
+
+  if (window.location.pathname === '/community-login') {
+    return <CommunityAutoLogin />;
   }
 
   if (loading) {
