@@ -324,6 +324,41 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Bank Reconciliation',
+      icon: '🏦',
+      items: [
+        { q: 'What is Bank Reconciliation?', a: 'Bank Reconciliation compares your actual bank statement against what has been recorded in Finance, so you can see straight away if any money is missing from your records or if anything in Finance never actually cleared the bank. It works with a CSV export from any bank, so you do not need a specific bank format.' },
+        { q: 'How do I upload a bank statement?', a: [
+          { text: 'Go to Finance and select the Bank Reconciliation tab.' },
+          { text: 'Export a CSV statement from your online banking for the period you want to check.' },
+          { text: 'Click "Choose CSV file" and select the file you exported.' },
+          { text: 'MaraeHub reads the file and shows the column names it found, so you can confirm it read the file correctly.' },
+        ] },
+        { q: 'How do I map the columns?', a: [
+          { text: 'The first time you use Bank Reconciliation, you will see a blank mapping form.' },
+          { header: 'Choose:', items: [
+            'Which column is the Description',
+            'Which column is the Date, and the date format your bank uses',
+            'Whether your bank uses a single signed Amount column, or separate Debit and Credit columns',
+          ]},
+          { text: 'A live example from your file is shown next to each choice, so you can check it looks right before saving. Click "Confirm mapping" once it does.' },
+          { text: 'MaraeHub remembers this mapping for next time. If a later file uses the same columns, you will see a short summary asking you to confirm it is still correct, instead of filling in the form again.' },
+        ] },
+        { q: 'What happens when I compare against Finance?', a: 'Click "Compare against Finance records" once your mapping is confirmed. MaraeHub checks every transaction in your file against Finance by date and amount, and sorts the results into three groups: Matched, transactions on the bank statement that are not recorded in Finance, and records in Finance that did not appear on the bank statement.' },
+        { q: 'How do I add a missing transaction to Finance?', a: [
+          { text: 'For each transaction listed as on the bank statement but not recorded, choose Income or Expense using the toggle.' },
+          { text: 'Pick a category from the dropdown, the same categories used in the Finance Income and Expenses forms.' },
+          { text: 'Click "Add to Finance". The transaction is created as a real Finance record using the date, amount, and description from your bank statement, and it is marked as added so it cannot be added twice.' },
+        ] },
+        { q: 'Can I save my progress and finish later?', a: [
+          { text: 'Yes. Click "Save Reconciliation" at any point, whether every transaction has been added, only some, or none yet.' },
+          { text: 'Each statement is saved as one record, matched by the filename and the date range it covers, so saving again later updates the same record instead of creating a duplicate.' },
+          { text: 'Past reconciliations appear in a list at the top of the Bank Reconciliation tab, showing the date range, when it was last saved, who saved it, and how many transactions are matched, added, or still pending.' },
+          { text: 'Click "Edit" on any past reconciliation to reopen it. Everything already added stays marked as done, and the rest can be continued without re-uploading the file.' },
+        ] },
+      ]
+    },
+    {
       category: 'Financial Reports',
       icon: '📊',
       items: [
