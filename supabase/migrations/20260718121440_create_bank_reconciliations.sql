@@ -20,6 +20,8 @@ create table if not exists bank_reconciliations (
 
 alter table bank_reconciliations enable row level security;
 
+drop policy if exists "bank_reconciliations: authenticated full access" on bank_reconciliations;
+
 create policy "bank_reconciliations: authenticated full access"
   on bank_reconciliations for all
   to authenticated
