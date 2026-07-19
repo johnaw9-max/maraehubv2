@@ -32,6 +32,7 @@ serve(async (req) => {
     if (!contactName || !contactName.trim()) return json({ error: 'Contact name is required' }, 400);
     const g = parseInt(guests);
     if (!Number.isFinite(g) || g < 0) return json({ error: 'Invalid guest count' }, 400);
+    if (notes && notes.length > 500) return json({ error: 'Notes must be 500 characters or fewer' }, 400);
 
     // Conflict check — same overlap logic as BookingWizard.checkAvailability()
     const { data: existing } = await admin.from('bookings').select('start_date, end_date').eq('status', 'approved');

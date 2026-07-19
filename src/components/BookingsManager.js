@@ -263,6 +263,13 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                     <span>👥 {b.guests} guests</span>
                     <span>🌙 {b.overnight ? 'Overnight' : 'Day event'}</span>
                   </div>
+                  {(b.contact_name || b.contact_phone || b.contact_email) && (
+                    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text2)', marginTop: 6, flexWrap: 'wrap' }}>
+                      {b.contact_name && <span>👤 {b.contact_name}</span>}
+                      {b.contact_phone && <span>📞 {b.contact_phone}</span>}
+                      {b.contact_email && <span>✉️ {b.contact_email}</span>}
+                    </div>
+                  )}
                   {b.notes && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, fontStyle: 'italic' }}>"{b.notes}"</div>}
                   {b.facilities && b.facilities.length > 0 && (
                     <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>

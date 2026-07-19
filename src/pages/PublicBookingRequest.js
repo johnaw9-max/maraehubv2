@@ -138,7 +138,7 @@ export default function PublicBookingRequest() {
 
           <div className="form-group">
             <label className="form-label">Additional Notes / Tikanga Considerations</label>
-            <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any special requirements or questions for the committee..." style={{ resize: 'vertical' }} />
+            <textarea className="form-input" rows={3} maxLength={500} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any special requirements or questions for the committee..." style={{ resize: 'vertical' }} />
           </div>
 
           <button type="submit" className="btn-accent" disabled={submitting} style={{ width: '100%', padding: '13px', fontSize: 15, marginTop: 8 }}>
