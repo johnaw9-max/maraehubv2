@@ -202,6 +202,8 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const zeroStockItems     = d.assets.filter(a => a.category === 'Inventory' && a.quantity != null && a.quantity === 0);
   const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
   const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
+  const compliantCompliance = d.compliance.length - overdueCompliance.length - dueSoonCompliance.length;
+  const compliancePct       = d.compliance.length ? Math.round((compliantCompliance / d.compliance.length) * 100) : 100;
 
   // Emergency Preparedness — high-priority check (overdue OR no due_date set)
   const epCompliance      = d.compliance.filter(c => c.category === 'emergency_preparedness');
@@ -755,17 +757,19 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
               <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
                 {d.compliance.length} item{d.compliance.length !== 1 ? 's' : ''} tracked, none overdue
                 {dueSoonCompliance.length > 0 ? ` · ${dueSoonCompliance.length} due within 30 days` : ''}
+                {` · ${compliancePct}% compliant`}
               </div>
             </div>
           </div>
         ) : (
           // EXPANDED — prominent, red state naming specific overdue items
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
               {[
                 { label: 'Overdue',   count: overdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
                 { label: 'Due Soon',  count: dueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
-                { label: 'Compliant', count: d.compliance.length - overdueCompliance.length - dueSoonCompliance.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                { label: 'Compliant', count: compliantCompliance, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                { label: '% Compliant', count: `${compliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
