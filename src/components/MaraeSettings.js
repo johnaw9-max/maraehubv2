@@ -40,6 +40,8 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [trustees, setTrustees] = useState([]);
   const [trusteePermsLoading, setTrusteePermsLoading] = useState(false);
   const [trusteePermsError, setTrusteePermsError] = useState('');
+  const [trusteePermsSuccess, setTrusteePermsSuccess] = useState('');
+  const [banningId, setBanningId] = useState(null);
 
   // Invite trustee state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -255,6 +257,21 @@ export default function MaraeSettings({ profile, isAdmin }) {
     }
     const { error } = await supabase.from('profiles').update({ trustee_role: newRole }).eq('id', trusteeId);
     if (error) { setTrusteePermsError(error.message); return; }
+    fetchTrustees();
+  }
+
+  async function banTrustee(trusteeId, name) {
+    setTrusteePermsError('');
+    setTrusteePermsSuccess('');
+    if (!window.confirm(`Ban ${name}? They will no longer be able to log in. This can be reversed later if needed.`)) return;
+    setBanningId(trusteeId);
+    const { data, error } = await supabase.functions.invoke('ban-trustee', {
+      body: { trusteeId },
+    });
+    setBanningId(null);
+    if (error) { setTrusteePermsError(error.message || 'Failed to ban trustee'); return; }
+    if (data?.error) { setTrusteePermsError(data.error); return; }
+    setTrusteePermsSuccess(`${name} has been banned and can no longer log in.`);
     fetchTrustees();
   }
 
@@ -839,6 +856,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </div>
 
           {trusteePermsError && <div className="alert alert-error" style={{ marginBottom: 12 }}>{trusteePermsError}</div>}
+          {trusteePermsSuccess && <div className="alert alert-success" style={{ marginBottom: 12 }}>{trusteePermsSuccess}</div>}
 
           {trusteePermsLoading ? (
             <div className="loading">Loading trustees...</div>
@@ -895,6 +913,23 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     >
                       Admin
                     </button>
+                    {!isYou && (
+                      <button
+                        onClick={() => banTrustee(t.id, t.full_name || t.email)}
+                        disabled={banningId === t.id}
+                        style={{
+                          fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                          cursor: banningId === t.id ? 'default' : 'pointer',
+                          border: '1px solid var(--danger, #c0392b)',
+                          background: 'var(--surface)',
+                          color: 'var(--danger, #c0392b)',
+                          fontWeight: 600,
+                          opacity: banningId === t.id ? 0.6 : 1,
+                        }}
+                      >
+                        {banningId === t.id ? 'Banning…' : 'Ban'}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
