@@ -996,6 +996,15 @@ const HELP_TOPICS = {
           { text: 'For example, if a trustee is currently Standard and you click "Admin", they immediately get full access.' },
           { text: 'The change takes effect the next time they navigate to a new page or refresh.' },
         ] },
+        { q: 'What does the "Ban" button do?', a: [
+          { text: 'The "Ban" button immediately blocks that trustee from logging in to MaraeHub.' },
+          { items: [
+            'Only Admin Trustees can use this — Standard Trustees do not see the button.',
+            'It is reversible, not a permanent delete — the account is suspended, not removed.',
+            'The banned trustee remains listed on any historical records — minutes, resolutions, feedback, and anything else they created stays exactly as it was.',
+          ]},
+          { text: 'Use this if a trustee has left the marae or should no longer have access, but the name needs to stay on past records for accountability.' },
+        ] },
         { q: 'Can an Admin Trustee demote themselves?', a: 'Only if there is at least one other Admin Trustee on the platform. If you are the only Admin, MaraeHub will block the demotion and show a message asking you to promote another trustee first. This prevents the platform from being left with no Admin Trustee.' },
         { q: 'What happens when a new trustee accepts an invite?', a: 'When an invited trustee clicks the magic link in their email, they are taken directly to the MaraeHub Trustee Dashboard. Their account is pre-set as a Standard Trustee. An Admin Trustee can then go to Settings → Trustee Permissions to upgrade them to Admin if needed.' },
         { q: 'Who is automatically set as Admin Trustee?', a: 'The first trustee account created for a marae is automatically set as Admin Trustee. All subsequent trustees start as Standard Trustees and can be upgraded by any existing Admin.' },
