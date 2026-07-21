@@ -120,7 +120,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
       supabase.from('interest_register').select('id').eq('status', 'Active'),
-      supabase.from('risk_register').select('id, risk_description, risk_rating, category, status').order('created_at', { ascending: false }),
+      supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls').order('created_at', { ascending: false }),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -225,6 +225,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const goalsAtRisk   = d.goals.filter(g => goalLight(g) === 'orange');
   const goalsOnTrack  = d.goals.filter(g => goalLight(g) === 'green');
   const goalsComplete = d.goals.filter(g => g.status === 'completed');
+  const activeGoals             = d.goals.filter(g => g.status !== 'not_started');
+  const goalsOnTrackOrComplete   = activeGoals.filter(g => goalLight(g) === 'green' || g.status === 'completed');
+  const goalsPct                 = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : 100;
   const overdueReminders  = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
   const assetsWithOverdue = new Set(overdueReminders.map(r => r.asset_id));
   const compliantPct      = d.assets.length ? Math.round(((d.assets.length - assetsWithOverdue.size) / d.assets.length) * 100) : 100;
@@ -245,6 +248,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const pendingBookings   = d.bookings.filter(b => b.status === 'pending');
 
   const highOpenRisks = (d.risks || []).filter(r => r.risk_rating === 'High' && r.status !== 'Closed');
+  const openRisks              = (d.risks || []).filter(r => r.status !== 'Closed');
+  const openRisksWithControls  = openRisks.filter(r => r.controls);
+  const riskControlsPct        = openRisks.length ? Math.round((openRisksWithControls.length / openRisks.length) * 100) : 100;
 
   const ALERTS = [
     epUrgentCount              && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
@@ -822,9 +828,13 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           {highOpenRisks.length === 0 ? (
             <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
               ✅ No high-rated open risks
+              {openRisks.length > 0 ? ` · ${riskControlsPct}% of open risks have controls listed` : ''}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>
+                {riskControlsPct}% of open risks have controls listed
+              </div>
               {highOpenRisks.map(r => (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1121,12 +1131,13 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           ) : (
             <>
               {/* Status summary pills */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
                 {[
                   { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
                   { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
                   { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
                   { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
+                  { label: '% On Track',  count: `${goalsPct}%`,       dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
                     <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
@@ -1138,6 +1149,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
               {[...goalsBehind, ...goalsAtRisk].length === 0 ? (
                 <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
                   ✅ All goals are on track or completed
+                  {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1313,8 +1325,16 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         <div className="panel">
           <SectionTitle icon="🔧" title="Service Reminders (60 days)" count={upcomingReminders.length} />
           {upcomingReminders.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No reminders due in next 60 days</div>
-          ) : upcomingReminders.map(r => {
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>
+              No reminders due in next 60 days
+              {d.assets.length > 0 ? ` · ${compliantPct}% of assets have no overdue service reminder` : ''}
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>
+                {compliantPct}% of assets have no overdue service reminder
+              </div>
+              {upcomingReminders.map(r => {
             const overdue = new Date(r.due_date + 'T12:00:00') < today;
             const daysLeft = Math.ceil((new Date(r.due_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
             const matchedTpl = matchWorkflowTemplate(r.type, d.templates || []);
@@ -1348,7 +1368,9 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 </div>
               </div>
             );
-          })}
+              })}
+            </>
+          )}
         </div>
       </div>
 
