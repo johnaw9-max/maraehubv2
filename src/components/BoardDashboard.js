@@ -89,6 +89,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [aiReport, setAiReport]   = useState('');
   const [aiError, setAiError]     = useState('');
   const [showReport, setShowReport] = useState(false);
+  const [showKpiHistory, setShowKpiHistory] = useState(false);
   const [copied, setCopied]       = useState(false);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,7 +101,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -121,6 +122,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
       supabase.from('interest_register').select('id').eq('status', 'Active'),
       supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls').order('created_at', { ascending: false }),
+      supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -134,6 +136,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       maraeName:         settingsRes.data?.marae_name || 'Our Marae',
       compliance:        compRes.data   || [],
       goals:             goalsRes.data  || [],
+      kpiSnapshots:      kpiRes.data    || [],
       finIncome:         finIncRes.data  || [],
       finExpenses:       finExpRes.data  || [],
       finBudgets:        finBudRes.data  || [],
@@ -1007,6 +1010,43 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           </div>
         </div>
       )}
+      {/* ── PERFORMANCE HISTORY ──────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+             onClick={() => setShowKpiHistory(v => !v)}>
+          <SectionTitle icon="📈" title="Performance History" count={d.kpiSnapshots.length} />
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
+        </div>
+
+        {d.kpiSnapshots.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
+        ) : !showKpiHistory ? (
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{d.kpiSnapshots.length} month{d.kpiSnapshots.length !== 1 ? 's' : ''} locked this year — click to view</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                {['Month','Compliance','Risk','Assets','Goals'].map(h => (
+                  <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...d.kpiSnapshots].reverse().map(s => (
+                <tr key={s.snapshot_month} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px', fontWeight: 600 }}>
+                    {new Date(s.snapshot_month + 'T12:00:00').toLocaleDateString('en-NZ', { month: 'short', year: 'numeric' })}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.compliance_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.risk_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.assets_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.goals_pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
       {/* ══════════════════════════ TOP PRIORITIES ══════════════════════════ */}
       <GroupHeading title="Top Priorities" />
 
