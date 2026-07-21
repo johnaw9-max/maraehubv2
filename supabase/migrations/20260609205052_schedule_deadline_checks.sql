@@ -1,3 +1,11 @@
+-- SUPERSEDED (2026-07-22): the current_setting('app.service_role_key') auth
+-- below does not work on Supabase's managed Postgres — ALTER DATABASE ...
+-- SET <custom_param> is permission-denied for the CLI/dashboard role. Do not
+-- run this file as-is. See 20260722000000_fix_cron_vault_auth.sql for the
+-- working version (Vault-based auth). This file IS already recorded as
+-- applied in supabase_migrations.schema_migrations, so it is intentionally
+-- left unmodified below rather than edited in place.
+
 -- Schedule the check-deadlines Edge Function to run every day at 08:00 UTC.
 -- Requires: pg_cron and pg_net extensions (both enabled in Supabase by default).
 --

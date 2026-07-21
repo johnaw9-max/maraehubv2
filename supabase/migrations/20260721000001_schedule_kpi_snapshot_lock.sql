@@ -19,21 +19,12 @@
 --   select * from cron.job_run_details
 --     where jobid = (select jobid from cron.job where jobname = 'maraehub-lock-kpi-snapshot')
 --     order by start_time desc limit 5;
+--
+-- NEUTRALIZED (2026-07-22): body below intentionally removed. This file was
+-- never applied (not present in supabase_migrations.schema_migrations), so
+-- a future `db push` would otherwise retry it and hit the same permission
+-- error forever. See 20260722000000_fix_cron_vault_auth.sql for the working
+-- version. This file is now a documented no-op so `db push` can mark it
+-- applied and move on.
 
-select cron.schedule(
-  'maraehub-lock-kpi-snapshot',        -- job name (must be unique)
-  '5 0 1 * *',                          -- 00:05 UTC on the 1st of every month
-  $$
-  select net.http_post(
-    url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/lock-monthly-kpi-snapshot',
-    headers := jsonb_build_object(
-      'Content-Type',  'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.service_role_key')
-    ),
-    body    := '{}'::jsonb
-  );
-  $$
-);
-
--- To remove the job later:
--- select cron.unschedule('maraehub-lock-kpi-snapshot');
+select 1; -- no-op
