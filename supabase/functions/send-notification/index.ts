@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
-const FROM_ADDRESS   = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <notifications@maraehub.com>';
+const FROM_ADDRESS   = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <notifications@maraehub.co.nz>';
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',
@@ -20,6 +20,8 @@ serve(async (req) => {
         { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } },
       );
     }
+
+    console.log(`send-notification: FROM_ADDRESS="${FROM_ADDRESS}" to=${JSON.stringify(to)} subject="${subject}"`);
 
     if (!RESEND_API_KEY) {
       return new Response(
