@@ -90,6 +90,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [aiError, setAiError]     = useState('');
   const [showReport, setShowReport] = useState(false);
   const [showKpiHistory, setShowKpiHistory] = useState(false);
+  const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
   const [copied, setCopied]       = useState(false);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -111,7 +112,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
-      supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
+      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
       supabase.from('finance_income').select('amount').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_expenses').select('amount, category').gte('date', fyFrom).lte('date', fyTo),
@@ -205,7 +206,8 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const zeroStockItems     = d.assets.filter(a => a.category === 'Inventory' && a.quantity != null && a.quantity === 0);
   const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
   const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
-  const compliantCompliance = d.compliance.length - overdueCompliance.length - dueSoonCompliance.length;
+  const neverAssessedCompliance = d.compliance.filter(c => !c.due_date && !c.last_checked_date);
+  const compliantCompliance = d.compliance.length - overdueCompliance.length - dueSoonCompliance.length - neverAssessedCompliance.length;
   const compliancePct       = d.compliance.length ? Math.round((compliantCompliance / d.compliance.length) * 100) : 100;
 
   // Emergency Preparedness — high-priority check (overdue OR no due_date set)
@@ -668,10 +670,10 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         {[
           {
             label: 'Compliance',
-            value: overdueCompliance.length > 0 ? `${overdueCompliance.length} overdue` : dueSoonCompliance.length > 0 ? `${dueSoonCompliance.length} due soon` : 'All current',
-            icon: overdueCompliance.length > 0 ? '⚠️' : '✅',
-            bg: overdueCompliance.length > 0 ? '#faeae7' : dueSoonCompliance.length > 0 ? '#fdf0dc' : '#e8f4ef',
-            color: overdueCompliance.length > 0 ? 'var(--danger)' : dueSoonCompliance.length > 0 ? '#7a4f00' : 'var(--brand)',
+            value: overdueCompliance.length > 0 ? `${overdueCompliance.length} overdue` : dueSoonCompliance.length > 0 ? `${dueSoonCompliance.length} due soon` : neverAssessedCompliance.length > 0 ? `${neverAssessedCompliance.length} never assessed` : 'All current',
+            icon: overdueCompliance.length > 0 ? '⚠️' : neverAssessedCompliance.length > 0 ? '📋' : '✅',
+            bg: overdueCompliance.length > 0 ? '#faeae7' : dueSoonCompliance.length > 0 ? '#fdf0dc' : neverAssessedCompliance.length > 0 ? '#f5f0e8' : '#e8f4ef',
+            color: overdueCompliance.length > 0 ? 'var(--danger)' : dueSoonCompliance.length > 0 ? '#7a4f00' : neverAssessedCompliance.length > 0 ? 'var(--text3)' : 'var(--brand)',
             tab: 'compliance',
           },
           {
@@ -693,9 +695,9 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           {
             label: 'Risk Register',
             value: (d.risks || []).length === 0 ? 'Not set up' : highOpenRisks.length > 0 ? `${highOpenRisks.length} high-rated open` : 'No high risks',
-            icon: highOpenRisks.length > 0 ? '🛡️' : '✅',
-            bg: highOpenRisks.length > 0 ? '#faeae7' : '#e8f4ef',
-            color: highOpenRisks.length > 0 ? 'var(--danger)' : 'var(--brand)',
+            icon: (d.risks || []).length === 0 ? '📋' : highOpenRisks.length > 0 ? '🛡️' : '✅',
+            bg: (d.risks || []).length === 0 ? '#f5f0e8' : highOpenRisks.length > 0 ? '#faeae7' : '#e8f4ef',
+            color: (d.risks || []).length === 0 ? 'var(--text3)' : highOpenRisks.length > 0 ? 'var(--danger)' : 'var(--brand)',
             tab: 'risks',
           },
         ].map((tile, i) => (
@@ -754,29 +756,17 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
       {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 20, ...(d.compliance.length > 0 && overdueCompliance.length > 0 ? { borderTop: '3px solid var(--danger)' } : {}) }}>
-        <SectionTitle icon={d.compliance.length > 0 && overdueCompliance.length > 0 ? '⚠️' : '✅'} title="Compliance Tracker" count={d.compliance.length} />
+        <SectionTitle icon={d.compliance.length > 0 && overdueCompliance.length > 0 ? '⚠️' : d.compliance.length > 0 && neverAssessedCompliance.length > 0 ? '📋' : '✅'} title="Compliance Tracker" count={d.compliance.length} />
         {d.compliance.length === 0 ? (
           <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
-        ) : overdueCompliance.length === 0 ? (
-          // COLLAPSED — calm, small, all-clear state
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>✅</span>
-            <div>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>All clear</div>
-              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
-                {d.compliance.length} item{d.compliance.length !== 1 ? 's' : ''} tracked, none overdue
-                {dueSoonCompliance.length > 0 ? ` · ${dueSoonCompliance.length} due within 30 days` : ''}
-                {` · ${compliancePct}% compliant`}
-              </div>
-            </div>
-          </div>
-        ) : (
+        ) : overdueCompliance.length > 0 ? (
           // EXPANDED — prominent, red state naming specific overdue items
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
               {[
                 { label: 'Overdue',   count: overdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
                 { label: 'Due Soon',  count: dueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                { label: 'Never Assessed', count: neverAssessedCompliance.length, dot: '#7a7268', bg: '#f5f0e8', color: 'var(--text3)' },
                 { label: 'Compliant', count: compliantCompliance, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
                 { label: '% Compliant', count: `${compliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
               ].map(s => (
@@ -789,7 +779,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>
               🔴 {overdueCompliance.length} item{overdueCompliance.length !== 1 ? 's' : ''} overdue — needs immediate attention:
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: neverAssessedCompliance.length > 0 ? 14 : 0 }}>
               {[...overdueCompliance, ...dueSoonCompliance].map(c => {
                 const overdue = new Date(c.due_date + 'T12:00:00') < today;
                 const dot   = overdue ? '#d9534f' : '#c8902a';
@@ -820,7 +810,90 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 );
               })}
             </div>
+            {neverAssessedCompliance.length > 0 && (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 8 }}>
+                  📋 {neverAssessedCompliance.length} item{neverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — no due date, never checked:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {neverAssessedCompliance.map(c => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                      </div>
+                      {onNavigate && (
+                        <button
+                          onClick={() => onNavigate('compliance')}
+                          style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                        >
+                          {NAV_LABELS.compliance}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </>
+        ) : neverAssessedCompliance.length > 0 ? (
+          // NEVER-ASSESSED ONLY — honest but calm; collapsed by default, click to see the list
+          !showNeverAssessedDetail ? (
+            <div
+              onClick={() => setShowNeverAssessedDetail(true)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>📋</span>
+                <div>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
+                    {neverAssessedCompliance.length} item{neverAssessedCompliance.length !== 1 ? 's' : ''} — compliance setup not started
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                    Click to begin{dueSoonCompliance.length > 0 ? ` · ${dueSoonCompliance.length} due within 30 days` : ''}
+                  </div>
+                </div>
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>▼</span>
+            </div>
+          ) : (
+            <>
+              <div onClick={() => setShowNeverAssessedDetail(false)} style={{ display: 'flex', justifyContent: 'flex-end', cursor: 'pointer', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text3)' }}>▲ Hide</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {neverAssessedCompliance.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                    </div>
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('compliance')}
+                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        {NAV_LABELS.compliance}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )
+        ) : (
+          // COLLAPSED — calm, small, all-clear state (original, unchanged)
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>✅</span>
+            <div>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>All clear</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                {d.compliance.length} item{d.compliance.length !== 1 ? 's' : ''} tracked, none overdue
+                {dueSoonCompliance.length > 0 ? ` · ${dueSoonCompliance.length} due within 30 days` : ''}
+                {` · ${compliancePct}% compliant`}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -1306,7 +1379,13 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           {[
             { label: 'Total Income', value: `$${(finTotalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', color: 'var(--brand)' },
             { label: 'Total Expenses', value: `$${(finTotalExpenses/1000).toFixed(1)}k`, icon: '📤', bg: '#faeae7', color: finTotalExpenses > finTotalIncome ? 'var(--danger)' : 'var(--text1)' },
-            { label: finNet >= 0 ? 'Net Surplus' : 'Net Deficit', value: `$${(Math.abs(finNet)/1000).toFixed(1)}k`, icon: finNet >= 0 ? '✅' : '⚠️', bg: finNet >= 0 ? '#e8f4ef' : '#faeae7', color: finNet >= 0 ? 'var(--brand)' : 'var(--danger)' },
+            {
+              label: (finTotalIncome === 0 && finTotalExpenses === 0) ? 'No Data Yet' : finNet >= 0 ? 'Net Surplus' : 'Net Deficit',
+              value: `$${(Math.abs(finNet)/1000).toFixed(1)}k`,
+              icon: (finTotalIncome === 0 && finTotalExpenses === 0) ? '📊' : finNet >= 0 ? '✅' : '⚠️',
+              bg: (finTotalIncome === 0 && finTotalExpenses === 0) ? '#f5f0e8' : finNet >= 0 ? '#e8f4ef' : '#faeae7',
+              color: (finTotalIncome === 0 && finTotalExpenses === 0) ? 'var(--text3)' : finNet >= 0 ? 'var(--brand)' : 'var(--danger)',
+            },
           ].map((t, i) => (
             <div key={i} style={{ textAlign: 'center', padding: '12px 8px', background: t.bg, borderRadius: 8 }}>
               <div style={{ fontSize: 16, marginBottom: 4 }}>{t.icon}</div>
