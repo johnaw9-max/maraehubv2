@@ -1241,9 +1241,15 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           <SectionTitle icon="🎯" title="Strategic Goals" count={d.goals.length} />
           {d.goals.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
+          ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
+            // COLLAPSED — calm, all on track or completed
+            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+              ✅ All goals are on track or completed
+              {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
+            </div>
           ) : (
+            // EXPANDED — pill grid + list, only shown when something needs attention
             <>
-              {/* Status summary pills */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
                 {[
                   { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
@@ -1258,36 +1264,28 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                   </div>
                 ))}
               </div>
-              {/* At-risk and behind goals list */}
-              {[...goalsBehind, ...goalsAtRisk].length === 0 ? (
-                <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-                  ✅ All goals are on track or completed
-                  {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {[...goalsBehind, ...goalsAtRisk].map(g => {
-                    const light = goalLight(g);
-                    const dot   = light === 'red' ? '#d9534f' : '#c8902a';
-                    const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
-                    const label = light === 'red' ? 'Behind' : 'At Risk';
-                    return (
-                      <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-                            {g.responsible_name && `👤 ${g.responsible_name}`}
-                            {g.responsible_name && g.target_date && ' · '}
-                            {g.target_date && `Target: ${fmt(g.target_date)}`}
-                          </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[...goalsBehind, ...goalsAtRisk].map(g => {
+                  const light = goalLight(g);
+                  const dot   = light === 'red' ? '#d9534f' : '#c8902a';
+                  const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
+                  const label = light === 'red' ? 'Behind' : 'At Risk';
+                  return (
+                    <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                          {g.responsible_name && `👤 ${g.responsible_name}`}
+                          {g.responsible_name && g.target_date && ' · '}
+                          {g.target_date && `Target: ${fmt(g.target_date)}`}
                         </div>
-                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </>
           )}
         </div>
