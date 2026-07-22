@@ -159,7 +159,13 @@ function StarBar({ label, value }) {
 
 export default function TrusteeDashboard({ profile, onLogout }) {
   const isAdmin = profile?.trustee_role === 'admin';
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const visibleNavGroups = isAdmin
+    ? NAV_GROUPS
+    : NAV_GROUPS.map(group => ({
+        ...group,
+        tabs: group.tabs.filter(tab => tab.key !== 'dashboard'),
+      })).filter(group => group.tabs.length > 0);
+  const [activeTab, setActiveTab] = useState(profile?.trustee_role === 'admin' ? 'dashboard' : 'board');
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
   const [boardKey, setBoardKey] = useState(0);
 
@@ -764,7 +770,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   return (
     <div>
-      <Header profile={profile} onLogout={onLogout} activeTab={activeTab} setActiveTab={setActiveTab} groups={NAV_GROUPS} />
+      <Header profile={profile} onLogout={onLogout} activeTab={activeTab} setActiveTab={setActiveTab} groups={visibleNavGroups} />
 
       <div className="main">
 
