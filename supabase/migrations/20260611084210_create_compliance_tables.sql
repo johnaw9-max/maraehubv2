@@ -1,3 +1,8 @@
+-- NOTE (2026-07-23): the compliance_items policy below ("authenticated full
+-- access") was superseded by 20260723000000_fix_compliance_items_rls.sql,
+-- which restricts it to trustees only, matching risk_register. Left
+-- unmodified here since this migration is already marked applied.
+
 -- ── COMPLIANCE ITEMS ──────────────────────────────────────────────────────────
 -- Recurring obligations: Building WOFs, insurance, trustee terms, H&S, Civil Defence
 
