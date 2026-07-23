@@ -1,3 +1,12 @@
+-- NOTE (2026-07-24): the handle_new_auth_user() function below has been
+-- superseded by 20260724000001_add_search_path_to_handle_new_auth_user.sql,
+-- which adds SET search_path = public as defensive hardening (matching the
+-- fix applied to update_last_sign_in() the same night, which had the same
+-- gap but was actually broken by it - this function wasn't broken, but the
+-- same class of risk applies to any SECURITY DEFINER function). Left
+-- unmodified below since this migration is already recorded as applied on
+-- Opeke.
+
 -- Backfill profiles rows for auth users that have no profile entry yet.
 -- These are real users created directly via Supabase Auth who bypassed UserManager.
 -- Derive a display name from their email prefix (e.g. "john.williams" → "John Williams").
