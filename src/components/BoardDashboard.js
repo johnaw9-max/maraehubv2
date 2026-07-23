@@ -48,15 +48,18 @@ function Stars({ rating }) {
   return <span style={{ color: '#f4a400', letterSpacing: 1 }}>{'★'.repeat(r)}{'☆'.repeat(5 - r)}</span>;
 }
 
-function SectionTitle({ icon, title, count, note }) {
+function SectionTitle({ icon, title, count, note, rightContent }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 8, borderBottom: '2px solid var(--brand)' }}>
-      <span style={{ fontSize: 18 }}>{icon}</span>
-      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600, color: 'var(--brand)' }}>{title}</span>
-      {count !== undefined && (
-        <span style={{ fontSize: 12, background: 'var(--brand)', color: '#fff', borderRadius: 20, padding: '1px 9px', fontWeight: 600, marginLeft: 4 }}>{count}</span>
-      )}
-      {note && <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 4 }}>{note}</span>}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14, paddingBottom: 8, borderBottom: '2px solid var(--brand)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 18 }}>{icon}</span>
+        <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600, color: 'var(--brand)' }}>{title}</span>
+        {count !== undefined && (
+          <span style={{ fontSize: 12, background: 'var(--brand)', color: '#fff', borderRadius: 20, padding: '1px 9px', fontWeight: 600, marginLeft: 4 }}>{count}</span>
+        )}
+        {note && <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 4 }}>{note}</span>}
+      </div>
+      {rightContent}
     </div>
   );
 }
@@ -90,6 +93,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [aiError, setAiError]     = useState('');
   const [showReport, setShowReport] = useState(false);
   const [showKpiHistory, setShowKpiHistory] = useState(false);
+  const [financeEntityFilter, setFinanceEntityFilter] = useState('all');
+  const [complianceEntityFilter, setComplianceEntityFilter] = useState('all');
+  const [riskEntityFilter, setRiskEntityFilter] = useState('all');
   const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
   const [copied, setCopied]       = useState(false);
 
@@ -102,7 +108,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -124,6 +130,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('interest_register').select('id').eq('status', 'Active'),
       supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls').order('created_at', { ascending: false }),
       supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
+      supabase.from('entities').select('id, name').order('name'),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -138,6 +145,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       compliance:        compRes.data   || [],
       goals:             goalsRes.data  || [],
       kpiSnapshots:      kpiRes.data    || [],
+      entities:          entitiesRes.data || [],
       finIncome:         finIncRes.data  || [],
       finExpenses:       finExpRes.data  || [],
       finBudgets:        finBudRes.data  || [],
@@ -756,7 +764,21 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
       {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 20, ...(d.compliance.length > 0 && overdueCompliance.length > 0 ? { borderTop: '3px solid var(--danger)' } : {}) }}>
-        <SectionTitle icon={d.compliance.length > 0 && overdueCompliance.length > 0 ? '⚠️' : d.compliance.length > 0 && neverAssessedCompliance.length > 0 ? '📋' : '✅'} title="Compliance Tracker" count={d.compliance.length} />
+        <SectionTitle
+          icon={d.compliance.length > 0 && overdueCompliance.length > 0 ? '⚠️' : d.compliance.length > 0 && neverAssessedCompliance.length > 0 ? '📋' : '✅'}
+          title="Compliance Tracker"
+          count={d.compliance.length}
+          rightContent={(d.entities || []).length > 0 && (
+            <select
+              value={complianceEntityFilter}
+              onChange={e => setComplianceEntityFilter(e.target.value)}
+              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+            >
+              <option value="all">All Entities</option>
+              {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+            </select>
+          )}
+        />
         {d.compliance.length === 0 ? (
           <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
         ) : overdueCompliance.length > 0 ? (
@@ -811,29 +833,44 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
               })}
             </div>
             {neverAssessedCompliance.length > 0 && (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', marginBottom: 8 }}>
-                  📋 {neverAssessedCompliance.length} item{neverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — no due date, never checked:
+              !showNeverAssessedDetail ? (
+                <div
+                  onClick={() => setShowNeverAssessedDetail(true)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)' }}>
+                    📋 {neverAssessedCompliance.length} item{neverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — click to see
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>▼</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {neverAssessedCompliance.map(c => (
-                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)' }}>
+                      📋 {neverAssessedCompliance.length} item{neverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — no due date, never checked:
+                    </span>
+                    <span onClick={() => setShowNeverAssessedDetail(false)} style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer' }}>▲ Hide</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {neverAssessedCompliance.map(c => (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                        </div>
+                        {onNavigate && (
+                          <button
+                            onClick={() => onNavigate('compliance')}
+                            style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                          >
+                            {NAV_LABELS.compliance}
+                          </button>
+                        )}
                       </div>
-                      {onNavigate && (
-                        <button
-                          onClick={() => onNavigate('compliance')}
-                          style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                        >
-                          {NAV_LABELS.compliance}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
+                    ))}
+                  </div>
+                </>
+              )
             )}
           </>
         ) : neverAssessedCompliance.length > 0 ? (
@@ -900,7 +937,21 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
       {(d.risks || []).length > 0 && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="🛡️" title="Risk Register" count={(d.risks || []).length} />
+          <SectionTitle
+            icon="🛡️"
+            title="Risk Register"
+            count={(d.risks || []).length}
+            rightContent={(d.entities || []).length > 0 && (
+              <select
+                value={riskEntityFilter}
+                onChange={e => setRiskEntityFilter(e.target.value)}
+                style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+              >
+                <option value="all">All Entities</option>
+                {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+              </select>
+            )}
+          />
           {highOpenRisks.length === 0 ? (
             <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
               ✅ No high-rated open risks
@@ -1372,7 +1423,21 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
       {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 20 }}>
-        <SectionTitle icon="📊" title="Financial Health" note={`(FY ${fyLabelStr})`} />
+        <SectionTitle
+          icon="📊"
+          title="Financial Health"
+          note={`(FY ${fyLabelStr})`}
+          rightContent={(d.entities || []).length > 0 && (
+            <select
+              value={financeEntityFilter}
+              onChange={e => setFinanceEntityFilter(e.target.value)}
+              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+            >
+              <option value="all">All Entities</option>
+              {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+            </select>
+          )}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: finOverBudgetCats.length > 0 ? 14 : 0 }}>
           {[
             { label: 'Total Income', value: `$${(finTotalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', color: 'var(--brand)' },
