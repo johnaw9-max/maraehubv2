@@ -356,12 +356,12 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     setGoalsProgress({ onTrack: goalsOnTrack, total: goalsTotal });
 
     // ── POSITIVE INSIGHT ──────────────────────────────────────────────────────
-    const overdueCompCount    = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < now).length;
+    const { isFullyCompliant: complianceFullyCurrent } = getComplianceStatus(compliance);
     const poorOrCriticalAssets = assets.filter(a => ['poor', 'critical'].includes(a.condition));
     const monthlyBkCount      = (monthlyBkRes.data || []).length;
 
     let positiveMsg = 'Your marae data is up to date.';
-    if (compliance.length > 0 && overdueCompCount === 0) {
+    if (compliance.length > 0 && complianceFullyCurrent) {
       positiveMsg = `All ${compliance.length} compliance item${compliance.length !== 1 ? 's' : ''} are current — great governance.`;
     } else if (overdueTasks.length === 0 && tasks.length > 0) {
       positiveMsg = `All ${tasks.length} active task${tasks.length !== 1 ? 's' : ''} are on schedule — no overdue items.`;
