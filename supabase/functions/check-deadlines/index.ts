@@ -178,6 +178,97 @@ serve(async () => {
     await notify(trusteeEmails, `Service reminder due in 7 days — ${r.type} (${assetName})`, body);
   }
 
+  // ── Overdue meeting action reminders (7+ days overdue, catch-up range) ─────
+  // Single-stage, direct-to-assignee — not the escalating 30/14/7 pattern
+  // (that doesn't exist elsewhere in this codebase; this mirrors the
+  // single-notification style the grants/reminders emails above already use).
+  //
+  // Catch-up range (due_date <= cutoff), not an exact match: an exact match
+  // on due_date === today-7 would silently never catch anything already more
+  // than 7 days overdue at the time this feature ships. Dedup is via
+  // last_reminded_at (null, or older than the same 7-day window) rather than
+  // a fresh column per run, so this can't resend daily forever for an item
+  // that's still overdue and unresolved — at most once per 7-day window.
+  const overdueCutoff  = offsetDate(-7);
+  const reminderCutoff = new Date();
+  reminderCutoff.setDate(reminderCutoff.getDate() - 7);
+  const reminderCutoffISO = reminderCutoff.toISOString();
+
+  const { data: overdueActions } = await db
+    .from('meeting_actions')
+    .select('id, description, assigned_to, due_date, last_reminded_at, meetings(title, meeting_type)')
+    .lte('due_date', overdueCutoff)
+    .not('status', 'eq', 'Completed')
+    .or(`last_reminded_at.is.null,last_reminded_at.lt.${reminderCutoffISO}`);
+
+  const actionReminderLog: string[] = [];
+  const actionSkippedLog:  string[] = [];
+
+  for (const action of overdueActions ?? []) {
+    const meeting = action.meetings as { title: string; meeting_type: string } | null;
+
+    if (!action.assigned_to) {
+      actionSkippedLog.push(`SKIP (no assignee) — "${action.description}"`);
+      await notify(
+        trusteeEmails,
+        `Action reminder could not be sent — check assignee`,
+        `Tēnā koutou,\n\n` +
+        `MaraeHub could not send an overdue-action reminder for the item below, ` +
+        `because it has no assignee on file.\n\n` +
+        `Action: ${action.description}\n` +
+        `Assigned to: (none)\n` +
+        `Due: ${fmtDate(action.due_date)}\n\n` +
+        `Please assign this action to someone, or mark it complete if it's no longer relevant.` +
+        footer(),
+      );
+      await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
+      continue;
+    }
+
+    const name = action.assigned_to.trim();
+    const [profileRes, contactRes] = await Promise.all([
+      db.from('profiles').select('email').eq('full_name', name).maybeSingle(),
+      db.from('contacts').select('email').eq('full_name', name).maybeSingle(),
+    ]);
+    const email = profileRes.data?.email || contactRes.data?.email || null;
+
+    if (!email) {
+      actionSkippedLog.push(`SKIP (no email found for "${name}") — "${action.description}"`);
+      await notify(
+        trusteeEmails,
+        `Action reminder could not be sent — check assignee`,
+        `Tēnā koutou,\n\n` +
+        `MaraeHub could not send an overdue-action reminder for the item below, ` +
+        `because no email address could be found for the assignee on file.\n\n` +
+        `Action: ${action.description}\n` +
+        `Assigned to: "${name}"\n` +
+        `Due: ${fmtDate(action.due_date)}\n\n` +
+        `Please check that this name matches a trustee or contact's full name exactly, ` +
+        `or reassign the action to someone with an email on file.` +
+        footer(),
+      );
+      await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
+      continue;
+    }
+
+    const daysOverdue = Math.round(
+      (new Date(today + 'T12:00:00').getTime() - new Date(action.due_date + 'T12:00:00').getTime()) / 86400000
+    );
+
+    const body =
+      `Tēnā koe ${name},\n\n` +
+      `This is a reminder that an action assigned to you from a meeting is now ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue.\n\n` +
+      `Meeting: ${meeting?.title ?? 'Unknown meeting'}\n` +
+      `Action: ${action.description}\n` +
+      `Due: ${fmtDate(action.due_date)}\n\n` +
+      `Please log in to MaraeHub to update this action or mark it complete.` +
+      footer();
+
+    await notify([email], `Overdue action reminder — ${action.description}`, body);
+    actionReminderLog.push(`SENT — "${action.description}" to ${name} (${email})`);
+    await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
+  }
+
   // ── Auto-trigger workflows ──────────────────────────────────────────────────
   // Window: overdue up to 30 days back through 14 days ahead.
   // The "already has active workflow" check prevents duplicate creation on
@@ -316,6 +407,9 @@ serve(async () => {
       today,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
+      meeting_action_reminders_sent:    actionReminderLog.length,
+      meeting_action_reminders_log:     actionReminderLog,
+      meeting_action_reminders_skipped: actionSkippedLog,
       trustees:          trusteeEmails.length,
       workflows_created: workflowLog.length,
       workflows_log:     workflowLog,
