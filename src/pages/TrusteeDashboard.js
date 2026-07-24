@@ -13,6 +13,8 @@ import GrantsTracker from '../components/GrantsTracker';
 import FinanceManager from '../components/FinanceManager';
 import ContactsManager from '../components/ContactsManager';
 import ComplianceTracker from '../components/ComplianceTracker';
+import { getComplianceStatus } from '../lib/complianceStatus';
+import { getRiskStatus } from '../lib/riskStatus';
 import RiskRegister from '../components/RiskRegister';
 import GoalsReporting from '../components/GoalsReporting';
 import BoardDashboard from '../components/BoardDashboard';
@@ -225,7 +227,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       supabase.from('assets').select('id, name, condition, replacement_cost'),
       supabase.from('bookings').select('id').eq('status', 'pending'),
       supabase.from('booking_feedback').select('rating_overall, rating_cleanliness, rating_facilities, experience, created_at').order('created_at', { ascending: false }),
-      supabase.from('compliance_items').select('id, name, category, due_date').order('due_date'),
+      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date').order('due_date'),
       supabase.from('risk_register').select('id, risk_description, risk_rating, status'),
       supabase.from('tasks').select('id, title, due_date, status').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
@@ -341,8 +343,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
     // ── GOALS PROGRESS ────────────────────────────────────────────────────────
     const goalsArr = goalsRes.data || [];
-    const goalsTotal = goalsArr.length;
-    const goalsOnTrack = goalsArr.filter(g => {
+    const activeGoals = goalsArr.filter(g => g.status !== 'not_started');
+    const goalsTotal = activeGoals.length;
+    const goalsOnTrack = activeGoals.filter(g => {
       if (g.status === 'completed') return true;
       if (g.status === 'at_risk') return false;
       const t = g.target_date ? new Date(g.target_date + 'T12:00:00') : null;
@@ -378,22 +381,25 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     const hsCategories = [];
 
     if (compliance.length >= 3) {
-      const overdueComp = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < now).length;
+      const { overdue, neverAssessed, compliancePct } = getComplianceStatus(compliance);
       hsCategories.push({
         name: 'Compliance',
-        score: Math.round(25 * ((compliance.length - overdueComp) / compliance.length)),
+        score: Math.round(25 * compliancePct / 100),
         max: 25,
-        detail: overdueComp > 0 ? `${overdueComp} compliance item${overdueComp !== 1 ? 's' : ''} overdue` : 'All compliance items up to date',
+        detail: [
+          overdue.length > 0 && `${overdue.length} overdue`,
+          neverAssessed.length > 0 && `${neverAssessed.length} never assessed`,
+        ].filter(Boolean).join(', ') || 'All compliance items up to date',
       });
     }
 
     if (risks.length >= 1) {
-      const highOpen = risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed').length;
+      const { highOpen, riskPct } = getRiskStatus(risks);
       hsCategories.push({
         name: 'Risk',
-        score: highOpen === 0 ? 20 : Math.max(0, Math.round(20 * (1 - highOpen / risks.length))),
+        score: Math.round(20 * riskPct / 100),
         max: 20,
-        detail: highOpen > 0 ? `${highOpen} high-rated risk${highOpen !== 1 ? 's' : ''} still open` : 'No open high-rated risks',
+        detail: highOpen.length > 0 ? `${highOpen.length} high-rated risk${highOpen.length !== 1 ? 's' : ''} still open` : 'No open high-rated risks',
       });
     }
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
+import { getComplianceStatus } from '../lib/complianceStatus';
+import { getRiskStatus } from '../lib/riskStatus';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -212,11 +214,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const fyLabelStr = `${d.fyYear}/${String(d.fyYear + 1).slice(2)}`;
 
   const zeroStockItems     = d.assets.filter(a => a.category === 'Inventory' && a.quantity != null && a.quantity === 0);
-  const overdueCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
-  const dueSoonCompliance  = d.compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
-  const neverAssessedCompliance = d.compliance.filter(c => !c.due_date && !c.last_checked_date);
-  const compliantCompliance = d.compliance.length - overdueCompliance.length - dueSoonCompliance.length - neverAssessedCompliance.length;
-  const compliancePct       = d.compliance.length ? Math.round((compliantCompliance / d.compliance.length) * 100) : 100;
+  const { overdue: overdueCompliance, dueSoon: dueSoonCompliance, neverAssessed: neverAssessedCompliance, compliant: compliantComplianceArr, compliancePct } = getComplianceStatus(d.compliance);
 
   // Emergency Preparedness — high-priority check (overdue OR no due_date set)
   const epCompliance      = d.compliance.filter(c => c.category === 'emergency_preparedness');
@@ -264,6 +262,72 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const openRisks              = (d.risks || []).filter(r => r.status !== 'Closed');
   const openRisksWithControls  = openRisks.filter(r => r.controls);
   const riskControlsPct        = openRisks.length ? Math.round((openRisksWithControls.length / openRisks.length) * 100) : 100;
+  const { riskPct } = getRiskStatus(d.risks || []);
+
+  // ─── HEALTH SCORE ──────────────────────────────────────────────────────────
+  const scorableTasks  = d.tasks.filter(t => !t.title?.startsWith('UPCOMING: '));
+  const finRecordCount = (d.finIncome || []).length + (d.finExpenses || []).length;
+
+  const hsCategories = [];
+
+  if (d.compliance.length >= 3) {
+    hsCategories.push({
+      name: 'Compliance',
+      score: Math.round(25 * compliancePct / 100),
+      max: 25,
+      detail: [
+        overdueCompliance.length > 0 && `${overdueCompliance.length} overdue`,
+        neverAssessedCompliance.length > 0 && `${neverAssessedCompliance.length} never assessed`,
+      ].filter(Boolean).join(', ') || 'All compliance items up to date',
+    });
+  }
+
+  if ((d.risks || []).length >= 1) {
+    hsCategories.push({
+      name: 'Risk',
+      score: Math.round(20 * riskPct / 100),
+      max: 20,
+      detail: highOpenRisks.length > 0 ? `${highOpenRisks.length} high-rated risk${highOpenRisks.length !== 1 ? 's' : ''} still open` : 'No open high-rated risks',
+    });
+  }
+
+  // Tasks and Finance: unchanged from TrusteeDashboard.js's current logic -
+  // not yet reconciled with Board View (Parts 3-4, pending), moved as-is.
+  if (scorableTasks.length >= 3) {
+    hsCategories.push({
+      name: 'Tasks',
+      score: Math.round(20 * ((scorableTasks.length - overdueTasks.length) / scorableTasks.length)),
+      max: 20,
+      detail: overdueTasks.length > 0 ? `${overdueTasks.length} task${overdueTasks.length !== 1 ? 's' : ''} overdue` : 'No overdue tasks',
+    });
+  }
+
+  if (finRecordCount >= 3) {
+    let finScore = 0;
+    if (finNet >= 0) finScore = 20;
+    else if (finTotalIncome > 0 && Math.abs(finNet) < finTotalIncome * 0.1) finScore = 10;
+    hsCategories.push({
+      name: 'Finance',
+      score: finScore,
+      max: 20,
+      detail: finNet >= 0 ? 'Finances in surplus' : `Running a deficit of $${Math.abs(Math.round(finNet)).toLocaleString()}`,
+    });
+  }
+
+  if (activeGoals.length >= 1) {
+    const goalsBehindCount = activeGoals.length - goalsOnTrackOrComplete.length;
+    hsCategories.push({
+      name: 'Goals',
+      score: Math.round(15 * (goalsOnTrackOrComplete.length / activeGoals.length)),
+      max: 15,
+      detail: goalsBehindCount > 0 ? `${goalsBehindCount} goal${goalsBehindCount !== 1 ? 's' : ''} not on track` : 'All goals on track',
+    });
+  }
+
+  const hsInsufficient = hsCategories.length < 2;
+  const hsRawTotal    = hsCategories.reduce((s, c) => s + c.score, 0);
+  const hsMaxTotal     = hsCategories.reduce((s, c) => s + c.max, 0);
+  const hsFinalScore   = hsMaxTotal ? Math.round((hsRawTotal / hsMaxTotal) * 100) : 0;
 
   const ALERTS = [
     epUrgentCount              && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
@@ -789,7 +853,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 { label: 'Overdue',   count: overdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
                 { label: 'Due Soon',  count: dueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
                 { label: 'Never Assessed', count: neverAssessedCompliance.length, dot: '#7a7268', bg: '#f5f0e8', color: 'var(--text3)' },
-                { label: 'Compliant', count: compliantCompliance, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                { label: 'Compliant', count: compliantComplianceArr.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
                 { label: '% Compliant', count: `${compliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
@@ -941,6 +1005,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             icon="🛡️"
             title="Risk Register"
             count={(d.risks || []).length}
+            note={`${riskPct}% clear of high-rated risks`}
             rightContent={(d.entities || []).length > 0 && (
               <select
                 value={riskEntityFilter}
@@ -1134,43 +1199,6 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           </div>
         </div>
       )}
-      {/* ── PERFORMANCE HISTORY ──────────────────────────────────────────── */}
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-             onClick={() => setShowKpiHistory(v => !v)}>
-          <SectionTitle icon="📈" title="Performance History" count={d.kpiSnapshots.length} />
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
-        </div>
-
-        {d.kpiSnapshots.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
-        ) : !showKpiHistory ? (
-          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{d.kpiSnapshots.length} month{d.kpiSnapshots.length !== 1 ? 's' : ''} locked this year — click to view</div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                {['Month','Compliance','Risk','Assets','Goals'].map(h => (
-                  <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...d.kpiSnapshots].reverse().map(s => (
-                <tr key={s.snapshot_month} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '8px', fontWeight: 600 }}>
-                    {new Date(s.snapshot_month + 'T12:00:00').toLocaleDateString('en-NZ', { month: 'short', year: 'numeric' })}
-                  </td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.compliance_pct}%</td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.risk_pct}%</td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.assets_pct}%</td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.goals_pct}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
       {/* ══════════════════════════ TOP PRIORITIES ══════════════════════════ */}
       <GroupHeading title="Top Priorities" />
 
@@ -1592,6 +1620,70 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ══════════════════════════ TRENDS & SCORE ══════════════════════════ */}
+      <GroupHeading title="Trends & Score" />
+
+      {/* ── PERFORMANCE HISTORY ──────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+             onClick={() => setShowKpiHistory(v => !v)}>
+          <SectionTitle icon="📈" title="Performance History" count={d.kpiSnapshots.length} />
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
+        </div>
+
+        {d.kpiSnapshots.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
+        ) : !showKpiHistory ? (
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{d.kpiSnapshots.length} month{d.kpiSnapshots.length !== 1 ? 's' : ''} locked this year — click to view</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                {['Month','Compliance','Risk','Assets','Goals'].map(h => (
+                  <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...d.kpiSnapshots].reverse().map(s => (
+                <tr key={s.snapshot_month} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px', fontWeight: 600 }}>
+                    {new Date(s.snapshot_month + 'T12:00:00').toLocaleDateString('en-NZ', { month: 'short', year: 'numeric' })}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.compliance_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.risk_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.assets_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.goals_pct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── HEALTH SCORE ──────────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <SectionTitle icon="📊" title="Marae Health Score" />
+        {hsInsufficient ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Not enough data yet across enough categories to calculate a score</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
+              <strong style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, color: 'var(--brand)' }}>{hsFinalScore}</strong>
+              <span style={{ color: 'var(--text3)' }}> / 100 · based on {hsCategories.map(c => c.name).join(' · ')}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {hsCategories.map(c => (
+                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text3)' }}>
+                  <span>{c.name}</span>
+                  <span>{c.detail}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
