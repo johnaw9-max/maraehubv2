@@ -227,10 +227,11 @@ serve(async () => {
 
     const name = action.assigned_to.trim();
     const [profileRes, contactRes] = await Promise.all([
-      db.from('profiles').select('email').eq('full_name', name).maybeSingle(),
+      db.from('profiles').select('id, email, role').eq('full_name', name).maybeSingle(),
       db.from('contacts').select('email').eq('full_name', name).maybeSingle(),
     ]);
     const email = profileRes.data?.email || contactRes.data?.email || null;
+    const isTrustee = profileRes.data?.role === 'trustee';
 
     if (!email) {
       actionSkippedLog.push(`SKIP (no email found for "${name}") — "${action.description}"`);
@@ -255,13 +256,36 @@ serve(async () => {
       (new Date(today + 'T12:00:00').getTime() - new Date(action.due_date + 'T12:00:00').getTime()) / 86400000
     );
 
+    // Mark-done link (ClickUp 86d3tjb94): only issued when the assignee
+    // resolved to a real trustee (profiles row, role='trustee'), not a
+    // contacts row. Token issuance failing degrades gracefully — the
+    // reminder still sends with the original log-in instruction, same as
+    // it always has.
+    let actionInstruction = `Please log in to MaraeHub to update this action or mark it complete.`;
+    if (isTrustee && profileRes.data?.id) {
+      const { data: tokenId, error: tokenErr } = await db.rpc('issue_action_reminder_token', {
+        p_meeting_action_id: action.id,
+        p_trustee_id:        profileRes.data.id,
+        p_resolved_name:     name,
+        p_resolved_email:    email,
+      });
+      if (tokenErr) {
+        actionSkippedLog.push(`WARN (token issue failed) — "${action.description}": ${tokenErr.message}`);
+      } else if (tokenId) {
+        const markDoneUrl = `${SUPABASE_URL}/functions/v1/mark-action-done?token=${tokenId}`;
+        actionInstruction =
+          `Tap here to mark this done: ${markDoneUrl}\n\n` +
+          `Or, if you'd rather, log in to MaraeHub to update it yourself.`;
+      }
+    }
+
     const body =
       `Tēnā koe ${name},\n\n` +
       `This is a reminder that an action assigned to you from a meeting is now ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue.\n\n` +
       `Meeting: ${meeting?.title ?? 'Unknown meeting'}\n` +
       `Action: ${action.description}\n` +
       `Due: ${fmtDate(action.due_date)}\n\n` +
-      `Please log in to MaraeHub to update this action or mark it complete.` +
+      actionInstruction +
       footer();
 
     await notify([email], `Overdue action reminder — ${action.description}`, body);

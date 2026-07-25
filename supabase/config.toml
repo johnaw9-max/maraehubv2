@@ -2,3 +2,6 @@ project_id = "cbeenkpjpnhmtqtnjiyd"
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.mark-action-done]
+verify_jwt = false
