@@ -94,7 +94,20 @@ function SummaryTile({ icon, iconBg, value, label, valueColor, sub }) {
 
 function MeetingForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
-  const [form, setForm] = useState(initial || EMPTY_MEETING);
+  const [form, setForm] = useState(() =>
+    initial
+      ? {
+          ...EMPTY_MEETING,
+          ...initial,
+          chairperson: initial.chairperson || '',
+          secretary:   initial.secretary || '',
+          attendees:   initial.attendees || '',
+          apologies:   initial.apologies || '',
+          minutes:     initial.minutes || '',
+          created_by:  initial.created_by || '',
+        }
+      : EMPTY_MEETING
+  );
   const [attachmentFile, setAttachmentFile] = useState(null);
   const attachmentRef = useRef();
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
