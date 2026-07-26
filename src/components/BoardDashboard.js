@@ -1196,6 +1196,20 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 </div>
               );
             })}
+            {d.actions.length > overdueActions.length && onNavigate && (
+              <div
+                onClick={() => onNavigate('minutes')}
+                style={{
+                  fontSize: 12,
+                  color: 'var(--brand)',
+                  fontWeight: 600,
+                  padding: '4px 14px',
+                  cursor: 'pointer',
+                }}
+              >
+                +{d.actions.length - overdueActions.length} more open action{d.actions.length - overdueActions.length !== 1 ? 's' : ''}, not yet due →
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1312,138 +1326,59 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       {/* ══════════════════════════ GOVERNANCE ══════════════════════════ */}
       <GroupHeading title="Governance" />
 
-      {/* ── GOVERNANCE ROW: STRATEGIC GOALS + OPEN MEETING ACTIONS ─────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-
-        {/* ── STRATEGIC GOALS SUMMARY ────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="🎯" title="Strategic Goals" count={d.goals.length} />
-          {d.goals.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
-          ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
-            // COLLAPSED — calm, all on track or completed
-            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-              ✅ All goals are on track or completed
-              {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
+      {/* ── STRATEGIC GOALS SUMMARY ──────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <SectionTitle icon="🎯" title="Strategic Goals" count={d.goals.length} />
+        {d.goals.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
+        ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
+          // COLLAPSED — calm, all on track or completed
+          <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+            ✅ All goals are on track or completed
+            {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
+          </div>
+        ) : (
+          // EXPANDED — pill grid + list, only shown when something needs attention
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
+              {[
+                { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+                { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
+                { label: '% On Track',  count: `${goalsPct}%`,       dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                  <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
             </div>
-          ) : (
-            // EXPANDED — pill grid + list, only shown when something needs attention
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
-                {[
-                  { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
-                  { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
-                  { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
-                  { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
-                  { label: '% On Track',  count: `${goalsPct}%`,       dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
-                ].map(s => (
-                  <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
-                    <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-                    <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[...goalsBehind, ...goalsAtRisk].map(g => {
-                  const light = goalLight(g);
-                  const dot   = light === 'red' ? '#d9534f' : '#c8902a';
-                  const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
-                  const label = light === 'red' ? 'Behind' : 'At Risk';
-                  return (
-                    <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
-                          {g.responsible_name && `👤 ${g.responsible_name}`}
-                          {g.responsible_name && g.target_date && ' · '}
-                          {g.target_date && `Target: ${fmt(g.target_date)}`}
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* ── OPEN MEETING ACTIONS (Minutes) ─────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📋" title="Open Meeting Actions" count={d.actions.length} />
-          {d.actions.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No open meeting actions</div>
-          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {actionsSorted.slice(0, 5).map(a => {
-                const overdue = a.due_date && new Date(a.due_date + 'T12:00:00') < today;
-                const daysOver = overdue
-                  ? Math.ceil((today - new Date(a.due_date + 'T12:00:00')) / 86400000)
-                  : 0;
+              {[...goalsBehind, ...goalsAtRisk].map(g => {
+                const light = goalLight(g);
+                const dot   = light === 'red' ? '#d9534f' : '#c8902a';
+                const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
+                const label = light === 'red' ? 'Behind' : 'At Risk';
                 return (
-                  <div key={a.id} style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    padding: '9px 12px',
-                    background: overdue ? '#faeae7' : 'var(--surface2)',
-                    borderRadius: 7,
-                    borderLeft: overdue ? '3px solid var(--danger)' : '3px solid var(--border)',
-                    gap: 10,
-                  }}>
+                  <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 13,
-                        fontWeight: overdue ? 600 : 400,
-                        color: 'var(--text1)',
-                        lineHeight: 1.4,
-                      }}>
-                        {a.description}
-                      </div>
-                      <div style={{
-                        fontSize: 11,
-                        color: overdue ? 'var(--danger)' : 'var(--text3)',
-                        marginTop: 2,
-                      }}>
-                        {a.assigned_to && `👤 ${a.assigned_to}`}
-                        {a.assigned_to && a.due_date && ' · '}
-                        {a.due_date && (overdue
-                          ? `⚠️ ${daysOver}d overdue`
-                          : `Due ${fmt(a.due_date)}`
-                        )}
-                        {a.status && ` · ${a.status}`}
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                        {g.responsible_name && `👤 ${g.responsible_name}`}
+                        {g.responsible_name && g.target_date && ' · '}
+                        {g.target_date && `Target: ${fmt(g.target_date)}`}
                       </div>
                     </div>
+                    <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
                   </div>
                 );
               })}
-              {d.actions.length > 5 && (
-                <div style={{ fontSize: 12, color: 'var(--text3)', paddingTop: 2 }}>
-                  +{d.actions.length - 5} more open actions
-                </div>
-              )}
             </div>
-          )}
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('minutes')}
-              style={{
-                marginTop: 10,
-                fontSize: 12,
-                background: 'none',
-                border: '1px solid var(--border)',
-                color: 'var(--brand)',
-                borderRadius: 6,
-                padding: '5px 12px',
-                cursor: 'pointer',
-                fontFamily: 'DM Sans, sans-serif',
-                fontWeight: 600,
-              }}
-            >View all in Minutes →</button>
-          )}
-        </div>
+          </>
+        )}
       </div>
-
 
 
       {/* ══════════════════════════ RESOURCES ══════════════════════════ */}
