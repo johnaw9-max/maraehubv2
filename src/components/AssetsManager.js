@@ -204,7 +204,7 @@ export default function AssetsManager({ onStartWorkflow }) {
   function openAddReminder() { setReminderForm(EMPTY_REMINDER); setEditReminderId(null); setError(''); setShowReminderModal(true); }
 
   function openEditReminder(r) {
-    setReminderForm({ type: r.type, due_date: r.due_date, recurring: r.recurring, notes: r.notes || '' });
+    setReminderForm({ type: r.type || '', due_date: r.due_date, recurring: r.recurring, notes: r.notes || '' });
     setEditReminderId(r.id); setError(''); setShowReminderModal(true);
   }
 

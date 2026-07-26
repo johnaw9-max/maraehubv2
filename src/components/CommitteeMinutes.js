@@ -205,7 +205,17 @@ function MeetingForm({ initial, onSave, onCancel, saving, error }) {
 // ─── RESOLUTION INLINE FORM ───────────────────────────────────────────────────
 
 function ResolutionForm({ initial, onSave, onCancel, saving, error }) {
-  const [form, setForm] = useState(initial || EMPTY_RESOLUTION);
+  const [form, setForm] = useState(() =>
+    initial
+      ? {
+          ...EMPTY_RESOLUTION,
+          ...initial,
+          resolution_number: initial.resolution_number || '',
+          description:       initial.description || '',
+          notes:             initial.notes || '',
+        }
+      : EMPTY_RESOLUTION
+  );
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   return (
@@ -251,7 +261,16 @@ function ResolutionForm({ initial, onSave, onCancel, saving, error }) {
 
 function ActionForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
-  const [form, setForm] = useState(initial || EMPTY_ACTION);
+  const [form, setForm] = useState(() =>
+    initial
+      ? {
+          ...EMPTY_ACTION,
+          ...initial,
+          description:  initial.description || '',
+          assigned_to:  initial.assigned_to || '',
+        }
+      : EMPTY_ACTION
+  );
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   return (
@@ -615,7 +634,17 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
 
 function InterestForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
-  const [form, setForm] = useState(initial || EMPTY_INTEREST);
+  const [form, setForm] = useState(() =>
+    initial
+      ? {
+          ...EMPTY_INTEREST,
+          ...initial,
+          trustee_name:        initial.trustee_name || '',
+          nature_of_interest:  initial.nature_of_interest || '',
+          related_matter:      initial.related_matter || '',
+        }
+      : EMPTY_INTEREST
+  );
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   return (

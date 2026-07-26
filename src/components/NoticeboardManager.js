@@ -150,7 +150,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
                   {isTrustee && (
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button
-                        onClick={() => { setForm({ title: n.title, body: n.body, category: n.category }); setEditId(n.id); setError(''); setShowForm(true); }}
+                        onClick={() => { setForm({ title: n.title || '', body: n.body || '', category: n.category || 'General' }); setEditId(n.id); setError(''); setShowForm(true); }}
                         style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}
                       >
                         Edit
