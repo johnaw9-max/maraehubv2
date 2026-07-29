@@ -4,6 +4,8 @@ import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import BankReconciliation from './BankReconciliation';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../lib/financeCategories';
+import { fetchXeroFinancials } from '../lib/xero';
+import XeroFinanceSummary from './XeroFinanceSummary';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -121,6 +123,7 @@ export default function FinanceManager() {
   const [equipmentValue, setEquipmentValue] = useState(0);
   const [contactNames, setContactNames] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [xero, setXero] = useState(null); // null = still resolving
 
   // Modals
   const [showIncomeModal, setShowIncomeModal]   = useState(false);
@@ -167,7 +170,21 @@ export default function FinanceManager() {
   const [reportExpenses, setReportExpenses] = useState(null); // null = use current-FY 'expenses'
   const [reportLoading,  setReportLoading]  = useState(false);
 
-  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchXeroFinancials().then(result => {
+      setXero(result);
+      if (result.status === 'not_connected') {
+        fetchAll();
+      } else {
+        setLoading(false);
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function refreshXero() {
+    const result = await fetchXeroFinancials(true);
+    setXero(result);
+  }
 
   useEffect(() => {
     if (reportPeriod === 'this_fy') {
@@ -697,6 +714,10 @@ ${loanHtml}
   }
 
   if (loading) return <div className="loading">Loading finance data...</div>;
+
+  if (xero?.status !== 'not_connected') {
+    return <XeroFinanceSummary xero={xero} onRefresh={refreshXero} />;
+  }
 
   // ── COMPUTED BALANCE SHEET ─────────────────────────────────────────────────
 

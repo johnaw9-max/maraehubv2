@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { fetchXeroFinancials, minsAgo } from '../lib/xero';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import { getComplianceStatus } from '../lib/complianceStatus';
 import { getRiskStatus } from '../lib/riskStatus';
@@ -34,39 +35,6 @@ const PERIODS = [
 ];
 
 const PERIOD_LABEL = { month: 'This Month', quarter: 'This Quarter', year: 'This Year', all: 'All Time' };
-
-// Xero makes real external API calls with real rate limits, unlike the rest
-// of fetchAll()'s internal Supabase queries — cache in-session so repeated
-// Board View loads/navigations don't hit Xero live every time. Resets on a
-// hard page reload, which is an acceptable staleness bound for summary figures.
-const XERO_CACHE_TTL_MS = 5 * 60 * 1000;
-let xeroFinancialsCache = null; // { data, fetchedAt } | null
-
-async function fetchXeroFinancials() {
-  const now = Date.now();
-  if (xeroFinancialsCache && now - xeroFinancialsCache.fetchedAt < XERO_CACHE_TTL_MS) {
-    return xeroFinancialsCache.data;
-  }
-  let result;
-  try {
-    const { data, error } = await supabase.functions.invoke('xero-financials');
-    if (error) {
-      result = { status: 'error' };
-    } else {
-      result = data?.connected ? { status: 'connected', ...data } : { status: 'not_connected' };
-    }
-  } catch {
-    result = { status: 'error' };
-  }
-  xeroFinancialsCache = { data: result, fetchedAt: now };
-  return result;
-}
-
-function minsAgo(iso) {
-  if (!iso) return null;
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  return mins < 1 ? 'just now' : `${mins} min ago`;
-}
 
 const NAV_LABELS = {
   minutes:    'View Minutes →',
