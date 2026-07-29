@@ -237,9 +237,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   // ─── FINANCIAL HEALTH ──────────────────────────────────────────────────────
   const xeroConnected    = d.xero?.status === 'connected';
-  const finTotalIncome   = xeroConnected ? d.xero.totalIncome   : (d.finIncome   || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-  const finTotalExpenses = xeroConnected ? d.xero.totalExpenses : (d.finExpenses || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-  const finNet           = xeroConnected ? d.xero.netProfit     : finTotalIncome - finTotalExpenses;
+  const finTotalIncome   = xeroConnected ? d.xero.profitAndLoss.totalIncome   : (d.finIncome   || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const finTotalExpenses = xeroConnected ? d.xero.profitAndLoss.totalExpenses : (d.finExpenses || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const finNet           = xeroConnected ? d.xero.profitAndLoss.netProfit     : finTotalIncome - finTotalExpenses;
   const finBudgetMap     = {};
   (d.finBudgets || []).forEach(b => { finBudgetMap[b.category] = parseFloat(b.amount || 0); });
   const finSpentMap = {};
