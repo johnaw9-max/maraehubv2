@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.mark-action-done]
 verify_jwt = false
+
+[functions.xero-callback]
+verify_jwt = false

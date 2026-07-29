@@ -35,6 +35,39 @@ const PERIODS = [
 
 const PERIOD_LABEL = { month: 'This Month', quarter: 'This Quarter', year: 'This Year', all: 'All Time' };
 
+// Xero makes real external API calls with real rate limits, unlike the rest
+// of fetchAll()'s internal Supabase queries — cache in-session so repeated
+// Board View loads/navigations don't hit Xero live every time. Resets on a
+// hard page reload, which is an acceptable staleness bound for summary figures.
+const XERO_CACHE_TTL_MS = 5 * 60 * 1000;
+let xeroFinancialsCache = null; // { data, fetchedAt } | null
+
+async function fetchXeroFinancials() {
+  const now = Date.now();
+  if (xeroFinancialsCache && now - xeroFinancialsCache.fetchedAt < XERO_CACHE_TTL_MS) {
+    return xeroFinancialsCache.data;
+  }
+  let result;
+  try {
+    const { data, error } = await supabase.functions.invoke('xero-financials');
+    if (error) {
+      result = { status: 'error' };
+    } else {
+      result = data?.connected ? { status: 'connected', ...data } : { status: 'not_connected' };
+    }
+  } catch {
+    result = { status: 'error' };
+  }
+  xeroFinancialsCache = { data: result, fetchedAt: now };
+  return result;
+}
+
+function minsAgo(iso) {
+  if (!iso) return null;
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return mins < 1 ? 'just now' : `${mins} min ago`;
+}
+
 const NAV_LABELS = {
   minutes:    'View Minutes →',
   compliance: 'View Compliance →',
@@ -110,7 +143,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes] = await Promise.all([
+    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -133,6 +166,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls').order('created_at', { ascending: false }),
       supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
       supabase.from('entities').select('id, name').order('name'),
+      fetchXeroFinancials(),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -151,6 +185,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       finIncome:         finIncRes.data  || [],
       finExpenses:       finExpRes.data  || [],
       finBudgets:        finBudRes.data  || [],
+      xero:              xeroRes, // { status: 'connected'|'not_connected'|'error', totalIncome?, totalExpenses?, netProfit?, lastSyncedAt? }
       templates:         tplRes.data    || [],
       workflowInstances: wfInstRes.data  || [],
       workflowTasks:        wfTaskRes.data  || [],
@@ -201,9 +236,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   d.assets.forEach(a => { assetMap[a.id] = a.name; });
 
   // ─── FINANCIAL HEALTH ──────────────────────────────────────────────────────
-  const finTotalIncome   = (d.finIncome   || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-  const finTotalExpenses = (d.finExpenses || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-  const finNet           = finTotalIncome - finTotalExpenses;
+  const xeroConnected    = d.xero?.status === 'connected';
+  const finTotalIncome   = xeroConnected ? d.xero.totalIncome   : (d.finIncome   || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const finTotalExpenses = xeroConnected ? d.xero.totalExpenses : (d.finExpenses || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const finNet           = xeroConnected ? d.xero.netProfit     : finTotalIncome - finTotalExpenses;
   const finBudgetMap     = {};
   (d.finBudgets || []).forEach(b => { finBudgetMap[b.category] = parseFloat(b.amount || 0); });
   const finSpentMap = {};
@@ -1420,7 +1456,15 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             </div>
           ))}
         </div>
-        {finOverBudgetCats.length > 0 ? (
+        {xeroConnected ? (
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+            🔄 Synced from Xero, {minsAgo(d.xero.lastSyncedAt)}
+          </div>
+        ) : d.xero?.status === 'error' ? (
+          <div style={{ fontSize: 12, color: 'var(--danger)' }}>
+            ⚠️ Unable to sync with Xero right now
+          </div>
+        ) : finOverBudgetCats.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {finOverBudgetCats.map(cat => (
               <span key={cat} onClick={() => onNavigate && onNavigate('finance')} style={{ fontSize: 11, fontWeight: 600, background: '#faeae7', color: 'var(--danger)', border: '1px solid #f0b8b0', borderRadius: 20, padding: '3px 10px', cursor: onNavigate ? 'pointer' : 'default' }}>
