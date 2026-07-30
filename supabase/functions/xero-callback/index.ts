@@ -261,14 +261,23 @@ serve(async (req) => {
     const { tenantId, tenantName } = connections[0];
 
     const entityId = statePayload.entityId;
-    let existingQuery = adminClient.from('xero_connections').select('id').eq('status', 'active');
-    existingQuery = entityId ? existingQuery.eq('entity_id', entityId) : existingQuery.is('entity_id', null);
-    const { data: existing } = await existingQuery.maybeSingle();
+
+    let activeQuery = adminClient.from('xero_connections').select('id').eq('status', 'active');
+    activeQuery = entityId ? activeQuery.eq('entity_id', entityId) : activeQuery.is('entity_id', null);
+    const { data: existingActive } = await activeQuery.maybeSingle();
 
     // Defense in depth: only proceed if state carried an explicit confirmation for this reconnect.
-    if (existing && !statePayload.confirmed) {
+    if (existingActive && !statePayload.confirmed) {
       return redirect({ xero: 'needs_confirmation' });
     }
+
+    // Separate from the active-connection check above: xero_connections_whole_marae_unique
+    // applies regardless of status, so a disconnected row still occupies that slot —
+    // look for ANY row in this entity scope (active or not) to decide update vs
+    // insert, or a fresh insert here would violate that index.
+    let anyRowQuery = adminClient.from('xero_connections').select('id');
+    anyRowQuery = entityId ? anyRowQuery.eq('entity_id', entityId) : anyRowQuery.is('entity_id', null);
+    const { data: existingAnyStatus } = await anyRowQuery.maybeSingle();
 
     const row = {
       entity_id: entityId,
@@ -282,8 +291,8 @@ serve(async (req) => {
       status: 'active',
     };
 
-    const { error: writeError } = existing
-      ? await adminClient.from('xero_connections').update(row).eq('id', existing.id)
+    const { error: writeError } = existingAnyStatus
+      ? await adminClient.from('xero_connections').update(row).eq('id', existingAnyStatus.id)
       : await adminClient.from('xero_connections').insert(row);
 
     if (writeError) {
