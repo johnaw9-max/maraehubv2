@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { fetchXeroFinancials } from '../lib/xero';
 import PrivacyPolicy from './PrivacyPolicy';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
   payment_details: '',
-  use_xero: false, automation_level: 'assisted',
+  automation_level: 'assisted',
 
+};
+
+const XERO_ERROR_MESSAGES = {
+  denied: 'You declined the Xero connection request.',
+  missing_params: 'The connection attempt was incomplete — please try again.',
+  invalid_state: 'The connection link expired or was invalid — please try connecting again.',
+  token_exchange: 'Xero could not verify the connection — please try again.',
+  tenant_lookup: 'Could not retrieve your Xero organisation details — please try again.',
+  select_one_org: 'MaraeHub currently only supports connecting one Xero organisation at a time.',
+  save_failed: 'The connection succeeded with Xero, but saving it failed — please try again.',
+  needs_confirmation: 'A Xero connection already exists — reconnecting requires confirmation.',
+  unexpected: 'Something unexpected went wrong — please try again.',
 };
 
 const NOTIF_LABELS = [
@@ -30,6 +43,14 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Xero connection state
+  const [xeroStatus, setXeroStatus] = useState(null); // null = loading
+  const [xeroBanner, setXeroBanner] = useState(null); // null | 'connected' | 'error'
+  const [xeroBannerReason, setXeroBannerReason] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [xeroActionError, setXeroActionError] = useState('');
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState({ bookings: true, compliance: true, grants: true, actions: true, goals: true });
@@ -78,7 +99,46 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchTemplates();
     if (profile?.id) fetchNotifPrefs(profile.id);
     if (isAdmin) fetchTrustees();
+    fetchXeroStatus();
+
+    const params = new URLSearchParams(window.location.search);
+    const xeroParam = params.get('xero');
+    if (xeroParam === 'connected' || xeroParam === 'error') {
+      setXeroBanner(xeroParam);
+      setXeroBannerReason(params.get('reason') || '');
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchXeroStatus() {
+    const result = await fetchXeroFinancials();
+    setXeroStatus(result);
+  }
+
+  async function handleConnectXero() {
+    setConnecting(true);
+    setXeroActionError('');
+    const { data, error } = await supabase.functions.invoke('xero-callback?action=authorize', { method: 'GET' });
+    if (error || !data?.authorizeUrl) {
+      setXeroActionError('Could not start the Xero connection — please try again.');
+      setConnecting(false);
+      return;
+    }
+    window.location.href = data.authorizeUrl;
+  }
+
+  async function handleDisconnectXero() {
+    if (!window.confirm('Disconnect from Xero? Board View and the Finance tab will switch back to MaraeHub\'s built-in finance module immediately. Your data in Xero itself is not affected, and you can reconnect at any time.')) return;
+    setDisconnecting(true);
+    setXeroActionError('');
+    const { error } = await supabase.functions.invoke('xero-callback?action=disconnect', { method: 'POST' });
+    setDisconnecting(false);
+    if (error) {
+      setXeroActionError('Could not disconnect — please try again.');
+      return;
+    }
+    setXeroStatus({ status: 'not_connected' });
+  }
 
   async function fetchNotifPrefs(userId) {
     const { data } = await supabase.from('profiles').select('notification_prefs').eq('id', userId).single();
@@ -108,7 +168,6 @@ export default function MaraeSettings({ profile, isAdmin }) {
        email: data.email || '',
         website: data.website || '',
         payment_details: data.payment_details || '',
-        use_xero: data.use_xero || false,
         automation_level: data.automation_level || 'assisted',
       });
     }
@@ -943,38 +1002,69 @@ export default function MaraeSettings({ profile, isAdmin }) {
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
           Accounting Integration
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16, lineHeight: 1.6 }}>
-          If your marae uses Xero for accounting, enable this toggle. When enabled, the Finance module will display a placeholder until the Xero integration is activated. If disabled, use the built-in MaraeHub Finance module.
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>Does your marae use Xero?</div>
-            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}>Xero integration is coming soon — enabling this prepares the settings architecture.</div>
+        {xeroBanner === 'connected' && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#e8f4ef', border: '1px solid #b8ddc8', borderRadius: 8, fontSize: 13, color: '#1a4a3a', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>✅</span>
+            <span>Successfully connected to Xero.</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, color: form.use_xero ? 'var(--text3)' : 'var(--brand)', fontWeight: 600 }}>No</span>
-            <div
-              onClick={() => setField('use_xero', !form.use_xero)}
-              style={{
-                width: 44, height: 24, borderRadius: 12, cursor: 'pointer', position: 'relative', flexShrink: 0,
-                background: form.use_xero ? 'var(--brand)' : 'var(--cream2)',
-                transition: 'background 0.2s',
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 3, left: form.use_xero ? 23 : 3,
-                width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                transition: 'left 0.2s',
-              }} />
+        )}
+        {xeroBanner === 'error' && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, fontSize: 13, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <span>{XERO_ERROR_MESSAGES[xeroBannerReason] || 'Could not connect to Xero — please try again.'}</span>
+          </div>
+        )}
+        {xeroActionError && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, fontSize: 13, color: 'var(--danger)' }}>
+            {xeroActionError}
+          </div>
+        )}
+
+        {xeroStatus === null ? (
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>Checking Xero connection status…</p>
+
+        ) : xeroStatus.status === 'connected' ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 22 }}>✅</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>Connected to Xero</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{xeroStatus.tenantName}</div>
+              </div>
             </div>
-            <span style={{ fontSize: 13, color: form.use_xero ? 'var(--brand)' : 'var(--text3)', fontWeight: 600 }}>Yes</span>
+            {isAdmin ? (
+              <button onClick={handleDisconnectXero} disabled={disconnecting} className="btn-secondary" style={{ fontSize: 13, padding: '9px 18px' }}>
+                {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            ) : (
+              <span style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>Only admin trustees can disconnect</span>
+            )}
           </div>
-        </div>
-        {form.use_xero && (
-          <div style={{ marginTop: 12, padding: '12px 16px', background: '#e8eef8', border: '1px solid #b8cce8', borderRadius: 8, fontSize: 13, color: '#1a4a8a', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 18 }}>🔗</span>
-            <span><strong>Xero integration coming soon.</strong> Your settings have been saved. We will notify you when the Xero connection is ready to activate.</span>
+
+        ) : xeroStatus.status === 'error' ? (
+          <div style={{ padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: 'var(--text3)' }}>⚠️ Unable to check Xero connection status.</span>
+            <button onClick={() => fetchXeroFinancials(true).then(setXeroStatus)} className="btn-secondary" style={{ fontSize: 12, padding: '7px 14px' }}>
+              Retry
+            </button>
+          </div>
+
+        ) : isAdmin ? (
+          <div style={{ padding: '16px 18px', background: '#e8eef8', border: '1px solid #b8cce8', borderRadius: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 4 }}>🔗 Connect to Xero (recommended)</div>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.6 }}>
+              Connect your marae's Xero account to sync real income, expenses, and bank data directly into Board View and the Finance tab. Switching to Xero later doesn't delete your existing MaraeHub finance records — you can keep using the built-in finance module instead if you prefer.
+            </p>
+            <button onClick={handleConnectXero} disabled={connecting} className="btn-primary" style={{ fontSize: 14, padding: '10px 22px' }}>
+              {connecting ? 'Connecting…' : 'Connect to Xero'}
+            </button>
+          </div>
+
+        ) : (
+          <div style={{ padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.6 }}>
+              This marae isn't connected to Xero yet. Ask an admin trustee to set this up in Settings, or continue using MaraeHub's built-in finance module.
+            </p>
           </div>
         )}
         <div style={{ marginTop: 16 }}>

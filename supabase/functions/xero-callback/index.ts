@@ -1,10 +1,20 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const cors = {
-  'Access-Control-Allow-Origin': Deno.env.get('FRONTEND_URL') ?? '',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Access-Control-Allow-Origin can only ever be one literal value per response
+// (never a list, never safe as '*' for authenticated requests) — so allow a
+// small allowlist and echo back whichever one the actual request came from,
+// rather than hardcoding a single production origin that breaks local testing.
+const ALLOWED_ORIGINS = [Deno.env.get('FRONTEND_URL') ?? '', 'http://localhost:3000'].filter(Boolean);
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get('origin') ?? '';
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (Deno.env.get('FRONTEND_URL') ?? '');
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 const XERO_AUTHORIZE_URL   = 'https://login.xero.com/identity/connect/authorize';
 const XERO_TOKEN_URL       = 'https://identity.xero.com/connect/token';
@@ -73,6 +83,7 @@ async function verifyState(state: string, secret: string): Promise<StatePayload 
 }
 
 serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const url = new URL(req.url);
@@ -145,6 +156,43 @@ serve(async (req) => {
       }).toString()}`;
 
       return json({ authorizeUrl });
+
+    } catch (err) {
+      return json({ error: (err as Error).message }, 500);
+    }
+  }
+
+  // ---- Path C: disconnect — POST ?action=disconnect (admin-trustee only) ----
+  if (url.searchParams.get('action') === 'disconnect') {
+    try {
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const callerClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user }, error: authError } = await callerClient.auth.getUser();
+      if (authError || !user) return json({ error: 'Unauthorized' }, 401);
+
+      const { data: callerProfile } = await callerClient
+        .from('profiles')
+        .select('role, trustee_role')
+        .eq('id', user.id)
+        .single();
+
+      if (callerProfile?.role !== 'trustee' || callerProfile?.trustee_role !== 'admin') {
+        return json({ error: 'Admin Trustee access required' }, 403);
+      }
+
+      const entityId = url.searchParams.get('entity_id');
+      let updateQuery = adminClient
+        .from('xero_connections')
+        .update({ status: 'disconnected', access_token: null, refresh_token: null })
+        .eq('status', 'active');
+      updateQuery = entityId ? updateQuery.eq('entity_id', entityId) : updateQuery.is('entity_id', null);
+      const { error: updateError } = await updateQuery;
+
+      if (updateError) return json({ error: updateError.message }, 500);
+
+      return json({ disconnected: true });
 
     } catch (err) {
       return json({ error: (err as Error).message }, 500);

@@ -1,10 +1,20 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const cors = {
-  'Access-Control-Allow-Origin': Deno.env.get('FRONTEND_URL') ?? '',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Access-Control-Allow-Origin can only ever be one literal value per response
+// (never a list, never safe as '*' for authenticated requests) — so allow a
+// small allowlist and echo back whichever one the actual request came from,
+// rather than hardcoding a single production origin that breaks local testing.
+const ALLOWED_ORIGINS = [Deno.env.get('FRONTEND_URL') ?? '', 'http://localhost:3000'].filter(Boolean);
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get('origin') ?? '';
+  const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (Deno.env.get('FRONTEND_URL') ?? '');
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 const XERO_TOKEN_URL = 'https://identity.xero.com/connect/token';
 const XERO_API_BASE  = 'https://api.xero.com/api.xro/2.0';
@@ -93,6 +103,7 @@ function parseBankSummary(report: any) {
 }
 
 serve(async (req) => {
+  const cors = corsHeaders(req);
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   const json = (body: object, status = 200) =>
