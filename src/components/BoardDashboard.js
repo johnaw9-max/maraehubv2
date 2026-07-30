@@ -19,6 +19,14 @@ function fmtMoney(n) {
   return `$${n}`;
 }
 
+const URL_RE = /(https?:\/\/[^\s]+)/gi;
+
+function stripUrls(text) {
+  if (!text) return text;
+  const stripped = text.replace(URL_RE, '').replace(/\s{2,}/g, ' ').trim();
+  return stripped || '(link — view for details)';
+}
+
 function getPeriodStart(p) {
   const now = new Date();
   if (p === 'month')   return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1035,7 +1043,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      ⚠️ {r.risk_description}
+                      ⚠️ {stripUrls(r.risk_description)}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                   </div>
@@ -1127,7 +1135,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     fontWeight: 700,
                     color: 'var(--text1)',
                   }}>
-                    Meeting action overdue — {a.description}
+                    Meeting action overdue — {stripUrls(a.description)}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
                     Assigned to {a.assigned_to || 'unassigned'} · Due {fmt(a.due_date)}
@@ -1236,7 +1244,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 return (
                   <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
                     <span style={{ flexShrink: 0 }}>{icon}</span>
-                    <span style={{ flex: 1 }}>{ins.text}</span>
+                    <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
                     {ins.navTo && onNavigate && (
                       <button
                         onClick={() => onNavigate(ins.navTo)}
@@ -1561,7 +1569,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                   </span>
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
-                  "{f.experience.length > 150 ? f.experience.slice(0, 150) + '…' : f.experience}"
+                  "{stripUrls(f.experience.length > 150 ? f.experience.slice(0, 150) + '…' : f.experience)}"
                 </div>
               </div>
             ))}
