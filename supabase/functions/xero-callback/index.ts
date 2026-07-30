@@ -19,7 +19,7 @@ function corsHeaders(req: Request) {
 const XERO_AUTHORIZE_URL   = 'https://login.xero.com/identity/connect/authorize';
 const XERO_TOKEN_URL       = 'https://identity.xero.com/connect/token';
 const XERO_CONNECTIONS_URL = 'https://api.xero.com/connections';
-const XERO_SCOPES = 'offline_access accounting.reports.banksummary.read accounting.reports.profitandloss.read';
+const XERO_SCOPES = 'offline_access accounting.reports.banksummary.read accounting.reports.profitandloss.read accounting.reports.balancesheet.read';
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 // -- Signed, self-contained OAuth state (no DB row needed for CSRF protection) --

@@ -25,8 +25,9 @@ const REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
 // Xero's report JSON nests line items under recursive Rows[]; the totals we
 // care about can appear as RowType "Row" or "SummaryRow" depending on the
-// report — confirmed against a real response where Net Profit came back as
-// "Row", not "SummaryRow" — so collect both, by label, at any nesting depth.
+// report — confirmed against two real responses: Profit & Loss's Net Profit,
+// and Balance Sheet's Net Assets, both came back as "Row", not "SummaryRow"
+// — so collect both, by label, at any nesting depth.
 function collectLabeledRows(rows: unknown, acc: Record<string, string> = {}): Record<string, string> {
   for (const row of (rows as any[]) ?? []) {
     if ((row.RowType === 'Row' || row.RowType === 'SummaryRow') && Array.isArray(row.Cells) && row.Cells.length >= 2) {
@@ -100,6 +101,44 @@ function parseBankSummary(report: any) {
   // Zero connected bank accounts is a legitimate state (confirmed against
   // the real Demo Company response), not a parse failure.
   return { accounts, reportDate: report?.ReportDate ?? null };
+}
+
+function parseBalanceSheet(report: any) {
+  const labeled = collectLabeledRows(report?.Rows);
+
+  // The bottom line is always present regardless of activity level — mirrors
+  // Net Profit's role in the P&L parser above. Confirmed against a real
+  // response: "Net Assets" appeared with the exact same label even when its
+  // value was negative (-140.00) — unlike P&L, which needed a label fallback
+  // across ['Net Profit', 'Net Surplus', 'Net Deficit'] because the literal
+  // wording was assumed to vary by sign, Balance Sheet's real data shows the
+  // label staying "Net Assets" regardless of sign, so no fallback list here.
+  if (!('Net Assets' in labeled)) {
+    throw new Error(
+      `Could not locate a Net Assets row (found labels: ${Object.keys(labeled).join(', ') || 'none'})`,
+    );
+  }
+
+  // ASSUMPTION, carried over from parseProfitAndLoss's "absent section = $0"
+  // fix by analogy, NOT independently verified for Balance Sheet. The org
+  // this was tested against had real, non-zero activity in every leaf
+  // section (Bank, Current Assets, Current Liabilities, Equity) — a
+  // genuinely empty category (e.g. a marae with zero bills) has never
+  // actually been observed for this report. It's reasonable to expect Xero
+  // behaves the same way here as it does for P&L (omitting a whole section
+  // rather than reporting a $0 row when there's no activity in it), but if a
+  // marae's Balance Sheet numbers look suspiciously/consistently zero where
+  // real liabilities or assets are known to exist, check this assumption
+  // first before trusting the number — it has not been proven against a real
+  // zero-activity response the way the equivalent P&L fix was.
+  return {
+    totalAssets:      'Total Assets' in labeled      ? toAmount('Total Assets', labeled['Total Assets']) : 0,
+    totalLiabilities: 'Total Liabilities' in labeled  ? toAmount('Total Liabilities', labeled['Total Liabilities']) : 0,
+    netAssets:        toAmount('Net Assets', labeled['Net Assets']),
+    totalEquity:      'Total Equity' in labeled       ? toAmount('Total Equity', labeled['Total Equity']) : 0,
+    totalBank:        'Total Bank' in labeled         ? toAmount('Total Bank', labeled['Total Bank']) : 0,
+    reportDate: report?.ReportDate ?? null,
+  };
 }
 
 serve(async (req) => {
@@ -203,9 +242,10 @@ serve(async (req) => {
       'Accept': 'application/json',
     };
 
-    const [plRes, bsRes] = await Promise.all([
+    const [plRes, bsRes, balRes] = await Promise.all([
       fetch(`${XERO_API_BASE}/Reports/ProfitAndLoss`, { headers: xeroHeaders }),
       fetch(`${XERO_API_BASE}/Reports/BankSummary`, { headers: xeroHeaders }),
+      fetch(`${XERO_API_BASE}/Reports/BalanceSheet`, { headers: xeroHeaders }),
     ]);
 
     if (!plRes.ok) {
@@ -216,18 +256,25 @@ serve(async (req) => {
       console.error('[xero-financials] Bank Summary fetch failed:', bsRes.status);
       return json({ error: 'bank_summary_fetch_failed' }, 502);
     }
+    if (!balRes.ok) {
+      console.error('[xero-financials] Balance Sheet fetch failed:', balRes.status);
+      return json({ error: 'balance_sheet_fetch_failed' }, 502);
+    }
 
-    const plData = await plRes.json();
-    const bsData = await bsRes.json();
+    const plData  = await plRes.json();
+    const bsData  = await bsRes.json();
+    const balData = await balRes.json();
 
     const profitAndLoss = parseProfitAndLoss(plData?.Reports?.[0]);
     const bankSummary   = parseBankSummary(bsData?.Reports?.[0]);
+    const balanceSheet  = parseBalanceSheet(balData?.Reports?.[0]);
 
     return json({
       connected: true,
       tenantName: connection.tenant_name,
       profitAndLoss,
       bankSummary,
+      balanceSheet,
       lastSyncedAt: new Date().toISOString(),
     });
 
