@@ -51,6 +51,9 @@ const NAV_LABELS = {
   tasks:      'View Tasks →',
   grants:     'View Grants →',
   assets:     'View Assets →',
+  risks:      'View Risks →',
+  bookings:   'View Bookings →',
+  projects:   'View Projects →',
 };
 
 function Stars({ rating }) {
@@ -401,7 +404,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
 
   // RED — Emergency Preparedness first (highest priority)
   if (epUrgentCount > 0)
-    redInsights.unshift(`🆘 Emergency Preparedness: ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} are overdue or not yet scheduled — marae may not be ready for a civil defence event`);
+    redInsights.unshift({ text: `🆘 Emergency Preparedness: ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} are overdue or not yet scheduled — marae may not be ready for a civil defence event`, navTo: 'compliance' });
 
   if (overdueCompliance.length > 0) {
     if (overdueCompliance.length <= 3) {
@@ -411,7 +414,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
         : `${names.join(', ')} overdue — arrange renewals immediately`;
       redInsights.push({ text, navTo: 'compliance' });
     } else {
-      redInsights.push(`${overdueCompliance.length} compliance obligations are overdue — arrange renewals immediately (see Compliance panel)`);
+      redInsights.push({ text: `${overdueCompliance.length} compliance obligations are overdue — arrange renewals immediately (see Compliance panel)`, navTo: 'compliance' });
     }
   }
 
@@ -423,7 +426,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
         : `${names.join(', ')} are behind schedule — review and update plans`;
       redInsights.push({ text, navTo: 'goals' });
     } else {
-      redInsights.push(`${goalsBehind.length} strategic goals are behind schedule — review and update plans (see Strategic Goals panel)`);
+      redInsights.push({ text: `${goalsBehind.length} strategic goals are behind schedule — review and update plans (see Strategic Goals panel)`, navTo: 'goals' });
     }
   }
 
@@ -434,7 +437,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
         : `${overdueTasks.map(t => `'${t.title}'`).join(', ')} overdue — follow up with assignees immediately`;
       redInsights.push({ text, navTo: 'tasks' });
     } else {
-      redInsights.push(`${overdueTasks.length} overdue tasks — follow up with assignees immediately (see Tasks panel)`);
+      redInsights.push({ text: `${overdueTasks.length} overdue tasks — follow up with assignees immediately (see Tasks panel)`, navTo: 'tasks' });
     }
   }
 const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date + 'T12:00:00') < today);
@@ -445,7 +448,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         : `${overdueActions.map(a => `'${a.description}'`).join(', ')} overdue — follow up before next hui`;
       redInsights.push({ text, navTo: 'minutes' });
     } else {
-      redInsights.push(`${overdueActions.length} meeting actions are overdue — follow up before next hui (see Minutes)`);
+      redInsights.push({ text: `${overdueActions.length} meeting actions are overdue — follow up before next hui (see Minutes)`, navTo: 'minutes' });
     }
   }
   const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
@@ -457,7 +460,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         : `${grantsUrgent.map(g => g.name).join(', ')} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today`;
       redInsights.push({ text, navTo: 'grants' });
     } else {
-      redInsights.push(`${grantsUrgent.length} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`);
+      redInsights.push({ text: `${grantsUrgent.length} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`, navTo: 'grants' });
     }
   }
 
@@ -470,13 +473,13 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         : `${names.join(', ')} — services overdue, arrange maintenance now`;
       redInsights.push({ text, navTo: 'assets' });
     } else {
-      redInsights.push(`${overdueReminders.length} asset services are overdue — arrange maintenance now`);
+      redInsights.push({ text: `${overdueReminders.length} asset services are overdue — arrange maintenance now`, navTo: 'assets' });
     }
   }
 
   const criticalAssets = d.assets.filter(a => a.condition === 'critical');
   criticalAssets.forEach(a => {
-    redInsights.unshift(`🔴 ${a.name} is in Critical condition — arrange replacement or repair immediately${a.replacement_cost ? ` (Est. replacement cost: $${Number(a.replacement_cost).toLocaleString()})` : ''}`);
+    redInsights.unshift({ text: `🔴 ${a.name} is in Critical condition — arrange replacement or repair immediately${a.replacement_cost ? ` (Est. replacement cost: $${Number(a.replacement_cost).toLocaleString()})` : ''}`, navTo: 'assets' });
   });
 
   const in2yr = new Date(today); in2yr.setFullYear(in2yr.getFullYear() + 2);
@@ -487,82 +490,82 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   );
   assetsNearReplacement.forEach(a => {
     const yrs = ((new Date(a.replacement_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24 * 365)).toFixed(1);
-    amberInsights.push(`${a.name} due for replacement in ${yrs} year${yrs === '1.0' ? '' : 's'}${a.replacement_cost ? ` — est. $${Number(a.replacement_cost).toLocaleString()}` : ''}`);
+    amberInsights.push({ text: `${a.name} due for replacement in ${yrs} year${yrs === '1.0' ? '' : 's'}${a.replacement_cost ? ` — est. $${Number(a.replacement_cost).toLocaleString()}` : ''}`, navTo: 'assets' });
   });
 
   if (stalledWorkflows.length === 1)
-    redInsights.push(`Workflow "${stalledWorkflows[0].name}" has had no progress in 14+ days — check if it needs attention`);
+    redInsights.push({ text: `Workflow "${stalledWorkflows[0].name}" has had no progress in 14+ days — check if it needs attention`, navTo: 'workflows' });
   else if (stalledWorkflows.length > 1)
-    redInsights.push(`${stalledWorkflows.length} workflows have had no progress in 14+ days: ${stalledWorkflows.map(w => w.name).join(', ')}`);
+    redInsights.push({ text: `${stalledWorkflows.length} workflows have had no progress in 14+ days: ${stalledWorkflows.map(w => w.name).join(', ')}`, navTo: 'workflows' });
 
  // AMBER
   if (zeroStockItems.length > 0)
-    amberInsights.push(`📦 ${zeroStockItems.length} inventory item${zeroStockItems.length !== 1 ? 's are' : ' is'} out of stock — ${zeroStockItems.map(a => a.name).join(', ')} — restock before next booking`);
+    amberInsights.push({ text: `📦 ${zeroStockItems.length} inventory item${zeroStockItems.length !== 1 ? 's are' : ' is'} out of stock — ${zeroStockItems.map(a => a.name).join(', ')} — restock before next booking`, navTo: 'assets' });
 
   if (pendingBookings.length > 0)
-    amberInsights.push(`${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`);
+    amberInsights.push({ text: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`, navTo: 'bookings' });
   if (pendingBookingIncomeCount > 0)
-    amberInsights.push(`${pendingBookingIncomeCount} booking income record${pendingBookingIncomeCount !== 1 ? 's need' : ' needs'} the hire fee entered — update in Finance`);
+    amberInsights.push({ text: `${pendingBookingIncomeCount} booking income record${pendingBookingIncomeCount !== 1 ? 's need' : ' needs'} the hire fee entered — update in Finance`, navTo: 'finance' });
 
   if (activeWorkflowsWithSource.length === 1)
-    amberInsights.push(`Active: ${activeWorkflowsWithSource[0].name} (from ${activeWorkflowsWithSource[0].entity_name})`);
+    amberInsights.push({ text: `Active: ${activeWorkflowsWithSource[0].name} (from ${activeWorkflowsWithSource[0].entity_name})`, navTo: 'workflows' });
   else if (activeWorkflowsWithSource.length > 1)
-    amberInsights.push(`${activeWorkflowsWithSource.length} active workflows running — ${activeWorkflowsWithSource.slice(0, 2).map(w => `${w.name} (from ${w.entity_name})`).join(', ')}${activeWorkflowsWithSource.length > 2 ? ` +${activeWorkflowsWithSource.length - 2} more` : ''}`);
+    amberInsights.push({ text: `${activeWorkflowsWithSource.length} active workflows running — ${activeWorkflowsWithSource.slice(0, 2).map(w => `${w.name} (from ${w.entity_name})`).join(', ')}${activeWorkflowsWithSource.length > 2 ? ` +${activeWorkflowsWithSource.length - 2} more` : ''}`, navTo: 'workflows' });
 
- 
+
   const grantsSoon = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14);
   if (grantsSoon.length > 0) {
     const minDays = Math.min(...grantsSoon.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
-    amberInsights.push(`${grantsSoon.length} grant deadline${grantsSoon.length !== 1 ? 's' : ''} within ${minDays}–14 days — begin preparation (see Grants panel)`);
+    amberInsights.push({ text: `${grantsSoon.length} grant deadline${grantsSoon.length !== 1 ? 's' : ''} within ${minDays}–14 days — begin preparation (see Grants panel)`, navTo: 'grants' });
   }
 
   const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
   if (soonReminders.length > 0)
-    amberInsights.push(`${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`);
+    amberInsights.push({ text: `${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`, navTo: 'assets' });
 
   if (dueSoonCompliance.length > 0)
-    amberInsights.push(`${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`);
+    amberInsights.push({ text: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`, navTo: 'compliance' });
 
   if (goalsAtRisk.length > 0)
-    amberInsights.push(`${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers (see Strategic Goals panel)`);
+    amberInsights.push({ text: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers (see Strategic Goals panel)`, navTo: 'goals' });
 
   if (d.actions.length > 3)
-    amberInsights.push(`${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`);
+    amberInsights.push({ text: `${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`, navTo: 'minutes' });
 
   if (avgRating !== null && avgRating < 4)
-    amberInsights.push(`Community rating is ${Number(avgRating).toFixed(1)}/5 — review recent feedback and identify areas for improvement`);
+    amberInsights.push({ text: `Community rating is ${Number(avgRating).toFixed(1)}/5 — review recent feedback and identify areas for improvement`, navTo: 'bookings' });
 
   if (periodProjects.length === 0)
-    amberInsights.push(`No active projects — consider initiating planned work`);
+    amberInsights.push({ text: `No active projects — consider initiating planned work`, navTo: 'projects' });
 
   const nextHui = d.bookings.filter(b => b.occasion?.toLowerCase().includes('hui') && b.start_date >= todayStr).sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
   if (nextHui) {
     const daysToHui = Math.ceil((new Date(nextHui.start_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
     if (daysToHui <= 7)
-      amberInsights.push(`Your next hui is in ${daysToHui} day${daysToHui !== 1 ? 's' : ''} — ${d.actions.length} open action${d.actions.length !== 1 ? 's' : ''} to resolve beforehand`);
+      amberInsights.push({ text: `Your next hui is in ${daysToHui} day${daysToHui !== 1 ? 's' : ''} — ${d.actions.length} open action${d.actions.length !== 1 ? 's' : ''} to resolve beforehand`, navTo: 'minutes' });
   }
   // GREEN (max 2)
   if (d.goals.length > 0 && goalsBehind.length === 0 && goalsAtRisk.length === 0)
-    greenInsights.push(`All ${d.goals.length} strategic goal${d.goals.length !== 1 ? 's are' : ' is'} on track — excellent governance progress`);
+    greenInsights.push({ text: `All ${d.goals.length} strategic goal${d.goals.length !== 1 ? 's are' : ' is'} on track — excellent governance progress`, navTo: 'goals' });
 
   if (goalsComplete.length > 0 && d.goals.length > 0 && goalsComplete.length === d.goals.length)
-    greenInsights.push(`All strategic goals completed — outstanding achievement for the committee`);
+    greenInsights.push({ text: `All strategic goals completed — outstanding achievement for the committee`, navTo: 'goals' });
 
   if (avgRating !== null && avgRating >= 4.5)
-    greenInsights.push(`Community satisfaction is strong at ${Number(avgRating).toFixed(1)}/5 — great work`);
+    greenInsights.push({ text: `Community satisfaction is strong at ${Number(avgRating).toFixed(1)}/5 — great work`, navTo: 'bookings' });
 
   if (compliantPct === 100)
-    greenInsights.push(`All assets are fully service-compliant`);
+    greenInsights.push({ text: `All assets are fully service-compliant`, navTo: 'assets' });
 
   if (d.compliance.length > 0 && overdueCompliance.length === 0 && dueSoonCompliance.length === 0)
-    greenInsights.push(`All compliance obligations are up to date`);
+    greenInsights.push({ text: `All compliance obligations are up to date`, navTo: 'compliance' });
 
   if (approvedGrantsAmt > 0)
-    greenInsights.push(`${fmtMoney(approvedGrantsAmt)} in grants secured ${pl.toLowerCase()} — excellent funding progress`);
+    greenInsights.push({ text: `${fmtMoney(approvedGrantsAmt)} in grants secured ${pl.toLowerCase()} — excellent funding progress`, navTo: 'grants' });
 
   const totalPeriodBookings = d.bookings.filter(b => inPeriod(b.start_date)).length;
   if (totalPeriodBookings > 0 && Math.round((periodBookings.length / totalPeriodBookings) * 100) >= 90)
-    greenInsights.push(`${Math.round((periodBookings.length / totalPeriodBookings) * 100)}% of bookings this period have been approved`);
+    greenInsights.push({ text: `${Math.round((periodBookings.length / totalPeriodBookings) * 100)}% of bookings this period have been approved`, navTo: 'bookings' });
 
   const normalizeInsight = (item, level) =>
     typeof item === 'string' ? { text: item, level } : { ...item, level };
@@ -1048,6 +1051,14 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                   </div>
                   <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('risks')}
+                      style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                    >
+                      {NAV_LABELS.risks}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -1304,7 +1315,17 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{b.occasion}</div>
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
               </div>
-              <span style={{ fontSize: 10, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 10, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate('bookings')}
+                    style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                  >
+                    {NAV_LABELS.bookings}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -1323,7 +1344,17 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     {p.name}
                     {overdue && <span style={{ fontSize: 9, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('projects')}
+                        style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                      >
+                        {NAV_LABELS.projects}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {p.lead && <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
                 <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
@@ -1384,6 +1415,14 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                       </div>
                     </div>
                     <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('goals')}
+                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        {NAV_LABELS.goals}
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -1480,7 +1519,17 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     {g.deadline && ` · ${urgent ? `⚠️ ${daysLeft}d left` : `Due ${fmt(g.deadline)}`}`}
                   </div>
                 </div>
-                <span style={{ fontSize: 10, background: ss.bg, color: ss.color, borderRadius: 20, padding: '2px 8px', fontWeight: 600, flexShrink: 0 }}>{g.status}</span>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, background: ss.bg, color: ss.color, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{g.status}</span>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('grants')}
+                      style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    >
+                      {NAV_LABELS.grants}
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -1527,6 +1576,14 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                       ⚙️ Start Workflow →
                     </button>
                   )}
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('assets')}
+                      style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    >
+                      {NAV_LABELS.assets}
+                    </button>
+                  )}
                   <span style={{ fontSize: 10, background: overdue ? '#faeae7' : '#fdf0dc', color: overdue ? 'var(--danger)' : '#7a4f00', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
                     {overdue ? 'Overdue' : 'Due soon'}
                   </span>
@@ -1562,11 +1619,21 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
               <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No comments in this period</div>
             ) : periodComments.map((f, i) => (
               <div key={i} style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 10 }}>
-                <div style={{ display: 'flex', gap: 3, marginBottom: 6 }}>
-                  {[1,2,3,4,5].map(n => <span key={n} style={{ fontSize: 12, color: n <= (f.rating_overall || 0) ? '#f4a400' : '#ddd' }}>★</span>)}
-                  <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>
-                    {new Date(f.created_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', gap: 3 }}>
+                    {[1,2,3,4,5].map(n => <span key={n} style={{ fontSize: 12, color: n <= (f.rating_overall || 0) ? '#f4a400' : '#ddd' }}>★</span>)}
+                    <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>
+                      {new Date(f.created_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('bookings')}
+                      style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    >
+                      {NAV_LABELS.bookings}
+                    </button>
+                  )}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
                   "{stripUrls(f.experience.length > 150 ? f.experience.slice(0, 150) + '…' : f.experience)}"
