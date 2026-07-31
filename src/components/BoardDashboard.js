@@ -27,6 +27,11 @@ function stripUrls(text) {
   return stripped || '(link — view for details)';
 }
 
+function truncate(text, len = 70) {
+  if (!text) return text;
+  return text.length > len ? text.slice(0, len).trimEnd() + '…' : text;
+}
+
 function getPeriodStart(p) {
   const now = new Date();
   if (p === 'month')   return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -112,6 +117,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [riskEntityFilter, setRiskEntityFilter] = useState('all');
   const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
   const [copied, setCopied]       = useState(false);
+  const [expandedComments, setExpandedComments] = useState(new Set());
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -444,8 +450,8 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   if (overdueActions.length > 0) {
     if (overdueActions.length <= 3) {
       const text = overdueActions.length === 1
-        ? `'${overdueActions[0].description}' overdue${overdueActions[0].assigned_to ? ` — ${overdueActions[0].assigned_to}` : ''}`
-        : `${overdueActions.map(a => `'${a.description}'`).join(', ')} overdue — follow up before next hui`;
+        ? `'${truncate(overdueActions[0].description)}' overdue${overdueActions[0].assigned_to ? ` — ${overdueActions[0].assigned_to}` : ''}`
+        : `${overdueActions.map(a => `'${truncate(a.description)}'`).join(', ')} overdue — follow up before next hui`;
       redInsights.push({ text, navTo: 'minutes' });
     } else {
       redInsights.push({ text: `${overdueActions.length} meeting actions are overdue — follow up before next hui (see Minutes)`, navTo: 'minutes' });
@@ -679,6 +685,14 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     navigator.clipboard.writeText(aiReport).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function toggleComment(i) {
+    setExpandedComments(prev => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
     });
   }
 
@@ -1046,7 +1060,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      ⚠️ {stripUrls(r.risk_description)}
+                      ⚠️ {truncate(stripUrls(r.risk_description))}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                   </div>
@@ -1146,7 +1160,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     fontWeight: 700,
                     color: 'var(--text1)',
                   }}>
-                    Meeting action overdue — {stripUrls(a.description)}
+                    Meeting action overdue — {truncate(stripUrls(a.description))}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
                     Assigned to {a.assigned_to || 'unassigned'} · Due {fmt(a.due_date)}
@@ -1636,7 +1650,15 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                   )}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
-                  "{stripUrls(f.experience.length > 150 ? f.experience.slice(0, 150) + '…' : f.experience)}"
+                  "{stripUrls(expandedComments.has(i) || f.experience.length <= 150 ? f.experience : f.experience.slice(0, 150) + '…')}"
+                  {f.experience.length > 150 && (
+                    <span
+                      onClick={() => toggleComment(i)}
+                      style={{ marginLeft: 6, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
+                    >
+                      {expandedComments.has(i) ? 'Show less' : 'Read more'}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
