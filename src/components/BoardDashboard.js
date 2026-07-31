@@ -118,6 +118,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [expandedComments, setExpandedComments] = useState(new Set());
+  const [showAllFull, setShowAllFull] = useState(false);
+  const [showFullActions, setShowFullActions] = useState(false);
+  const [showFullRisks, setShowFullRisks] = useState(false);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1035,16 +1038,28 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             title="Risk Register"
             count={(d.risks || []).length}
             note={`${riskPct}% clear of high-rated risks`}
-            rightContent={(d.entities || []).length > 0 && (
-              <select
-                value={riskEntityFilter}
-                onChange={e => setRiskEntityFilter(e.target.value)}
-                style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
-              >
-                <option value="all">All Entities</option>
-                {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-              </select>
-            )}
+            rightContent={
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {highOpenRisks.length > 0 && (
+                  <span
+                    onClick={() => setShowFullRisks(v => !v)}
+                    style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    {showFullRisks ? 'Show shorter risks' : 'Show full risks'}
+                  </span>
+                )}
+                {(d.entities || []).length > 0 && (
+                  <select
+                    value={riskEntityFilter}
+                    onChange={e => setRiskEntityFilter(e.target.value)}
+                    style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+                  >
+                    <option value="all">All Entities</option>
+                    {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                  </select>
+                )}
+              </div>
+            }
           />
           {highOpenRisks.length === 0 ? (
             <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
@@ -1060,7 +1075,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      ⚠️ {truncate(stripUrls(r.risk_description))}
+                      ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                   </div>
@@ -1097,6 +1112,14 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             icon="🔔"
             title="Decisions Required"
             count={pendingBookings.length + overdueActions.length + grantsUrgent.length}
+            rightContent={overdueActions.length > 0 && (
+              <span
+                onClick={() => setShowFullActions(v => !v)}
+                style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+              >
+                {showFullActions ? 'Show shorter actions' : 'Show full actions'}
+              </span>
+            )}
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pendingBookings.map(b => (
@@ -1160,7 +1183,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     fontWeight: 700,
                     color: 'var(--text1)',
                   }}>
-                    Meeting action overdue — {truncate(stripUrls(a.description))}
+                    Meeting action overdue — {showFullActions ? stripUrls(a.description) : truncate(stripUrls(a.description))}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
                     Assigned to {a.assigned_to || 'unassigned'} · Due {fmt(a.due_date)}
@@ -1615,7 +1638,19 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
       {/* ── COMMUNITY FEEDBACK ─────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 8 }}>
-        <SectionTitle icon="⭐" title="Community Feedback" note={`(${pl})`} />
+        <SectionTitle
+          icon="⭐"
+          title="Community Feedback"
+          note={`(${pl})`}
+          rightContent={periodComments.length > 0 && (
+            <span
+              onClick={() => setShowAllFull(v => !v)}
+              style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+            >
+              {showAllFull ? 'Show shorter comments' : 'Show full comments'}
+            </span>
+          )}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 24 }}>
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             {avgRating ? (
@@ -1649,17 +1684,23 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
-                  "{stripUrls(expandedComments.has(i) || f.experience.length <= 150 ? f.experience : f.experience.slice(0, 150) + '…')}"
-                  {f.experience.length > 150 && (
-                    <span
-                      onClick={() => toggleComment(i)}
-                      style={{ marginLeft: 6, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
-                    >
-                      {expandedComments.has(i) ? 'Show less' : 'Read more'}
-                    </span>
-                  )}
-                </div>
+                {showAllFull ? (
+                  <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
+                    "{stripUrls(f.experience)}"
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
+                    "{stripUrls(expandedComments.has(i) || f.experience.length <= 150 ? f.experience : f.experience.slice(0, 150) + '…')}"
+                    {f.experience.length > 150 && (
+                      <span
+                        onClick={() => toggleComment(i)}
+                        style={{ marginLeft: 6, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
+                      >
+                        {expandedComments.has(i) ? 'Show less' : 'Read more'}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
