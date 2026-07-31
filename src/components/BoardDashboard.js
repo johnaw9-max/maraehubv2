@@ -149,7 +149,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
       supabase.from('interest_register').select('id').eq('status', 'Active'),
       supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls').order('created_at', { ascending: false }),
-      supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
+      supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct, net_assets, total_assets, total_liabilities').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
       supabase.from('entities').select('id, name').order('name'),
       fetchXeroFinancials(),
     ]);
@@ -1685,7 +1685,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                {['Month','Compliance','Risk','Assets','Goals'].map(h => (
+                {['Month','Compliance','Risk','Assets','Goals','Net Assets'].map(h => (
                   <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
@@ -1700,6 +1700,20 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.risk_pct}%</td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.assets_pct}%</td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.goals_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>
+                    {s.net_assets == null ? (
+                      <span style={{ color: 'var(--text3)' }}>—</span>
+                    ) : (
+                      <>
+                        <div style={{ fontWeight: 600, color: s.net_assets >= 0 ? 'var(--brand)' : 'var(--danger)' }}>
+                          {s.net_assets >= 0 ? fmtMoney(s.net_assets) : '-' + fmtMoney(Math.abs(s.net_assets))}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>
+                          A: {fmtMoney(s.total_assets)} · L: {fmtMoney(s.total_liabilities)}
+                        </div>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
