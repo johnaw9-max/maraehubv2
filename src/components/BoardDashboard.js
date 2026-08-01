@@ -1726,7 +1726,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                {['Month','Compliance','Risk','Assets','Goals','Net Assets'].map(h => (
+                {['Month','Compliance','Risk','Assets','Goals','Total Assets','Total Liabilities','Net Assets'].map(h => (
                   <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
@@ -1742,17 +1742,18 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.assets_pct}%</td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.goals_pct}%</td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>
+                    {s.total_assets == null ? <span style={{ color: 'var(--text3)' }}>—</span> : fmtMoney(s.total_assets)}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>
+                    {s.total_liabilities == null ? <span style={{ color: 'var(--text3)' }}>—</span> : fmtMoney(s.total_liabilities)}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>
                     {s.net_assets == null ? (
                       <span style={{ color: 'var(--text3)' }}>—</span>
                     ) : (
-                      <>
-                        <div style={{ fontWeight: 600, color: s.net_assets >= 0 ? 'var(--brand)' : 'var(--danger)' }}>
-                          {s.net_assets >= 0 ? fmtMoney(s.net_assets) : '-' + fmtMoney(Math.abs(s.net_assets))}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)' }}>
-                          A: {fmtMoney(s.total_assets)} · L: {fmtMoney(s.total_liabilities)}
-                        </div>
-                      </>
+                      <span style={{ fontWeight: 600, color: s.net_assets >= 0 ? 'var(--brand)' : 'var(--danger)' }}>
+                        {s.net_assets >= 0 ? fmtMoney(s.net_assets) : '-' + fmtMoney(Math.abs(s.net_assets))}
+                      </span>
                     )}
                   </td>
                 </tr>
