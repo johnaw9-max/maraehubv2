@@ -192,8 +192,8 @@ serve(async (_req) => {
     const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
 
     const [compRes, riskRes, assetRes, remRes, goalsRes, balanceSheet] = await Promise.all([
-      admin.from('compliance_items').select('id, due_date'),
-      admin.from('risk_register').select('id, status, controls'),
+      admin.from('compliance_items').select('id, due_date, last_checked_date'),
+      admin.from('risk_register').select('id, status, controls, risk_rating'),
       admin.from('assets').select('id'),
       admin.from('service_reminders').select('id, asset_id, due_date'),
       admin.from('goals').select('id, status, target_date'),
@@ -213,15 +213,23 @@ serve(async (_req) => {
     const goals      = goalsRes.data || [];
 
     // ── Compliance % ──────────────────────────────────────────────────────
-    const overdueCompliance   = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') < today);
-    const dueSoonCompliance   = compliance.filter(c => c.due_date && new Date(c.due_date + 'T12:00:00') >= today && new Date(c.due_date + 'T12:00:00') <= in30);
-    const compliantCompliance = compliance.length - overdueCompliance.length - dueSoonCompliance.length;
-    const compliancePct = compliance.length ? Math.round((compliantCompliance / compliance.length) * 100) : 100;
+    // Matches src/lib/complianceStatus.js's getComplianceStatus() exactly -
+    // "compliant" requires EITHER a due date >30 days out OR no due date but
+    // a real last_checked_date. A never-assessed item (no due date, never
+    // checked) counts against the percentage here, same as the live tile -
+    // the previous formula had no concept of "never assessed" at all.
+    const compliantCompliance = compliance.filter(c =>
+      (c.due_date && new Date(c.due_date + 'T12:00:00') > in30) || (!c.due_date && c.last_checked_date)
+    );
+    const compliancePct = compliance.length ? Math.round((compliantCompliance.length / compliance.length) * 100) : 100;
 
     // ── Risk Register % ───────────────────────────────────────────────────
-    const openRisks             = risks.filter(r => r.status !== 'Closed');
-    const openRisksWithControls = openRisks.filter(r => r.controls);
-    const riskPct = openRisks.length ? Math.round((openRisksWithControls.length / openRisks.length) * 100) : 100;
+    // Matches src/lib/riskStatus.js's getRiskStatus() exactly - "% clear of
+    // high-rated risk" across ALL risk items (open and closed), not the
+    // previous "% of open risks with controls set", a different question
+    // this column no longer tracks at all.
+    const highOpenRisks = risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed');
+    const riskPct = risks.length ? Math.round(((risks.length - highOpenRisks.length) / risks.length) * 100) : 100;
 
     // ── Assets % ──────────────────────────────────────────────────────────
     const overdueReminders  = reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
