@@ -53,6 +53,18 @@ function toAmount(context: string, value: string | undefined): number {
   return n;
 }
 
+// Matches BoardDashboard.js's NZ financial-year window (1 April - 31 March)
+// exactly, so the Xero-connected and in-house paths mean the same thing for
+// the same "Financial Health" label instead of silently differing in period.
+function financialYearWindow(): { fromDate: string; toDate: string } {
+  const now = new Date();
+  const fyYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return {
+    fromDate: `${fyYear}-04-01`,
+    toDate: `${fyYear + 1}-03-31`,
+  };
+}
+
 function parseProfitAndLoss(report: any) {
   const labeled = collectLabeledRows(report?.Rows);
 
@@ -242,9 +254,20 @@ serve(async (req) => {
       'Accept': 'application/json',
     };
 
+    // P&L and Bank Summary are period reports and default to the current
+    // calendar month when no dates are given, confirmed 1 August 2026
+    // against Xero's own ReportTitles ("1 August 2026 to 31 August 2026") -
+    // silently different from the in-house fallback's financial-year window
+    // for the same "Financial Health" label. Pinning both to the same NZ FY
+    // window as BoardDashboard.js keeps the two paths meaning the same
+    // thing. Balance Sheet is a point-in-time report ("as at" a date, not a
+    // period) - today's default is already correct for it, left unchanged.
+    const { fromDate, toDate } = financialYearWindow();
+    const fyParams = new URLSearchParams({ fromDate, toDate }).toString();
+
     const [plRes, bsRes, balRes] = await Promise.all([
-      fetch(`${XERO_API_BASE}/Reports/ProfitAndLoss`, { headers: xeroHeaders }),
-      fetch(`${XERO_API_BASE}/Reports/BankSummary`, { headers: xeroHeaders }),
+      fetch(`${XERO_API_BASE}/Reports/ProfitAndLoss?${fyParams}`, { headers: xeroHeaders }),
+      fetch(`${XERO_API_BASE}/Reports/BankSummary?${fyParams}`, { headers: xeroHeaders }),
       fetch(`${XERO_API_BASE}/Reports/BalanceSheet`, { headers: xeroHeaders }),
     ]);
 
