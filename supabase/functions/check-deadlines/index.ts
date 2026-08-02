@@ -519,26 +519,62 @@ serve(async () => {
 
   const validProfileIds = new Set((profileIds.data ?? []).map(p => p.id));
 
-  const orphanFindings: { table: string; field: string; id: string }[] = [];
+  // Each of the 5 queries above is checked for .error explicitly. A failed
+  // query (e.g. a column that doesn't exist on this project — exactly what
+  // happened on Opeke, ClickUp 86d3wreta-adjacent finding logged separately)
+  // pushes a distinct schema_error-style finding instead of silently
+  // contributing nothing via `?? []`, which would otherwise make a broken
+  // check indistinguishable from a genuinely clean one. If profiles itself
+  // fails, validProfileIds would be an empty Set — diffing against that
+  // would flag every non-null row in every candidate table as a false-
+  // positive orphan, so all 4 diff loops are skipped entirely in that case,
+  // not just left to run against an empty set.
+  const orphanFindings: { table: string; field: string; id?: string; error?: string }[] = [];
 
-  for (const row of bookingFeedbackRows.data ?? []) {
-    if (!validProfileIds.has(row.user_id)) orphanFindings.push({ table: 'booking_feedback', field: 'user_id', id: row.id });
+  if (profileIds.error) {
+    orphanFindings.push({ table: 'profiles', field: 'id', error: 'query failed' });
   }
-  for (const row of feedbackRows.data ?? []) {
-    if (!validProfileIds.has(row.user_id)) orphanFindings.push({ table: 'feedback', field: 'user_id', id: row.id });
+
+  if (bookingFeedbackRows.error) {
+    orphanFindings.push({ table: 'booking_feedback', field: 'user_id', error: 'query failed' });
+  } else if (!profileIds.error) {
+    for (const row of bookingFeedbackRows.data ?? []) {
+      if (!validProfileIds.has(row.user_id)) orphanFindings.push({ table: 'booking_feedback', field: 'user_id', id: row.id });
+    }
   }
-  for (const row of riskRegisterRows.data ?? []) {
-    if (!validProfileIds.has(row.trustee_id)) orphanFindings.push({ table: 'risk_register', field: 'trustee_id', id: row.id });
+
+  if (feedbackRows.error) {
+    orphanFindings.push({ table: 'feedback', field: 'user_id', error: 'query failed' });
+  } else if (!profileIds.error) {
+    for (const row of feedbackRows.data ?? []) {
+      if (!validProfileIds.has(row.user_id)) orphanFindings.push({ table: 'feedback', field: 'user_id', id: row.id });
+    }
   }
-  for (const row of workflowInstancesRows.data ?? []) {
-    if (!validProfileIds.has(row.created_by)) orphanFindings.push({ table: 'workflow_instances', field: 'created_by', id: row.id });
+
+  if (riskRegisterRows.error) {
+    orphanFindings.push({ table: 'risk_register', field: 'trustee_id', error: 'query failed' });
+  } else if (!profileIds.error) {
+    for (const row of riskRegisterRows.data ?? []) {
+      if (!validProfileIds.has(row.trustee_id)) orphanFindings.push({ table: 'risk_register', field: 'trustee_id', id: row.id });
+    }
+  }
+
+  if (workflowInstancesRows.error) {
+    orphanFindings.push({ table: 'workflow_instances', field: 'created_by', error: 'query failed' });
+  } else if (!profileIds.error) {
+    for (const row of workflowInstancesRows.data ?? []) {
+      if (!validProfileIds.has(row.created_by)) orphanFindings.push({ table: 'workflow_instances', field: 'created_by', id: row.id });
+    }
   }
 
   if (orphanFindings.length > 0) {
     const body =
       `Tēnā koutou,\n\n` +
-      `MaraeHub's daily data check found ${orphanFindings.length} record${orphanFindings.length !== 1 ? 's' : ''} referencing a profile that no longer exists. This shouldn't be possible through normal use of the app — worth a look.\n\n` +
-      orphanFindings.map(f => `- ${f.table}.${f.field} — row ${f.id}`).join('\n') +
+      `MaraeHub's daily orphaned-records check found ${orphanFindings.length} issue${orphanFindings.length !== 1 ? 's' : ''} — either a dangling reference or a check that failed to run. This shouldn't happen through normal use of the app — worth a look.\n\n` +
+      orphanFindings.map(f => f.error
+        ? `- ${f.table}.${f.field} — check could not run (${f.error})`
+        : `- ${f.table}.${f.field} — row ${f.id}`
+      ).join('\n') +
       `\n\nPlease check these records directly in the database.` +
       footer();
 
@@ -551,12 +587,79 @@ serve(async () => {
     details: orphanFindings,
   });
 
+  // ── Single-row-table invariant check (ClickUp 86d3u7790, Stage 2b) ──────
+  // Real incident this protects against: marae_settings silently had 2
+  // rows, and the app picked one at random (whichever Postgres returned
+  // first to an unordered .limit(1).single()/.maybeSingle()), showing the
+  // wrong marae's details.
+  //
+  // Audited every .single()/.maybeSingle() call across src/ (16 total) for
+  // the specific pattern that let that happen: no filter at all before the
+  // call, so nothing narrows the result to one row on its own — the table
+  // itself has to actually hold exactly one row. 14 of 16 are ordinary
+  // filtered per-row lookups (.eq('id', x) etc.) and aren't candidates.
+  // Exactly 2 are genuine unscoped singleton reads: marae_settings and
+  // finance_balance_sheet (FinanceManager.js, drives bsId for later
+  // update/insert calls). Neither has an entity_id/tenant-scoping column
+  // (confirmed via information_schema.columns), so both are real global-
+  // per-project singletons, not "one per something."
+  //
+  // Flags count > 1 only, not count !== 1. finance_balance_sheet
+  // legitimately has 0 rows until a trustee first saves the balance sheet
+  // form (FinanceManager.js: `if (bs) {...}` else empty form, insert on
+  // first save) — flagging 0 would be a false alarm on a normal, non-buggy
+  // empty state, breaking "silent unless genuine risk found." Only a
+  // duplicate row (the actual incident this check exists to catch) is a
+  // genuine finding.
+  const [
+    maraeSettingsCount,
+    financeBalanceSheetCount,
+  ] = await Promise.all([
+    db.from('marae_settings').select('id', { count: 'exact', head: true }),
+    db.from('finance_balance_sheet').select('id', { count: 'exact', head: true }),
+  ]);
+
+  const singleRowFindings: { table: string; row_count?: number; error?: string }[] = [];
+
+  if (maraeSettingsCount.error) {
+    singleRowFindings.push({ table: 'marae_settings', error: 'query failed' });
+  } else if ((maraeSettingsCount.count ?? 0) > 1) {
+    singleRowFindings.push({ table: 'marae_settings', row_count: maraeSettingsCount.count ?? undefined });
+  }
+
+  if (financeBalanceSheetCount.error) {
+    singleRowFindings.push({ table: 'finance_balance_sheet', error: 'query failed' });
+  } else if ((financeBalanceSheetCount.count ?? 0) > 1) {
+    singleRowFindings.push({ table: 'finance_balance_sheet', row_count: financeBalanceSheetCount.count ?? undefined });
+  }
+
+  if (singleRowFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily data check found ${singleRowFindings.length} table${singleRowFindings.length !== 1 ? 's' : ''} that should hold exactly one row but ${singleRowFindings.length !== 1 ? "don't" : "doesn't"}. This shouldn't be possible through normal use of the app — worth a look.\n\n` +
+      singleRowFindings.map(f => f.error
+        ? `- ${f.table} — check could not run (${f.error})`
+        : `- ${f.table} — ${f.row_count} rows found, expected exactly 1`
+      ).join('\n') +
+      `\n\nPlease check this table directly in the database.` +
+      footer();
+
+    await notify(trusteeEmails, `Single-row table check — ${singleRowFindings.length} issue${singleRowFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'single_row_invariant',
+    findings_count: singleRowFindings.length,
+    details: singleRowFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
       today,
       null_drift_findings: driftFindings.length,
       orphaned_records_findings: orphanFindings.length,
+      single_row_invariant_findings: singleRowFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
