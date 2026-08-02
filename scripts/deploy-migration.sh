@@ -37,11 +37,22 @@ if [ -z "$VERIFY_FILE" ]; then
   echo ""
 fi
 
-# Extracts the single JSON object from `supabase db query`'s output, which is
+# Extracts the JSON value from `supabase db query`'s output, which is
 # surrounded by non-JSON lines ("Initialising login role...", CLI update
-# notices). raw_decode() parses starting at the first '{' and ignores
-# whatever text follows the matching '}', rather than requiring the whole
+# notices). raw_decode() parses starting at the first bracket and ignores
+# whatever text follows the matching close, rather than requiring the whole
 # stream to be valid JSON on its own.
+#
+# The CLI's --output json envelope shape depends on its own agent
+# auto-detection, NOT on how this script invokes it: run by an AI agent it
+# wraps rows as {"rows": [...], "boundary": ..., "warning": ...}; run by a
+# human (e.g. Waj testing the script by hand, --agent=no or no agent
+# detected) it prints a bare [...] array instead, with no "rows" key at
+# all. Blindly seeking the first '{' breaks on the bare-array case: that
+# '{' belongs to the *first row*, not a top-level object, so raw_decode
+# only ever sees one row with no "rows" key -> false EMPTY_RESULT even
+# when the query genuinely returned rows. Seek whichever of '{' or '['
+# comes first instead, and branch on the resulting type.
 verify_rows() {
   # python3 must NOT read its own script from the same stdin the piped
   # verify-output arrives on ("python3 - <<PYEOF" does exactly that: the
@@ -53,17 +64,22 @@ verify_rows() {
   python3 <(cat <<'PYEOF'
 import json, sys
 text = sys.stdin.read()
-try:
-    start = text.index('{')
-except ValueError:
+starts = [i for i in (text.find('{'), text.find('[')) if i != -1]
+if not starts:
     print("NO_JSON")
     sys.exit(1)
+start = min(starts)
 try:
     obj, _ = json.JSONDecoder().raw_decode(text, start)
 except json.JSONDecodeError:
     print("BAD_JSON")
     sys.exit(1)
-rows = obj.get('rows', [])
+if isinstance(obj, dict):
+    rows = obj.get('rows', [])
+elif isinstance(obj, list):
+    rows = obj
+else:
+    rows = []
 if not rows:
     print("EMPTY_RESULT")
     sys.exit(1)
