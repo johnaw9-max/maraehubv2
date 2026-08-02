@@ -43,7 +43,14 @@ fi
 # whatever text follows the matching '}', rather than requiring the whole
 # stream to be valid JSON on its own.
 verify_rows() {
-  python3 - <<'PYEOF'
+  # python3 must NOT read its own script from the same stdin the piped
+  # verify-output arrives on ("python3 - <<PYEOF" does exactly that: the
+  # heredoc satisfies python's "read program from stdin" request, fully
+  # draining fd 0 before sys.stdin.read() below ever runs, which always
+  # yields an empty string -> NO_JSON, even when the piped JSON is valid).
+  # Process-substituting the heredoc into its own fd keeps stdin free for
+  # the actual data.
+  python3 <(cat <<'PYEOF'
 import json, sys
 text = sys.stdin.read()
 try:
@@ -66,6 +73,7 @@ for r in rows:
     print(f"{mark}: {r.get('check_name', '?')}")
 sys.exit(1 if failed else 0)
 PYEOF
+)
 }
 
 declare -a NAMES=()
