@@ -488,11 +488,75 @@ serve(async () => {
     details: driftFindings,
   });
 
+  // ── Orphaned records check (ClickUp 86d3u7790, Stage 2a) ────────────────
+  // FK-shaped uuid columns with no enforced foreign key constraint (confirmed
+  // via a real information_schema.table_constraints audit, not assumed) —
+  // narrowed to the 4 genuine candidates: uuid-typed, non-polymorphic (no
+  // companion *_type column), and not already covered by a real FK. Excludes
+  // every text-typed "*_by"/"assigned_to" column (freeform names, not row
+  // IDs) and every polymorphic *_id/*_type pair (goal_links.link_id,
+  // finance_income.source_id, workflow_instances.entity_id,
+  // notification_log.entity_id) — a single-table check would be wrong for
+  // those since the target table varies by row.
+  //
+  // PostgREST can't embed across these columns to do the join server-side
+  // (no declared FK for it to detect — same root cause as the
+  // service_reminders/assets gap found on Opeke, ClickUp 86d3wreta), so this
+  // fetches each side and diffs in JS instead.
+  const [
+    profileIds,
+    bookingFeedbackRows,
+    feedbackRows,
+    riskRegisterRows,
+    workflowInstancesRows,
+  ] = await Promise.all([
+    db.from('profiles').select('id'),
+    db.from('booking_feedback').select('id, user_id').not('user_id', 'is', null),
+    db.from('feedback').select('id, user_id').not('user_id', 'is', null),
+    db.from('risk_register').select('id, trustee_id').not('trustee_id', 'is', null),
+    db.from('workflow_instances').select('id, created_by').not('created_by', 'is', null),
+  ]);
+
+  const validProfileIds = new Set((profileIds.data ?? []).map(p => p.id));
+
+  const orphanFindings: { table: string; field: string; id: string }[] = [];
+
+  for (const row of bookingFeedbackRows.data ?? []) {
+    if (!validProfileIds.has(row.user_id)) orphanFindings.push({ table: 'booking_feedback', field: 'user_id', id: row.id });
+  }
+  for (const row of feedbackRows.data ?? []) {
+    if (!validProfileIds.has(row.user_id)) orphanFindings.push({ table: 'feedback', field: 'user_id', id: row.id });
+  }
+  for (const row of riskRegisterRows.data ?? []) {
+    if (!validProfileIds.has(row.trustee_id)) orphanFindings.push({ table: 'risk_register', field: 'trustee_id', id: row.id });
+  }
+  for (const row of workflowInstancesRows.data ?? []) {
+    if (!validProfileIds.has(row.created_by)) orphanFindings.push({ table: 'workflow_instances', field: 'created_by', id: row.id });
+  }
+
+  if (orphanFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily data check found ${orphanFindings.length} record${orphanFindings.length !== 1 ? 's' : ''} referencing a profile that no longer exists. This shouldn't be possible through normal use of the app — worth a look.\n\n` +
+      orphanFindings.map(f => `- ${f.table}.${f.field} — row ${f.id}`).join('\n') +
+      `\n\nPlease check these records directly in the database.` +
+      footer();
+
+    await notify(trusteeEmails, `Orphaned record check — ${orphanFindings.length} issue${orphanFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'orphaned_records',
+    findings_count: orphanFindings.length,
+    details: orphanFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
       today,
       null_drift_findings: driftFindings.length,
+      orphaned_records_findings: orphanFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
