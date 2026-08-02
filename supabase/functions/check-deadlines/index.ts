@@ -425,10 +425,74 @@ serve(async () => {
     );
   }
 
+  // ── Null-value drift check (ClickUp 86d3u7790, Stage 1) ─────────────────
+  // The 6 field/table pairs from the null-field crash audit (commits
+  // f89e76d, a345f77), narrowed to the 7 fields the app's own code actually
+  // validates as required — a null there can only mean something bypassed
+  // that validation (direct SQL, a migration, a regression), not routine
+  // use. The other 8 audited fields (all of meetings', plus
+  // resolutions.resolution_number, meeting_actions.assigned_to,
+  // interest_register.related_matter) are legitimately optional — the app
+  // itself still writes null for them on every blank-field save, so
+  // checking those would fire on routine, non-buggy usage and break
+  // "silent unless genuine risk found." meetings has no qualifying field
+  // under this reading and is correctly absent from this check.
+  const [
+    resolutionsNull,
+    meetingActionsNull,
+    interestRegisterNull,
+    serviceRemindersNull,
+    noticesNull,
+  ] = await Promise.all([
+    db.from('resolutions').select('id, description').is('description', null),
+    db.from('meeting_actions').select('id, description').is('description', null),
+    db.from('interest_register').select('id, trustee_name, nature_of_interest').or('trustee_name.is.null,nature_of_interest.is.null'),
+    db.from('service_reminders').select('id, type').is('type', null),
+    db.from('notices').select('id, title, body').or('title.is.null,body.is.null'),
+  ]);
+
+  const driftFindings: { table: string; field: string; id: string }[] = [];
+
+  for (const row of resolutionsNull.data ?? []) {
+    driftFindings.push({ table: 'resolutions', field: 'description', id: row.id });
+  }
+  for (const row of meetingActionsNull.data ?? []) {
+    driftFindings.push({ table: 'meeting_actions', field: 'description', id: row.id });
+  }
+  for (const row of interestRegisterNull.data ?? []) {
+    if (row.trustee_name === null) driftFindings.push({ table: 'interest_register', field: 'trustee_name', id: row.id });
+    if (row.nature_of_interest === null) driftFindings.push({ table: 'interest_register', field: 'nature_of_interest', id: row.id });
+  }
+  for (const row of serviceRemindersNull.data ?? []) {
+    driftFindings.push({ table: 'service_reminders', field: 'type', id: row.id });
+  }
+  for (const row of noticesNull.data ?? []) {
+    if (row.title === null) driftFindings.push({ table: 'notices', field: 'title', id: row.id });
+    if (row.body === null) driftFindings.push({ table: 'notices', field: 'body', id: row.id });
+  }
+
+  if (driftFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily data check found ${driftFindings.length} record${driftFindings.length !== 1 ? 's' : ''} with a required field unexpectedly empty. This shouldn't be possible through normal use of the app — worth a look.\n\n` +
+      driftFindings.map(f => `- ${f.table}.${f.field} — row ${f.id}`).join('\n') +
+      `\n\nPlease check these records directly in the database.` +
+      footer();
+
+    await notify(trusteeEmails, `Data drift check — ${driftFindings.length} issue${driftFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'null_value_drift',
+    findings_count: driftFindings.length,
+    details: driftFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
       today,
+      null_drift_findings: driftFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
