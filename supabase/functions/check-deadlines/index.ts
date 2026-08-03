@@ -653,6 +653,65 @@ serve(async () => {
     details: singleRowFindings,
   });
 
+  // ── Cron health check (ClickUp 86d3u7790, Stage 2c) ──────────────────────
+  // Confirms the monthly lock-monthly-kpi-snapshot cron job is actually
+  // firing, not just registered — registration alone (cron.job.active) says
+  // nothing about whether runs are succeeding.
+  // check_cron_job_last_success() (migration 20260803000000) reads
+  // cron.job_run_details via a SECURITY DEFINER wrapper, since PostgREST has
+  // no direct access to the cron schema (confirmed empirically — see that
+  // migration's header).
+  //
+  // 35-day threshold, not 31: the job runs on the 1st of each month at
+  // 00:05 UTC. The longest legitimate gap between two successful runs is one
+  // full calendar month, plus this check itself only runs once a day at
+  // 08:00 UTC — 35 days gives slack for month-length variance and the daily
+  // cadence of this check without masking a genuinely missed run.
+  const { data: lastCronSuccess, error: cronErr } = await db.rpc(
+    'check_cron_job_last_success',
+    { job_name_pattern: '%lock-monthly-kpi-snapshot%' },
+  );
+
+  const cronFindings: { job: string; last_success: string | null; days_since: number | null; error?: string }[] = [];
+
+  if (cronErr) {
+    cronFindings.push({ job: 'lock-monthly-kpi-snapshot', last_success: null, days_since: null, error: cronErr.message });
+  } else {
+    const daysSince = lastCronSuccess
+      ? Math.floor((Date.now() - new Date(lastCronSuccess).getTime()) / 86400000)
+      : null;
+
+    // null means the job has never once succeeded — as much a finding as a
+    // stale one, and daysSince has no numeric value to threshold against.
+    if (daysSince === null || daysSince > 35) {
+      cronFindings.push({
+        job:          'lock-monthly-kpi-snapshot',
+        last_success: lastCronSuccess,
+        days_since:   daysSince,
+      });
+    }
+  }
+
+  if (cronFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily cron health check found ${cronFindings.length} scheduled job${cronFindings.length !== 1 ? 's' : ''} that hasn't completed successfully as expected. This shouldn't happen through normal operation — worth a look.\n\n` +
+      cronFindings.map(f => f.error
+        ? `- ${f.job} — check could not run (${f.error})`
+        : `- ${f.job} — last success: ${f.last_success ?? 'never'}${f.days_since !== null ? ` (${f.days_since} days ago)` : ''}`
+      ).join('\n') +
+      `\n\nPlease check this job directly in the database (cron.job_run_details).` +
+      footer();
+
+    await notify(trusteeEmails, `Cron health check — ${cronFindings.length} issue${cronFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'cron_health',
+    findings_count: cronFindings.length,
+    details: cronFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -660,6 +719,7 @@ serve(async () => {
       null_drift_findings: driftFindings.length,
       orphaned_records_findings: orphanFindings.length,
       single_row_invariant_findings: singleRowFindings.length,
+      cron_health_findings: cronFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
