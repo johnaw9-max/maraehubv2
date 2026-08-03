@@ -653,7 +653,7 @@ serve(async () => {
     details: singleRowFindings,
   });
 
-  // ── Cron health check (ClickUp 86d3u7790, Stage 2c) ──────────────────────
+  // ── Cron health check (ClickUp 86d3u7790, Stage 2c — LAYER 1 OF 2 ONLY) ──
   // Confirms the monthly lock-monthly-kpi-snapshot cron job is actually
   // firing, not just registered — registration alone (cron.job.active) says
   // nothing about whether runs are succeeding.
@@ -661,6 +661,20 @@ serve(async () => {
   // cron.job_run_details via a SECURITY DEFINER wrapper, since PostgREST has
   // no direct access to the cron schema (confirmed empirically — see that
   // migration's header).
+  //
+  // Known, deliberate gap — not an oversight: the task's own prior-session
+  // design called for TWO layers precisely because net.http_post is
+  // fire-and-forget — cron.job_run_details.status = 'succeeded' only proves
+  // the HTTP call was dispatched without error, not that the edge function
+  // itself completed or returned success. Layer 2 (cross-referencing a real
+  // module_kpi_snapshots row within the same window) was the fix for that
+  // and is NOT implemented here — this check alone cannot detect a
+  // dispatched-but-silently-broken lock-monthly-kpi-snapshot run. Also
+  // unresolved: this check cannot validate check-deadlines' own liveness (if
+  // check-deadlines itself stops firing, so does the code that would notice)
+  // — neither of the two options the task raised for that has been decided.
+  // Both remain open follow-up work, tracked in 86d3u7790, not closed by
+  // this commit.
   //
   // 35-day threshold, not 31: the job runs on the 1st of each month at
   // 00:05 UTC. The longest legitimate gap between two successful runs is one
