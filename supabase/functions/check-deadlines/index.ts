@@ -653,43 +653,54 @@ serve(async () => {
     details: singleRowFindings,
   });
 
-  // ── Cron health check (ClickUp 86d3u7790, Stage 2c — LAYER 1 OF 2 ONLY) ──
+  // ── Cron health check (ClickUp 86d3u7790, Stage 2c — Layers 1 + 2) ───────
   // Confirms the monthly lock-monthly-kpi-snapshot cron job is actually
-  // firing, not just registered — registration alone (cron.job.active) says
-  // nothing about whether runs are succeeding.
-  // check_cron_job_last_success() (migration 20260803000000) reads
-  // cron.job_run_details via a SECURITY DEFINER wrapper, since PostgREST has
-  // no direct access to the cron schema (confirmed empirically — see that
-  // migration's header).
+  // firing AND actually doing its work, not just registered — registration
+  // alone (cron.job.active) says nothing about whether runs are succeeding,
+  // and (per Layer 1's own limitation below) a "succeeded" dispatch says
+  // nothing about whether the function itself completed.
   //
-  // Known, deliberate gap — not an oversight: the task's own prior-session
-  // design called for TWO layers precisely because net.http_post is
-  // fire-and-forget — cron.job_run_details.status = 'succeeded' only proves
-  // the HTTP call was dispatched without error, not that the edge function
-  // itself completed or returned success. Layer 2 (cross-referencing a real
-  // module_kpi_snapshots row within the same window) was the fix for that
-  // and is NOT implemented here — this check alone cannot detect a
-  // dispatched-but-silently-broken lock-monthly-kpi-snapshot run. Also
-  // unresolved: this check cannot validate check-deadlines' own liveness (if
-  // check-deadlines itself stops firing, so does the code that would notice)
-  // — neither of the two options the task raised for that has been decided.
-  // Both remain open follow-up work, tracked in 86d3u7790, not closed by
+  // Layer 1 — did cron dispatch it? check_cron_job_last_success() (migration
+  // 20260803000000) reads cron.job_run_details via a SECURITY DEFINER
+  // wrapper, since PostgREST has no direct access to the cron schema
+  // (confirmed empirically — see that migration's header). net.http_post is
+  // fire-and-forget, so "succeeded" here only proves the HTTP call was
+  // dispatched without error, not that the edge function itself completed.
+  //
+  // Layer 2 — did the function's own work actually land? Cross-references a
+  // real row in module_kpi_snapshots, the job's own output table — the same
+  // principle Stage 1 already established with system_check_log. Keyed on
+  // locked_at (the real insert timestamp), never snapshot_month —
+  // snapshot_month is deliberately the first day of the *previous* calendar
+  // month (firstDayOfPreviousMonth(), lock-monthly-kpi-snapshot/index.ts),
+  // confirmed live on both projects (2026-08-01 run → snapshot_month
+  // 2026-07-01) — using it here would misread every legitimate row as
+  // ~30+ days stale.
+  //
+  // Both layers write into one cronFindings array / one system_check_log
+  // row (check_name: 'cron_health'), tagged by `layer` — matches the task's
+  // original design ("flag a finding if either layer fails").
+  //
+  // Still unresolved, deliberately out of scope here: this check cannot
+  // validate check-deadlines' own liveness (if check-deadlines itself stops
+  // firing, so does the code that would notice) — neither option the task
+  // raised for that has been decided. Tracked in 86d3u7790, not closed by
   // this commit.
   //
-  // 35-day threshold, not 31: the job runs on the 1st of each month at
-  // 00:05 UTC. The longest legitimate gap between two successful runs is one
-  // full calendar month, plus this check itself only runs once a day at
-  // 08:00 UTC — 35 days gives slack for month-length variance and the daily
-  // cadence of this check without masking a genuinely missed run.
+  // 35-day threshold (both layers), not 31: the job runs on the 1st of each
+  // month at 00:05 UTC. The longest legitimate gap between two successful
+  // runs is one full calendar month, plus this check itself only runs once
+  // a day at 08:00 UTC — 35 days gives slack for month-length variance and
+  // the daily cadence of this check without masking a genuinely missed run.
   const { data: lastCronSuccess, error: cronErr } = await db.rpc(
     'check_cron_job_last_success',
     { job_name_pattern: '%lock-monthly-kpi-snapshot%' },
   );
 
-  const cronFindings: { job: string; last_success: string | null; days_since: number | null; error?: string }[] = [];
+  const cronFindings: { job: string; layer: 1 | 2; last_success: string | null; days_since: number | null; error?: string }[] = [];
 
   if (cronErr) {
-    cronFindings.push({ job: 'lock-monthly-kpi-snapshot', last_success: null, days_since: null, error: cronErr.message });
+    cronFindings.push({ job: 'lock-monthly-kpi-snapshot', layer: 1, last_success: null, days_since: null, error: cronErr.message });
   } else {
     const daysSince = lastCronSuccess
       ? Math.floor((Date.now() - new Date(lastCronSuccess).getTime()) / 86400000)
@@ -700,21 +711,47 @@ serve(async () => {
     if (daysSince === null || daysSince > 35) {
       cronFindings.push({
         job:          'lock-monthly-kpi-snapshot',
+        layer:        1,
         last_success: lastCronSuccess,
         days_since:   daysSince,
       });
     }
   }
 
+  const { data: lastSnapshot, error: snapshotErr } = await db
+    .from('module_kpi_snapshots')
+    .select('locked_at')
+    .order('locked_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (snapshotErr) {
+    cronFindings.push({ job: 'lock-monthly-kpi-snapshot', layer: 2, last_success: null, days_since: null, error: snapshotErr.message });
+  } else {
+    const daysSinceSnapshot = lastSnapshot?.locked_at
+      ? Math.floor((Date.now() - new Date(lastSnapshot.locked_at).getTime()) / 86400000)
+      : null;
+
+    if (daysSinceSnapshot === null || daysSinceSnapshot > 35) {
+      cronFindings.push({
+        job:          'lock-monthly-kpi-snapshot',
+        layer:        2,
+        last_success: lastSnapshot?.locked_at ?? null,
+        days_since:   daysSinceSnapshot,
+      });
+    }
+  }
+
   if (cronFindings.length > 0) {
+    const layerLabel = (l: 1 | 2) => l === 1 ? 'cron dispatch' : 'function completion';
     const body =
       `Tēnā koutou,\n\n` +
-      `MaraeHub's daily cron health check found ${cronFindings.length} scheduled job${cronFindings.length !== 1 ? 's' : ''} that hasn't completed successfully as expected. This shouldn't happen through normal operation — worth a look.\n\n` +
+      `MaraeHub's daily cron health check found ${cronFindings.length} issue${cronFindings.length !== 1 ? 's' : ''} with a scheduled job. This shouldn't happen through normal operation — worth a look.\n\n` +
       cronFindings.map(f => f.error
-        ? `- ${f.job} — check could not run (${f.error})`
-        : `- ${f.job} — last success: ${f.last_success ?? 'never'}${f.days_since !== null ? ` (${f.days_since} days ago)` : ''}`
+        ? `- ${f.job} (layer ${f.layer}: ${layerLabel(f.layer)}) — check could not run (${f.error})`
+        : `- ${f.job} (layer ${f.layer}: ${layerLabel(f.layer)}) — last success: ${f.last_success ?? 'never'}${f.days_since !== null ? ` (${f.days_since} days ago)` : ''}`
       ).join('\n') +
-      `\n\nPlease check this job directly in the database (cron.job_run_details).` +
+      `\n\nPlease check this job directly in the database (cron.job_run_details, module_kpi_snapshots).` +
       footer();
 
     await notify(trusteeEmails, `Cron health check — ${cronFindings.length} issue${cronFindings.length !== 1 ? 's' : ''} found`, body);
