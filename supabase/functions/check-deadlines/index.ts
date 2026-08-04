@@ -21,7 +21,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const ADMIN_ALERT_EMAIL = Deno.env.get('ADMIN_ALERT_EMAIL');
 const NOTIFY_URL       = `${SUPABASE_URL}/functions/v1/send-notification`;
+const adminEmails      = ADMIN_ALERT_EMAIL ? [ADMIN_ALERT_EMAIL] : [];
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -57,6 +59,20 @@ async function notify(to: string[], subject: string, body: string) {
     },
     body: JSON.stringify({ to, subject, body }),
   });
+}
+
+// Maintenance-shield checks (null_value_drift, orphaned_records,
+// single_row_invariant, cron_health) are developer-facing, not
+// trustee-facing — they alert ADMIN_ALERT_EMAIL only. If that secret is
+// unset, notify()'s empty-array no-op would otherwise swallow the alert
+// with no trace anywhere but system_check_log — log a warning instead so
+// a missing secret is visible in function_logs.
+async function notifyAdmin(subject: string, body: string) {
+  if (adminEmails.length === 0) {
+    console.warn(`ADMIN_ALERT_EMAIL not set — skipped admin alert: "${subject}"`);
+    return;
+  }
+  await notify(adminEmails, subject, body);
 }
 
 // ── Workflow template matching ────────────────────────────────────────────────
@@ -479,7 +495,7 @@ serve(async () => {
       `\n\nPlease check these records directly in the database.` +
       footer();
 
-    await notify(trusteeEmails, `Data drift check — ${driftFindings.length} issue${driftFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Data drift check — ${driftFindings.length} issue${driftFindings.length !== 1 ? 's' : ''} found`, body);
   }
 
   await db.from('system_check_log').insert({
@@ -578,7 +594,7 @@ serve(async () => {
       `\n\nPlease check these records directly in the database.` +
       footer();
 
-    await notify(trusteeEmails, `Orphaned record check — ${orphanFindings.length} issue${orphanFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Orphaned record check — ${orphanFindings.length} issue${orphanFindings.length !== 1 ? 's' : ''} found`, body);
   }
 
   await db.from('system_check_log').insert({
@@ -644,7 +660,7 @@ serve(async () => {
       `\n\nPlease check this table directly in the database.` +
       footer();
 
-    await notify(trusteeEmails, `Single-row table check — ${singleRowFindings.length} issue${singleRowFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Single-row table check — ${singleRowFindings.length} issue${singleRowFindings.length !== 1 ? 's' : ''} found`, body);
   }
 
   await db.from('system_check_log').insert({
@@ -754,7 +770,7 @@ serve(async () => {
       `\n\nPlease check this job directly in the database (cron.job_run_details, module_kpi_snapshots).` +
       footer();
 
-    await notify(trusteeEmails, `Cron health check — ${cronFindings.length} issue${cronFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Cron health check — ${cronFindings.length} issue${cronFindings.length !== 1 ? 's' : ''} found`, body);
   }
 
   await db.from('system_check_log').insert({
