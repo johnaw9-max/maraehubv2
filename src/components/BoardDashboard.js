@@ -4,6 +4,7 @@ import { fetchXeroFinancials, minsAgo } from '../lib/xero';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import { getComplianceStatus } from '../lib/complianceStatus';
 import { getRiskStatus } from '../lib/riskStatus';
+import { buildFocusItems } from '../lib/focusItems';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -101,7 +102,19 @@ const TIER_STYLES = {
 };
 
 function FocusThisWeekCard({ items, onNavigate }) {
-  if (!items || items.length === 0) return null; // Step 4 designs the real all-clear state
+  if (!items || items.length === 0) {
+    return (
+      <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid #2e7d52', background: '#e8f4ef', textAlign: 'center', padding: '20px 16px' }}>
+        <div style={{ fontSize: 22, marginBottom: 6 }}>✅</div>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 700, color: '#1a4a3a', marginBottom: 4 }}>
+          All clear this week
+        </div>
+        <div style={{ fontSize: 13, color: '#1a4a3a', opacity: 0.85 }}>
+          Nothing urgent needs your attention right now — great governance.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--brand)' }}>
@@ -762,6 +775,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
 
+  const focusItems = buildFocusItems({
+    overdueActions, overdueReminders, finNet, highOpenRisks,
+    assets: d.assets, today, truncate, fmtMoney,
+  });
+
   return (
     <div>
       <style>{`
@@ -796,6 +814,9 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           </button>
         </div>
       </div>
+
+      {/* ── FOCUS THIS WEEK (ClickUp 86d3vc4yp) ──────────────────────────── */}
+      <FocusThisWeekCard items={focusItems} onNavigate={onNavigate} />
 
       {/* ── AI REPORT MODAL ────────────────────────────────────────────── */}
       {(showReport || aiError) && (
