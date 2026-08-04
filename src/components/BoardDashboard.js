@@ -59,6 +59,7 @@ const NAV_LABELS = {
   risks:      'View Risks →',
   bookings:   'View Bookings →',
   projects:   'View Projects →',
+  finance:    'View Finance →',
 };
 
 function Stars({ rating }) {
@@ -87,6 +88,66 @@ function GroupHeading({ title }) {
   return (
     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '32px 0 14px', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
       {title}
+    </div>
+  );
+}
+
+// "Focus this week" card (ClickUp 86d3vc4yp, Step 3). Renders items from
+// focusItems.js's buildFocusItems() — not yet wired into the page or given
+// an empty-case design; both are Step 4.
+const TIER_STYLES = {
+  urgent:         { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)', color: 'var(--danger)', badgeBg: 'var(--danger)', badgeLabel: 'Urgent' },
+  'worth-a-look': { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00',        badgeBg: '#c8902a',      badgeLabel: 'Worth a look' },
+};
+
+function FocusThisWeekCard({ items, onNavigate }) {
+  if (!items || items.length === 0) return null; // Step 4 designs the real all-clear state
+
+  return (
+    <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--brand)' }}>
+      <SectionTitle icon="🎯" title="Focus This Week" count={items.length} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {items.map((item, i) => {
+          const t = TIER_STYLES[item.tier];
+          return (
+            <div key={i} style={{ borderRadius: 8, padding: '12px 14px', ...t }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', background: t.badgeBg, borderRadius: 20, padding: '2px 9px', marginRight: 8 }}>
+                    {t.badgeLabel}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', lineHeight: 1.5 }}>{item.text}</span>
+                  <div style={{ fontSize: 12, color: t.color, marginTop: 5 }}>
+                    {item.owner ? (
+                      `👤 ${item.owner}`
+                    ) : (
+                      <>
+                        No owner assigned ·{' '}
+                        {onNavigate && (
+                          <span
+                            onClick={() => onNavigate(item.navTo)}
+                            style={{ cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}
+                          >
+                            Assign →
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate(item.navTo)}
+                    style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: t.color, border: `1px solid ${t.badgeBg}`, borderRadius: 6, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+                  >
+                    {NAV_LABELS[item.navTo] || 'View →'}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
