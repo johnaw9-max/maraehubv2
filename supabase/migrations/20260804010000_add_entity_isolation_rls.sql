@@ -77,6 +77,7 @@ $$;
 -- ── ENTITY-AWARE RLS ON THE 4 STAGE 1 TABLES ────────────────────────────────
 
 drop policy if exists "finance_income: authenticated full access" on finance_income;
+drop policy if exists "Trustees can manage finance_income within their entities" on finance_income;
 create policy "Trustees can manage finance_income within their entities"
   on finance_income for all
   to authenticated
@@ -90,6 +91,7 @@ create policy "Trustees can manage finance_income within their entities"
   );
 
 drop policy if exists "finance_expenses: authenticated full access" on finance_expenses;
+drop policy if exists "Trustees can manage finance_expenses within their entities" on finance_expenses;
 create policy "Trustees can manage finance_expenses within their entities"
   on finance_expenses for all
   to authenticated
@@ -103,6 +105,7 @@ create policy "Trustees can manage finance_expenses within their entities"
   );
 
 drop policy if exists "Trustees can manage compliance items" on compliance_items;
+drop policy if exists "Trustees can manage compliance_items within their entities" on compliance_items;
 create policy "Trustees can manage compliance_items within their entities"
   on compliance_items for all
   to authenticated
@@ -116,6 +119,7 @@ create policy "Trustees can manage compliance_items within their entities"
   );
 
 drop policy if exists "Trustees can manage risks" on risk_register;
+drop policy if exists "Trustees can manage risk_register within their entities" on risk_register;
 create policy "Trustees can manage risk_register within their entities"
   on risk_register for all
   to authenticated
