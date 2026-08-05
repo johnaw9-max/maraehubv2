@@ -430,10 +430,10 @@ export default function ComplianceTracker() {
         >
           <span style={{ fontSize: 18 }}>🆘</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#8b0000' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#8b0000' }}>
               Emergency Preparedness — {epAlert} item{epAlert !== 1 ? 's' : ''} need attention
             </div>
-            <div style={{ fontSize: 12, color: '#a63020', marginTop: 2 }}>
+            <div style={{ fontSize: 14, color: '#a63020', marginTop: 2 }}>
               {epOverdue.length > 0 && `${epOverdue.length} overdue`}
               {epOverdue.length > 0 && epNotSet.length > 0 && ' · '}
               {epNotSet.length > 0 && `${epNotSet.length} not yet scheduled`}
@@ -455,7 +455,7 @@ export default function ComplianceTracker() {
               key={s.key}
               onClick={() => setSection(s.key)}
               style={{
-                padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 background: section === s.key ? 'var(--brand)' : 'var(--surface)',
                 color: section === s.key ? '#fff' : 'var(--text2)',
                 border: 'none', borderRight: i === 0 ? '1px solid var(--border)' : 'none',
@@ -467,12 +467,12 @@ export default function ComplianceTracker() {
           ))}
         </div>
         {section === 'items' && (
-          <button className="btn-primary" onClick={openAddItem} style={{ fontSize: 13 }}>
+          <button className="btn-primary" onClick={openAddItem} style={{ fontSize: 14 }}>
             + Add Item
           </button>
         )}
         {section === 'incidents' && (
-          <button className="btn-primary" onClick={openAddIncident} style={{ fontSize: 13 }}>
+          <button className="btn-primary" onClick={openAddIncident} style={{ fontSize: 14 }}>
             + Log Incident
           </button>
         )}
@@ -488,7 +488,7 @@ export default function ComplianceTracker() {
                 key={c.key}
                 onClick={() => setCatFilter(c.key)}
                 style={{
-                  padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   borderRadius: 20, border: '1px solid var(--border)',
                   background: catFilter === c.key ? 'var(--brand)' : 'var(--surface)',
                   color: catFilter === c.key ? '#fff' : 'var(--text2)',
@@ -521,17 +521,17 @@ export default function ComplianceTracker() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                           <StatusPill status={status} />
-                          <span style={{ fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '2px 9px' }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
                             {cat.icon} {cat.label}
                           </span>
                           {dl && (
-                            <span style={{ fontSize: 11, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
+                            <span style={{ fontSize: 14, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
                               {dl}
                             </span>
                           )}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{item.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                        <div style={{ fontSize: 14, color: 'var(--text3)' }}>
                           {item.due_date && <span>Next due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
                           {item.due_date && item.renewal_months && <span style={{ margin: '0 6px' }}>·</span>}
                           {item.renewal_months && <span>Renews every {item.renewal_months >= 12 ? `${item.renewal_months / 12}yr` : `${item.renewal_months}mo`}</span>}
@@ -543,13 +543,13 @@ export default function ComplianceTracker() {
                             </span>
                           )}
                         </div>
-                        {item.notes && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
+                        {item.notes && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
                       </div>
                       {/* Right: doc + actions */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         {item.document_url && (
                           <a href={item.document_url} target="_blank" rel="noopener noreferrer"
-                            style={{ fontSize: 12, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
+                            style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
                             title={item.document_name || 'View document'}
                           >
                             📎 Doc
@@ -561,7 +561,7 @@ export default function ComplianceTracker() {
                             ? `Mark done today — next due date set to ${nextDueDate(item.renewal_months)}`
                             : 'Mark as checked today'}
                           style={{
-                            fontSize: 11, fontWeight: 700,
+                            fontSize: 14, fontWeight: 700,
                             color: '#1a4a3a', background: '#e8f4ef',
                             border: '1px solid #a8d8c0', borderRadius: 6,
                             padding: '4px 10px', cursor: 'pointer',
@@ -571,7 +571,7 @@ export default function ComplianceTracker() {
                         </button>
                         <button
                           onClick={() => openEditItem(item)}
-                          style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+                          style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
                         >
                           Edit
                         </button>
@@ -618,18 +618,18 @@ export default function ComplianceTracker() {
                               onStatusChange={s => handleSeverityChange(inc.id, s)}
                             />
                           )}
-                          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{fmt(inc.incident_date)}</span>
-                          {inc.location && <span style={{ fontSize: 12, color: 'var(--text3)' }}>📍 {inc.location}</span>}
+                          <span style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(inc.incident_date)}</span>
+                          {inc.location && <span style={{ fontSize: 14, color: 'var(--text3)' }}>📍 {inc.location}</span>}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{inc.title}</div>
-                        {inc.description && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3, lineHeight: 1.5 }}>{inc.description}</div>}
-                        <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 12px' }}>
+                        {inc.description && <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 3, lineHeight: 1.5 }}>{inc.description}</div>}
+                        <div style={{ fontSize: 14, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 12px' }}>
                           {inc.people_involved && <span>👥 {inc.people_involved}</span>}
                           {inc.responsible_name && <span>Responsible: {inc.responsible_name}</span>}
                           {inc.follow_up_date && <span>Follow-up: {fmt(inc.follow_up_date)}</span>}
                         </div>
                         {inc.action_taken && (
-                          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4, padding: '6px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
+                          <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 4, padding: '6px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
                             <strong>Action taken:</strong> {inc.action_taken}
                           </div>
                         )}
@@ -637,7 +637,7 @@ export default function ComplianceTracker() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexDirection: 'column' }}>
                         {inc.document_url && (
                           <a href={inc.document_url} target="_blank" rel="noopener noreferrer"
-                            style={{ fontSize: 12, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
+                            style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
                           >
                             📎 Doc
                           </a>
@@ -645,13 +645,13 @@ export default function ComplianceTracker() {
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             onClick={() => toggleResolved(inc)}
-                            style={{ fontSize: 11, color: inc.resolved ? '#7a4f00' : '#1a4a3a', background: inc.resolved ? '#fdf0dc' : '#e8f4ef', border: 'none', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ fontSize: 14, color: inc.resolved ? '#7a4f00' : '#1a4a3a', background: inc.resolved ? '#fdf0dc' : '#e8f4ef', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontWeight: 600 }}
                           >
                             {inc.resolved ? 'Reopen' : 'Resolve'}
                           </button>
                           <button
                             onClick={() => openEditIncident(inc)}
-                            style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+                            style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
                           >
                             Edit
                           </button>
@@ -678,7 +678,7 @@ export default function ComplianceTracker() {
                   display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                   background: 'var(--surface2)', border: '1px solid var(--border)',
                   borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 600, color: 'var(--text2)',
+                  fontSize: 14, fontWeight: 600, color: 'var(--text2)',
                   fontFamily: 'DM Sans, sans-serif',
                 }}
               >
@@ -692,12 +692,12 @@ export default function ComplianceTracker() {
                       <div key={inc.id} className="panel" style={{ padding: '14px 16px', borderLeft: '4px solid #2e7d52', opacity: 0.75 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 2 }}>{inc.title}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text3)' }}>{fmt(inc.incident_date)} · Resolved</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 2 }}>{inc.title}</div>
+                            <div style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(inc.incident_date)} · Resolved</div>
                           </div>
                           <button
                             onClick={() => openEditIncident(inc)}
-                            style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}
+                            style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}
                           >
                             View
                           </button>
@@ -723,7 +723,7 @@ export default function ComplianceTracker() {
               <button onClick={() => setShowItemModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
             </div>
 
-            {itemError && <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 13, marginBottom: 14 }}>{itemError}</div>}
+            {itemError && <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 14, marginBottom: 14 }}>{itemError}</div>}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -773,14 +773,14 @@ export default function ComplianceTracker() {
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Document</label>
                 {editItem?.document_name && !itemFile && (
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6 }}>
                     Current: <a href={editItem.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>{editItem.document_name}</a>
                   </div>
                 )}
                 <input type="file" ref={itemFileRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   onChange={e => setItemFile(e.target.files[0] || null)} />
                 <button type="button" onClick={() => itemFileRef.current?.click()}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, cursor: 'pointer', color: 'var(--text2)' }}>
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)' }}>
                   {itemFile ? `📎 ${itemFile.name}` : '📎 Choose file'}
                 </button>
               </div>
@@ -807,7 +807,7 @@ export default function ComplianceTracker() {
               <button onClick={() => setShowIncidentModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
             </div>
 
-            {incidentError && <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 13, marginBottom: 14 }}>{incidentError}</div>}
+            {incidentError && <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 14, marginBottom: 14 }}>{incidentError}</div>}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group">
@@ -866,14 +866,14 @@ export default function ComplianceTracker() {
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Document</label>
                 {editIncident?.document_name && !incidentFile && (
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6 }}>
                     Current: <a href={editIncident.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>{editIncident.document_name}</a>
                   </div>
                 )}
                 <input type="file" ref={incidentFileRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   onChange={e => setIncidentFile(e.target.files[0] || null)} />
                 <button type="button" onClick={() => incidentFileRef.current?.click()}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, cursor: 'pointer', color: 'var(--text2)' }}>
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)' }}>
                   {incidentFile ? `📎 ${incidentFile.name}` : '📎 Choose file'}
                 </button>
               </div>
@@ -882,7 +882,7 @@ export default function ComplianceTracker() {
                 <input type="checkbox" id="resolved-check" checked={incidentForm.resolved}
                   onChange={e => setIncidentForm(f => ({ ...f, resolved: e.target.checked }))}
                   style={{ width: 16, height: 16, cursor: 'pointer' }} />
-                <label htmlFor="resolved-check" style={{ fontSize: 13, color: 'var(--text1)', cursor: 'pointer', fontWeight: 500 }}>
+                <label htmlFor="resolved-check" style={{ fontSize: 14, color: 'var(--text1)', cursor: 'pointer', fontWeight: 500 }}>
                   Mark as resolved
                 </label>
               </div>
