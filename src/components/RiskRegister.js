@@ -149,7 +149,7 @@ export default function RiskRegister() {
             Risk Register
           </h2>
           {highOpen > 0 && (
-            <div style={{ marginTop: 4, fontSize: 13, color: '#a63020', fontWeight: 600 }}>
+            <div style={{ marginTop: 4, fontSize: 14, color: '#a63020', fontWeight: 600 }}>
               ⚠️ {highOpen} high-rated open risk{highOpen !== 1 ? 's' : ''} — review required
             </div>
           )}
@@ -159,11 +159,11 @@ export default function RiskRegister() {
 
       {/* ── FILTERS ── */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        <select className="form-input" style={{ width: 'auto', fontSize: 13 }} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+        <select className="form-input" style={{ width: 'auto', fontSize: 14 }} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
           <option value="all">All Categories</option>
           {CATEGORIES.map(c => <option key={c}>{c}</option>)}
         </select>
-        <select className="form-input" style={{ width: 'auto', fontSize: 13 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select className="form-input" style={{ width: 'auto', fontSize: 14 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All Statuses</option>
           {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
@@ -174,15 +174,15 @@ export default function RiskRegister() {
         <div className="panel" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text3)' }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>🛡️</div>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No risks recorded</div>
-          <div style={{ fontSize: 13 }}>Click "+ Add Risk" to start building your register</div>
+          <div style={{ fontSize: 14 }}>Click "+ Add Risk" to start building your register</div>
         </div>
       ) : (
-        <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <div className="panel" style={{ padding: 0, overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--surface2)', borderBottom: '2px solid var(--border)' }}>
                 {['Risk', 'Category', 'Likelihood', 'Consequence', 'Rating', 'Owner', 'Review Date', 'Status', ''].map(h => (
-                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text2)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -197,26 +197,26 @@ export default function RiskRegister() {
                         {r.risk_rating === 'High' && r.status !== 'Closed' && <span style={{ marginRight: 5 }}>⚠️</span>}
                         {r.risk_description}
                       </div>
-                      {r.controls && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>Controls: {r.controls}</div>}
+                      {r.controls && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 3 }}>Controls: {r.controls}</div>}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{r.category}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.likelihood}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.consequence}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span style={{ ...rp, padding: '3px 10px', borderRadius: 20, fontWeight: 700, fontSize: 11, display: 'inline-block' }}>
+                      <span style={{ ...rp, padding: '4px 11px', borderRadius: 20, fontWeight: 700, fontSize: 14, display: 'inline-block' }}>
                         {r.risk_rating || '—'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.owner || '—'}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{fmt(r.review_date)}</td>
                     <td style={{ padding: '12px 14px' }}>
-                      <span style={{ ...sp, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600 }}>
+                      <span style={{ ...sp, padding: '4px 11px', borderRadius: 20, fontSize: 14, fontWeight: 600 }}>
                         {r.status}
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      <button className="btn-secondary" style={{ fontSize: 11, padding: '4px 10px', marginRight: 6 }} onClick={() => openEdit(r)}>Edit</button>
-                      <button onClick={() => deleteRisk(r.id)} style={{ fontSize: 11, padding: '4px 10px', background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>Delete</button>
+                      <button className="btn-secondary" style={{ fontSize: 14, padding: '5px 12px', marginRight: 6 }} onClick={() => openEdit(r)}>Edit</button>
+                      <button onClick={() => deleteRisk(r.id)} style={{ fontSize: 14, padding: '5px 12px', background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>Delete</button>
                     </td>
                   </tr>
                 );
@@ -281,11 +281,11 @@ export default function RiskRegister() {
 
             {/* Auto-calculated rating preview */}
             <div style={{ marginBottom: 16, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 13, color: 'var(--text2)' }}>Auto-calculated risk rating:</span>
+              <span style={{ fontSize: 14, color: 'var(--text2)' }}>Auto-calculated risk rating:</span>
               {(() => {
                 const rating = calcRating(form.likelihood, form.consequence);
                 const rp = RATING_PILL[rating];
-                return <span style={{ ...rp, padding: '3px 12px', borderRadius: 20, fontWeight: 700, fontSize: 12 }}>{rating}</span>;
+                return <span style={{ ...rp, padding: '4px 13px', borderRadius: 20, fontWeight: 700, fontSize: 14 }}>{rating}</span>;
               })()}
             </div>
 
