@@ -117,7 +117,7 @@ function MultiChipSelect({ label, icon, items, selected, onChange }) {
           {selected.map(id => {
             const item = items.find(x => x.id === id);
             return item ? (
-              <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', color: 'var(--text1)', fontWeight: 600 }}>
+              <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 14, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '4px 11px', color: 'var(--text1)', fontWeight: 600 }}>
                 {item.name}
                 <button type="button" onClick={() => toggle(id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', lineHeight: 1, padding: 0, fontSize: 13, marginLeft: 2 }}>✕</button>
               </span>
@@ -128,20 +128,20 @@ function MultiChipSelect({ label, icon, items, selected, onChange }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px dashed var(--brand)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+        style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px dashed var(--brand)', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
       >
         {open ? '▲' : '▼'} {selected.length ? `${selected.length} selected — change` : `+ Add ${label}`}
       </button>
       {open && (
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginTop: 4, maxHeight: 180, overflowY: 'auto' }}>
           {items.length === 0 ? (
-            <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text3)' }}>No {label.toLowerCase()} available</div>
+            <div style={{ padding: '10px 12px', fontSize: 14, color: 'var(--text3)' }}>No {label.toLowerCase()} available</div>
           ) : items.map((item, i) => (
             <div
               key={item.id}
               onClick={() => toggle(item.id)}
               style={{
-                padding: '8px 12px', fontSize: 12, cursor: 'pointer',
+                padding: '9px 12px', fontSize: 14, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: selectedSet.has(item.id) ? 'var(--surface2)' : 'var(--surface)',
                 borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none',
@@ -390,7 +390,7 @@ export default function GoalsReporting() {
               type="button"
               onClick={() => setSection(s.key)}
               style={{
-                padding: '8px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 background: section === s.key ? 'var(--brand)' : 'var(--surface)',
                 color: section === s.key ? '#fff' : 'var(--text2)',
                 border: 'none', borderRight: i === 0 ? '1px solid var(--border)' : 'none',
@@ -401,7 +401,7 @@ export default function GoalsReporting() {
             </button>
           ))}
         </div>
-        <button className="btn-primary" onClick={openAdd} style={{ fontSize: 13 }}>
+        <button className="btn-primary" onClick={openAdd} style={{ fontSize: 14 }}>
           + Add Goal
         </button>
       </div>
@@ -411,9 +411,9 @@ export default function GoalsReporting() {
         <>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
             {/* Table header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '40px 2fr 120px 160px 100px 140px 140px', gap: 0, background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '40px 2fr 150px 160px 100px 125px 125px', gap: 0, background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
               {['', 'Goal', 'Category', 'Progress', 'Status', 'Target Date', 'Responsible'].map((h, i) => (
-                <div key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
+                <div key={i} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
               ))}
             </div>
 
@@ -433,7 +433,7 @@ export default function GoalsReporting() {
                 return (
                   <div
                     key={goal.id}
-                    style={{ display: 'grid', gridTemplateColumns: '40px 2fr 120px 160px 100px 140px 140px', gap: 0, padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center', transition: 'background 0.1s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '40px 2fr 150px 160px 100px 125px 125px', gap: 0, padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center', transition: 'background 0.1s' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
@@ -446,14 +446,14 @@ export default function GoalsReporting() {
                     </div>
                     {/* Goal name + description */}
                     <div style={{ minWidth: 0, paddingRight: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.name}</div>
                       {goal.description && (
-                        <div style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.description}</div>
+                        <div style={{ fontSize: 14, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.description}</div>
                       )}
                     </div>
                     {/* Category */}
                     <div>
-                      <span style={{ fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 9px', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '4px 10px', whiteSpace: 'nowrap' }}>
                         {cat.icon} {cat.label}
                       </span>
                     </div>
@@ -463,9 +463,9 @@ export default function GoalsReporting() {
                         <div style={{ flex: 1, height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${eff}%`, background: tl === 'green' ? '#2e7d52' : tl === 'orange' ? '#c8902a' : tl === 'red' ? '#d9534f' : '#9a9088', borderRadius: 3, transition: 'width 0.3s' }} />
                         </div>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text2)', flexShrink: 0 }}>{eff}%</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text2)', flexShrink: 0 }}>{eff}%</span>
                       </div>
-                      {auto && <div style={{ fontSize: 10, color: 'var(--brand)', fontWeight: 500 }}>auto-tracked</div>}
+                      {auto && <div style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500 }}>auto-tracked</div>}
                     </div>
                     {/* Status */}
                     <div>
@@ -476,16 +476,16 @@ export default function GoalsReporting() {
                       />
                     </div>
                     {/* Target date */}
-                    <div style={{ fontSize: 12, color: 'var(--text2)' }}>{fmt(goal.target_date)}</div>
+                    <div style={{ fontSize: 14, color: 'var(--text2)' }}>{fmt(goal.target_date)}</div>
                     {/* Responsible */}
-                    <div style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {goal.responsible_name ? `👤 ${goal.responsible_name}` : '—'}
                       </span>
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         <button
                           onClick={() => openEdit(goal)}
-                          style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}
+                          style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 5, padding: '3px 10px', cursor: 'pointer' }}
                         >
                           Edit
                         </button>
@@ -508,12 +508,12 @@ export default function GoalsReporting() {
             {Object.entries(TRAFFIC_LIGHT_CFG).map(([k, v]) => (
               <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: v.dot }} />
-                <span style={{ fontSize: 11, color: 'var(--text3)' }}>{v.label}</span>
+                <span style={{ fontSize: 14, color: 'var(--text3)' }}>{v.label}</span>
               </div>
             ))}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
-              <span style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 500 }}>auto-tracked</span>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}> = progress calculated from linked modules</span>
+              <span style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500 }}>auto-tracked</span>
+              <span style={{ fontSize: 14, color: 'var(--text3)' }}> = progress calculated from linked modules</span>
             </div>
           </div>
         </>
@@ -530,7 +530,7 @@ export default function GoalsReporting() {
                   key={c.key}
                   onClick={() => setCatFilter(c.key)}
                   style={{
-                    padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                     borderRadius: 20, border: '1px solid var(--border)',
                     background: catFilter === c.key ? 'var(--brand)' : 'var(--surface)',
                     color: catFilter === c.key ? '#fff' : 'var(--text2)',
@@ -548,7 +548,7 @@ export default function GoalsReporting() {
                 key={s.key}
                 onClick={() => setStatusFilter(s.key)}
                 style={{
-                  padding: '4px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   borderRadius: 20, border: '1px solid var(--border)',
                   background: statusFilter === s.key ? '#1a4a3a' : 'var(--surface)',
                   color: statusFilter === s.key ? '#fff' : 'var(--text2)',
@@ -587,10 +587,10 @@ export default function GoalsReporting() {
                             options={GOAL_STATUSES}
                             onStatusChange={s => handleGoalStatusChange(goal.id, s)}
                           />
-                          <span style={{ fontSize: 11, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '2px 9px' }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
                             {cat.icon} {cat.label}
                           </span>
-                          <span style={{ fontSize: 11, background: tlCfg.bg, color: tlCfg.dot, borderRadius: 20, padding: '2px 9px', fontWeight: 600 }}>
+                          <span style={{ fontSize: 14, background: tlCfg.bg, color: tlCfg.dot, borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
                             ● {tlCfg.label}
                           </span>
                         </div>
@@ -598,16 +598,16 @@ export default function GoalsReporting() {
                         {/* Name */}
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{goal.name}</div>
                         {goal.description && (
-                          <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6, lineHeight: 1.5 }}>{goal.description}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 6, lineHeight: 1.5 }}>{goal.description}</div>
                         )}
 
                         {/* Progress bar */}
                         <div style={{ marginBottom: 8 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>
+                            <span style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>
                               Progress{auto ? ' (auto-tracked)' : ''}
                             </span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: tlCfg.dot }}>{eff}%</span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: tlCfg.dot }}>{eff}%</span>
                           </div>
                           <div style={{ height: 7, background: 'var(--cream2)', borderRadius: 4, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${eff}%`, background: tlCfg.dot, borderRadius: 4, transition: 'width 0.3s' }} />
@@ -615,7 +615,7 @@ export default function GoalsReporting() {
                         </div>
 
                         {/* Meta */}
-                        <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 14px' }}>
+                        <div style={{ fontSize: 14, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 14px' }}>
                           {goal.start_date && <span>Start: {fmt(goal.start_date)}</span>}
                           {goal.target_date && <span>Target: <strong style={{ color: tl === 'red' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(goal.target_date)}</strong></span>}
                           {goal.responsible_name && <span>👤 {goal.responsible_name}</span>}
@@ -637,7 +637,7 @@ export default function GoalsReporting() {
                                 label = g ? `💰 ${g.name}` : '💰 Grant';
                               }
                               return label ? (
-                                <span key={link.id} style={{ fontSize: 11, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', color: 'var(--text2)' }}>
+                                <span key={link.id} style={{ fontSize: 14, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px', color: 'var(--text2)' }}>
                                   {label}
                                 </span>
                               ) : null;
@@ -646,7 +646,7 @@ export default function GoalsReporting() {
                         )}
 
                         {goal.notes && (
-                          <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6, fontStyle: 'italic' }}>{goal.notes}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 6, fontStyle: 'italic' }}>{goal.notes}</div>
                         )}
                       </div>
 
@@ -654,13 +654,13 @@ export default function GoalsReporting() {
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                         <button
                           onClick={() => openEdit(goal)}
-                          style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}
+                          style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => deleteGoal(goal)}
-                          style={{ fontSize: 12, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                          style={{ fontSize: 14, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
                         >
                           🗑 Delete
                         </button>
@@ -686,7 +686,7 @@ export default function GoalsReporting() {
             </div>
 
             {formError && (
-              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 13, marginBottom: 14 }}>
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 14, marginBottom: 14 }}>
                 {formError}
               </div>
             )}
@@ -753,9 +753,9 @@ export default function GoalsReporting() {
 
               {/* ── LINKED ITEMS ─────────────────────────────────────────── */}
               <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text1)', marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                  🔗 Link to Existing Modules
-                  <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text3)', marginLeft: 8 }}>Progress will auto-calculate from linked items</span>
+                <div style={{ marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>🔗 Link to Existing Modules</div>
+                  <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text3)', marginTop: 3 }}>Progress will auto-calculate from linked items</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
                   <MultiChipSelect
