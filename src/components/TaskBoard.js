@@ -61,23 +61,23 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, c
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <span style={{
-          fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+          fontSize: 14, fontWeight: 700, letterSpacing: '0.08em',
           background: 'var(--brand)', color: '#fff',
-          borderRadius: 4, padding: '2px 6px',
+          borderRadius: 4, padding: '3px 8px',
         }}>
           WORKFLOW
         </span>
       </div>
 
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 8, lineHeight: 1.4 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 8, lineHeight: 1.4 }}>
         {task.title}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+        <span style={{ fontSize: 14, color: 'var(--text3)' }}>
           {done} / {total} steps complete
         </span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: allDone ? 'var(--brand)' : 'var(--text3)' }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: allDone ? 'var(--brand)' : 'var(--text3)' }}>
           {pct}%
         </span>
       </div>
@@ -91,11 +91,11 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, c
       </div>
 
       {allDone ? (
-        <div style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 500, marginBottom: 8 }}>
+        <div style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500, marginBottom: 8 }}>
           All steps complete
         </div>
       ) : next ? (
-        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8, fontStyle: 'italic' }}>
+        <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 8, fontStyle: 'italic' }}>
           Next: {next.title}
         </div>
       ) : null}
@@ -106,7 +106,7 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, c
           style={{
             flex: 1, background: 'var(--surface2)', color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 6,
-            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
           }}
         >
           {expanded ? '▲ Hide Steps' : '▼ Show Steps'}
@@ -140,7 +140,7 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, c
           style={{
             flex: 1, background: '#faeae7', color: 'var(--danger)',
             border: '1px solid #f0b8b0', borderRadius: 6,
-            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
           }}
         >
           Delete
@@ -191,7 +191,7 @@ function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, c
                 </button>
               )}
               <span style={{
-                flex: 1, fontSize: 11, minWidth: 0,
+                flex: 1, fontSize: 14, minWidth: 0,
                 color: sub.status === 'completed' ? 'var(--text3)' : 'var(--text2)',
                 textDecoration: sub.status === 'completed' ? 'line-through' : 'none',
               }}>
@@ -283,14 +283,14 @@ function CommentModal({ task, onClose, onCommentPosted }) {
         <div className="modal-title" style={{ fontSize: 16, marginBottom: 4 }}>
           Updates
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 16 }}>{task.title}</div>
+        <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 16 }}>{task.title}</div>
 
         {/* Thread */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, marginBottom: 16 }}>
           {loading ? (
-            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, padding: 24 }}>Loading...</div>
+            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 14, padding: 24 }}>Loading...</div>
           ) : comments.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 13, padding: 24 }}>
+            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 14, padding: 24 }}>
               No updates yet. Be the first to post.
             </div>
           ) : comments.map(c => (
@@ -305,14 +305,14 @@ function CommentModal({ task, onClose, onCommentPosted }) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>{c.author_name}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{c.author_name}</span>
                   <span style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtCommentTime(c.created_at)}</span>
                   {c.author_email === currentUserEmail && (
                     <button
                       onClick={() => handleDelete(c.id)}
                       style={{
                         marginLeft: 'auto', background: 'none', border: 'none',
-                        cursor: 'pointer', color: 'var(--text3)', fontSize: 11,
+                        cursor: 'pointer', color: 'var(--text3)', fontSize: 14,
                         padding: '0 2px', lineHeight: 1,
                       }}
                       title="Delete comment"
@@ -322,7 +322,7 @@ function CommentModal({ task, onClose, onCommentPosted }) {
                   )}
                 </div>
                 <div style={{
-                  fontSize: 13, color: 'var(--text2)', lineHeight: 1.55,
+                  fontSize: 14, color: 'var(--text2)', lineHeight: 1.55,
                   background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px',
                   wordBreak: 'break-word',
                 }}>
@@ -374,26 +374,26 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
       borderRadius: '0 8px 8px 0',
       padding: '12px 12px 10px',
     }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 6, lineHeight: 1.4 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 6, lineHeight: 1.4 }}>
         {task.title}
       </div>
 
       {task.assigned_to && (
-        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
           <span>👤</span> {task.assigned_to}
         </div>
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
         {dateStr && (
-          <span style={{ fontSize: 11, color: overdue ? 'var(--danger)' : 'var(--text3)', display: 'flex', alignItems: 'center', gap: 3 }}>
+          <span style={{ fontSize: 14, color: overdue ? 'var(--danger)' : 'var(--text3)', display: 'flex', alignItems: 'center', gap: 3 }}>
             <span>📅</span> {dateStr}
           </span>
         )}
         {overdue && (
           <span style={{
-            fontSize: 10, background: '#faeae7', color: 'var(--danger)',
-            border: '1px solid #f0b8b0', borderRadius: 20, padding: '1px 7px',
+            fontSize: 14, background: '#faeae7', color: 'var(--danger)',
+            border: '1px solid #f0b8b0', borderRadius: 20, padding: '2px 9px',
             fontWeight: 700, letterSpacing: '0.03em',
           }}>
             OVERDUE
@@ -408,8 +408,8 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
           onStatusChange={s => onChangeStatus(task, s)}
         />
         <span style={{
-          fontSize: 10, background: badge.bg, color: badge.color,
-          borderRadius: 20, padding: '2px 8px', fontWeight: 600, letterSpacing: '0.04em',
+          fontSize: 14, background: badge.bg, color: badge.color,
+          borderRadius: 20, padding: '3px 10px', fontWeight: 600, letterSpacing: '0.04em',
         }}>
           {task.priority || 'Medium'}
         </span>
@@ -434,7 +434,7 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
           style={{
             flex: 1, background: 'var(--surface2)', color: 'var(--text2)',
             border: '1px solid var(--border)', borderRadius: 6,
-            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
           }}
         >Edit</button>
 
@@ -469,7 +469,7 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
           style={{
             flex: 1, background: '#faeae7', color: 'var(--danger)',
             border: '1px solid #f0b8b0', borderRadius: 6,
-            padding: '4px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+            padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
           }}
         >Delete</button>
 
@@ -686,7 +686,7 @@ export default function TaskBoard() {
             }}>
               {t.value}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>{t.label}</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>{t.label}</div>
           </div>
         ))}
       </div>
@@ -705,7 +705,7 @@ export default function TaskBoard() {
           />
         </div>
         {search.trim() && (
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+          <span style={{ fontSize: 14, color: 'var(--text3)' }}>
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -748,7 +748,7 @@ export default function TaskBoard() {
 
                 <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {colTasks.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '28px 8px', color: 'var(--text3)', fontSize: 12 }}>
+                    <div style={{ textAlign: 'center', padding: '28px 8px', color: 'var(--text3)', fontSize: 14 }}>
                       No tasks
                     </div>
                   ) : colTasks.map(task => (
@@ -793,7 +793,7 @@ export default function TaskBoard() {
               display: 'flex', alignItems: 'center', gap: 8, width: '100%',
               background: 'var(--surface2)', border: '1px solid var(--border)',
               borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600, color: 'var(--text2)',
+              fontSize: 14, fontWeight: 600, color: 'var(--text2)',
               fontFamily: 'DM Sans, sans-serif',
             }}
           >
@@ -894,7 +894,7 @@ export default function TaskBoard() {
 
             <div style={{ display: 'flex', gap: 16, marginBottom: 4 }}>
               {PRIORITIES.map(p => (
-                <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text3)' }}>
+                <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, color: 'var(--text3)' }}>
                   <span style={{ width: 10, height: 10, borderRadius: 2, background: PRIORITY_BORDER[p], flexShrink: 0 }} />
                   {p}
                 </span>
