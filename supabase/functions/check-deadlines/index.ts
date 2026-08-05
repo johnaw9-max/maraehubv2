@@ -62,8 +62,9 @@ async function notify(to: string[], subject: string, body: string) {
 }
 
 // Maintenance-shield checks (null_value_drift, orphaned_records,
-// single_row_invariant, cron_health) are developer-facing, not
-// trustee-facing — they alert ADMIN_ALERT_EMAIL only. If that secret is
+// single_row_invariant, cron_health, orphaned_auth_users) are
+// developer-facing, not trustee-facing — they alert ADMIN_ALERT_EMAIL
+// only. If that secret is
 // unset, notify()'s empty-array no-op would otherwise swallow the alert
 // with no trace anywhere but system_check_log — log a warning instead so
 // a missing secret is visible in function_logs.
@@ -779,6 +780,50 @@ serve(async () => {
     details: cronFindings,
   });
 
+  // ── Orphaned auth accounts check (ClickUp 86d3u7790) ──────────────────────
+  // Catches the bug class behind Tineka's original login dead-end: an
+  // auth.users row with no matching profiles row surfaces in-app as a
+  // permanent "Could not load your profile" failure. auth schema isn't
+  // reachable via PostgREST, so this goes through a SECURITY DEFINER RPC
+  // (public.find_orphaned_auth_users(), migration 20260805010000) - same
+  // wall and same fix pattern as Stage 2c's cron.job access.
+  //
+  // Checks all of auth.users, not filtered to trustees: when the profile
+  // row is missing, role is unknowable (it lives on profiles, not
+  // auth.users), and every case hits the same dead-end regardless of what
+  // role they'd have had.
+  const { data: orphanedAuthRows, error: orphanedAuthErr } = await db.rpc('find_orphaned_auth_users');
+
+  const orphanedAuthFindings: { id?: string; email?: string; created_at?: string; error?: string }[] = [];
+
+  if (orphanedAuthErr) {
+    orphanedAuthFindings.push({ error: 'query failed' });
+  } else {
+    for (const row of orphanedAuthRows ?? []) {
+      orphanedAuthFindings.push({ id: row.id, email: row.email, created_at: row.created_at });
+    }
+  }
+
+  if (orphanedAuthFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily check found ${orphanedAuthFindings.length} auth account${orphanedAuthFindings.length !== 1 ? 's' : ''} with no matching profile — anyone in this state hits a permanent "Could not load your profile" dead-end on login.\n\n` +
+      orphanedAuthFindings.map(f => f.error
+        ? `- check could not run (${f.error})`
+        : `- ${f.email} — account created ${f.created_at}, id ${f.id}`
+      ).join('\n') +
+      `\n\nRecommended fix: insert a profiles row for each (same shape as the 2026-06-17 backfill), or investigate why one didn't exist already.` +
+      footer();
+
+    await notifyAdmin(`Orphaned auth account check — ${orphanedAuthFindings.length} issue${orphanedAuthFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'orphaned_auth_users',
+    findings_count: orphanedAuthFindings.length,
+    details: orphanedAuthFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -787,6 +832,7 @@ serve(async () => {
       orphaned_records_findings: orphanFindings.length,
       single_row_invariant_findings: singleRowFindings.length,
       cron_health_findings: cronFindings.length,
+      orphaned_auth_users_findings: orphanedAuthFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
