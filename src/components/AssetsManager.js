@@ -318,17 +318,17 @@ export default function AssetsManager({ onStartWorkflow }) {
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <button className="btn-secondary" onClick={closeReminders} style={{ padding: '7px 14px', fontSize: 13 }}>← Back</button>
+          <button className="btn-secondary" onClick={closeReminders} style={{ padding: '8px 15px', fontSize: 14 }}>← Back</button>
           <div>
             <h2 style={{ fontSize: 20 }}>{ICONS[selectedAsset.category]} {selectedAsset.name}</h2>
-            <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{selectedAsset.category} · {selectedAsset.location}</p>
+            <p style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>{selectedAsset.category} · {selectedAsset.location}</p>
           </div>
         </div>
 
         <div className="panel" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600 }}>Service Reminders</div>
-            <button className="btn-accent" onClick={openAddReminder} style={{ padding: '7px 14px', fontSize: 13 }}>+ Add Reminder</button>
+            <button className="btn-accent" onClick={openAddReminder} style={{ padding: '8px 15px', fontSize: 14 }}>+ Add Reminder</button>
           </div>
 
           {assetReminders.length === 0 ? (
@@ -356,13 +356,13 @@ export default function AssetsManager({ onStartWorkflow }) {
                       <button onClick={() => handleDeleteReminder(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14 }}>✕</button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 12, fontSize: 12, flexWrap: 'wrap', marginBottom: r.notes ? 6 : 0 }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 14, flexWrap: 'wrap', marginBottom: r.notes ? 6 : 0 }}>
                     <span style={{ fontWeight: 600, color: status === 'overdue' ? 'var(--danger)' : status === 'due-soon' ? 'var(--warning)' : 'var(--success)' }}>
                       📅 {formatDate(r.due_date)} ({daysText})
                     </span>
                     <span style={{ color: 'var(--text3)' }}>🔄 {RECURRING_LABELS[r.recurring] || 'Annual'}</span>
                   </div>
-                  {r.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 8 }}>{r.notes}</div>}
+                  {r.notes && <div style={{ fontSize: 14, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 8 }}>{r.notes}</div>}
                   {(status === 'overdue' || status === 'due-soon') && matchedTpl && onStartWorkflow && (
                     <button
                       onClick={() => onStartWorkflow({
@@ -371,13 +371,13 @@ export default function AssetsManager({ onStartWorkflow }) {
                         sourceName: `${selectedAsset.name} — ${r.type} due ${r.due_date}`,
                         triggerType: 'service_reminder',
                       })}
-                      style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 4, marginRight: 8 }}>
+                      style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 4, marginRight: 8 }}>
                       ⚙️ Start {matchedTpl.name} Workflow →
                     </button>
                   )}
                   {status === 'overdue' && (
                     <button onClick={() => handleMarkServiced(r)}
-                      style={{ background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 4 }}>
+                      style={{ background: 'var(--success)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 4 }}>
                       ✓ Mark as Serviced
                     </button>
                   )}
@@ -438,13 +438,13 @@ export default function AssetsManager({ onStartWorkflow }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Assets Register</h2>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4 }}>
             {view === 'assets' ? 'Click an asset to manage service reminders' : 'Track quantities and print stocktake lists'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {view === 'inventory' && inventoryItems.length > 0 && (
-            <button className="btn-secondary" onClick={printStocktake} style={{ fontSize: 13, padding: '7px 14px' }}>🖨️ Print Stocktake</button>
+            <button className="btn-secondary" onClick={printStocktake} style={{ fontSize: 14, padding: '8px 15px' }}>🖨️ Print Stocktake</button>
           )}
           <button className="btn-primary" onClick={openAdd}>+ {view === 'inventory' ? 'Add Item' : 'Add Asset'}</button>
         </div>
@@ -457,7 +457,7 @@ export default function AssetsManager({ onStartWorkflow }) {
           { key: 'inventory', label: '📦 Inventory',        count: inventoryItems.length },
         ].map((tab, i) => (
           <button key={tab.key} onClick={() => setView(tab.key)} style={{
-            padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             background: view === tab.key ? 'var(--brand)' : 'var(--surface)',
             color: view === tab.key ? '#fff' : 'var(--text2)',
             border: 'none', borderRight: i === 0 ? '1px solid var(--border)' : 'none',
@@ -471,11 +471,11 @@ export default function AssetsManager({ onStartWorkflow }) {
       {/* INVENTORY OUT-OF-STOCK ALERT */}
       {view === 'inventory' && zeroStockItems.length > 0 && (
         <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             📦 Out of Stock ({zeroStockItems.length})
           </div>
           {zeroStockItems.map(a => (
-            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid rgba(166,48,32,0.1)' }}>
+            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '4px 0', borderBottom: '1px solid rgba(166,48,32,0.1)' }}>
               <span><strong>{a.name}</strong>{a.inventory_category ? ` — ${a.inventory_category}` : ''}</span>
               <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{a.location || 'No location'}</span>
             </div>
@@ -486,14 +486,14 @@ export default function AssetsManager({ onStartWorkflow }) {
       {/* ALERTS */}
       {view === 'assets' && alerts.length > 0 && (
         <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             🔔 Service Alerts ({alerts.length})
           </div>
           {alerts.map(r => {
             const asset = assets.find(a => a.id === r.asset_id);
             const status = getReminderStatus(r);
             return (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid rgba(166,48,32,0.1)' }}>
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '4px 0', borderBottom: '1px solid rgba(166,48,32,0.1)' }}>
                 <span><strong>{asset?.name}</strong> — {r.type}</span>
                 <span style={{ fontWeight: 600, color: status === 'overdue' ? 'var(--danger)' : 'var(--warning)' }}>
                   {status === 'overdue' ? 'Overdue' : 'Due soon'}: {formatDate(r.due_date)}
@@ -507,14 +507,14 @@ export default function AssetsManager({ onStartWorkflow }) {
       {/* WORKFLOW SUGGESTIONS */}
       {view === 'assets' && workflowSuggestions.length > 0 && onStartWorkflow && (
         <div style={{ background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#7a5500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#7a5500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             ⚙️ Workflows Available ({workflowSuggestions.length})
           </div>
           {workflowSuggestions.map(({ reminder: r, template, assetName, isOverdue }) => (
-            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, padding: '6px 0', borderBottom: '1px solid rgba(200,144,42,0.15)', gap: 12 }}>
+            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, padding: '6px 0', borderBottom: '1px solid rgba(200,144,42,0.15)', gap: 12 }}>
               <div>
                 <strong>{assetName}</strong> — {r.type}
-                <span style={{ marginLeft: 8, fontSize: 11, color: isOverdue ? 'var(--danger)' : '#c8902a', fontWeight: 600 }}>
+                <span style={{ marginLeft: 8, fontSize: 14, color: isOverdue ? 'var(--danger)' : '#c8902a', fontWeight: 600 }}>
                   ({isOverdue ? 'Overdue' : 'Due soon'}: {formatDate(r.due_date)})
                 </span>
               </div>
@@ -525,7 +525,7 @@ export default function AssetsManager({ onStartWorkflow }) {
                   sourceName: `${assetName} — ${r.type} due ${r.due_date}`,
                   triggerType: 'service_reminder',
                 })}
-                style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}>
+                style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', flexShrink: 0 }}>
                 Start {template.name} Workflow →
               </button>
             </div>
@@ -551,9 +551,9 @@ export default function AssetsManager({ onStartWorkflow }) {
               { label: 'Next Replacement', value: nextUp ? nextUp.name : '—', sub: nextUp ? formatDate(nextUp.replacement_date) : null, color: nextUp && new Date(nextUp.replacement_date + 'T12:00:00') <= in2yr ? 'var(--danger)' : 'var(--text1)' },
             ].map(({ label, value, sub, color }) => (
               <div key={label} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+                <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
-                {sub && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{sub}</div>}
+                {sub && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>{sub}</div>}
               </div>
             ))}
           </div>
@@ -588,13 +588,13 @@ export default function AssetsManager({ onStartWorkflow }) {
                     <div style={{ flex: '1 1 180px', minWidth: 0, fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {a.name}
                     </div>
-                    <div style={{ flex: '1 1 200px', minWidth: 0, fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ flex: '1 1 200px', minWidth: 0, fontSize: 14, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {isInv ? (a.inventory_category || 'Inventory') : a.category} · {a.location || 'No location'}
                     </div>
-                    <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 700, color: condStyle.color, background: condStyle.bg, flexShrink: 0 }}>
+                    <span style={{ fontSize: 14, borderRadius: 20, padding: '3px 10px', fontWeight: 700, color: condStyle.color, background: condStyle.bg, flexShrink: 0 }}>
                       {a.condition ? a.condition.charAt(0).toUpperCase() + a.condition.slice(1) : 'Good'}
                     </span>
-                    <div style={{ width: 110, textAlign: 'right', fontSize: 13, fontWeight: 600, flexShrink: 0, color: isZeroStock ? 'var(--danger)' : 'inherit' }}>
+                    <div style={{ width: 130, textAlign: 'right', fontSize: 14, fontWeight: 600, flexShrink: 0, color: isZeroStock ? 'var(--danger)' : 'inherit' }}>
                       {isInv
                         ? (isZeroStock ? '⚠ Out of stock' : `${a.quantity != null ? a.quantity : '—'} on hand`)
                         : (a.value ? `$${Number(a.value).toLocaleString()}` : '—')}
@@ -613,14 +613,14 @@ export default function AssetsManager({ onStartWorkflow }) {
                   {isExpanded && (
                     <div style={{ padding: '0 14px 14px 44px', borderTop: '1px solid var(--border)' }}>
                       {isInv ? (
-                        <div style={{ fontSize: 12, color: 'var(--text2)', margin: '10px 0 8px' }}>
+                        <div style={{ fontSize: 14, color: 'var(--text2)', margin: '10px 0 8px' }}>
                           <span style={{ color: 'var(--text3)' }}>Last stocktake: </span>{a.last_stocktake ? formatDate(a.last_stocktake) : '—'}
                         </div>
                       ) : (
                         <div style={{ marginTop: 10 }}>
-                          {overdue > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
-                          {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '4px 8px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
-                          <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>
+                          {overdue > 0 && <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', background: '#faeae7', borderRadius: 6, padding: '5px 10px', marginBottom: 8, display: 'inline-block' }}>⚠ {overdue} overdue reminder{overdue > 1 ? 's' : ''}</div>}
+                          {dueSoon > 0 && overdue === 0 && <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '5px 10px', marginBottom: 8, display: 'inline-block' }}>🔔 {dueSoon} due soon</div>}
+                          <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 8 }}>
                             <span style={{ color: 'var(--text3)' }}>Reminders: </span>{aReminders.length}
                           </div>
                           {a.replacement_date && (() => {
@@ -628,7 +628,7 @@ export default function AssetsManager({ onStartWorkflow }) {
                             const col  = lifecycleColor(days);
                             const lbl  = lifecycleLabel(days);
                             return (
-                              <div style={{ fontSize: 12, marginBottom: 8 }}>
+                              <div style={{ fontSize: 14, marginBottom: 8 }}>
                                 <span style={{ color: 'var(--text3)' }}>Replace by: </span>
                                 <span style={{ fontWeight: 600, color: col }}>{formatDate(a.replacement_date)} ({lbl})</span>
                                 {a.replacement_cost && <span style={{ color: 'var(--text3)', marginLeft: 6 }}>· Est. ${Number(a.replacement_cost).toLocaleString()}</span>}
@@ -637,12 +637,12 @@ export default function AssetsManager({ onStartWorkflow }) {
                           })()}
                         </div>
                       )}
-                      {a.notes && <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
+                      {a.notes && <div style={{ fontSize: 14, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
 
                       <div style={{ display: 'flex', gap: 8 }}>
-                        {!isInv && <button onClick={() => openReminders(a)} style={{ fontSize: 12, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>}
-                        <button onClick={() => openEdit(a)} style={{ fontSize: 12, color: 'var(--brand-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Edit</button>
-                        <button onClick={() => handleDelete(a.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
+                        {!isInv && <button onClick={() => openReminders(a)} style={{ fontSize: 14, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>}
+                        <button onClick={() => openEdit(a)} style={{ fontSize: 14, color: 'var(--brand-light)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => handleDelete(a.id)} style={{ fontSize: 14, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Delete</button>
                       </div>
                     </div>
                   )}
