@@ -990,6 +990,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           count={complianceForPanel.length}
           rightContent={(d.entities || []).length > 0 && (
             <select
+              className="no-print"
               value={complianceEntityFilter}
               onChange={e => setComplianceEntityFilter(e.target.value)}
               style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
@@ -1174,6 +1175,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
                 )}
                 {(d.entities || []).length > 0 && (
                   <select
+                    className="no-print"
                     value={riskEntityFilter}
                     onChange={e => setRiskEntityFilter(e.target.value)}
                     style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
@@ -1604,6 +1606,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
           note={`(FY ${fyLabelStr})`}
           rightContent={(d.entities || []).length > 0 && !xeroConnected && (
             <select
+              className="no-print"
               value={financeEntityFilter}
               onChange={e => setFinanceEntityFilter(e.target.value)}
               style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
