@@ -41,10 +41,12 @@ const EMPTY = {
   review_date: '',
   status:      'Open',
   notes:       '',
+  entity_id:   '',
 };
 
 export default function RiskRegister() {
   const [risks, setRisks]         = useState([]);
+  const [entities, setEntities]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editRisk, setEditRisk]   = useState(null);
@@ -59,11 +61,12 @@ export default function RiskRegister() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('risk_register')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setRisks(data || []);
+    const [risksRes, entRes] = await Promise.all([
+      supabase.from('risk_register').select('*').order('created_at', { ascending: false }),
+      supabase.from('entities').select('id, name').order('name'),
+    ]);
+    setRisks(risksRes.data || []);
+    setEntities(entRes.data || []);
     setLoading(false);
   }, []);
 
@@ -88,6 +91,7 @@ export default function RiskRegister() {
       review_date: r.review_date || '',
       status:      r.status      || 'Open',
       notes:       r.notes       || '',
+      entity_id:   r.entity_id   || '',
     });
     setError('');
     setShowModal(true);
@@ -108,6 +112,7 @@ export default function RiskRegister() {
       review_date: form.review_date || null,
       status:      form.status,
       notes:       form.notes.trim() || null,
+      entity_id:   form.entity_id || null,
     };
 
     if (editRisk) {
@@ -263,6 +268,16 @@ export default function RiskRegister() {
                 </select>
               </div>
             </div>
+
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={form.entity_id} onChange={e => field('entity_id', e.target.value)}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
 
             <div className="grid-2">
               <div className="form-group">
