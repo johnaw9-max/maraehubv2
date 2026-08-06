@@ -28,6 +28,7 @@ function StarDisplay({ rating }) {
 
 export default function BookingsManager({ isTrustee, canApprove, userId, onStartWorkflow }) {
   const [bookings, setBookings] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [feedback, setFeedback] = useState({});
   const [checklists, setChecklists] = useState({});
   const [templates, setTemplates] = useState([]);
@@ -37,7 +38,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   const [feedbackBooking, setFeedbackBooking] = useState(null);
   const [invoiceBooking, setInvoiceBooking] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'' });
+  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'', entity_id:'' });
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -45,7 +46,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
 
   async function fetchBookings() {
     setLoading(true);
-    const [bookingRes, tplRes] = await Promise.all([
+    const [bookingRes, tplRes, entRes] = await Promise.all([
       (() => {
         let q = supabase.from('bookings').select('*').order('created_at', { ascending: false });
         if (!isTrustee && userId) q = q.eq('user_id', userId);
@@ -53,11 +54,13 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
         return q;
       })(),
       supabase.from('workflow_templates').select('id, name').order('name'),
+      supabase.from('entities').select('id, name').order('name'),
     ]);
     if (bookingRes.error) { setLoading(false); return; }
     const rows = bookingRes.data || [];
     setBookings(rows);
     setTemplates(tplRes.data || []);
+    setEntities(entRes.data || []);
     if (rows.length > 0) await fetchMeta(rows.map(b => b.id));
     setLoading(false);
   }
@@ -144,7 +147,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   }
 
   function openAddModal() {
-    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'' });
+    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'', entity_id:'' });
     setAddError('');
     setShowAddModal(true);
   }
@@ -180,6 +183,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
       contact_email: addForm.contactEmail || null,
       status: canApprove ? 'approved' : 'pending',
       reference: ref,
+      entity_id: addForm.entity_id || null,
     }).select().single();
     setAddSaving(false);
     if (error) { setAddError('Something went wrong: ' + error.message); return; }
@@ -232,6 +236,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
             const past = isPast(b);
             const fb = feedback[b.id];
             const cl = checklists[b.id];
+            const entityName = b.entity_id ? entities.find(e => e.id === b.entity_id)?.name : null;
             const showChecklist = isTrustee && b.status === 'approved' && past;
             const showFeedback = !isTrustee && b.status === 'approved' && past && !fb;
             const checklistDone = cl?.completed;
@@ -256,6 +261,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                       onStatusChange={canApprove ? s => updateStatus(b, s) : undefined}
                     />
                     {b.reference && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{b.reference}</span>}
+                    {entityName && <span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span>}
                     {fb && <StarDisplay rating={fb.rating_overall} />}
                   </div>
                   <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text3)', flexWrap: 'wrap' }}>
@@ -392,6 +398,16 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                 {ADD_OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
+
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={addForm.entity_id} onChange={e => setAddField('entity_id', e.target.value)}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
 
             <div className="grid-2">
               <div className="form-group">
