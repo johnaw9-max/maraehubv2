@@ -49,7 +49,7 @@ const STATUS_ORDER = { overdue: 0, due_soon: 1, compliant: 2, not_set: 3 };
 
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '', last_checked_date: '',
-  renewal_months: 12, responsible_name: '', notes: '',
+  renewal_months: 12, responsible_name: '', notes: '', entity_id: '',
 };
 
 const EMPTY_INCIDENT = {
@@ -101,6 +101,7 @@ export default function ComplianceTracker() {
 
   const [items, setItems]       = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [section, setSection]   = useState('items');
   const [catFilter, setCatFilter] = useState('all');
@@ -151,13 +152,15 @@ export default function ComplianceTracker() {
 
   async function fetchAll() {
     setLoading(true);
-    const [itemsRes, incRes] = await Promise.all([
+    const [itemsRes, incRes, entRes] = await Promise.all([
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
+      supabase.from('entities').select('id, name').order('name'),
     ]);
     const allItems = itemsRes.data || [];
     setItems(allItems);
     setIncidents(incRes.data || []);
+    setEntities(entRes.data || []);
     setLoading(false);
     return allItems;
   }
@@ -258,6 +261,7 @@ export default function ComplianceTracker() {
       renewal_months: item.renewal_months ?? 12,
       responsible_name: item.responsible_name || '',
       notes: item.notes || '',
+      entity_id: item.entity_id || '',
     });
     setItemFile(null); setItemError(''); setShowItemModal(true);
   }
@@ -281,6 +285,7 @@ export default function ComplianceTracker() {
       renewal_months: itemForm.renewal_months ? Number(itemForm.renewal_months) : null,
       responsible_name: itemForm.responsible_name || null,
       notes: itemForm.notes.trim() || null,
+      entity_id: itemForm.entity_id || null,
       document_url, document_name,
       updated_at: new Date().toISOString(),
     };
@@ -734,6 +739,16 @@ export default function ComplianceTracker() {
                   ))}
                 </select>
               </div>
+
+              {entities.length > 0 && (
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Entity</label>
+                  <select className="form-input" value={itemForm.entity_id} onChange={e => setItemForm(f => ({ ...f, entity_id: e.target.value }))}>
+                    <option value="">— Shared (all entities) —</option>
+                    {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                  </select>
+                </div>
+              )}
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Name *</label>
