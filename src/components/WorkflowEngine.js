@@ -214,14 +214,14 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
           <div className="empty-state">
             <div className="emoji">📋</div>
             <div>No workflow templates yet</div>
-            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4 }}>
               Add templates to the workflow_templates table to get started.
             </div>
           </div>
         ) : (
           <form onSubmit={handleStart}>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+              <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
                 Template
               </label>
               <select
@@ -240,7 +240,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
               <div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 12 }}>
                   <div style={{ flex: '2 1 280px' }}>
-                    <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                    <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
                       Workflow Name
                     </label>
                     <input
@@ -254,7 +254,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <div style={{ flex: '2 1 200px' }}>
-                    <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                    <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
                       Source Record <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(optional)</span>
                     </label>
                     <input
@@ -266,7 +266,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                     />
                   </div>
                   <div style={{ flex: '1 1 160px' }}>
-                    <label style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
+                    <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 6 }}>
                       Trigger Type <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(optional)</span>
                     </label>
                     <select
@@ -295,12 +295,12 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
           </form>
         )}
         {startError && (
-          <div style={{ marginTop: 12, padding: '8px 12px', background: '#faeae7', borderRadius: 8, fontSize: 13, color: 'var(--danger)' }}>
+          <div style={{ marginTop: 12, padding: '8px 12px', background: '#faeae7', borderRadius: 8, fontSize: 14, color: 'var(--danger)' }}>
             {startError}
           </div>
         )}
         {selectedTemplate && templates.find(t => t.id === selectedTemplate)?.description && (
-          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>
+          <div style={{ marginTop: 12, fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>
             {templates.find(t => t.id === selectedTemplate).description}
           </div>
         )}
@@ -310,7 +310,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-header" style={{ marginBottom: 16 }}>
           <div className="panel-title">Active Workflows</div>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{instances.length} active</span>
+          <span style={{ fontSize: 14, color: 'var(--text3)' }}>{instances.length} active</span>
         </div>
 
         {loading ? (
@@ -319,7 +319,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
           <div className="empty-state">
             <div className="emoji">⚙️</div>
             <div>No active workflows</div>
-            <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4 }}>
               Start a workflow above to track progress step by step.
             </div>
           </div>
@@ -333,21 +333,21 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text1)', marginBottom: 2 }}>{inst.name}</div>
                     {inst.entity_name && (
-                      <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 2 }}>
+                      <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
                         <span style={{ color: 'var(--text3)' }}>From: </span>
                         <span style={{ color: 'var(--text2)', fontWeight: 500 }}>{inst.entity_name}</span>
                         {inst.trigger_type && (
-                          <span style={{ marginLeft: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '0px 7px', fontSize: 11 }}>
+                          <span style={{ marginLeft: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '2px 9px', fontSize: 14 }}>
                             {inst.trigger_type.replace(/_/g, ' ')}
                           </span>
                         )}
                       </div>
                     )}
                     {tplName && (
-                      <div style={{ fontSize: 12, color: 'var(--text3)' }}>{tplName} · Started {formatDate(inst.created_at)}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text3)' }}>{tplName} · Started {formatDate(inst.created_at)}</div>
                     )}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: pct === 100 ? 'var(--brand)' : 'var(--text2)', background: pct === 100 ? '#e8f4ef' : 'var(--cream2)', padding: '3px 10px', borderRadius: 20 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: pct === 100 ? 'var(--brand)' : 'var(--text2)', background: pct === 100 ? '#e8f4ef' : 'var(--cream2)', padding: '4px 11px', borderRadius: 20 }}>
                     {done}/{total} steps
                   </span>
                 </div>
@@ -358,13 +358,13 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
 
                 {next ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text3)', flexShrink: 0 }}>Next:</span>
-                    <span style={{ fontSize: 13, color: 'var(--text2)', background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 6, padding: '3px 10px' }}>
+                    <span style={{ fontSize: 14, color: 'var(--text3)', flexShrink: 0 }}>Next:</span>
+                    <span style={{ fontSize: 14, color: 'var(--text2)', background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 6, padding: '4px 11px' }}>
                       {next.title}
                     </span>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 500 }}>✅ All steps complete</div>
+                  <div style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500 }}>✅ All steps complete</div>
                 )}
               </div>
             );
@@ -376,7 +376,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
       <div className="panel">
         <div className="panel-header" style={{ marginBottom: 16 }}>
           <div className="panel-title">Manage Templates</div>
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{templates.length} template{templates.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: 14, color: 'var(--text3)' }}>{templates.length} template{templates.length !== 1 ? 's' : ''}</span>
         </div>
 
         {loading ? (
@@ -423,7 +423,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                         {tpl.name}
                       </span>
                       {tpl.category && (
-                        <span style={{ fontSize: 11, color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 8px' }}>
+                        <span style={{ fontSize: 14, color: 'var(--text3)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 10px' }}>
                           {tpl.category}
                         </span>
                       )}
@@ -437,7 +437,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                   {isOpen && (
                     <div style={{ borderTop: '1px solid #e8c880' }}>
                       {/* Breadcrumb */}
-                      <div style={{ padding: '8px 16px', background: '#fdf9ee', borderBottom: '1px solid #f0dfa0', display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text3)' }}>
+                      <div style={{ padding: '8px 16px', background: '#fdf9ee', borderBottom: '1px solid #f0dfa0', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text3)' }}>
                         <span>Source Record</span>
                         <span style={{ color: '#e8c880' }}>→</span>
                         <span style={{ color: '#7a5500', fontWeight: 600 }}>{tpl.name}</span>
@@ -445,7 +445,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                         <span>Tasks ({steps.length})</span>
                       </div>
                       {steps.length === 0 ? (
-                        <div style={{ padding: '16px', fontSize: 13, color: 'var(--text3)', textAlign: 'center' }}>
+                        <div style={{ padding: '16px', fontSize: 14, color: 'var(--text3)', textAlign: 'center' }}>
                           No steps defined for this template.
                         </div>
                       ) : (
@@ -466,7 +466,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                 /* ── Inline edit mode ── */
                                 <div>
                                   <div style={{ marginBottom: 8 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                                    <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
                                       Step title
                                     </label>
                                     <input
@@ -475,13 +475,13 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                       onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
                                       style={{
                                         width: '100%', padding: '7px 10px', borderRadius: 7,
-                                        border: '1px solid #e8c880', fontSize: 13,
+                                        border: '1px solid #e8c880', fontSize: 14,
                                         background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
                                       }}
                                     />
                                   </div>
                                   <div style={{ marginBottom: 10 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                                    <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
                                       Description
                                     </label>
                                     <textarea
@@ -490,7 +490,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                       onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                                       style={{
                                         width: '100%', padding: '7px 10px', borderRadius: 7,
-                                        border: '1px solid #e8c880', fontSize: 13,
+                                        border: '1px solid #e8c880', fontSize: 14,
                                         background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
                                         resize: 'vertical',
                                       }}
@@ -501,8 +501,8 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                       onClick={() => saveEdit(tpl.id, step)}
                                       disabled={isSaving || !editForm.title.trim()}
                                       style={{
-                                        padding: '6px 16px', background: 'var(--brand)', color: '#fff',
-                                        border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                                        padding: '7px 18px', background: 'var(--brand)', color: '#fff',
+                                        border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 600,
                                         cursor: 'pointer', opacity: (isSaving || !editForm.title.trim()) ? 0.6 : 1,
                                       }}
                                     >
@@ -512,8 +512,8 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                       onClick={cancelEdit}
                                       disabled={isSaving}
                                       style={{
-                                        padding: '6px 14px', background: 'var(--surface2)', color: 'var(--text2)',
-                                        border: '1px solid var(--border)', borderRadius: 7, fontSize: 12,
+                                        padding: '7px 16px', background: 'var(--surface2)', color: 'var(--text2)',
+                                        border: '1px solid var(--border)', borderRadius: 7, fontSize: 14,
                                         fontWeight: 500, cursor: 'pointer',
                                       }}
                                     >
@@ -536,11 +536,11 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
 
                                   {/* Step content */}
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: step.description ? 2 : 0 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: step.description ? 2 : 0 }}>
                                       {step.title}
                                     </div>
                                     {step.description && (
-                                      <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.4 }}>
+                                      <div style={{ fontSize: 14, color: 'var(--text3)', lineHeight: 1.4 }}>
                                         {step.description}
                                       </div>
                                     )}
@@ -582,9 +582,9 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                       onClick={() => startEdit(step)}
                                       title="Edit step"
                                       style={{
-                                        padding: '4px 11px', border: '1px solid #e8c880',
+                                        padding: '5px 13px', border: '1px solid #e8c880',
                                         borderRadius: 6, background: '#fff9ee', color: '#7a5500',
-                                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
                                       }}
                                     >
                                       Edit
@@ -594,9 +594,9 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                       disabled={deletingStep === step.id}
                                       title="Delete step"
                                       style={{
-                                        padding: '4px 11px', border: '1px solid #e8c880',
+                                        padding: '5px 13px', border: '1px solid #e8c880',
                                         borderRadius: 6, background: '#fff9ee', color: '#c0392b',
-                                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                        fontSize: 14, fontWeight: 600, cursor: 'pointer',
                                         opacity: deletingStep === step.id ? 0.6 : 1,
                                       }}
                                     >
@@ -615,7 +615,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                         {addingStepFor === tpl.id ? (
                           <div style={{ border: '1px solid #e8c880', borderRadius: 8, padding: 12, background: '#fffdf5' }}>
                             <div style={{ marginBottom: 8 }}>
-                              <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                              <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
                                 Step title
                               </label>
                               <input
@@ -625,13 +625,13 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                 placeholder="e.g. Review financials"
                                 style={{
                                   width: '100%', padding: '7px 10px', borderRadius: 7,
-                                  border: '1px solid #e8c880', fontSize: 13,
+                                  border: '1px solid #e8c880', fontSize: 14,
                                   background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
                                 }}
                               />
                             </div>
                             <div style={{ marginBottom: 10 }}>
-                              <label style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                              <label style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
                                 Description
                               </label>
                               <textarea
@@ -641,7 +641,7 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                 placeholder="Optional description"
                                 style={{
                                   width: '100%', padding: '7px 10px', borderRadius: 7,
-                                  border: '1px solid #e8c880', fontSize: 13,
+                                  border: '1px solid #e8c880', fontSize: 14,
                                   background: '#fff', color: 'var(--text1)', boxSizing: 'border-box',
                                   resize: 'vertical',
                                 }}
@@ -652,8 +652,8 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                 onClick={() => saveNewStep(tpl.id)}
                                 disabled={savingNewStep || !addForm.title.trim()}
                                 style={{
-                                  padding: '6px 16px', background: 'var(--brand)', color: '#fff',
-                                  border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                                  padding: '7px 18px', background: 'var(--brand)', color: '#fff',
+                                  border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 600,
                                   cursor: 'pointer', opacity: (savingNewStep || !addForm.title.trim()) ? 0.6 : 1,
                                 }}
                               >
@@ -663,8 +663,8 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                                 onClick={cancelAddStep}
                                 disabled={savingNewStep}
                                 style={{
-                                  padding: '6px 14px', background: 'var(--surface2)', color: 'var(--text2)',
-                                  border: '1px solid var(--border)', borderRadius: 7, fontSize: 12,
+                                  padding: '7px 16px', background: 'var(--surface2)', color: 'var(--text2)',
+                                  border: '1px solid var(--border)', borderRadius: 7, fontSize: 14,
                                   fontWeight: 500, cursor: 'pointer',
                                 }}
                               >
@@ -676,9 +676,9 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                           <button
                             onClick={() => startAddStep(tpl.id)}
                             style={{
-                              padding: '7px 16px', border: '1px dashed #e8c880',
+                              padding: '8px 18px', border: '1px dashed #e8c880',
                               borderRadius: 8, background: 'transparent', color: '#7a5500',
-                              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                              fontSize: 14, fontWeight: 600, cursor: 'pointer',
                             }}
                           >
                             + Add Step
