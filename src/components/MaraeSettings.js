@@ -62,6 +62,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [trusteePermsLoading, setTrusteePermsLoading] = useState(false);
   const [trusteePermsError, setTrusteePermsError] = useState('');
   const [trusteePermsSuccess, setTrusteePermsSuccess] = useState('');
+
+  // Entities
+  const [entities, setEntities] = useState([]);
+  const [entitiesLoading, setEntitiesLoading] = useState(false);
+  const [entitiesError, setEntitiesError] = useState('');
+  const [newEntityName, setNewEntityName] = useState('');
+  const [addingEntity, setAddingEntity] = useState(false);
   const [banningId, setBanningId] = useState(null);
 
   // Invite trustee state
@@ -99,6 +106,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchTemplates();
     if (profile?.id) fetchNotifPrefs(profile.id);
     if (isAdmin) fetchTrustees();
+    fetchEntities();
     fetchXeroStatus();
 
     const params = new URLSearchParams(window.location.search);
@@ -266,6 +274,28 @@ export default function MaraeSettings({ profile, isAdmin }) {
       .order('full_name');
     setTrustees(data || []);
     setTrusteePermsLoading(false);
+  }
+
+  async function fetchEntities() {
+    setEntitiesLoading(true);
+    const { data } = await supabase
+      .from('entities')
+      .select('id, name')
+      .order('name');
+    setEntities(data || []);
+    setEntitiesLoading(false);
+  }
+
+  async function createEntity() {
+    const name = newEntityName.trim();
+    if (!name) { setEntitiesError('Enter a name for the entity'); return; }
+    setAddingEntity(true);
+    setEntitiesError('');
+    const { error } = await supabase.from('entities').insert({ name });
+    if (error) { setEntitiesError(error.message); setAddingEntity(false); return; }
+    setNewEntityName('');
+    await fetchEntities();
+    setAddingEntity(false);
   }
 
   async function sendInvite() {
@@ -806,6 +836,55 @@ export default function MaraeSettings({ profile, isAdmin }) {
             {pwSaving ? 'Saving...' : 'Update Password'}
           </button>
         </form>
+      </div>
+
+      {/* ── ENTITIES ── */}
+      <div className="panel" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Entities
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+          Entities let you keep separate parts of your organisation (e.g. a kōhanga reo alongside the main trust) private from each other. Create them here, then select an entity when adding records in Compliance, Risk Register, or Finance to tag them.
+        </p>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <input
+            className="form-input"
+            style={{ flex: 1 }}
+            placeholder="Entity name..."
+            value={newEntityName}
+            onChange={e => { setNewEntityName(e.target.value); setEntitiesError(''); }}
+            onKeyDown={e => { if (e.key === 'Enter') createEntity(); }}
+            disabled={addingEntity}
+          />
+          <button
+            className="btn-primary"
+            onClick={createEntity}
+            disabled={addingEntity || !newEntityName.trim()}
+            style={{ flexShrink: 0, fontSize: 13 }}
+          >
+            {addingEntity ? 'Creating…' : '+ Add Entity'}
+          </button>
+        </div>
+        {entitiesError && (
+          <div className="alert alert-error" style={{ marginBottom: 12 }}>{entitiesError}</div>
+        )}
+
+        {entitiesLoading ? (
+          <div className="loading">Loading entities...</div>
+        ) : entities.length === 0 ? (
+          <div style={{ fontSize: 13, color: 'var(--text3)' }}>No entities yet.</div>
+        ) : (
+          entities.map(ent => (
+            <div key={ent.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 8, marginBottom: 8,
+            }}>
+              <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{ent.name}</div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* ── TRUSTEE PERMISSIONS (admin only) ── */}
