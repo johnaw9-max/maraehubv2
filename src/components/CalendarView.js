@@ -218,13 +218,13 @@ export default function CalendarView({ isTrustee }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Calendar</h2>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4 }}>
             {isTrustee ? 'All events — bookings, projects, tasks, grants, meetings & services' : 'Bookings and blocked dates'}
           </p>
         </div>
         {isTrustee && (
           <button
-            style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+            style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
             onClick={() => { setShowBlockForm(true); setError(''); setForm(EMPTY_BLOCK); }}
           >
             Block Dates
@@ -273,7 +273,7 @@ export default function CalendarView({ isTrustee }) {
         {/* Day headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--brand)' }}>
           {DAYS.map(d => (
-            <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>{d}</div>
+            <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.06em' }}>{d}</div>
           ))}
         </div>
 
@@ -309,15 +309,15 @@ export default function CalendarView({ isTrustee }) {
                   outlineOffset: -2,
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 600, color: isToday ? 'var(--brand)' : 'var(--text2)', marginBottom: 3 }}>{d}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: isToday ? 'var(--brand)' : 'var(--text2)', marginBottom: 3 }}>{d}</div>
 
                 {booked_ && (
-                  <div style={{ fontSize: 9, fontWeight: 600, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 3, padding: '1px 4px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 3, padding: '2px 6px', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {getBookingInfo(ds)?.occasion?.split('/')[0]}
                   </div>
                 )}
                 {blocked_ && (
-                  <div style={{ fontSize: 9, fontWeight: 600, background: '#faeae7', color: '#a63020', borderRadius: 3, padding: '1px 4px', marginBottom: 2 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, background: '#faeae7', color: '#a63020', borderRadius: 3, padding: '2px 6px', marginBottom: 2 }}>
                     Blocked
                   </div>
                 )}
@@ -358,7 +358,7 @@ export default function CalendarView({ isTrustee }) {
           </div>
 
           {!dayHasAny && (
-            <div style={{ fontSize: 13, color: 'var(--text3)', padding: '4px 0' }}>Available for booking</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', padding: '4px 0' }}>Available for booking</div>
           )}
 
           {dayBlockedInfo && (
@@ -366,12 +366,12 @@ export default function CalendarView({ isTrustee }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 16 }}>🚫</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', marginBottom: 2 }}>Blocked</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>{dayBlockedInfo.reason}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger)', marginBottom: 2 }}>Blocked</div>
+                  <div style={{ fontSize: 14, color: 'var(--text2)' }}>{dayBlockedInfo.reason}</div>
                 </div>
               </div>
               {isTrustee && (
-                <button onClick={() => handleRemoveBlock(dayBlockedInfo.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                <button onClick={() => handleRemoveBlock(dayBlockedInfo.id)} style={{ fontSize: 14, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 11px', cursor: 'pointer' }}>
                   Remove
                 </button>
               )}
@@ -382,22 +382,22 @@ export default function CalendarView({ isTrustee }) {
             <div style={{ padding: '10px 12px', background: '#e8f4ef', borderRadius: 8, border: '1px solid #a8d8c0', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 16 }}>📅</span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#1a4a3a', marginBottom: 2 }}>Approved Booking</div>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{dayBookingInfo.occasion}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#1a4a3a', marginBottom: 2 }}>Approved Booking</div>
+                <div style={{ fontSize: 14, color: 'var(--text2)' }}>{dayBookingInfo.occasion}</div>
               </div>
               {isTrustee && (
                 <>
                   <button
                     type="button"
                     onClick={() => copyToFacebook('bk', buildEventFbText(dayBookingInfo.occasion, selected))}
-                    style={{ fontSize: 11, fontWeight: 700, color: '#1a4a3a', background: copiedId === 'bk' ? '#d4edda' : 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ fontSize: 14, fontWeight: 700, color: '#1a4a3a', background: copiedId === 'bk' ? '#d4edda' : 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '4px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     {copiedId === 'bk' ? 'Copied ✅' : '📋 Copy to Facebook'}
                   </button>
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new CustomEvent('marae:navigate', { detail: 'bookings' }))}
-                    style={{ fontSize: 12, fontWeight: 700, color: '#1a4a3a', background: 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+                    style={{ fontSize: 14, fontWeight: 700, color: '#1a4a3a', background: 'none', border: '1px solid #a8d8c0', borderRadius: 6, padding: '4px 11px', cursor: 'pointer' }}
                   >
                     View →
                   </button>
@@ -421,13 +421,13 @@ export default function CalendarView({ isTrustee }) {
               >
                 <span style={{ fontSize: 15 }}>{et.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)' }}>{ev.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text2)' }}>{ev.name}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => copyToFacebook(cpId, buildEventFbText(ev.name, selected))}
-                  style={{ fontSize: 11, fontWeight: 700, color: et.text, background: copiedId === cpId ? '#d4edda' : 'none', border: `1px solid ${et.border}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ fontSize: 14, fontWeight: 700, color: et.text, background: copiedId === cpId ? '#d4edda' : 'none', border: `1px solid ${et.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   {copiedId === cpId ? 'Copied ✅' : '📋 Copy to Facebook'}
                 </button>
@@ -436,7 +436,7 @@ export default function CalendarView({ isTrustee }) {
                     type="button"
                     onClick={() => window.dispatchEvent(new CustomEvent('marae:navigate', { detail: tab }))}
                     style={{
-                      fontSize: 12, fontWeight: 700, color: et.text,
+                      fontSize: 14, fontWeight: 700, color: et.text,
                       background: 'none', border: `1px solid ${et.border}`,
                       borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
                     }}
@@ -452,7 +452,7 @@ export default function CalendarView({ isTrustee }) {
 
       {/* ── LEGEND ─────────────────────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 16, padding: '14px 18px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Legend</div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           {/* Base legend — all users */}
           {[
@@ -460,7 +460,7 @@ export default function CalendarView({ isTrustee }) {
             { bg: '#faeae7', border: '#f0b8b0', label: 'Blocked Date' },
             { bg: '#fff',    border: 'var(--border)', label: 'Available' },
           ].map(({ bg, border, label }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text2)' }}>
               <div style={{ width: 13, height: 13, borderRadius: 3, background: bg, border: `1px solid ${border}`, flexShrink: 0 }} />
               {label}
             </div>
@@ -471,7 +471,7 @@ export default function CalendarView({ isTrustee }) {
             <>
               <div style={{ width: 1, background: 'var(--border)', height: 18, alignSelf: 'center' }} />
               {Object.entries(EVENT_TYPES).map(([key, et]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text2)' }}>
                   <div style={{ width: 9, height: 9, borderRadius: '50%', background: et.dot, flexShrink: 0 }} />
                   {et.label}
                 </div>
@@ -484,16 +484,16 @@ export default function CalendarView({ isTrustee }) {
       {/* ── BLOCKED DATES LIST ─────────────────────────────────────────────── */}
       {isTrustee && blocked.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Blocked Dates</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Blocked Dates</div>
           {blocked.map(b => (
             <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid var(--border)', borderLeft: '3px solid var(--danger)', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{b.reason}</div>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{b.reason}</div>
+                <div style={{ fontSize: 14, color: 'var(--text3)' }}>
                   {formatDate(b.from_date)}{b.to_date !== b.from_date ? ` → ${formatDate(b.to_date)}` : ''}
                 </div>
               </div>
-              <button onClick={() => handleRemoveBlock(b.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Remove</button>
+              <button onClick={() => handleRemoveBlock(b.id)} style={{ fontSize: 14, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}>Remove</button>
             </div>
           ))}
         </div>
