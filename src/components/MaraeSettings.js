@@ -69,6 +69,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [entitiesError, setEntitiesError] = useState('');
   const [newEntityName, setNewEntityName] = useState('');
   const [addingEntity, setAddingEntity] = useState(false);
+  const [editingEntityId, setEditingEntityId] = useState(null);
+  const [editingEntityName, setEditingEntityName] = useState('');
+  const [renamingEntity, setRenamingEntity] = useState(false);
   const [banningId, setBanningId] = useState(null);
 
   // Invite trustee state
@@ -296,6 +299,30 @@ export default function MaraeSettings({ profile, isAdmin }) {
     setNewEntityName('');
     await fetchEntities();
     setAddingEntity(false);
+  }
+
+  function startRenameEntity(ent) {
+    setEditingEntityId(ent.id);
+    setEditingEntityName(ent.name);
+    setEntitiesError('');
+  }
+
+  function cancelRenameEntity() {
+    setEditingEntityId(null);
+    setEditingEntityName('');
+  }
+
+  async function saveRenameEntity() {
+    const name = editingEntityName.trim();
+    if (!name) { setEntitiesError('Enter a name for the entity'); return; }
+    setRenamingEntity(true);
+    setEntitiesError('');
+    const { error } = await supabase.from('entities').update({ name }).eq('id', editingEntityId);
+    if (error) { setEntitiesError(error.message); setRenamingEntity(false); return; }
+    setEditingEntityId(null);
+    setEditingEntityName('');
+    await fetchEntities();
+    setRenamingEntity(false);
   }
 
   async function sendInvite() {
@@ -881,7 +908,34 @@ export default function MaraeSettings({ profile, isAdmin }) {
               background: 'var(--surface2)', border: '1px solid var(--border)',
               borderRadius: 8, marginBottom: 8,
             }}>
-              <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{ent.name}</div>
+              {editingEntityId === ent.id ? (
+                <>
+                  <input
+                    className="form-input"
+                    style={{ flex: 1 }}
+                    value={editingEntityName}
+                    onChange={e => { setEditingEntityName(e.target.value); setEntitiesError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') saveRenameEntity(); if (e.key === 'Escape') cancelRenameEntity(); }}
+                    disabled={renamingEntity}
+                    autoFocus
+                  />
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button className="btn-secondary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={cancelRenameEntity} disabled={renamingEntity}>
+                      Cancel
+                    </button>
+                    <button className="btn-primary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={saveRenameEntity} disabled={renamingEntity || !editingEntityName.trim()}>
+                      {renamingEntity ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{ent.name}</div>
+                  <button className="btn-secondary" style={{ fontSize: 12, padding: '5px 12px', flexShrink: 0 }} onClick={() => startRenameEntity(ent)}>
+                    Edit
+                  </button>
+                </>
+              )}
             </div>
           ))
         )}
