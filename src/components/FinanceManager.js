@@ -86,12 +86,12 @@ const BUDGET_STATUS_CFG = {
 const EMPTY_INCOME = {
   date: new Date().toISOString().split('T')[0],
   description: '', amount: '', category: 'Other',
-  reference: '', notes: '', status: 'Confirmed',
+  reference: '', notes: '', status: 'Confirmed', entity_id: '',
 };
 const EMPTY_EXPENSE = {
   date: new Date().toISOString().split('T')[0],
   description: '', amount: '', category: 'Other',
-  payee: '', reference: '', notes: '', status: 'Paid',
+  payee: '', reference: '', notes: '', status: 'Paid', entity_id: '',
 };
 
 // ─── SECTION HEADER ──────────────────────────────────────────────────────────
@@ -122,6 +122,7 @@ export default function FinanceManager() {
   const [balanceSheet, setBalanceSheet] = useState(null);
   const [equipmentValue, setEquipmentValue] = useState(0);
   const [contactNames, setContactNames] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [xero, setXero] = useState(null); // null = still resolving
 
@@ -199,17 +200,19 @@ export default function FinanceManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [incRes, expRes, budRes, bsRes, assetRes, ctRes] = await Promise.all([
+    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes] = await Promise.all([
       supabase.from('finance_income').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_expenses').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_budgets').select('*').eq('financial_year', fy),
       supabase.from('finance_balance_sheet').select('*').limit(1).single(),
       supabase.from('assets').select('value'),
       supabase.from('contacts').select('full_name').order('full_name'),
+      supabase.from('entities').select('id, name').order('name'),
     ]);
     setIncome(incRes.data || []);
     setExpenses(expRes.data || []);
     setBudgets(budRes.data || []);
+    setEntities(entRes.data || []);
     const bs = bsRes.data;
     if (bs) {
       setBsId(bs.id);
@@ -344,7 +347,7 @@ export default function FinanceManager() {
       amount: row.amount != null ? String(row.amount) : '',
       category: row.category || 'Other',
       reference: row.reference || '', notes: row.notes || '',
-      status: row.status || 'Confirmed',
+      status: row.status || 'Confirmed', entity_id: row.entity_id || '',
     });
     setEditId(row.id); setFormError(''); setShowIncomeModal(true);
   }
@@ -362,6 +365,7 @@ export default function FinanceManager() {
       reference: incomeForm.reference.trim() || null,
       notes: incomeForm.notes.trim() || null,
       status: incomeForm.status,
+      entity_id: incomeForm.entity_id || null,
     };
     const { error } = editId
       ? await supabase.from('finance_income').update(payload).eq('id', editId)
@@ -383,7 +387,7 @@ export default function FinanceManager() {
       amount: row.amount != null ? String(row.amount) : '',
       category: row.category || 'Other', payee: row.payee || '',
       reference: row.reference || '', notes: row.notes || '',
-      status: row.status || 'Paid',
+      status: row.status || 'Paid', entity_id: row.entity_id || '',
     });
     setEditId(row.id); setReceiptFile(null); setFormError(''); setShowExpenseModal(true);
   }
@@ -415,6 +419,7 @@ export default function FinanceManager() {
       amount: parseFloat(expenseForm.amount), category: expenseForm.category,
       payee: expenseForm.payee.trim() || null, reference: expenseForm.reference.trim() || null,
       notes: expenseForm.notes.trim() || null, status: expenseForm.status,
+      entity_id: expenseForm.entity_id || null,
       receipt_url, receipt_name,
     };
     const { error } = editId
@@ -1429,6 +1434,15 @@ ${loanHtml}
                 </select>
               </div>
             </div>
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={incomeForm.entity_id} onChange={e => setIncomeForm(f => ({ ...f, entity_id: e.target.value }))}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Reference Number</label>
               <input className="form-input" value={incomeForm.reference} onChange={e => setIncomeForm(f => ({ ...f, reference: e.target.value }))} placeholder="e.g. INV-001" />
@@ -1481,6 +1495,15 @@ ${loanHtml}
                 </select>
               </div>
             </div>
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={expenseForm.entity_id} onChange={e => setExpenseForm(f => ({ ...f, entity_id: e.target.value }))}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Payee</label>
