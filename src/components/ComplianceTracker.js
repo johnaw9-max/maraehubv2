@@ -105,6 +105,7 @@ export default function ComplianceTracker() {
   const [loading, setLoading]   = useState(true);
   const [section, setSection]   = useState('items');
   const [catFilter, setCatFilter] = useState('all');
+  const [entityFilter, setEntityFilter] = useState('all');
 
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -397,6 +398,7 @@ export default function ComplianceTracker() {
   const epAlert    = epOverdue.length + epNotSet.length;
 
   const filteredItems = (catFilter === 'all' ? items : items.filter(i => i.category === catFilter))
+    .filter(i => entityFilter === 'all' || i.entity_id === entityFilter || i.entity_id === null)
     .slice()
     .sort((a, b) => {
       const sa = STATUS_ORDER[getStatus(a.due_date)];
@@ -503,6 +505,17 @@ export default function ComplianceTracker() {
                 {c.icon} {c.label}
               </button>
             ))}
+            {entities.length > 0 && (
+              <select
+                className="form-input"
+                value={entityFilter}
+                onChange={e => setEntityFilter(e.target.value)}
+                style={{ width: 'auto', fontSize: 14, padding: '6px 12px', borderRadius: 20 }}
+              >
+                <option value="all">All Entities</option>
+                {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+              </select>
+            )}
           </div>
 
           {/* Items list */}
