@@ -34,6 +34,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [entityFilter, setEntityFilter] = useState('all');
   const [checklistBooking, setChecklistBooking] = useState(null);
   const [feedbackBooking, setFeedbackBooking] = useState(null);
   const [invoiceBooking, setInvoiceBooking] = useState(null);
@@ -200,6 +201,8 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     ? templates.find(t => /facility hire/i.test(t.name))
     : null;
 
+  const filteredBookings = bookings.filter(b => entityFilter === 'all' || b.entity_id === entityFilter || b.entity_id === null);
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -216,6 +219,12 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
               {f}
             </button>
           ))}
+          {entities.length > 0 && (
+            <select className="form-input" style={{ width: 'auto', fontSize: 12, padding: '6px 12px', borderRadius: 20 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+              <option value="all">All Entities</option>
+              {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+            </select>
+          )}
           {isTrustee && (
             <button className="btn-primary" onClick={openAddModal} style={{ marginLeft: 8 }}>+ Add Booking</button>
           )}
@@ -225,14 +234,14 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
 
       {loading ? (
         <div className="loading">Loading bookings...</div>
-      ) : bookings.length === 0 ? (
+      ) : filteredBookings.length === 0 ? (
         <div className="empty-state">
           <div className="emoji">📅</div>
           <div>No bookings found</div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {bookings.map(b => {
+          {filteredBookings.map(b => {
             const past = isPast(b);
             const fb = feedback[b.id];
             const cl = checklists[b.id];
