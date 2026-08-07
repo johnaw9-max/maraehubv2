@@ -35,6 +35,7 @@ export default function AssetsManager({ onStartWorkflow }) {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
   const [view, setView] = useState('assets'); // 'assets' | 'inventory'
+  const [entityFilter, setEntityFilter] = useState('all');
   const [expandedIds, setExpandedIds] = useState(new Set());
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -436,7 +437,8 @@ export default function AssetsManager({ onStartWorkflow }) {
   const inventoryItems  = assets.filter(a => a.category === 'Inventory');
   const physicalItems   = assets.filter(a => a.category !== 'Inventory');
   const zeroStockItems  = inventoryItems.filter(a => a.quantity != null && a.quantity === 0);
-  const displayedAssets = view === 'inventory' ? inventoryItems : physicalItems;
+  const displayedAssets = (view === 'inventory' ? inventoryItems : physicalItems)
+    .filter(a => entityFilter === 'all' || a.entity_id === entityFilter || a.entity_id === null);
 
   return (
     <div>
@@ -472,6 +474,15 @@ export default function AssetsManager({ onStartWorkflow }) {
           </button>
         ))}
       </div>
+
+      {entities.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <select className="form-input" style={{ width: 'auto', fontSize: 14 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+            <option value="all">All Entities</option>
+            {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        </div>
+      )}
 
       {/* INVENTORY OUT-OF-STOCK ALERT */}
       {view === 'inventory' && zeroStockItems.length > 0 && (
