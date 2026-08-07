@@ -15,10 +15,11 @@ const CAT_COLORS = {
   'Other': { bg: '#f5f0e8', color: '#4a4438' },
 };
  
-const EMPTY_FORM = { title: '', category: 'Governance', notes: '' };
- 
+const EMPTY_FORM = { title: '', category: 'Governance', notes: '', entity_id: '' };
+
 export default function DocumentsManager() {
   const [docs, setDocs] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -33,11 +34,12 @@ export default function DocumentsManager() {
  
   async function fetchDocs() {
     setLoading(true);
-    const { data } = await supabase
-      .from('documents')
-      .select('*')
-      .order('created_at', { ascending: false });
-    setDocs(data || []);
+    const [docRes, entRes] = await Promise.all([
+      supabase.from('documents').select('*').order('created_at', { ascending: false }),
+      supabase.from('entities').select('id, name').order('name'),
+    ]);
+    setDocs(docRes.data || []);
+    setEntities(entRes.data || []);
     setLoading(false);
   }
  
@@ -110,6 +112,7 @@ export default function DocumentsManager() {
       file_size,
       file_type,
       file_url,
+      entity_id: form.entity_id || null,
     });
  
     if (dbError) {
@@ -184,6 +187,7 @@ export default function DocumentsManager() {
           {filtered.map(doc => {
             const ext = doc.file_type || getExt(doc.file_name || '');
             const catStyle = CAT_COLORS[doc.category] || CAT_COLORS['Other'];
+            const entityName = doc.entity_id ? entities.find(e => e.id === doc.entity_id)?.name : null;
             return (
               <div key={doc.id} className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
@@ -195,6 +199,11 @@ export default function DocumentsManager() {
                     <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: catStyle.bg, color: catStyle.color }}>
                       {doc.category}
                     </span>
+                    {entityName && (
+                      <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
+                        {entityName}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text3)', flexWrap: 'wrap' }}>
                     {doc.notes && <span>{doc.notes}</span>}
@@ -265,7 +274,17 @@ export default function DocumentsManager() {
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
- 
+
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={form.entity_id} onChange={e => setField('entity_id', e.target.value)}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
+
             <div className="form-group">
               <label className="form-label">Notes (optional)</label>
               <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any notes about this document..." style={{ resize: 'vertical' }} />

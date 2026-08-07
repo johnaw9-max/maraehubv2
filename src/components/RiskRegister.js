@@ -195,6 +195,7 @@ export default function RiskRegister() {
               {filtered.map((r, i) => {
                 const rp = RATING_PILL[r.risk_rating] || RATING_PILL.Low;
                 const sp = STATUS_PILL[r.status]      || STATUS_PILL['Open'];
+                const entityName = r.entity_id ? entities.find(e => e.id === r.entity_id)?.name : null;
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
                     <td style={{ padding: '12px 14px', maxWidth: 260 }}>
@@ -203,6 +204,7 @@ export default function RiskRegister() {
                         {r.risk_description}
                       </div>
                       {r.controls && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 3 }}>Controls: {r.controls}</div>}
+                      {entityName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{r.category}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.likelihood}</td>

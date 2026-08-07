@@ -16,13 +16,14 @@ const CONDITION_STYLE = {
 const RECURRING_LABELS = { none: 'One-time', monthly: 'Monthly', quarterly: 'Quarterly', biannual: '6-monthly', annual: 'Annual', '2years': '2-yearly' };
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
 const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technology: '💻', Grounds: '🌿', Inventory: '📦', Other: '📁' };
-const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '', inventory_category: 'Linen', quantity: '', last_stocktake: '' };
+const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '', inventory_category: 'Linen', quantity: '', last_stocktake: '', entity_id: '' };
 const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', notes: '' };
 
 export default function AssetsManager({ onStartWorkflow }) {
   const [assets, setAssets] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [entities, setEntities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -40,10 +41,11 @@ export default function AssetsManager({ onStartWorkflow }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [assetRes, reminderRes, tplRes] = await Promise.all([
+    const [assetRes, reminderRes, tplRes, entRes] = await Promise.all([
       supabase.from('assets').select('*').order('created_at', { ascending: false }),
       supabase.from('service_reminders').select('*').order('due_date', { ascending: true }),
       supabase.from('workflow_templates').select('id, name').order('name'),
+      supabase.from('entities').select('id, name').order('name'),
     ]);
     const assetData = assetRes.data || [];
     const reminderData = reminderRes.data || [];
@@ -51,6 +53,7 @@ export default function AssetsManager({ onStartWorkflow }) {
     setAssets(assetData);
     setReminders(reminderData);
     setTemplates(tplData);
+    setEntities(entRes.data || []);
     setLoading(false);
     createOverdueTasks(assetData, reminderData, tplData);
     createUpcomingTasks(assetData, reminderData, tplData);
@@ -155,6 +158,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       inventory_category: a.inventory_category || 'Linen',
       quantity: a.quantity != null ? String(a.quantity) : '',
       last_stocktake: a.last_stocktake || '',
+      entity_id: a.entity_id || '',
     });
     setEditId(a.id); setError(''); setShowModal(true);
   }
@@ -174,6 +178,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       inventory_category: isInventory ? form.inventory_category : null,
       quantity:           isInventory && form.quantity !== '' ? parseInt(form.quantity) : null,
       last_stocktake:     isInventory && form.last_stocktake  ? form.last_stocktake  : null,
+      entity_id: form.entity_id || null,
     };
     const { error } = editId
       ? await supabase.from('assets').update(payload).eq('id', editId)
@@ -578,6 +583,7 @@ export default function AssetsManager({ onStartWorkflow }) {
               const isExpanded = expandedIds.has(a.id);
               const condStyle = CONDITION_STYLE[a.condition] || CONDITION_STYLE.good;
               const dotColor = overdue > 0 ? 'var(--danger)' : dueSoon > 0 ? 'var(--warning)' : null;
+              const entityName = a.entity_id ? entities.find(e => e.id === a.entity_id)?.name : null;
               return (
                 <div key={a.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
                   <div
@@ -591,6 +597,11 @@ export default function AssetsManager({ onStartWorkflow }) {
                     <div style={{ flex: '1 1 200px', minWidth: 0, fontSize: 14, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {isInv ? (a.inventory_category || 'Inventory') : a.category} · {a.location || 'No location'}
                     </div>
+                    {entityName && (
+                      <span style={{ fontSize: 12, borderRadius: 20, padding: '3px 10px', fontWeight: 600, color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                        {entityName}
+                      </span>
+                    )}
                     <span style={{ fontSize: 14, borderRadius: 20, padding: '3px 10px', fontWeight: 700, color: condStyle.color, background: condStyle.bg, flexShrink: 0 }}>
                       {a.condition ? a.condition.charAt(0).toUpperCase() + a.condition.slice(1) : 'Good'}
                     </span>
@@ -675,6 +686,15 @@ export default function AssetsManager({ onStartWorkflow }) {
                 </select>
               </div>
             </div>
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={form.entity_id} onChange={e => setField('entity_id', e.target.value)}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Location</label>

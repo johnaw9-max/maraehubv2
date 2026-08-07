@@ -515,6 +515,7 @@ export default function ComplianceTracker() {
                 const scfg = STATUS_CFG[status];
                 const cat = CATEGORIES[item.category] || CATEGORIES.other;
                 const dl = daysLabel(item.due_date);
+                const entityName = item.entity_id ? entities.find(e => e.id === item.entity_id)?.name : null;
                 return (
                   <div
                     key={item.id}
@@ -529,6 +530,7 @@ export default function ComplianceTracker() {
                           <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
                             {cat.icon} {cat.label}
                           </span>
+                          {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
                           {dl && (
                             <span style={{ fontSize: 14, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
                               {dl}

@@ -850,12 +850,14 @@ ${loanHtml}
                 <tbody>
                   {income.map(row => {
                     const catC = INCOME_CAT_COLORS[row.category] || INCOME_CAT_COLORS.Other;
+                    const entityName = row.entity_id ? entities.find(e => e.id === row.entity_id)?.name : null;
                     return (
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{fmt(row.date)}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text1)', maxWidth: 260 }}>
                           <div style={{ fontWeight: 500 }}>{row.description}</div>
                           {row.notes && <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{row.notes}</div>}
+                          {entityName && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <span style={{ fontSize: 11, fontWeight: 600, background: catC.bg, color: catC.color, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>
@@ -915,12 +917,14 @@ ${loanHtml}
                 <tbody>
                   {expenses.map(row => {
                     const catC = EXPENSE_CAT_COLORS[row.category] || EXPENSE_CAT_COLORS.Other;
+                    const entityName = row.entity_id ? entities.find(e => e.id === row.entity_id)?.name : null;
                     return (
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{fmt(row.date)}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text1)', maxWidth: 200 }}>
                           <div style={{ fontWeight: 500 }}>{row.description}</div>
                           {row.receipt_url && <a href={row.receipt_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: 'var(--brand)' }}>📎 Receipt</a>}
+                          {entityName && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
                           <span style={{ fontSize: 11, fontWeight: 600, background: catC.bg, color: catC.color, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>{row.category}</span>
