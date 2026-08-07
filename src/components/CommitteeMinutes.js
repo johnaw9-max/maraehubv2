@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import useEntities from '../lib/useEntities';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
 import { ensureTask } from '../lib/taskSync';
 
@@ -44,7 +45,7 @@ const INTEREST_STATUS_COLORS = {
 const EMPTY_MEETING = {
   title: '', meeting_type: 'Trustee Meeting', meeting_date: '',
   chairperson: '', secretary: '', attendees: '', apologies: '',
-  minutes: '', created_by: '',
+  minutes: '', created_by: '', entity_id: '',
 };
 
 const EMPTY_RESOLUTION = {
@@ -94,6 +95,7 @@ function SummaryTile({ icon, iconBg, value, label, valueColor, sub }) {
 
 function MeetingForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
+  const entities = useEntities();
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -132,6 +134,16 @@ function MeetingForm({ initial, onSave, onCancel, saving, error }) {
           </select>
         </div>
       </div>
+
+      {entities.length > 0 && (
+        <div className="form-group">
+          <label className="form-label">Entity</label>
+          <select className="form-input" value={form.entity_id} onChange={e => setField('entity_id', e.target.value)}>
+            <option value="">— Shared (all entities) —</option>
+            {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="grid-2">
         <div className="form-group">
@@ -697,6 +709,7 @@ function InterestForm({ initial, onSave, onCancel, saving, error }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function CommitteeMinutes() {
+  const entities = useEntities();
   const [view, setView] = useState('list'); // 'list' | 'form' | 'detail'
   const [meetings, setMeetings] = useState([]);
   const [allResolutions, setAllResolutions] = useState([]);
@@ -786,6 +799,7 @@ export default function CommitteeMinutes() {
       created_by: form.created_by.trim() || null,
       attachment_url,
       attachment_name,
+      entity_id: form.entity_id || null,
     };
 
     if (editMeeting?.id) {
@@ -997,6 +1011,7 @@ export default function CommitteeMinutes() {
           ) : (
             filtered.map(m => {
               const mtc = MEETING_TYPE_COLORS[m.meeting_type] || { bg: '#f5f5f5', color: '#333' };
+              const entityName = m.entity_id ? entities.find(e => e.id === m.entity_id)?.name : null;
               return (
                 <div
                   key={m.id}
@@ -1021,6 +1036,11 @@ export default function CommitteeMinutes() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {entityName && (
+                        <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
+                          {entityName}
+                        </span>
+                      )}
                       <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: mtc.bg, color: mtc.color }}>
                         {m.meeting_type}
                       </span>
