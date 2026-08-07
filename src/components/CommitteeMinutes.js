@@ -58,7 +58,7 @@ const EMPTY_ACTION = {
 };
 
 const EMPTY_INTEREST = {
-  trustee_name: '', nature_of_interest: '', related_matter: '', date_declared: '', status: 'Active',
+  trustee_name: '', nature_of_interest: '', related_matter: '', date_declared: '', status: 'Active', entity_id: '',
 };
 
 function fmt(d) {
@@ -646,6 +646,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
 
 function InterestForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
+  const entities = useEntities();
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -696,6 +697,15 @@ function InterestForm({ initial, onSave, onCancel, saving, error }) {
           {INTEREST_REGISTER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
+      {entities.length > 0 && (
+        <div className="form-group">
+          <label className="form-label">Entity</label>
+          <select className="form-input" value={form.entity_id} onChange={e => setField('entity_id', e.target.value)}>
+            <option value="">— Shared (all entities) —</option>
+            {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="modal-actions">
         <button className="btn-secondary" onClick={onCancel}>Cancel</button>
         <button className="btn-primary" onClick={() => onSave(form)} disabled={saving}>
@@ -840,6 +850,7 @@ export default function CommitteeMinutes() {
       related_matter: form.related_matter.trim() || null,
       date_declared: form.date_declared || null,
       status: form.status,
+      entity_id: form.entity_id || null,
     };
     const { error } = editInterest?.id
       ? await supabase.from('interest_register').update(payload).eq('id', editInterest.id)
@@ -1106,6 +1117,7 @@ export default function CommitteeMinutes() {
             filteredInterests.map(i => {
               const ic = INTEREST_STATUS_COLORS[i.status] || { bg: '#f5f5f5', color: '#666' };
               const isActive = i.status === 'Active';
+              const entityName = i.entity_id ? entities.find(e => e.id === i.entity_id)?.name : null;
               return (
                 <div key={i.id} className="panel" style={{ marginBottom: 10, borderLeft: isActive ? '3px solid var(--info)' : '3px solid var(--border)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -1126,6 +1138,11 @@ export default function CommitteeMinutes() {
                       <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Declared {fmt(i.date_declared)}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {entityName && (
+                        <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
+                          {entityName}
+                        </span>
+                      )}
                       <StatusBadge status={i.status} colors={INTEREST_STATUS_COLORS} />
                       {isActive && (
                         <button onClick={() => handleResolveInterest(i.id)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Resolve</button>
