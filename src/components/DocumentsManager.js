@@ -22,6 +22,7 @@ export default function DocumentsManager() {
   const [entities, setEntities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [entityFilter, setEntityFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [file, setFile] = useState(null);
@@ -140,7 +141,8 @@ export default function DocumentsManager() {
  
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
  
-  const filtered = filter === 'all' ? docs : docs.filter(d => d.category === filter);
+  const filtered = (filter === 'all' ? docs : docs.filter(d => d.category === filter))
+    .filter(d => entityFilter === 'all' || d.entity_id === entityFilter || d.entity_id === null);
  
   return (
     <div>
@@ -169,8 +171,14 @@ export default function DocumentsManager() {
             {cat === 'all' ? 'All Documents' : cat}
           </button>
         ))}
+        {entities.length > 0 && (
+          <select className="form-input" style={{ width: 'auto', fontSize: 12, padding: '6px 12px', borderRadius: 20 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+            <option value="all">All Entities</option>
+            {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        )}
       </div>
- 
+
       {/* DOCUMENT LIST */}
       {loading ? (
         <div className="loading">Loading documents...</div>
