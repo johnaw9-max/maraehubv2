@@ -55,6 +55,7 @@ export default function RiskRegister() {
   const [error, setError]         = useState('');
   const [catFilter, setCatFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [entityFilter, setEntityFilter] = useState('all');
 
   const allProfiles = useProfiles();
   const trustees = allProfiles.filter(p => p.role === 'trustee');
@@ -138,7 +139,8 @@ export default function RiskRegister() {
 
   const filtered = risks.filter(r =>
     (catFilter    === 'all' || r.category === catFilter) &&
-    (statusFilter === 'all' || r.status   === statusFilter)
+    (statusFilter === 'all' || r.status   === statusFilter) &&
+    (entityFilter === 'all' || r.entity_id === entityFilter || r.entity_id === null)
   );
 
   const highOpen = risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed').length;
@@ -172,6 +174,12 @@ export default function RiskRegister() {
           <option value="all">All Statuses</option>
           {STATUSES.map(s => <option key={s}>{s}</option>)}
         </select>
+        {entities.length > 0 && (
+          <select className="form-input" style={{ width: 'auto', fontSize: 14 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+            <option value="all">All Entities</option>
+            {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        )}
       </div>
 
       {/* ── TABLE ── */}
