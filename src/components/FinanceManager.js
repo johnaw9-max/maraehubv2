@@ -325,15 +325,16 @@ export default function FinanceManager() {
     : (customFrom && customTo ? `${fmt(customFrom)} to ${fmt(customTo)}` : 'Custom Range');
 
   const reportTotals = useMemo(() => {
-    const rInc = reportIncome !== null ? reportIncome : income;
-    const rExp = reportExpenses !== null ? reportExpenses : expenses;
+    const matchEntity = row => entityFilter === 'all' || row.entity_id === entityFilter || row.entity_id === null;
+    const rInc = (reportIncome !== null ? reportIncome : income).filter(matchEntity);
+    const rExp = (reportExpenses !== null ? reportExpenses : expenses).filter(matchEntity);
     const totalIncome   = rInc.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
     const totalExpenses = rExp.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
     const net = totalIncome - totalExpenses;
     const spentMap = {};
     rExp.forEach(e => { spentMap[e.category] = (spentMap[e.category] || 0) + parseFloat(e.amount || 0); });
     return { totalIncome, totalExpenses, net, spentMap };
-  }, [reportIncome, reportExpenses, income, expenses]);
+  }, [reportIncome, reportExpenses, income, expenses, entityFilter]);
 
   // ── INCOME CRUD ────────────────────────────────────────────────────────────
 
@@ -559,6 +560,13 @@ export default function FinanceManager() {
 
   function printAGMReport() {
     const win = window.open('', '_blank');
+    const entityName = entityFilter === 'all' ? 'All Entities' : (entities.find(e => e.id === entityFilter)?.name || 'Unknown Entity');
+    const scoped = entityFilter !== 'all';
+    const agmIncome = filteredIncome;
+    const agmExpenses = filteredExpenses;
+    const agmTotalIncome = agmIncome.reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+    const agmTotalExpenses = agmExpenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const agmNet = agmTotalIncome - agmTotalExpenses;
     const bs = balanceSheet;
     const bsInvTotal = parseFloat(bs?.other_investments || 0);
     const totalAssets = (parseFloat(bs?.cash_balance || 0) + parseFloat(bs?.other_assets || 0) + bsInvTotal + equipmentValue).toFixed(2);
@@ -574,27 +582,46 @@ export default function FinanceManager() {
     const netWorth = (parseFloat(totalAssets) - parseFloat(totalLiabilities)).toFixed(2);
 
     const incomeRows = INCOME_CATEGORIES.map(cat => {
-      const total = income.filter(i => i.category === cat).reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+      const total = agmIncome.filter(i => i.category === cat).reduce((s, i) => s + parseFloat(i.amount || 0), 0);
       return total > 0 ? `<tr><td>${cat}</td><td style="text-align:right">${fmtMoney(total)}</td></tr>` : '';
     }).join('');
 
+    const agmSpentMap = {};
+    agmExpenses.forEach(e => { agmSpentMap[e.category] = (agmSpentMap[e.category] || 0) + parseFloat(e.amount || 0); });
+
     const expenseRows = EXPENSE_CATEGORIES.map(cat => {
-      const spent  = totals.spentMap[cat] || 0;
+      const spent = agmSpentMap[cat] || 0;
+      if (scoped) {
+        return spent > 0 ? `<tr><td>${cat}</td><td style="text-align:right">${fmtMoney(spent)}</td></tr>` : '';
+      }
       const budget = totals.budgetMap[cat] || 0;
       const status = budgetStatus(spent, budget);
       const colour = status === 'over' ? '#a63020' : status === 'at_risk' ? '#c8902a' : '#2e7d52';
       return `<tr><td>${cat}</td><td style="text-align:right">${fmtMoney(spent)}</td><td style="text-align:right">${budget ? fmtMoney(budget) : '—'}</td><td style="text-align:right;color:${colour}">${budget ? Math.round((spent/budget)*100) + '%' : '—'}</td></tr>`;
     }).join('');
 
+    const expenseHeading = scoped ? 'Expenditure' : 'Expenditure vs Budget';
+    const expenseHeaderRow = scoped
+      ? '<tr><th>Category</th><th style="text-align:right">Actual</th></tr>'
+      : '<tr><th>Category</th><th style="text-align:right">Actual</th><th style="text-align:right">Budget</th><th style="text-align:right">Used</th></tr>';
+    const expenseFooterRow = scoped
+      ? `<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Expenses</td><td style="text-align:right">${fmtMoney(agmTotalExpenses)}</td></tr>`
+      : `<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Expenses</td><td style="text-align:right">${fmtMoney(agmTotalExpenses)}</td><td></td><td></td></tr>`;
+
+    const balanceSheetNote = scoped
+      ? `<p style="font-size:12px;color:#a63020;font-style:italic;margin:4px 0 12px">Balance sheet reflects the whole organisation (all entities combined) — not tracked per entity.</p>`
+      : '';
+
     win.document.write(`<!DOCTYPE html><html><head><title>AGM Finance Report ${fyLabel(fy)}</title>
 <style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;color:#222;line-height:1.6}h1{font-size:24px;border-bottom:2px solid #1a4a3a;padding-bottom:8px}h2{font-size:16px;margin-top:28px;color:#1a4a3a}table{width:100%;border-collapse:collapse;margin:12px 0}th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:13px}td{padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}.net{font-size:18px;font-weight:bold;padding:12px 0}.surplus{color:#1a4a3a}.deficit{color:#a63020}</style>
 </head><body>
 <h1>Finance Report — ${fyLabel(fy)} Financial Year</h1>
 <p style="color:#666;font-size:13px">Prepared for Annual General Meeting · ${new Date().toLocaleDateString('en-NZ',{day:'numeric',month:'long',year:'numeric'})}</p>
-<h2>Income</h2><table><tr><th>Category</th><th style="text-align:right">Amount</th></tr>${incomeRows}<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Income</td><td style="text-align:right">${fmtMoney(totals.totalIncome)}</td></tr></table>
-<h2>Expenditure vs Budget</h2><table><tr><th>Category</th><th style="text-align:right">Actual</th><th style="text-align:right">Budget</th><th style="text-align:right">Used</th></tr>${expenseRows}<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Expenses</td><td style="text-align:right">${fmtMoney(totals.totalExpenses)}</td><td></td><td></td></tr></table>
-<div class="net ${totals.net >= 0 ? 'surplus' : 'deficit'}">${totals.net >= 0 ? 'Net Surplus' : 'Net Deficit'}: ${fmtMoney(Math.abs(totals.net))}</div>
-<h2>Balance Sheet Snapshot</h2><table>
+<p style="color:#666;font-size:13px">Entity: ${entityName}</p>
+<h2>Income</h2><table><tr><th>Category</th><th style="text-align:right">Amount</th></tr>${incomeRows}<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Income</td><td style="text-align:right">${fmtMoney(agmTotalIncome)}</td></tr></table>
+<h2>${expenseHeading}</h2><table>${expenseHeaderRow}${expenseRows}${expenseFooterRow}</table>
+<div class="net ${agmNet >= 0 ? 'surplus' : 'deficit'}">${agmNet >= 0 ? 'Net Surplus' : 'Net Deficit'}: ${fmtMoney(Math.abs(agmNet))}</div>
+<h2>Balance Sheet Snapshot</h2>${balanceSheetNote}<table>
 <tr><th>Assets</th><th style="text-align:right">Value</th></tr>
 <tr><td>Cash &amp; Bank Balance</td><td style="text-align:right">${fmtMoney(bs?.cash_balance || 0)}</td></tr>
 <tr><td>Equipment (Assets Register)</td><td style="text-align:right">${fmtMoney(equipmentValue)}</td></tr>
@@ -616,8 +643,10 @@ ${loanHtml}
   // ── GENERAL LEDGER PRINT (Reports tab only) ────────────────────────────────
 
   function printGeneralLedger() {
-    const rInc = reportIncome  !== null ? reportIncome  : income;
-    const rExp = reportExpenses !== null ? reportExpenses : expenses;
+    const entityName = entityFilter === 'all' ? 'All Entities' : (entities.find(e => e.id === entityFilter)?.name || 'Unknown Entity');
+    const matchEntity = row => entityFilter === 'all' || row.entity_id === entityFilter || row.entity_id === null;
+    const rInc = (reportIncome  !== null ? reportIncome  : income).filter(matchEntity);
+    const rExp = (reportExpenses !== null ? reportExpenses : expenses).filter(matchEntity);
 
     const txns = [
       ...rInc.map(r => ({ date: r.date, description: r.description, category: r.category, inc: parseFloat(r.amount || 0), exp: 0 })),
@@ -668,6 +697,7 @@ ${loanHtml}
 </head><body>
 <h1>General Ledger — ${glLabel}</h1>
 <p style="color:#666;font-size:13px">Prepared ${new Date().toLocaleDateString('en-NZ',{day:'numeric',month:'long',year:'numeric'})}</p>
+<p style="color:#666;font-size:13px">Entity: ${entityName}</p>
 <div class="summary">
   <div class="s-card" style="background:#f5f5f5;border-color:#ccc">
     <div style="font-size:11px;color:#555">Opening Balance</div>
@@ -1265,6 +1295,12 @@ ${loanHtml}
           <SectionHeader icon="📋" title="Financial Reports"
             action={
               <div style={{ display: 'flex', gap: 8 }}>
+                {entities.length > 0 && (
+                  <select className="form-input" style={{ width: 'auto', fontSize: 12, padding: '6px 12px', borderRadius: 20 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+                    <option value="all">All Entities</option>
+                    {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                  </select>
+                )}
                 <button className="btn-secondary" onClick={printGeneralLedger} style={{ fontSize: 13 }}>
                   📒 General Ledger
                 </button>
