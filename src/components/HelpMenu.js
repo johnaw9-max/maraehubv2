@@ -1104,6 +1104,23 @@ const HELP_TOPICS = {
         { q: 'What happens when nothing needs attention?', a: 'The card shows "✅ All clear this week — Nothing urgent needs your attention right now — great governance" in place of the list.' },
       ]
     },
+    {
+      category: 'Full & Short Text Views',
+      icon: '📖',
+      items: [
+        { q: 'What do the "Show full X" toggles do?', a: 'Some Board View sections — Community Feedback, Decisions Required, and Risk Register — show a shortened version of longer text by default, so the page stays scannable. Each section has a "Show full X" link next to its title that expands every item in that section at once. Click it again ("Show shorter X") to collapse back to summaries.' },
+        { q: 'Why does MaraeHub shorten text by default?', a: 'Different trustees want different things from Board View — some want a quick, scannable summary they can glance at during a meeting, others want the full detail without extra clicks. Showing summaries by default with a one-click expand lets each trustee choose, rather than forcing everyone into the same view.' },
+        { q: 'Where do these section-wide toggles appear?', a: [
+          { items: [
+            'Community Feedback — "Show full comments" / "Show shorter comments", next to the section title. Expands every comment at once.',
+            'Decisions Required — "Show full actions" / "Show shorter actions". Expands every overdue meeting action\'s description.',
+            'Risk Register (on Board View) — "Show full risks" / "Show shorter risks". Expands every High-rated open risk\'s description.',
+          ]},
+        ] },
+        { q: 'What is "Read more" on an individual Community Feedback comment?', a: 'Separate from the section-wide toggle above — any single comment longer than 150 characters gets its own "Read more" link, so you can expand just that one comment without expanding every comment in the section. Click "Show less" to collapse it again. This per-comment link disappears once "Show full comments" is switched on for the whole section, since everything is already expanded at that point.' },
+        { q: 'Do these choices get remembered?', a: 'No — they reset every time Board View reloads. This is a display preference for the page you are currently looking at, not a saved setting.' },
+      ]
+    },
   ],
   community: [
     {
