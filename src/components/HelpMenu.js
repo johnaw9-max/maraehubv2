@@ -369,6 +369,25 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Financial Report & Governance Report',
+      icon: '📄',
+      items: [
+        { q: 'What are the Financial Report and Governance Report buttons?', a: 'Two buttons at the top of Board View, next to Print, that generate a clean, print-ready document instead of a snapshot of your screen. Both are entity-aware — generate one for a specific entity, or for your whole marae.' },
+        { q: 'What does the Financial Report show?', a: 'Income, Expenses, and your Net Surplus or Deficit — nothing else. If your marae has Xero connected, it shows a note explaining that Xero\'s totals cannot be broken down by entity instead of a figure.' },
+        { q: 'What does the Governance Report show?', a: [
+          { text: 'A full picture, not just the exceptions Board View highlights on screen:' },
+          { items: [
+            'Compliance — every item with its status, plus the same Overdue/Due Soon/Never Assessed/Compliant tile counts shown on Board View',
+            'Risk Register — every risk with its rating and status, not just High-rated ones',
+            'Assets — your physical asset register (name, category, location, condition, value)',
+          ]},
+          { text: 'Inventory items (linen, kitchen supplies, etc.) are not included here — use the Assets tab\'s own "🖨️ Print Stocktake" button for those.' },
+        ] },
+        { q: 'How do I generate a report for one specific entity?', a: 'Use the entity dropdown next to the report buttons on Board View to choose an entity, then click either report button. It opens in a new tab, ready to print or save as PDF. Choose "All Entities" for a whole-marae version of the same report.' },
+        { q: 'Does this replace the Print button?', a: 'No. Print still does exactly what it always has — a snapshot of whatever is currently on your screen. Financial Report and Governance Report are separate, purpose-built documents designed to be handed to trustees or an entity\'s own committee.' },
+      ]
+    },
+    {
       category: 'Finding Your Way Around',
       icon: '🗺️',
       items: [
@@ -750,6 +769,19 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Multi-Entity Support',
+      icon: '🏢',
+      items: [
+        { q: 'What is Multi-Entity Support?', a: 'If your marae has separate parts that need to stay genuinely private from each other — for example a kōhanga reo alongside the main trust — Entities let you keep their records apart. This is real database-level privacy, not just a screen filter: a Standard Trustee only sees an entity\'s records if they have been assigned to it.' },
+        { q: 'How do I create an entity?', a: 'Go to Settings and open the Entities panel. Type a name into "Entity name..." and click "+ Add Entity". It appears in the list immediately, ready to tag records with.' },
+        { q: 'How do I rename an entity?', a: 'In Settings → Entities, click "Edit" next to the entity, change the name, and click "Save".' },
+        { q: 'How do I assign a trustee to an entity?', a: 'Go to Settings and open the Entity Assignments panel (Admin Trustees only). For each Standard Trustee, click the entity buttons to toggle their access on or off. Admin Trustees see every entity automatically and are not listed here — there is nothing to assign them.' },
+        { q: 'How do I tag a record with an entity?', a: 'Every Add/Edit form that supports entities — Compliance, Risk Register, Finance, Assets, Documents, Bookings, and Minutes — has an Entity dropdown. It defaults to "— Shared (all entities) —", meaning every trustee can see it. Choose a specific entity to make that record private to trustees assigned to it.' },
+        { q: 'Who can actually see an entity-tagged record?', a: 'Admin Trustees see everything, always. A Standard Trustee sees a record if it is Shared (the default), or if they have been assigned to the specific entity it is tagged with. This is enforced at the database level, not just hidden on screen.' },
+        { q: 'Can I view just one entity\'s records without changing who can access them?', a: 'Yes. Most module pages and Board View have an entity dropdown near the top to switch your own view between "All Entities" and a specific one. This only changes what you are looking at — it does not change which trustees can access which records. That is controlled separately by tagging and Entity Assignments above.' },
+      ]
+    },
+    {
       category: 'Posting to Facebook',
       icon: '📘',
       items: [
@@ -1053,13 +1085,23 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Your Top 3 Priorities',
+      category: 'Focus This Week',
       icon: '🎯',
       items: [
-        { q: 'What is the "This Week" card?', a: 'A rule-based summary at the top of your Dashboard showing the 3 most urgent items across compliance, risks, bookings, tasks, grants and assets.' },
-        { q: 'How are priorities ranked?', a: 'Overdue items appear first (red), followed by items due within 7 days (amber). The most urgent item is always ranked number 1.' },
-        { q: 'What does "What\'s going well" mean?', a: 'Below the urgent items MaraeHub shows one positive update — something your marae is doing well right now.' },
-        { q: 'Can I dismiss or change the priorities?', a: 'No — they update automatically based on your real data. Resolve the underlying issue and it will clear from the list.' },
+        { q: 'What is the Focus This Week card?', a: 'A rule-based summary at the top of Board View, directly above Compliance, showing up to 3 of the most important things needing attention right now — drawn from the Risk Register, Meeting Actions, Asset Service Reminders, and Finance.' },
+        { q: 'What do the "Urgent" and "Worth a look" badges mean?', a: [
+          { header: 'Urgent (red) means it needs immediate attention:', items: [
+            'A meeting action or service reminder overdue by more than 7 days',
+            'A high-rated risk whose review date has passed',
+          ]},
+          { header: '"Worth a look" (amber) means it is flagged but less time-critical:', items: [
+            'A meeting action or service reminder overdue by 7 days or less',
+            'Finance running a deficit this year — Finance never escalates to Urgent',
+          ]},
+        ] },
+        { q: 'How are the 3 items chosen?', a: 'MaraeHub picks at most one item from each of Risk, Meeting Actions, Service Reminders, and Finance, then ranks all Urgent items above all Worth a look items.' },
+        { q: 'What does "No owner assigned" mean?', a: 'It means the underlying record — a risk, action, or reminder — has no responsible person set. Click "Assign →" to jump straight to that record and set one.' },
+        { q: 'What happens when nothing needs attention?', a: 'The card shows "✅ All clear this week — Nothing urgent needs your attention right now — great governance" in place of the list.' },
       ]
     },
   ],
