@@ -79,6 +79,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [editingEntityName, setEditingEntityName] = useState('');
   const [renamingEntity, setRenamingEntity] = useState(false);
   const [banningId, setBanningId] = useState(null);
+  const entityLimitReached = entities.length >= 3;
 
   // Invite trustee state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -898,6 +899,12 @@ export default function MaraeSettings({ profile, isAdmin }) {
           Entities let you keep separate parts of your organisation (e.g. a kōhanga reo alongside the main trust) private from each other. Create them here, then select an entity when adding records in Compliance, Risk Register, or Finance to tag them.
         </p>
 
+        {entityLimitReached && (
+          <div className="alert alert-error" style={{ marginBottom: 12 }}>
+            You've reached the maximum of 3 entities per marae. Rename an existing entity below if you need a different one.
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <input
             className="form-input"
@@ -906,12 +913,12 @@ export default function MaraeSettings({ profile, isAdmin }) {
             value={newEntityName}
             onChange={e => { setNewEntityName(e.target.value); setEntitiesError(''); }}
             onKeyDown={e => { if (e.key === 'Enter') createEntity(); }}
-            disabled={addingEntity}
+            disabled={addingEntity || entityLimitReached}
           />
           <button
             className="btn-primary"
             onClick={createEntity}
-            disabled={addingEntity || !newEntityName.trim()}
+            disabled={addingEntity || !newEntityName.trim() || entityLimitReached}
             style={{ flexShrink: 0, fontSize: 13 }}
           >
             {addingEntity ? 'Creating…' : '+ Add Entity'}

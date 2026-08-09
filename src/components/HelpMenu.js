@@ -159,6 +159,21 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Data & Security',
+      icon: '🔐',
+      items: [
+        { q: "Where is our marae's data stored, and what technology does MaraeHub use?", a: [
+          { text: 'MaraeHub is built on a set of trusted, industry-standard platforms:' },
+          { items: [
+            "Supabase — securely stores your marae's data (built on PostgreSQL, a widely-used, proven database system)",
+            'Vercel — hosts and delivers the MaraeHub application itself',
+            'Xero (optional) — if you choose to connect it, syncs your real accounting data directly into Finance',
+          ]},
+          { text: "Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed." },
+        ] },
+      ]
+    },
+    {
       category: 'Decision Register',
       icon: '📋',
       items: [
