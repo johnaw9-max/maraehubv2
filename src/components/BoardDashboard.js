@@ -1135,6 +1135,68 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       </div>
 
+      {/* ══════════════════════════ TOP PRIORITIES ══════════════════════════ */}
+      <GroupHeading title="Top Priorities" />
+
+      {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
+      {(INSIGHTS.length > 0 || d.workflowInstances.length > 0) && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="💡" title="Top Priorities" count={INSIGHTS.length || undefined} />
+          {INSIGHTS.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {INSIGHTS.map((ins, i) => {
+                const s = {
+                  red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
+                  amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
+                  green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
+                }[ins.level];
+                const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
+                return (
+                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
+                    <span style={{ flexShrink: 0 }}>{icon}</span>
+                    <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
+                    {ins.navTo && onNavigate && (
+                      <button
+                        onClick={() => onNavigate(ins.navTo)}
+                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        {NAV_LABELS[ins.navTo] || 'View →'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {d.workflowInstances.length > 0 && (
+            <div style={{ marginTop: INSIGHTS.length > 0 ? 14 : 0, paddingTop: INSIGHTS.length > 0 ? 12 : 0, borderTop: INSIGHTS.length > 0 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
+                  <div style={{ fontSize: 10, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
+                  <div style={{ fontSize: 10, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
+                </div>
+                {activeWorkflows.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
+                    {activeWorkflows.slice(0, 3).map(w => (
+                      <div key={w.id} style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
+                        {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
+                      </div>
+                    ))}
+                    {activeWorkflows.length > 3 && <div style={{ fontSize: 10, color: 'var(--text3)' }}>+{activeWorkflows.length - 3} more active</div>}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ══════════════════════════ COMPLIANCE ══════════════════════════ */}
       <GroupHeading title="Compliance" />
 
@@ -1555,68 +1617,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           </div>
         </div>
       )}
-      {/* ══════════════════════════ TOP PRIORITIES ══════════════════════════ */}
-      <GroupHeading title="Top Priorities" />
-
-      {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
-      {(INSIGHTS.length > 0 || d.workflowInstances.length > 0) && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="💡" title="Top Priorities" count={INSIGHTS.length || undefined} />
-          {INSIGHTS.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {INSIGHTS.map((ins, i) => {
-                const s = {
-                  red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
-                  amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
-                  green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
-                }[ins.level];
-                const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
-                return (
-                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
-                    <span style={{ flexShrink: 0 }}>{icon}</span>
-                    <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
-                    {ins.navTo && onNavigate && (
-                      <button
-                        onClick={() => onNavigate(ins.navTo)}
-                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
-                      >
-                        {NAV_LABELS[ins.navTo] || 'View →'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {d.workflowInstances.length > 0 && (
-            <div style={{ marginTop: INSIGHTS.length > 0 ? 14 : 0, paddingTop: INSIGHTS.length > 0 ? 12 : 0, borderTop: INSIGHTS.length > 0 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
-                  <div style={{ fontSize: 10, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
-                  <div style={{ fontSize: 10, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
-                </div>
-                {activeWorkflows.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
-                    {activeWorkflows.slice(0, 3).map(w => (
-                      <div key={w.id} style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
-                        {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
-                      </div>
-                    ))}
-                    {activeWorkflows.length > 3 && <div style={{ fontSize: 10, color: 'var(--text3)' }}>+{activeWorkflows.length - 3} more active</div>}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* ══════════════════════════ OPERATIONS ══════════════════════════ */}
       <GroupHeading title="Operations" />
 
