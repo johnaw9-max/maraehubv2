@@ -63,6 +63,12 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [trusteePermsError, setTrusteePermsError] = useState('');
   const [trusteePermsSuccess, setTrusteePermsSuccess] = useState('');
 
+  // Entity assignments state
+  const [assignments, setAssignments] = useState([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [assignmentsError, setAssignmentsError] = useState('');
+  const [togglingKey, setTogglingKey] = useState(null);
+
   // Entities
   const [entities, setEntities] = useState([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -108,7 +114,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchSettings();
     fetchTemplates();
     if (profile?.id) fetchNotifPrefs(profile.id);
-    if (isAdmin) fetchTrustees();
+    if (isAdmin) { fetchTrustees(); fetchAssignments(); }
     fetchEntities();
     fetchXeroStatus();
 
@@ -277,6 +283,24 @@ export default function MaraeSettings({ profile, isAdmin }) {
       .order('full_name');
     setTrustees(data || []);
     setTrusteePermsLoading(false);
+  }
+
+  async function fetchAssignments() {
+    setAssignmentsLoading(true);
+    const { data } = await supabase.from('trustee_entities').select('profile_id, entity_id');
+    setAssignments(data || []);
+    setAssignmentsLoading(false);
+  }
+
+  async function toggleAssignment(trusteeId, entityId, isAssigned) {
+    setAssignmentsError('');
+    setTogglingKey(`${trusteeId}:${entityId}`);
+    const { error } = isAssigned
+      ? await supabase.from('trustee_entities').delete().eq('profile_id', trusteeId).eq('entity_id', entityId)
+      : await supabase.from('trustee_entities').insert({ profile_id: trusteeId, entity_id: entityId });
+    setTogglingKey(null);
+    if (error) { setAssignmentsError(error.message); return; }
+    fetchAssignments();
   }
 
   async function fetchEntities() {
@@ -940,6 +964,74 @@ export default function MaraeSettings({ profile, isAdmin }) {
           ))
         )}
       </div>
+
+      {/* ── ENTITY ASSIGNMENTS (admin only) ── */}
+      {isAdmin && entities.length > 0 && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            Entity Assignments
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>
+            Choose which entities each Standard Trustee can access. Admin Trustees see every entity automatically and don't need assignment. A trustee with no entities selected still sees shared, untagged records.
+          </p>
+
+          {assignmentsError && (
+            <div className="alert alert-error" style={{ marginTop: 12, marginBottom: 12 }}>{assignmentsError}</div>
+          )}
+
+          <div style={{ marginTop: 16 }}>
+            {(trusteePermsLoading || assignmentsLoading) ? (
+              <div className="loading">Loading assignments...</div>
+            ) : trustees.filter(t => t.trustee_role !== 'admin').length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--text3)' }}>No Standard Trustees yet — all trustees are Admin and already see everything.</div>
+            ) : (
+              trustees.filter(t => t.trustee_role !== 'admin').map(t => (
+                <div key={t.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: 8, marginBottom: 8, flexWrap: 'wrap',
+                }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%', background: 'var(--brand)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 600, color: '#fff', flexShrink: 0,
+                  }}>
+                    {t.full_name ? t.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{t.full_name || '—'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>{t.email}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                    {entities.map(ent => {
+                      const isAssigned = assignments.some(a => a.profile_id === t.id && a.entity_id === ent.id);
+                      const key = `${t.id}:${ent.id}`;
+                      return (
+                        <button
+                          key={ent.id}
+                          onClick={() => toggleAssignment(t.id, ent.id, isAssigned)}
+                          disabled={togglingKey === key}
+                          style={{
+                            fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                            cursor: togglingKey === key ? 'default' : 'pointer',
+                            border: '1px solid var(--border)',
+                            background: isAssigned ? 'var(--brand)' : 'var(--surface)',
+                            color: isAssigned ? '#fff' : 'var(--text2)',
+                            fontWeight: isAssigned ? 600 : 400,
+                            opacity: togglingKey === key ? 0.6 : 1,
+                          }}
+                        >
+                          {isAssigned ? '✓ ' : ''}{ent.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── TRUSTEE PERMISSIONS (admin only) ── */}
       {isAdmin && (
