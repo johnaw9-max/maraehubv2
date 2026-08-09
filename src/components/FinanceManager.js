@@ -118,6 +118,7 @@ export default function FinanceManager() {
   // Data
   const [income, setIncome]     = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [entityFilter, setEntityFilter] = useState('all');
   const [budgets, setBudgets]   = useState([]);
   const [balanceSheet, setBalanceSheet] = useState(null);
   const [equipmentValue, setEquipmentValue] = useState(0);
@@ -774,6 +775,9 @@ ${loanHtml}
     },
   ];
 
+  const filteredIncome = income.filter(row => entityFilter === 'all' || row.entity_id === entityFilter || row.entity_id === null);
+  const filteredExpenses = expenses.filter(row => entityFilter === 'all' || row.entity_id === entityFilter || row.entity_id === null);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────────
@@ -822,9 +826,15 @@ ${loanHtml}
       {section === 'income' && (
         <div>
           <SectionHeader
-            icon="💵" title="Income" count={income.length}
+            icon="💵" title="Income" count={filteredIncome.length}
             action={
               <div style={{ display: 'flex', gap: 8 }}>
+                {entities.length > 0 && (
+                  <select className="form-input" style={{ width: 'auto', fontSize: 12, padding: '6px 12px', borderRadius: 20 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+                    <option value="all">All Entities</option>
+                    {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                  </select>
+                )}
                 <button className="btn-secondary" onClick={openSyncModal} style={{ fontSize: 12, padding: '7px 14px' }}>
                   ↓ Re-sync / Backup
                 </button>
@@ -835,7 +845,7 @@ ${loanHtml}
             }
           />
 
-          {income.length === 0 ? (
+          {filteredIncome.length === 0 ? (
             <div className="empty-state"><div className="emoji">💵</div><div>No income recorded for FY {fyLabel(fy)}</div></div>
           ) : (
             <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
@@ -848,7 +858,7 @@ ${loanHtml}
                   </tr>
                 </thead>
                 <tbody>
-                  {income.map(row => {
+                  {filteredIncome.map(row => {
                     const catC = INCOME_CAT_COLORS[row.category] || INCOME_CAT_COLORS.Other;
                     const entityName = row.entity_id ? entities.find(e => e.id === row.entity_id)?.name : null;
                     return (
@@ -898,11 +908,21 @@ ${loanHtml}
       {section === 'expenses' && (
         <div>
           <SectionHeader
-            icon="📤" title="Expenses" count={expenses.length}
-            action={<button className="btn-primary" onClick={openAddExpense} style={{ fontSize: 13 }}>+ Add Expense</button>}
+            icon="📤" title="Expenses" count={filteredExpenses.length}
+            action={
+              <div style={{ display: 'flex', gap: 8 }}>
+                {entities.length > 0 && (
+                  <select className="form-input" style={{ width: 'auto', fontSize: 12, padding: '6px 12px', borderRadius: 20 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+                    <option value="all">All Entities</option>
+                    {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                  </select>
+                )}
+                <button className="btn-primary" onClick={openAddExpense} style={{ fontSize: 13 }}>+ Add Expense</button>
+              </div>
+            }
           />
 
-          {expenses.length === 0 ? (
+          {filteredExpenses.length === 0 ? (
             <div className="empty-state"><div className="emoji">📤</div><div>No expenses recorded for FY {fyLabel(fy)}</div></div>
           ) : (
             <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
@@ -915,7 +935,7 @@ ${loanHtml}
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.map(row => {
+                  {filteredExpenses.map(row => {
                     const catC = EXPENSE_CAT_COLORS[row.category] || EXPENSE_CAT_COLORS.Other;
                     const entityName = row.entity_id ? entities.find(e => e.id === row.entity_id)?.name : null;
                     return (
