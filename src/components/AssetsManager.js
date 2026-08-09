@@ -253,7 +253,8 @@ export default function AssetsManager({ onStartWorkflow }) {
   function setRField(k, v) { setReminderForm(f => ({ ...f, [k]: v })); }
 
   function printStocktake() {
-    const items = assets.filter(a => a.category === 'Inventory');
+    const items = displayedAssets;
+    const entityName = entityFilter === 'all' ? 'All Entities' : (entities.find(e => e.id === entityFilter)?.name || 'Unknown Entity');
     const rows = items.map(a => `
       <tr>
         <td>${a.name}</td>
@@ -281,6 +282,7 @@ export default function AssetsManager({ onStartWorkflow }) {
           <div class="meta">
             <h1>Inventory Stocktake List</h1>
             <p>Date: ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p>Entity: ${entityName}</p>
             <p>${items.length} item${items.length !== 1 ? 's' : ''}</p>
           </div>
           <div class="sign">
