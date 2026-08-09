@@ -731,6 +731,7 @@ export default function CommitteeMinutes() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [entityFilter, setEntityFilter] = useState('all');
   const [mainTab, setMainTab] = useState('meetings');
   const [decisionSearch, setDecisionSearch] = useState('');
   const [decisionStatusFilter, setDecisionStatusFilter] = useState('all');
@@ -901,7 +902,8 @@ export default function CommitteeMinutes() {
   const filtered = meetings.filter(m => {
     const matchSearch = !search || m.title.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === 'all' || m.meeting_type === filterType;
-    return matchSearch && matchType;
+    const matchEntity = entityFilter === 'all' || m.entity_id === entityFilter || m.entity_id === null;
+    return matchSearch && matchType && matchEntity;
   });
 
   if (view === 'form') {
@@ -1009,6 +1011,12 @@ export default function CommitteeMinutes() {
                 </button>
               ))}
             </div>
+            {entities.length > 0 && (
+              <select className="form-input" style={{ width: 'auto', fontSize: 12, padding: '6px 12px', borderRadius: 20 }} value={entityFilter} onChange={e => setEntityFilter(e.target.value)}>
+                <option value="all">All Entities</option>
+                {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+              </select>
+            )}
           </div>
 
           {/* MEETINGS LIST */}
