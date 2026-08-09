@@ -189,6 +189,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const [financeEntityFilter, setFinanceEntityFilter] = useState('all');
   const [complianceEntityFilter, setComplianceEntityFilter] = useState('all');
   const [riskEntityFilter, setRiskEntityFilter] = useState('all');
+  const [reportEntityFilter, setReportEntityFilter] = useState('all');
   const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [expandedComments, setExpandedComments] = useState(new Set());
@@ -403,6 +404,31 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
   const panelOpenRisksWithControls = panelOpenRisks.filter(r => r.controls);
   const panelRiskControlsPct = panelOpenRisks.length ? Math.round((panelOpenRisksWithControls.length / panelOpenRisks.length) * 100) : 100;
   const { riskPct: panelRiskPct } = getRiskStatus(risksForPanel);
+
+  // ─── ENTITY REPORT (deliberately independent of the 3 panel filters above —
+  // those are separate per-panel view state and can genuinely disagree; the
+  // report needs one unambiguous answer, so it gets its own selector and its
+  // own full-register data, not the panels' curated-exceptions subsets) ──────
+  const reportCompliance = reportEntityFilter === 'all'
+    ? d.compliance
+    : d.compliance.filter(c => c.entity_id === reportEntityFilter || c.entity_id === null);
+  const reportRisks = reportEntityFilter === 'all'
+    ? (d.risks || [])
+    : (d.risks || []).filter(r => r.entity_id === reportEntityFilter || r.entity_id === null);
+  const reportFinance = xeroConnected
+    ? null
+    : (reportEntityFilter === 'all'
+        ? { income: d.finIncome || [], expenses: d.finExpenses || [] }
+        : {
+            income:   (d.finIncome   || []).filter(r => r.entity_id === reportEntityFilter || r.entity_id === null),
+            expenses: (d.finExpenses || []).filter(r => r.entity_id === reportEntityFilter || r.entity_id === null),
+          });
+  // Physical assets only - Inventory already has its own dedicated, entity-aware
+  // print feature (Stocktake), kept separate rather than duplicated here.
+  const reportPhysicalAssets = d.assets.filter(a => a.category !== 'Inventory');
+  const reportAssets = reportEntityFilter === 'all'
+    ? reportPhysicalAssets
+    : reportPhysicalAssets.filter(a => a.entity_id === reportEntityFilter || a.entity_id === null);
 
   // ─── HEALTH SCORE ──────────────────────────────────────────────────────────
   const scorableTasks  = d.tasks.filter(t => !t.title?.startsWith('UPCOMING: '));
@@ -807,6 +833,113 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     });
   }
 
+  function reportEntityName(entityId) {
+    if (entityId === 'all') return 'All Entities';
+    return (d.entities || []).find(e => e.id === entityId)?.name || 'Unknown Entity';
+  }
+
+  function printFinancialReport(entityId) {
+    const entityName = reportEntityName(entityId);
+
+    const financeSection = xeroConnected
+      ? `<p style="font-size:12px;color:#a63020;font-style:italic">Finance is connected to Xero, whose totals cannot be broken down by entity — no per-entity Finance figures are available for this report.</p>`
+      : (() => {
+          const totalIncome   = reportFinance.income.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+          const totalExpenses = reportFinance.expenses.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+          const net = totalIncome - totalExpenses;
+          return `<table>
+            <tr><th>Category</th><th style="text-align:right">Amount</th></tr>
+            <tr><td>Total Income</td><td style="text-align:right">${fmtMoney(totalIncome)}</td></tr>
+            <tr><td>Total Expenses</td><td style="text-align:right">${fmtMoney(totalExpenses)}</td></tr>
+            <tr style="font-weight:bold;border-top:2px solid #ccc"><td>${net >= 0 ? 'Net Surplus' : 'Net Deficit'}</td><td style="text-align:right">${fmtMoney(Math.abs(net))}</td></tr>
+          </table>`;
+        })();
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Financial Report — ${entityName}</title>
+<style>body{font-family:Georgia,serif;max-width:840px;margin:40px auto;color:#222;line-height:1.6}h1{font-size:24px;border-bottom:2px solid #1a4a3a;padding-bottom:8px}h2{font-size:16px;margin-top:28px;color:#1a4a3a}table{width:100%;border-collapse:collapse;margin:12px 0}th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:13px}td{padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}</style>
+</head><body>
+<h1>Financial Report — ${entityName}</h1>
+<p style="color:#666;font-size:13px">${d.maraeName} · Generated ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+
+<h2>Finance</h2>
+${financeSection}
+
+<p style="font-size:11px;color:#999;margin-top:32px">Generated by MaraeHub · maraehub.com</p>
+</body></html>`);
+    win.document.close();
+    win.print();
+  }
+
+  function printGovernanceReport(entityId) {
+    const entityName = reportEntityName(entityId);
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
+
+    function complianceRowStatus(c) {
+      if (c.due_date && new Date(c.due_date + 'T12:00:00') < now) return 'Overdue';
+      if (c.due_date && new Date(c.due_date + 'T12:00:00') <= in30) return 'Due Soon';
+      if (!c.due_date && !c.last_checked_date) return 'Never Assessed';
+      return 'Compliant';
+    }
+
+    const complianceStatus = getComplianceStatus(reportCompliance);
+    const complianceRows = reportCompliance.map(c => `
+      <tr>
+        <td>${c.name}</td>
+        <td>${c.category}</td>
+        <td>${fmt(c.due_date)}</td>
+        <td>${complianceRowStatus(c)}</td>
+      </tr>`).join('');
+
+    const { highOpen: reportHighOpenRisks } = getRiskStatus(reportRisks);
+    const riskRows = reportRisks.map(r => `
+      <tr>
+        <td>${stripUrls(r.risk_description)}</td>
+        <td>${r.category}</td>
+        <td>${r.risk_rating || '—'}</td>
+        <td>${r.status}</td>
+      </tr>`).join('');
+
+    const assetRows = reportAssets.map(a => `
+      <tr>
+        <td>${a.name}</td>
+        <td>${a.category}</td>
+        <td>${a.location || 'No location'}</td>
+        <td style="text-transform:capitalize">${a.condition || '—'}</td>
+        <td style="text-align:right">${a.value ? '$' + Number(a.value).toLocaleString() : '—'}</td>
+      </tr>`).join('');
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Governance Report — ${entityName}</title>
+<style>body{font-family:Georgia,serif;max-width:840px;margin:40px auto;color:#222;line-height:1.6}h1{font-size:24px;border-bottom:2px solid #1a4a3a;padding-bottom:8px}h2{font-size:16px;margin-top:28px;color:#1a4a3a}table{width:100%;border-collapse:collapse;margin:12px 0}th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:13px}td{padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}.tiles{display:flex;gap:14px;margin:12px 0}.tile{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:6px;text-align:center}.tile .n{font-size:20px;font-weight:700}.tile .l{font-size:11px;color:#666}</style>
+</head><body>
+<h1>Governance Report — ${entityName}</h1>
+<p style="color:#666;font-size:13px">${d.maraeName} · Generated ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+
+<h2>Compliance</h2>
+<div class="tiles">
+  <div class="tile"><div class="n">${complianceStatus.overdue.length}</div><div class="l">Overdue</div></div>
+  <div class="tile"><div class="n">${complianceStatus.dueSoon.length}</div><div class="l">Due Soon</div></div>
+  <div class="tile"><div class="n">${complianceStatus.neverAssessed.length}</div><div class="l">Never Assessed</div></div>
+  <div class="tile"><div class="n">${complianceStatus.compliant.length}</div><div class="l">Compliant</div></div>
+  <div class="tile"><div class="n">${complianceStatus.compliancePct}%</div><div class="l">% Compliant</div></div>
+</div>
+${reportCompliance.length === 0 ? '<p style="font-size:13px;color:#666">No compliance items for this entity.</p>' : `<table><tr><th>Item</th><th>Category</th><th>Due Date</th><th>Status</th></tr>${complianceRows}</table>`}
+
+<h2>Risk Register</h2>
+<p style="font-size:12px;color:#666">${reportRisks.length} risk${reportRisks.length !== 1 ? 's' : ''} · ${reportHighOpenRisks.length} High-rated and open</p>
+${reportRisks.length === 0 ? '<p style="font-size:13px;color:#666">No risks recorded for this entity.</p>' : `<table><tr><th>Risk</th><th>Category</th><th>Rating</th><th>Status</th></tr>${riskRows}</table>`}
+
+<h2>Assets</h2>
+${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical assets for this entity.</p>' : `<table><tr><th>Asset</th><th>Category</th><th>Location</th><th>Condition</th><th style="text-align:right">Value</th></tr>${assetRows}</table>`}
+
+<p style="font-size:11px;color:#999;margin-top:32px">Generated by MaraeHub · maraehub.com</p>
+</body></html>`);
+    win.document.close();
+    win.print();
+  }
+
   function toggleComment(i) {
     setExpandedComments(prev => {
       const next = new Set(prev);
@@ -848,6 +981,29 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
             {aiLoading ? '⏳ Generating…' : '✨ AI Report'}
           </button>
           */}
+          {(d.entities || []).length > 0 && (
+            <select
+              className="no-print"
+              value={reportEntityFilter}
+              onChange={e => setReportEntityFilter(e.target.value)}
+              style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+            >
+              <option value="all">All Entities</option>
+              {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+            </select>
+          )}
+          <button
+            onClick={() => printFinancialReport(reportEntityFilter)}
+            style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            💰 Financial Report
+          </button>
+          <button
+            onClick={() => printGovernanceReport(reportEntityFilter)}
+            style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            📋 Governance Report
+          </button>
           <button
             onClick={() => window.print()}
             style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
