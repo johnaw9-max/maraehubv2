@@ -1,4 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+// ⚠️ ORPHANED — not imported anywhere in the app (confirmed 2026-08-11 via a
+// repo-wide search for "ContractorsDirectory" outside this file: zero hits).
+// The real, live "Add Contractor" UI is ContactsManager.js, rendered under
+// TrusteeDashboard.js's Contacts tab — that's where the file-attachment
+// feature was actually built. This file is a complete, working, but unused
+// standalone component. History/intent unknown — not deleted, since it's not
+// clear whether it's dead leftover or an intended future replacement for
+// ContactsManager's contractor section. Worth deciding what to do with it
+// (wire it in, or delete it) in a future session, not resolved here.
+
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 const TRADES = [
@@ -23,6 +33,7 @@ const TRADE_STYLE = {
 const EMPTY_FORM = {
   name: '', trade: 'Plumber', company: '', phone: '', email: '',
   address: '', notes: '', preferred: false,
+  document_url: null, document_name: null,
 };
 
 export default function ContractorsDirectory() {
@@ -36,6 +47,9 @@ export default function ContractorsDirectory() {
   const [search, setSearch]           = useState('');
   const [filterTrade, setFilterTrade] = useState('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [docFile, setDocFile]         = useState(null);
+  const [openingDocId, setOpeningDocId] = useState(null);
+  const docFileRef = useRef();
 
   useEffect(() => { fetchContractors(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -77,6 +91,7 @@ export default function ContractorsDirectory() {
     setForm(EMPTY_FORM);
     setEditId(null);
     setError('');
+    setDocFile(null);
     setShowForm(true);
   }
 
@@ -85,9 +100,11 @@ export default function ContractorsDirectory() {
       name: c.name || '', trade: c.trade || 'Plumber', company: c.company || '',
       phone: c.phone || '', email: c.email || '', address: c.address || '',
       notes: c.notes || '', preferred: c.preferred || false,
+      document_url: c.document_url || null, document_name: c.document_name || null,
     });
     setEditId(c.id);
     setError('');
+    setDocFile(null);
     setShowForm(true);
   }
 
@@ -95,6 +112,7 @@ export default function ContractorsDirectory() {
     setShowForm(false);
     setEditId(null);
     setError('');
+    setDocFile(null);
   }
 
   async function handleSave() {
@@ -102,6 +120,24 @@ export default function ContractorsDirectory() {
     if (!form.trade)       { setError('Trade is required.'); return; }
     setSaving(true);
     setError('');
+
+    // document_url stores the raw storage path, not a full URL — a fresh
+    // signed link is generated lazily on click (handleOpenAttachment),
+    // matching Committee Minutes' pattern. Private bucket, so a stored
+    // public/signed URL would go stale; the path itself never expires.
+    let document_url  = form.document_url;
+    let document_name = form.document_name;
+    if (docFile) {
+      const path = `contractors/${Date.now()}-${docFile.name.replace(/\s+/g, '_')}`;
+      const { error: upErr } = await supabase.storage.from('contractor-docs').upload(path, docFile);
+      if (upErr) {
+        console.warn('[ContractorsDirectory] storage upload failed:', upErr.message);
+      } else {
+        document_url  = path;
+        document_name = docFile.name;
+      }
+    }
+
     const payload = {
       name:      form.name.trim(),
       trade:     form.trade,
@@ -111,6 +147,8 @@ export default function ContractorsDirectory() {
       address:   form.address.trim() || null,
       notes:     form.notes.trim()   || null,
       preferred: form.preferred,
+      document_url,
+      document_name,
     };
     const { error: err } = editId
       ? await supabase.from('contractors').update(payload).eq('id', editId)
@@ -119,6 +157,14 @@ export default function ContractorsDirectory() {
     setSaving(false);
     closeForm();
     fetchContractors();
+  }
+
+  async function handleOpenAttachment(c) {
+    if (!c.document_url) return;
+    setOpeningDocId(c.id);
+    const { data } = await supabase.storage.from('contractor-docs').createSignedUrl(c.document_url, 3600);
+    setOpeningDocId(null);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
 
   async function handleDelete() {
@@ -285,6 +331,24 @@ export default function ContractorsDirectory() {
                       {c.notes.length > 100 ? c.notes.slice(0, 100) + '…' : c.notes}
                     </div>
                   )}
+                  {c.document_url && (
+                    <button
+                      onClick={() => handleOpenAttachment(c)}
+                      disabled={openingDocId === c.id}
+                      title={c.document_name || 'View document'}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
+                        color: 'var(--brand-light)', background: 'none', border: 'none',
+                        padding: 0, marginTop: 2, cursor: openingDocId === c.id ? 'default' : 'pointer',
+                        textAlign: 'left', overflow: 'hidden',
+                      }}
+                    >
+                      <span style={{ flexShrink: 0 }}>📎</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {openingDocId === c.id ? 'Opening…' : (c.document_name || 'View document')}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Card actions */}
@@ -352,6 +416,38 @@ export default function ContractorsDirectory() {
             <div className="form-group">
               <label className="form-label">Notes</label>
               <textarea className="form-input" rows={3} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Rates, availability, past work notes..." style={{ resize: 'vertical' }} />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Document (e.g. certificate, insurance, contract)</label>
+              {form.document_name && !docFile && (
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>
+                  Current:{' '}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAttachment({ id: editId, document_url: form.document_url })}
+                    disabled={openingDocId === editId}
+                    style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand)', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}
+                  >
+                    {openingDocId === editId ? 'Opening…' : form.document_name}
+                  </button>
+                </div>
+              )}
+              <input
+                type="file"
+                ref={docFileRef}
+                style={{ display: 'none' }}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={e => setDocFile(e.target.files?.[0] || null)}
+              />
+              <button
+                type="button"
+                onClick={() => docFileRef.current?.click()}
+                className="btn-secondary"
+                style={{ fontSize: 12, padding: '6px 14px' }}
+              >
+                {docFile ? `📎 ${docFile.name}` : '📎 Choose file'}
+              </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>

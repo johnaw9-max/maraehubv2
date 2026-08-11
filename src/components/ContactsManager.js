@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ const TRADE_STYLE = {
 };
 
 const EMPTY_USER_FORM       = { full_name: '', email: '', password: '', phone: '', role: 'community', notes: '' };
-const EMPTY_CONTRACTOR_FORM = { name: '', trade: 'Plumber', company: '', phone: '', email: '', address: '', notes: '', preferred: false };
+const EMPTY_CONTRACTOR_FORM = { name: '', trade: 'Plumber', company: '', phone: '', email: '', address: '', notes: '', preferred: false, document_url: null, document_name: null };
 
 function fmt(d) {
   if (!d) return '';
@@ -69,6 +69,9 @@ export default function ContactsManager() {
   const [showContractorForm, setShowContractorForm] = useState(false);
   const [editContractorId, setEditContractorId]     = useState(null);
   const [contractorForm, setContractorForm]         = useState(EMPTY_CONTRACTOR_FORM);
+  const [docFile, setDocFile]                       = useState(null);
+  const [openingDocId, setOpeningDocId]             = useState(null);
+  const docFileRef = useRef();
 
   // Shared
   const [saving, setSaving]   = useState(false);
@@ -203,14 +206,16 @@ export default function ContactsManager() {
     setContractorForm(EMPTY_CONTRACTOR_FORM);
     setEditContractorId(null);
     setError(''); setSuccess('');
+    setDocFile(null);
     setShowContractorForm(true);
     setShowUserForm(false);
   }
 
   function openEditContractor(c) {
-    setContractorForm({ name: c.name || '', trade: c.trade || 'Plumber', company: c.company || '', phone: c.phone || '', email: c.email || '', address: c.address || '', notes: c.notes || '', preferred: c.preferred || false });
+    setContractorForm({ name: c.name || '', trade: c.trade || 'Plumber', company: c.company || '', phone: c.phone || '', email: c.email || '', address: c.address || '', notes: c.notes || '', preferred: c.preferred || false, document_url: c.document_url || null, document_name: c.document_name || null });
     setEditContractorId(c.id);
     setError(''); setSuccess('');
+    setDocFile(null);
     setShowContractorForm(true);
     setShowUserForm(false);
   }
@@ -218,6 +223,24 @@ export default function ContactsManager() {
   async function handleSaveContractor() {
     if (!contractorForm.name.trim()) { setError('Name is required.'); return; }
     setSaving(true); setError('');
+
+    // document_url stores the raw storage path, not a full URL — a fresh
+    // signed link is generated lazily on click (handleOpenAttachment),
+    // matching Committee Minutes' pattern. Private bucket, so a stored
+    // public/signed URL would go stale; the path itself never expires.
+    let document_url  = contractorForm.document_url;
+    let document_name = contractorForm.document_name;
+    if (docFile) {
+      const path = `contractors/${Date.now()}-${docFile.name.replace(/\s+/g, '_')}`;
+      const { error: upErr } = await supabase.storage.from('contractor-docs').upload(path, docFile);
+      if (upErr) {
+        console.warn('[ContactsManager] contractor doc upload failed:', upErr.message);
+      } else {
+        document_url  = path;
+        document_name = docFile.name;
+      }
+    }
+
     const payload = {
       name:      contractorForm.name.trim(),
       trade:     contractorForm.trade,
@@ -227,6 +250,8 @@ export default function ContactsManager() {
       address:   contractorForm.address.trim()  || null,
       notes:     contractorForm.notes.trim()    || null,
       preferred: contractorForm.preferred,
+      document_url,
+      document_name,
     };
     const { error: err } = editContractorId
       ? await supabase.from('contractors').update(payload).eq('id', editContractorId)
@@ -234,6 +259,14 @@ export default function ContactsManager() {
     if (err) { setError(err.message); setSaving(false); return; }
     setShowContractorForm(false); setEditContractorId(null); setSaving(false);
     fetchAll();
+  }
+
+  async function handleOpenAttachment(c) {
+    if (!c.document_url) return;
+    setOpeningDocId(c.id);
+    const { data } = await supabase.storage.from('contractor-docs').createSignedUrl(c.document_url, 3600);
+    setOpeningDocId(null);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
   }
 
   async function togglePreferred(c) {
@@ -416,6 +449,39 @@ export default function ContactsManager() {
             <label className="form-label">Notes</label>
             <textarea className="form-input" rows={2} value={contractorForm.notes} onChange={e => setContractorForm(f => ({ ...f, notes: e.target.value }))} placeholder="Rates, availability, past work notes..." style={{ resize: 'vertical' }} />
           </div>
+
+          <div className="form-group">
+            <label className="form-label">Document (e.g. certificate, insurance, contract)</label>
+            {contractorForm.document_name && !docFile && (
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>
+                Current:{' '}
+                <button
+                  type="button"
+                  onClick={() => handleOpenAttachment({ id: editContractorId, document_url: contractorForm.document_url })}
+                  disabled={openingDocId === editContractorId}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--brand)', cursor: 'pointer', textDecoration: 'underline', fontSize: 12 }}
+                >
+                  {openingDocId === editContractorId ? 'Opening…' : contractorForm.document_name}
+                </button>
+              </div>
+            )}
+            <input
+              type="file"
+              ref={docFileRef}
+              style={{ display: 'none' }}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              onChange={e => setDocFile(e.target.files?.[0] || null)}
+            />
+            <button
+              type="button"
+              onClick={() => docFileRef.current?.click()}
+              className="btn-secondary"
+              style={{ fontSize: 12, padding: '6px 14px' }}
+            >
+              {docFile ? `📎 ${docFile.name}` : '📎 Choose file'}
+            </button>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <span style={{ fontSize: 18 }}>⭐</span>
             <div style={{ flex: 1 }}>
@@ -431,7 +497,7 @@ export default function ContactsManager() {
             </button>
           </div>
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={() => { setShowContractorForm(false); setEditContractorId(null); }}>Cancel</button>
+            <button className="btn-secondary" onClick={() => { setShowContractorForm(false); setEditContractorId(null); setDocFile(null); }}>Cancel</button>
             <button className="btn-primary" onClick={handleSaveContractor} disabled={saving}>
               {saving ? 'Saving...' : editContractorId ? 'Save Changes' : 'Add Contractor'}
             </button>
@@ -517,6 +583,24 @@ export default function ContactsManager() {
                         {c.phone   && <div style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', gap: 5 }}><span>📞</span><a href={`tel:${c.phone}`} style={{ color: 'var(--brand-light)', textDecoration: 'none' }}>{c.phone}</a></div>}
                         {c.email   && <div style={{ fontSize: 12, color: 'var(--text2)', display: 'flex', gap: 5, overflow: 'hidden' }}><span style={{ flexShrink: 0 }}>✉️</span><a href={`mailto:${c.email}`} style={{ color: 'var(--brand-light)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</a></div>}
                         {c.notes   && <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', lineHeight: 1.4 }}>{c.notes.length > 80 ? c.notes.slice(0, 80) + '…' : c.notes}</div>}
+                        {c.document_url && (
+                          <button
+                            onClick={() => handleOpenAttachment(c)}
+                            disabled={openingDocId === c.id}
+                            title={c.document_name || 'View document'}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5, fontSize: 11,
+                              color: 'var(--brand-light)', background: 'none', border: 'none',
+                              padding: 0, cursor: openingDocId === c.id ? 'default' : 'pointer',
+                              textAlign: 'left', overflow: 'hidden',
+                            }}
+                          >
+                            <span style={{ flexShrink: 0 }}>📎</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {openingDocId === c.id ? 'Opening…' : (c.document_name || 'View document')}
+                            </span>
+                          </button>
+                        )}
                       </div>
                       <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
                         <button onClick={() => openEditContractor(c)} style={{ flex: 1, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
