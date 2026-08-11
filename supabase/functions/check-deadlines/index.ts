@@ -18,6 +18,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { EXPECTED_SCHEMA } from './expectedSchema.ts';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -824,6 +825,85 @@ serve(async () => {
     details: orphanedAuthFindings,
   });
 
+  // ── Schema drift check (ClickUp 86d3u7790, Stage 2d) ──────────────────────
+  // schema.sql vs. live database - a table/column existing in one but not
+  // the other. information_schema isn't reachable via PostgREST (confirmed:
+  // HTTP 406 on Accept-Profile: information_schema), same wall as cron/auth,
+  // so this goes through a SECURITY DEFINER RPC
+  // (public.get_public_schema_columns(), migration 20260811000000),
+  // mirroring the pg_class/pg_attribute query already used to build
+  // schema.sql itself.
+  //
+  // EXPECTED_SCHEMA is generated from schema.sql by
+  // scripts/generate-expected-schema.js, committed as expectedSchema.ts -
+  // not read live, since check-deadlines has no filesystem access to the
+  // repo at runtime. Nothing enforces the generator gets re-run when
+  // schema.sql changes - a named, not-solved limitation (see ClickUp task).
+  //
+  // Scoped to table/column names only, not types/constraints/defaults -
+  // matches exactly what was asked. Runs identically on both projects: a
+  // real difference between them (e.g. Tineka lagging behind Opeke on an
+  // untracked migration) is a genuine finding, not a false positive.
+  const { data: liveColumnsRows, error: schemaDriftErr } = await db.rpc('get_public_schema_columns');
+
+  const schemaDriftFindings: { type: string; table: string; column?: string; error?: string }[] = [];
+
+  if (schemaDriftErr) {
+    schemaDriftFindings.push({ type: 'query_failed', table: '(all)', error: schemaDriftErr.message });
+  } else {
+    const liveSchema: Record<string, Set<string>> = {};
+    for (const row of liveColumnsRows ?? []) {
+      if (!liveSchema[row.table_name]) liveSchema[row.table_name] = new Set();
+      liveSchema[row.table_name].add(row.column_name);
+    }
+
+    const expectedTables = Object.keys(EXPECTED_SCHEMA);
+    const liveTables = Object.keys(liveSchema);
+
+    for (const table of expectedTables) {
+      if (!liveSchema[table]) schemaDriftFindings.push({ type: 'missing_table_in_db', table });
+    }
+    for (const table of liveTables) {
+      if (!EXPECTED_SCHEMA[table]) schemaDriftFindings.push({ type: 'missing_table_in_schema_sql', table });
+    }
+
+    for (const table of expectedTables) {
+      if (!liveSchema[table]) continue; // already flagged above as missing_table_in_db
+      for (const column of EXPECTED_SCHEMA[table]) {
+        if (!liveSchema[table].has(column)) {
+          schemaDriftFindings.push({ type: 'missing_column_in_db', table, column });
+        }
+      }
+      for (const column of liveSchema[table]) {
+        if (!EXPECTED_SCHEMA[table].includes(column)) {
+          schemaDriftFindings.push({ type: 'missing_column_in_schema_sql', table, column });
+        }
+      }
+    }
+  }
+
+  if (schemaDriftFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily schema check found ${schemaDriftFindings.length} difference${schemaDriftFindings.length !== 1 ? 's' : ''} between schema.sql and the live database. This shouldn't happen through normal use of the app — worth a look.\n\n` +
+      schemaDriftFindings.map(f => f.error
+        ? `- check could not run (${f.error})`
+        : f.column
+          ? `- ${f.type} — ${f.table}.${f.column}`
+          : `- ${f.type} — ${f.table}`
+      ).join('\n') +
+      `\n\nPlease update schema.sql or the live database directly, then regenerate expectedSchema.ts (scripts/generate-expected-schema.js) if schema.sql changed.` +
+      footer();
+
+    await notifyAdmin(`Schema drift check — ${schemaDriftFindings.length} difference${schemaDriftFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'schema_drift',
+    findings_count: schemaDriftFindings.length,
+    details: schemaDriftFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -833,6 +913,7 @@ serve(async () => {
       single_row_invariant_findings: singleRowFindings.length,
       cron_health_findings: cronFindings.length,
       orphaned_auth_users_findings: orphanedAuthFindings.length,
+      schema_drift_findings: schemaDriftFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
