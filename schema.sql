@@ -2,8 +2,15 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection on 2026-08-10, replacing a hand-authored version
--- from 2026-06-09 that had drifted to cover only 20 of 43 live tables.
+-- pg_catalog introspection, most recently 2026-08-13 (originally 2026-08-10,
+-- replacing a hand-authored version from 2026-06-09 that had drifted to
+-- cover only 20 of 43 live tables). This re-sync catches up on everything
+-- changed on Opeke since 10 August: booking_feedback/booking_checklists'
+-- renamed columns and booking_checklists.completed (fixed to match the
+-- live app code, migration 20260812000000), contractors.document_url/
+-- document_name, and the Stage 3 security RPCs. The anon-read-profiles
+-- policy dropped this session was Tineka-only -- Opeke never had it, so
+-- it does not appear in this diff.
 -- Tables are listed alphabetically (not dependency order — accuracy over
 -- runnable ordering; foreign keys mean this file is not guaranteed to run
 -- top-to-bottom against a fresh empty database without reordering).
@@ -121,11 +128,12 @@ create policy "allow_authenticated"
 create table if not exists booking_checklists (
   id uuid not null default gen_random_uuid(),
   booking_id uuid,
-  checklist_items jsonb,
+  items jsonb,
   completed_by text,
   completed_at timestamp without time zone,
   notes text,
-  created_at timestamp without time zone default now()
+  created_at timestamp without time zone default now(),
+  completed boolean not null default false
 );
 
 alter table booking_checklists add constraint booking_checklists_pkey PRIMARY KEY (id);
@@ -144,22 +152,22 @@ create policy "allow_authenticated"
 create table if not exists booking_feedback (
   id uuid not null default gen_random_uuid(),
   booking_id uuid,
-  rating integer,
-  cleanliness integer,
-  facilities integer,
-  overall_experience text,
+  rating_overall integer,
+  rating_cleanliness integer,
+  rating_facilities integer,
+  experience text,
   would_return boolean,
   suggestions text,
-  submitted_at timestamp without time zone default now(),
+  created_at timestamp without time zone default now(),
   user_id uuid
 );
 
 alter table booking_feedback add constraint booking_feedback_pkey PRIMARY KEY (id);
 alter table booking_feedback add constraint booking_feedback_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 alter table booking_feedback add constraint booking_feedback_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
-alter table booking_feedback add constraint booking_feedback_facilities_check CHECK (((facilities >= 1) AND (facilities <= 5)));
-alter table booking_feedback add constraint booking_feedback_rating_check CHECK (((rating >= 1) AND (rating <= 5)));
-alter table booking_feedback add constraint booking_feedback_cleanliness_check CHECK (((cleanliness >= 1) AND (cleanliness <= 5)));
+alter table booking_feedback add constraint booking_feedback_facilities_check CHECK (((rating_facilities >= 1) AND (rating_facilities <= 5)));
+alter table booking_feedback add constraint booking_feedback_rating_check CHECK (((rating_overall >= 1) AND (rating_overall <= 5)));
+alter table booking_feedback add constraint booking_feedback_cleanliness_check CHECK (((rating_cleanliness >= 1) AND (rating_cleanliness <= 5)));
 
 alter table booking_feedback enable row level security;
 
@@ -298,7 +306,9 @@ create table if not exists contractors (
   address text,
   notes text,
   preferred boolean default false,
-  created_at timestamp without time zone default now()
+  created_at timestamp without time zone default now(),
+  document_url text,
+  document_name text
 );
 
 alter table contractors add constraint contractors_pkey PRIMARY KEY (id);
@@ -1360,6 +1370,18 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.get_anon_granted_policies()
+ RETURNS TABLE(table_name text, policy_name text, cmd text)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select tablename, policyname, cmd
+  from pg_policies
+  where schemaname = 'public' and 'anon' = any(roles);
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.get_meeting_entity_id(check_meeting_id uuid)
  RETURNS uuid
  LANGUAGE sql
@@ -1367,6 +1389,37 @@ CREATE OR REPLACE FUNCTION public.get_meeting_entity_id(check_meeting_id uuid)
  SET search_path TO 'public'
 AS $function$
   select entity_id from meetings where id = check_meeting_id;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.get_public_schema_columns()
+ RETURNS TABLE(table_name text, column_name text)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select c.relname::text as table_name, a.attname::text as column_name
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+  where n.nspname = 'public' and c.relkind = 'r'
+  order by c.relname, a.attnum;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.get_security_definer_function_grants()
+ RETURNS TABLE(function_name text, grantees text[])
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select p.proname::text, array_agg(distinct g.grantee::text order by g.grantee::text)
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  left join information_schema.routine_privileges g
+    on g.routine_name = p.proname and g.routine_schema = 'public'
+  where n.nspname = 'public' and p.prokind = 'f' and p.prosecdef = true
+  group by p.proname;
 $function$
 ;
 
