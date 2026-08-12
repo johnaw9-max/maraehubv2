@@ -25,6 +25,9 @@ const TRADE_STYLE = {
 const EMPTY_USER_FORM       = { full_name: '', email: '', password: '', phone: '', role: 'community', notes: '' };
 const EMPTY_CONTRACTOR_FORM = { name: '', trade: 'Plumber', company: '', phone: '', email: '', address: '', notes: '', preferred: false, document_url: null, document_name: null };
 
+// Pinned to the bottom of the Contacts list regardless of created_at (Support Admin, at Waj's request)
+const PINNED_TO_BOTTOM_ID = '9cdf4319-cb57-40a5-8afc-c6eb564c7029';
+
 function fmt(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -90,6 +93,7 @@ export default function ContactsManager() {
     ]);
     const profileUsers  = (uRes.data  || []).map(u => ({ ...u, _source: 'profiles' }));
     const contactsUsers = (ctRes.data || []).map(u => ({ ...u, _source: 'contacts' }));
+    profileUsers.sort((a, b) => (a.id === PINNED_TO_BOTTOM_ID ? 1 : 0) - (b.id === PINNED_TO_BOTTOM_ID ? 1 : 0));
     setUsers([...profileUsers, ...contactsUsers]);
     setContractors(cRes.data || []);
     setLoading(false);
