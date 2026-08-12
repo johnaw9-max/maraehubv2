@@ -904,6 +904,110 @@ serve(async () => {
     details: schemaDriftFindings,
   });
 
+  // ── Security/access-control check (ClickUp 86d3u7790, Stage 3) ───────────
+  // Check A: any RLS policy in public granting the anon role that isn't on
+  // the reviewed allowlist below. Check B: any SECURITY DEFINER function
+  // whose actual grants don't match the reviewed allowlist below.
+  //
+  // Allowlists are maintained here, not derived from migration-file
+  // comments - check-deadlines has no filesystem/git access to read those
+  // at runtime, and this session's own real bugs proved comments can't be
+  // trusted even when they exist (find_orphaned_auth_users' comment claimed
+  // a lockdown that wasn't real for a full week). Each entry below was
+  // individually verified live before being added, not assumed correct.
+  const ALLOWED_ANON_POLICIES: { table: string; policy: string }[] = [
+    // Deliberately empty as of 12 August 2026 - confirmed zero anon-role
+    // policies exist on either project right now. Both real instances found
+    // this session (profiles, and indirectly the trustee-login-activity
+    // RPC) are already fixed. Add an entry here only after confirming a
+    // genuine, deliberate need - e.g. a real public-facing booking flow -
+    // never as a default to silence a finding.
+  ];
+
+  const ALLOWED_SECURITY_DEFINER_GRANTS: { function: string; grantees: string[]; reason: string }[] = [
+    { function: 'find_orphaned_auth_users', grantees: ['postgres', 'service_role'],
+      reason: 'Returns real trustee email addresses - locked 5 Aug 2026' },
+    { function: 'get_public_schema_columns', grantees: ['postgres', 'service_role'],
+      reason: 'Schema introspection - locked 11 Aug 2026' },
+    { function: 'issue_action_reminder_token', grantees: ['postgres', 'service_role'],
+      reason: 'Mediated by mark-action-done edge function, never called directly by clients' },
+    { function: 'redeem_action_reminder_token', grantees: ['postgres', 'service_role'],
+      reason: 'Mediated by mark-action-done edge function, never called directly by clients' },
+    { function: 'get_trustee_login_activity', grantees: ['postgres', 'service_role'],
+      reason: 'Returns real trustee PII - locked 12 Aug 2026, closed a confirmed live exploit on Opeke' },
+    { function: 'check_cron_job_last_success', grantees: ['postgres', 'service_role'],
+      reason: 'Locked 12 Aug 2026 - leaked cron run timing to anon, no legitimate reason found for it to stay open' },
+    { function: 'get_meeting_entity_id', grantees: ['postgres', 'service_role', 'authenticated'],
+      reason: 'Confirmed via pg_policies: referenced directly inside resolutions/meeting_actions RLS policies. authenticated needs EXECUTE for real trustee queries against those tables to work under RLS at all. anon/public revoked 12 Aug 2026 - no anon-role policy anywhere references either table.' },
+    { function: 'handle_new_auth_user', grantees: ['postgres', 'service_role', 'anon', 'authenticated', 'PUBLIC'],
+      reason: 'Trigger function - confirmed empirically (direct call attempt) that Postgres refuses non-trigger invocation regardless of grants. Broad grant is structurally inert; left unchanged rather than churned for no real security benefit.' },
+    { function: 'update_last_sign_in', grantees: ['postgres', 'service_role', 'anon', 'authenticated', 'PUBLIC'],
+      reason: 'Same as handle_new_auth_user - trigger function, confirmed empirically uncallable directly regardless of grants. Tineka-only; will simply not appear in this RPC\'s results on Opeke.' },
+    { function: 'get_anon_granted_policies', grantees: ['postgres', 'service_role'],
+      reason: 'This check\'s own Check-A RPC - locked to service_role from creation, 12 Aug 2026' },
+    { function: 'get_security_definer_function_grants', grantees: ['postgres', 'service_role'],
+      reason: 'This check\'s own Check-B RPC - locked to service_role from creation, 12 Aug 2026' },
+  ];
+
+  function sameGrantSet(a: string[], b: string[]): boolean {
+    const as = new Set(a);
+    const bs = new Set(b);
+    return as.size === bs.size && [...as].every(x => bs.has(x));
+  }
+
+  const [anonPoliciesRes, secDefGrantsRes] = await Promise.all([
+    db.rpc('get_anon_granted_policies'),
+    db.rpc('get_security_definer_function_grants'),
+  ]);
+
+  const securityFindings: { type: string; table?: string; policy?: string; function?: string; grantees?: string[]; error?: string }[] = [];
+
+  if (anonPoliciesRes.error) {
+    securityFindings.push({ type: 'anon_policy_check_failed', error: anonPoliciesRes.error.message });
+  } else {
+    for (const row of anonPoliciesRes.data ?? []) {
+      const allowed = ALLOWED_ANON_POLICIES.some(a => a.table === row.table_name && a.policy === row.policy_name);
+      if (!allowed) {
+        securityFindings.push({ type: 'anon_policy_not_allowlisted', table: row.table_name, policy: row.policy_name });
+      }
+    }
+  }
+
+  if (secDefGrantsRes.error) {
+    securityFindings.push({ type: 'security_definer_grant_check_failed', error: secDefGrantsRes.error.message });
+  } else {
+    for (const row of secDefGrantsRes.data ?? []) {
+      const entry = ALLOWED_SECURITY_DEFINER_GRANTS.find(a => a.function === row.function_name);
+      if (!entry) {
+        securityFindings.push({ type: 'security_definer_not_allowlisted', function: row.function_name, grantees: row.grantees });
+      } else if (!sameGrantSet(entry.grantees, row.grantees)) {
+        securityFindings.push({ type: 'security_definer_grant_mismatch', function: row.function_name, grantees: row.grantees });
+      }
+    }
+  }
+
+  if (securityFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily security check found ${securityFindings.length} issue${securityFindings.length !== 1 ? 's' : ''} with access control. This shouldn't happen through normal use of the app — worth a look.\n\n` +
+      securityFindings.map(f => f.error
+        ? `- ${f.type} — check could not run (${f.error})`
+        : f.function
+          ? `- ${f.type} — ${f.function} (grantees: ${f.grantees?.join(', ')})`
+          : `- ${f.type} — ${f.table}.${f.policy}`
+      ).join('\n') +
+      `\n\nPlease review this directly in the database.` +
+      footer();
+
+    await notifyAdmin(`Security/access-control check — ${securityFindings.length} issue${securityFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'security_access_control',
+    findings_count: securityFindings.length,
+    details: securityFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -914,6 +1018,7 @@ serve(async () => {
       cron_health_findings: cronFindings.length,
       orphaned_auth_users_findings: orphanedAuthFindings.length,
       schema_drift_findings: schemaDriftFindings.length,
+      security_access_control_findings: securityFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
