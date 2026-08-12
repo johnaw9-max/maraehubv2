@@ -58,22 +58,23 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
   "booking_checklists": [
     "id",
     "booking_id",
-    "checklist_items",
+    "items",
     "completed_by",
     "completed_at",
     "notes",
-    "created_at"
+    "created_at",
+    "completed"
   ],
   "booking_feedback": [
     "id",
     "booking_id",
-    "rating",
-    "cleanliness",
-    "facilities",
-    "overall_experience",
+    "rating_overall",
+    "rating_cleanliness",
+    "rating_facilities",
+    "experience",
     "would_return",
     "suggestions",
-    "submitted_at",
+    "created_at",
     "user_id"
   ],
   "bookings": [
@@ -138,7 +139,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "address",
     "notes",
     "preferred",
-    "created_at"
+    "created_at",
+    "document_url",
+    "document_name"
   ],
   "documents": [
     "id",
