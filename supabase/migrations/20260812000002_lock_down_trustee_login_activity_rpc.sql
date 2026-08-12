@@ -1,0 +1,46 @@
+-- Urgent fix, found while researching Stage 3's design (ClickUp 86d3u7790):
+-- get_trustee_login_activity() -- confirmed present on both Opeke and
+-- Tineka -- grants EXECUTE to anon and authenticated explicitly (see
+-- supabase/waioweka_login_activity.sql, "Run this in the Waioweka
+-- (Sandbox) Supabase SQL Editor" -- this was applied to Opeke/Tineka too,
+-- not just its stated target, and its own comment references "same as
+-- Terere", suggesting this anon-open pattern is repeated across multiple
+-- MaraeHub deployments).
+--
+-- Unlike find_orphaned_auth_users' gap, this grant was deliberate, not
+-- accidental -- likely intended so FounderDashboard.js (which reads
+-- across multiple customer projects the founder isn't a registered
+-- trustee on) could pull this data without a per-project authenticated
+-- session. But the function returns real trustee full_name, email, and
+-- last_sign_in_at -- comparable sensitivity to find_orphaned_auth_users,
+-- and the same problem is solvable the same way that one now is: a
+-- service-role-mediated edge function, matching how ban-trustee/
+-- create-trustee already work, rather than an anon-open RPC.
+--
+-- Confirmed genuinely exploitable on Opeke (real production) before this
+-- fix: anon key alone, real HTTP call succeeded, 7 real trustee rows
+-- returned (verified via row count only, no PII ever printed to logs).
+--
+-- Locked to service_role only, not left open to authenticated either --
+-- ordinary community-role accounts have no legitimate reason to read
+-- every trustee's email and login history any more than an anonymous
+-- visitor does. Matches find_orphaned_auth_users' explicit-lock pattern.
+-- FounderDashboard.js's cross-project login-activity view will stop
+-- working until it is wired through a service-role-mediated path instead
+-- -- accepted tradeoff, prioritizing closing a real PII exposure on real
+-- production over a founder-analytics feature staying live in its current
+-- insecure form.
+--
+-- One real mistake caught during verification, not before: the first
+-- version of this migration only revoked from anon/authenticated, missing
+-- that the original file never revoked the default PUBLIC grant every new
+-- Postgres function gets. Direct grants to anon/authenticated are separate
+-- from that default, but PUBLIC alone is sufficient for every role to
+-- inherit access through, since anon/authenticated both belong to PUBLIC --
+-- the exact mirror image of Stage 2d's original grants lesson. Caught by
+-- re-checking information_schema.routine_privileges after the first apply
+-- rather than trusting a clean exit code, corrected before moving on.
+--
+-- Idempotent / safe to re-run.
+
+revoke execute on function public.get_trustee_login_activity() from public, anon, authenticated;
