@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
 import { supabase } from '../lib/supabase';
+import CharterGenerator from './CharterGenerator';
  
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
  
@@ -29,6 +30,7 @@ export default function DocumentsManager() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [showCharterGenerator, setShowCharterGenerator] = useState(false);
   const fileRef = useRef();
  
   useEffect(() => { fetchDocs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -151,9 +153,16 @@ export default function DocumentsManager() {
           <h2 style={{ fontSize: 22 }}>Document Library</h2>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Marae charters, policies, and important files</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowModal(true); setError(''); setForm(EMPTY_FORM); setFile(null); }}>
-          + Upload Document
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {filter === 'Governance' && (
+            <button className="btn-secondary" onClick={() => setShowCharterGenerator(true)}>
+              📝 Fill Out Charter Template
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => { setShowModal(true); setError(''); setForm(EMPTY_FORM); setFile(null); }}>
+            + Upload Document
+          </button>
+        </div>
       </div>
  
       {/* CATEGORY FILTERS */}
@@ -307,6 +316,8 @@ export default function DocumentsManager() {
           </div>
         </div>
       )}
+
+      {showCharterGenerator && <CharterGenerator onClose={() => setShowCharterGenerator(false)} />}
     </div>
   );
 }
