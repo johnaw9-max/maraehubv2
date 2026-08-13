@@ -14,6 +14,7 @@ import GrantsTracker from '../components/GrantsTracker';
 import FinanceManager from '../components/FinanceManager';
 import ContactsManager from '../components/ContactsManager';
 import ComplianceTracker from '../components/ComplianceTracker';
+import EmergencyPlanManager from '../components/EmergencyPlanManager';
 import RiskRegister from '../components/RiskRegister';
 import GoalsReporting from '../components/GoalsReporting';
 import BoardDashboard from '../components/BoardDashboard';
@@ -46,9 +47,10 @@ const NAV_GROUPS = [
   {
     label: 'Assets & Compliance', icon: '🏛️',
     tabs: [
-      { key: 'assets',     label: 'Assets' },
-      { key: 'compliance', label: 'Compliance' },
-      { key: 'risks',      label: 'Risk Register' },
+      { key: 'assets',         label: 'Assets' },
+      { key: 'compliance',     label: 'Compliance' },
+      { key: 'risks',          label: 'Risk Register' },
+      { key: 'emergency_plan', label: 'Emergency Plan' },
     ],
   },
   {
@@ -491,7 +493,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'board' && (
           <>
             {isAdmin && <OnboardingFlow onComplete={() => setBoardKey(k => k + 1)} />}
-            <BoardDashboard key={boardKey} onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} />
+            <BoardDashboard key={boardKey} onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} isAdmin={isAdmin} />
           </>
         )}
 
@@ -579,6 +581,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
             <RiskRegister />
           </>
         )}
+
+        {/* ── EMERGENCY PLAN ────────────────────────────────────────────── */}
+        {activeTab === 'emergency_plan' && <EmergencyPlanManager />}
 
         {/* ── GOALS & REPORTING ──────────────────────────────────────────── */}
         {activeTab === 'goals' && (
