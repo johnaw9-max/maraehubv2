@@ -66,6 +66,26 @@ export default function OnboardingFlow({ onComplete }) {
 
   useEffect(() => { loadOnboarding(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const DEFAULT_DOC_URL = 'https://www.waikatodistrict.govt.nz/docs/default-source/services-and-facilities/civil-defence/marae-resilience/marae-preparedness-plan---template.pdf';
+
+  async function seedDefaultDocument() {
+    const { data: existing } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('file_url', DEFAULT_DOC_URL)
+      .limit(1);
+    if (existing && existing.length > 0) return;
+    await supabase.from('documents').insert({
+      title: 'Marae Emergency Preparedness Plan (Waikato District Council Template)',
+      category: 'Health & Safety',
+      notes: 'Official government CDEM template, linked directly from Waikato District Council so it always reflects the source\'s current version — not a locally hosted copy.',
+      file_name: 'marae-preparedness-plan---template.pdf',
+      file_type: 'pdf',
+      file_url: DEFAULT_DOC_URL,
+      entity_id: null,
+    });
+  }
+
   async function loadOnboarding() {
     const { data } = await supabase
       .from('marae_settings')
@@ -75,6 +95,7 @@ export default function OnboardingFlow({ onComplete }) {
     if (data) {
       if (data.onboarding_complete) { setHidden(true); setLoading(false); return; }
       setSettingsId(data.id);
+      seedDefaultDocument();
       const resume = Math.max(1, Math.min((data.onboarding_step || 0) + 1, 5));
       setStep(resume);
       if (data.marae_name) setMaraeName(data.marae_name);
