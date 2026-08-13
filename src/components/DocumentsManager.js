@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
 import { supabase } from '../lib/supabase';
 import CharterGenerator from './CharterGenerator';
+import HSPolicyGenerator from './HSPolicyGenerator';
  
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
  
@@ -31,6 +32,7 @@ export default function DocumentsManager() {
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [showCharterGenerator, setShowCharterGenerator] = useState(false);
+  const [showHSPolicyGenerator, setShowHSPolicyGenerator] = useState(false);
   const fileRef = useRef();
  
   useEffect(() => { fetchDocs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -157,6 +159,11 @@ export default function DocumentsManager() {
           {filter === 'Governance' && (
             <button className="btn-secondary" onClick={() => setShowCharterGenerator(true)}>
               📝 Fill Out Charter Template
+            </button>
+          )}
+          {filter === 'Health & Safety' && (
+            <button className="btn-secondary" onClick={() => setShowHSPolicyGenerator(true)}>
+              📝 Fill Out H&amp;S Policy
             </button>
           )}
           <button className="btn-primary" onClick={() => { setShowModal(true); setError(''); setForm(EMPTY_FORM); setFile(null); }}>
@@ -318,6 +325,7 @@ export default function DocumentsManager() {
       )}
 
       {showCharterGenerator && <CharterGenerator onClose={() => setShowCharterGenerator(false)} />}
+      {showHSPolicyGenerator && <HSPolicyGenerator onClose={() => setShowHSPolicyGenerator(false)} />}
     </div>
   );
 }
