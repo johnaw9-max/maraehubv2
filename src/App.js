@@ -1,11 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase } from './lib/supabase';
 import LoginPage from './pages/LoginPage';
 import TrusteeDashboard from './pages/TrusteeDashboard';
 import CommunityPortal from './pages/CommunityPortal';
-import FounderDashboard from './components/FounderDashboard';
 import PublicBookingRequest from './pages/PublicBookingRequest';
 import CommunityAutoLogin from './pages/CommunityAutoLogin';
+
+// Lazy-loaded: pulls in supabaseMulti.js (3 extra Supabase clients), which
+// has no reason to exist for anyone except a founder on /founder. Keeping
+// this a static import meant those clients were created on every single
+// page load, including the login screen -- see the "Multiple GoTrueClient
+// instances" investigation.
+const FounderDashboard = lazy(() => import('./components/FounderDashboard'));
+
+function LoadingScreen({ label = 'Loading MaraeHub...' }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
+      <div style={{ width: 48, height: 48, background: '#1a4a3a', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'serif', fontWeight: 700, fontSize: 22, color: '#c8902a' }}>M</div>
+      <div style={{ color: '#7a7268', fontSize: 14 }}>{label}</div>
+    </div>
+  );
+}
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
@@ -71,12 +86,7 @@ export default function App() {
   }
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 48, height: 48, background: '#1a4a3a', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'serif', fontWeight: 700, fontSize: 22, color: '#c8902a' }}>M</div>
-        <div style={{ color: '#7a7268', fontSize: 14 }}>Loading MaraeHub...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (recovering) return <SetNewPasswordForm onDone={() => {
@@ -106,7 +116,11 @@ export default function App() {
   }
 
   if (FOUNDER_EMAILS.includes(profile?.email) && window.location.pathname === '/founder') {
-    return <FounderDashboard profile={profile} />;
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <FounderDashboard profile={profile} />
+      </Suspense>
+    );
   }
 
   if (profile?.role === 'trustee') {
