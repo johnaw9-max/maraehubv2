@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
+import FormError from './FormError';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
@@ -743,7 +744,7 @@ export default function ComplianceTracker() {
               <button onClick={() => setShowItemModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
             </div>
 
-            {itemError && <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 14, marginBottom: 14 }}>{itemError}</div>}
+            <FormError message={itemError} />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -837,7 +838,7 @@ export default function ComplianceTracker() {
               <button onClick={() => setShowIncidentModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
             </div>
 
-            {incidentError && <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '10px 14px', color: 'var(--danger)', fontSize: 14, marginBottom: 14 }}>{incidentError}</div>}
+            <FormError message={incidentError} />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="form-group">
