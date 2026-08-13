@@ -78,6 +78,24 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Charter Generator',
+      icon: '📜',
+      items: [
+        { q: 'What is the Charter Generator?', a: 'A guided fill-in-the-blanks tool based on the real official Marae Charter/Constitution template (Marae Kete / Western Bay of Plenty District Council), for marae that don\'t already have their own.' },
+        { q: 'How do I use it?', a: [
+          { items: [
+            'Go to Documents and select the Governance filter.',
+            'Click "📝 Fill Out Charter Template".',
+            'Fill in your marae, hapū, and iwi name, your address, legal description, and block name.',
+            'Fill in the 5 governance settings — number of trustees, trustee term length, meeting frequency, quorum percentage, and consecutive missed meetings before deemed resigned.',
+            'Click Generate, then use your browser\'s Print dialog to save it as a PDF.',
+          ]},
+        ] },
+        { q: 'What if our marae already has a real, signed Charter?', a: 'Use "+ Upload Document" instead. Fill Out is for marae starting from scratch who want a real, credible template to work from — it is not a replacement for an existing signed document.' },
+        { q: 'Can we customise the governance rules?', a: 'The 5 governance settings are genuine points of legitimate variation between marae. Disqualification criteria and the Charter\'s core legal structure stay fixed, to protect the document\'s legal soundness.' },
+      ]
+    },
+    {
       category: 'Compliance Tracker',
       icon: '✅',
       items: [
@@ -221,6 +239,25 @@ const HELP_TOPICS = {
         ] },
         { q: 'How do I turn email notifications on or off?', a: 'Go to Settings and open the "Email Notifications" section. Each notification type has its own toggle — you can turn individual types on or off independently. For example, you might keep compliance and grant reminders on but turn off booking notifications if another trustee handles approvals. Changes take effect immediately and apply only to your account — each trustee controls their own notification preferences.' },
         { q: 'Will I get the same email about the same item every day?', a: 'No. MaraeHub tracks what has already been sent and will not email you about the same item more than once every 25 days. If a compliance item is still due in 30 days and has not been updated, you will receive one notification about it — and then not again for another 25 days. This prevents your inbox from filling up with repeated reminders about the same unresolved issue.' },
+      ]
+    },
+    {
+      category: 'Emergency Plan',
+      icon: '📖',
+      items: [
+        { q: 'What is the Emergency Plan module, and how is it different from "Emergency Preparedness" in Compliance?', a: 'Compliance Tracker\'s "Emergency Preparedness" category tracks 10 generic checklist items (renewal dates for your Civil Defence plan, generator, water supply, and so on). The separate Emergency Plan tab (Assets & Compliance group) is a full, guided digitisation of the real official Marae Emergency Preparedness Plan (Waikato District Council / Te Puni Kōkiri, Civil Defence Emergency Management) — a genuinely different, more complete document, built directly from the real template.' },
+        { q: 'How do I use it?', a: [
+          { text: 'Go to Assets & Compliance → Emergency Plan. Five sections are currently live.' },
+          { items: [
+            'History — the marae\'s own history, in your words.',
+            'Hazards — 9 pre-seeded hazard types, each with a Likely Impact and What To Do.',
+            'How We\'ll Be Warned — official CDEM reference information.',
+            'Skilled People — Marae Operators, First Aiders, and Specialised Skills.',
+            'Contacts — Marae Contacts and Emergency Contacts.',
+          ]},
+        ] },
+        { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not yet fully. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents in the meantime. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub — but it doesn\'t yet generate a printable document from what you\'ve entered (that\'s still being built).' },
+        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not yet — 5 of the real document\'s 14 sections are live. The rest (service providers, infrastructure, inventory, site plan, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
       ]
     },
     {
@@ -555,6 +592,23 @@ const HELP_TOPICS = {
             'Reporting — funding has been received and you are completing required progress reports.',
           ]},
         ] },
+      ]
+    },
+    {
+      category: 'H&S Policy Generator',
+      icon: '⛑️',
+      items: [
+        { q: 'What is the H&S Policy Generator?', a: 'A guided fill-in-the-blanks tool based on a real, board-approved Health and Safety Policy from an established iwi trust — includes the real Health and Safety at Work Act 2015 references and genuine tikanga Māori values (mātāpono), not generic placeholder text.' },
+        { q: 'How do I use it?', a: [
+          { items: [
+            'Go to Documents and select the Health & Safety filter.',
+            'Click "📝 Fill Out H&S Policy".',
+            'Enter your organisation/marae name, policy adoption date, and review cycle (annually, biennially, or a custom cycle).',
+            'Click Generate, then use your browser\'s Print dialog to save it as a PDF.',
+          ]},
+        ] },
+        { q: 'What if our marae already has our own H&S Policy?', a: 'Use "+ Upload Document" instead — the same fill-out-vs-upload choice as the Charter.' },
+        { q: 'What does the Review Cycle setting do?', a: 'It sets both the wording in the policy ("reviewed annually", "reviewed biennially", or your own custom cycle) and correctly calculates the next review date from your policy\'s actual adoption date — not a fixed default.' },
       ]
     },
     {

@@ -174,7 +174,7 @@ export default function HSPolicyGenerator({ onClose }) {
       <div className="modal" style={{ maxWidth: 480 }}>
         <div className="modal-title">Fill Out Health &amp; Safety Policy</div>
         <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: -8, marginBottom: 16 }}>
-          Based on Ngāti Whātua Ōrākei's real, board-approved Health and Safety Policy. Fill in the details below, then Generate to open a print-ready version — use your browser's Print dialog to save it as a PDF.
+          Based on a real, board-approved Health and Safety Policy from an established iwi trust. Fill in the details below, then Generate to open a print-ready version — use your browser's Print dialog to save it as a PDF.
         </p>
 
         <FormError message={error} />
