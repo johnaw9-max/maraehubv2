@@ -176,7 +176,7 @@ const STATUS_STYLES = {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function BoardDashboard({ onNavigate, onStartWorkflow }) {
+export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin }) {
   const [d, setD]             = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod]   = useState('month');
@@ -1755,6 +1755,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <GroupHeading title="Resources" />
 
       {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
+      {isAdmin && (
       <div className="panel" style={{ marginBottom: 20 }}>
         <SectionTitle
           icon="📊"
@@ -1817,6 +1818,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           )
         )}
       </div>
+      )}
 
       {/* ── TWO-COLUMN: GRANTS + SERVICE REMINDERS (ASSETS) ────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
