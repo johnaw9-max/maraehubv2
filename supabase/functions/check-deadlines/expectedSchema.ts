@@ -155,6 +155,23 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_at",
     "entity_id"
   ],
+  "emergency_plan_hazards": [
+    "id",
+    "hazard_type",
+    "likely_impact",
+    "what_to_do",
+    "entity_id",
+    "created_at"
+  ],
+  "emergency_plan_people": [
+    "id",
+    "role_category",
+    "full_name",
+    "phone",
+    "skill_type",
+    "entity_id",
+    "created_at"
+  ],
   "entities": [
     "id",
     "name",
@@ -253,7 +270,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "notes",
     "created_at",
     "updated_at",
-    "responsible_name"
+    "responsible_name",
+    "focus_area",
+    "related_module"
   ],
   "grants": [
     "id",
@@ -313,7 +332,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "onboarding_complete",
     "onboarding_step",
     "payment_details",
-    "bank_csv_mapping"
+    "bank_csv_mapping",
+    "emergency_plan_supported_by",
+    "emergency_plan_history"
   ],
   "meeting_actions": [
     "id",

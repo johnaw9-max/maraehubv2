@@ -2,15 +2,18 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-13 (originally 2026-08-10,
--- replacing a hand-authored version from 2026-06-09 that had drifted to
--- cover only 20 of 43 live tables). This re-sync catches up on everything
--- changed on Opeke since 10 August: booking_feedback/booking_checklists'
--- renamed columns and booking_checklists.completed (fixed to match the
--- live app code, migration 20260812000000), contractors.document_url/
--- document_name, and the Stage 3 security RPCs. The anon-read-profiles
--- policy dropped this session was Tineka-only -- Opeke never had it, so
--- it does not appear in this diff.
+-- pg_catalog introspection, most recently 2026-08-14 (previously 2026-08-13).
+-- This re-sync exists specifically to close the schema_drift check's own
+-- known, previously-observed-live limitation (ClickUp 86d3u7790): nothing
+-- enforces this file getting regenerated when new migrations land, and two
+-- had -- emergency_plan_hazards/emergency_plan_people (Emergency Plan
+-- Sections 1-4, migration 20260813010000) and goals.focus_area/
+-- related_module (migration 20260814000000) -- neither reflected here
+-- until now. Done proactively, before the next 08:00 UTC cron run, rather
+-- than waiting for schema_drift to report them as findings.
+-- 45 real base tables (the pre-existing xero_connection_status VIEW is
+-- correctly excluded -- caught and fixed during this re-sync's own table
+-- count verification, not assumed).
 -- Tables are listed alphabetically (not dependency order — accuracy over
 -- runnable ordering; foreign keys mean this file is not guaranteed to run
 -- top-to-bottom against a fresh empty database without reordering).
@@ -29,8 +32,8 @@ create table if not exists action_reminder_tokens (
 );
 
 alter table action_reminder_tokens add constraint action_reminder_tokens_pkey PRIMARY KEY (id);
-alter table action_reminder_tokens add constraint action_reminder_tokens_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES profiles(id) ON DELETE CASCADE;
 alter table action_reminder_tokens add constraint action_reminder_tokens_meeting_action_id_fkey FOREIGN KEY (meeting_action_id) REFERENCES meeting_actions(id) ON DELETE CASCADE;
+alter table action_reminder_tokens add constraint action_reminder_tokens_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES profiles(id) ON DELETE CASCADE;
 
 CREATE INDEX idx_action_reminder_tokens_meeting_action_id ON public.action_reminder_tokens USING btree (meeting_action_id);
 
@@ -53,7 +56,7 @@ create table if not exists assets (
   purchase_cost numeric,
   lifespan_years integer,
   replacement_cost numeric,
-  replacement_date date default (purchase_date + ((lifespan_years)::double precision * '1 year'::interval)),
+  replacement_date date,
   inventory_category text,
   quantity integer,
   last_stocktake date,
@@ -62,8 +65,8 @@ create table if not exists assets (
 
 alter table assets add constraint assets_pkey PRIMARY KEY (id);
 alter table assets add constraint assets_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
-alter table assets add constraint assets_category_check CHECK ((category = ANY (ARRAY['Building'::text, 'Equipment'::text, 'Vehicle'::text, 'Technology'::text, 'Grounds'::text, 'Other'::text, 'Inventory'::text])));
 alter table assets add constraint assets_condition_check CHECK ((condition = ANY (ARRAY['excellent'::text, 'good'::text, 'fair'::text, 'poor'::text, 'critical'::text])));
+alter table assets add constraint assets_category_check CHECK ((category = ANY (ARRAY['Building'::text, 'Equipment'::text, 'Vehicle'::text, 'Technology'::text, 'Grounds'::text, 'Other'::text, 'Inventory'::text])));
 
 alter table assets enable row level security;
 
@@ -165,8 +168,8 @@ create table if not exists booking_feedback (
 alter table booking_feedback add constraint booking_feedback_pkey PRIMARY KEY (id);
 alter table booking_feedback add constraint booking_feedback_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 alter table booking_feedback add constraint booking_feedback_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE;
-alter table booking_feedback add constraint booking_feedback_facilities_check CHECK (((rating_facilities >= 1) AND (rating_facilities <= 5)));
 alter table booking_feedback add constraint booking_feedback_rating_check CHECK (((rating_overall >= 1) AND (rating_overall <= 5)));
+alter table booking_feedback add constraint booking_feedback_facilities_check CHECK (((rating_facilities >= 1) AND (rating_facilities <= 5)));
 alter table booking_feedback add constraint booking_feedback_cleanliness_check CHECK (((rating_cleanliness >= 1) AND (rating_cleanliness <= 5)));
 
 alter table booking_feedback enable row level security;
@@ -187,7 +190,7 @@ create table if not exists bookings (
   end_date date,
   guests integer,
   overnight boolean default false,
-  facilities text[],
+  facilities _text[],
   iwi text,
   notes text,
   status text default 'pending'::text,
@@ -200,8 +203,8 @@ create table if not exists bookings (
 );
 
 alter table bookings add constraint bookings_pkey PRIMARY KEY (id);
-alter table bookings add constraint bookings_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 alter table bookings add constraint bookings_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id);
+alter table bookings add constraint bookings_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 alter table bookings add constraint bookings_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'declined'::text])));
 
 alter table bookings enable row level security;
@@ -352,6 +355,61 @@ create policy "Trustees can manage documents within their entities"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
 
 
+-- ── EMERGENCY_PLAN_HAZARDS ────────────────────────────────────────────────
+create table if not exists emergency_plan_hazards (
+  id uuid not null default gen_random_uuid(),
+  hazard_type text not null,
+  likely_impact text,
+  what_to_do text,
+  entity_id uuid,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table emergency_plan_hazards add constraint emergency_plan_hazards_pkey PRIMARY KEY (id);
+alter table emergency_plan_hazards add constraint emergency_plan_hazards_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table emergency_plan_hazards add constraint emergency_plan_hazards_hazard_type_check CHECK ((hazard_type = ANY (ARRAY['Landslide'::text, 'Flood'::text, 'Earthquake'::text, 'Fire'::text, 'Storm'::text, 'Tsunami'::text, 'Volcano'::text, 'Pandemic'::text, 'Man-Made Hazard'::text])));
+
+alter table emergency_plan_hazards enable row level security;
+
+create policy "Trustees can manage emergency plan hazards within their entitie"
+  on emergency_plan_hazards for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
+-- ── EMERGENCY_PLAN_PEOPLE ─────────────────────────────────────────────────
+create table if not exists emergency_plan_people (
+  id uuid not null default gen_random_uuid(),
+  role_category text not null,
+  full_name text not null,
+  phone text,
+  skill_type text,
+  entity_id uuid,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table emergency_plan_people add constraint emergency_plan_people_pkey PRIMARY KEY (id);
+alter table emergency_plan_people add constraint emergency_plan_people_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table emergency_plan_people add constraint emergency_plan_people_role_category_check CHECK ((role_category = ANY (ARRAY['marae_contact'::text, 'emergency_contact'::text, 'marae_operator'::text, 'first_aider'::text, 'specialised_skill'::text])));
+
+alter table emergency_plan_people enable row level security;
+
+create policy "Trustees can manage emergency plan people within their entities"
+  on emergency_plan_people for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
 -- ── ENTITIES ──────────────────────────────────────────────────────────────
 create table if not exists entities (
   id uuid not null default gen_random_uuid(),
@@ -402,12 +460,12 @@ create policy "allow_authenticated"
 -- ── FINANCE_BALANCE_SHEET ─────────────────────────────────────────────────
 create table if not exists finance_balance_sheet (
   id uuid not null default gen_random_uuid(),
-  cash_balance numeric(12,2) not null default 0,
-  other_assets numeric(12,2) not null default 0,
+  cash_balance numeric not null default 0,
+  other_assets numeric not null default 0,
   other_assets_notes text,
-  loans numeric(12,2) not null default 0,
+  loans numeric not null default 0,
   loans_notes text,
-  outstanding_payments numeric(12,2) not null default 0,
+  outstanding_payments numeric not null default 0,
   outstanding_notes text,
   updated_at timestamp with time zone,
   created_at timestamp with time zone not null default now(),
@@ -434,7 +492,7 @@ create table if not exists finance_budgets (
   id uuid not null default gen_random_uuid(),
   financial_year integer not null,
   category text not null,
-  amount numeric(12,2) not null default 0,
+  amount numeric not null default 0,
   updated_at timestamp with time zone,
   created_at timestamp with time zone not null default now()
 );
@@ -458,7 +516,7 @@ create table if not exists finance_expenses (
   id uuid not null default gen_random_uuid(),
   date date not null,
   description text not null,
-  amount numeric(12,2) not null default 0,
+  amount numeric not null default 0,
   category text not null default 'Other'::text,
   payee text,
   reference text,
@@ -472,9 +530,9 @@ create table if not exists finance_expenses (
 
 alter table finance_expenses add constraint finance_expenses_pkey PRIMARY KEY (id);
 alter table finance_expenses add constraint finance_expenses_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
-alter table finance_expenses add constraint finance_expenses_status_check CHECK ((status = ANY (ARRAY['Paid'::text, 'Pending'::text])));
 alter table finance_expenses add constraint finance_expenses_category_check CHECK ((category = ANY (ARRAY['Maintenance and Repairs'::text, 'Utilities'::text, 'Insurance'::text, 'Events'::text, 'Administration'::text, 'Wages'::text, 'Equipment'::text, 'Cleaning'::text, 'Other'::text])));
 alter table finance_expenses add constraint finance_expenses_amount_check CHECK ((amount >= (0)::numeric));
+alter table finance_expenses add constraint finance_expenses_status_check CHECK ((status = ANY (ARRAY['Paid'::text, 'Pending'::text])));
 
 CREATE INDEX idx_finance_expenses_category ON public.finance_expenses USING btree (category);
 CREATE INDEX idx_finance_expenses_date ON public.finance_expenses USING btree (date);
@@ -497,7 +555,7 @@ create table if not exists finance_income (
   id uuid not null default gen_random_uuid(),
   date date not null,
   description text not null,
-  amount numeric(12,2) not null default 0,
+  amount numeric not null default 0,
   category text not null default 'Other'::text,
   reference text,
   notes text,
@@ -513,8 +571,8 @@ create table if not exists finance_income (
 alter table finance_income add constraint finance_income_pkey PRIMARY KEY (id);
 alter table finance_income add constraint finance_income_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 alter table finance_income add constraint finance_income_amount_check CHECK ((amount >= (0)::numeric));
-alter table finance_income add constraint finance_income_status_check CHECK ((status = ANY (ARRAY['Confirmed'::text, 'Pending'::text])));
 alter table finance_income add constraint finance_income_category_check CHECK ((category = ANY (ARRAY['Booking Income'::text, 'Grant Income'::text, 'Koha'::text, 'Hire Equipment'::text, 'Fundraiser'::text, 'Other'::text])));
+alter table finance_income add constraint finance_income_status_check CHECK ((status = ANY (ARRAY['Confirmed'::text, 'Pending'::text])));
 
 CREATE INDEX idx_finance_income_category ON public.finance_income USING btree (category);
 CREATE INDEX idx_finance_income_date ON public.finance_income USING btree (date);
@@ -595,12 +653,16 @@ create table if not exists goals (
   notes text,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now(),
-  responsible_name text
+  responsible_name text,
+  focus_area text not null,
+  related_module text
 );
 
 alter table goals add constraint goals_pkey PRIMARY KEY (id);
-alter table goals add constraint goals_status_check CHECK ((status = ANY (ARRAY['not_started'::text, 'in_progress'::text, 'at_risk'::text, 'completed'::text])));
 alter table goals add constraint goals_progress_check CHECK (((progress >= 0) AND (progress <= 100)));
+alter table goals add constraint goals_focus_area_check CHECK ((focus_area = ANY (ARRAY['Cultural'::text, 'Facilities'::text, 'Health & Wellbeing'::text, 'Rangatahi'::text, 'Taonga preservation'::text, 'General'::text])));
+alter table goals add constraint goals_related_module_check CHECK (((related_module IS NULL) OR (related_module = ANY (ARRAY['Compliance'::text, 'Risk Register'::text, 'Finance'::text, 'Assets'::text, 'Bookings'::text, 'Grants'::text, 'Projects'::text, 'Contacts'::text, 'Documents'::text, 'Emergency Plan'::text]))));
+alter table goals add constraint goals_status_check CHECK ((status = ANY (ARRAY['not_started'::text, 'in_progress'::text, 'at_risk'::text, 'completed'::text])));
 
 alter table goals enable row level security;
 
@@ -748,7 +810,9 @@ create table if not exists marae_settings (
   onboarding_complete boolean default false,
   onboarding_step integer default 0,
   payment_details text,
-  bank_csv_mapping jsonb
+  bank_csv_mapping jsonb,
+  emergency_plan_supported_by text,
+  emergency_plan_history text
 );
 
 alter table marae_settings add constraint marae_settings_pkey PRIMARY KEY (id);
@@ -877,9 +941,9 @@ create table if not exists module_kpi_snapshots (
   goals_pct integer not null,
   locked_at timestamp with time zone not null default now(),
   created_at timestamp with time zone not null default now(),
-  net_assets numeric(12,2),
-  total_assets numeric(12,2),
-  total_liabilities numeric(12,2)
+  net_assets numeric,
+  total_assets numeric,
+  total_liabilities numeric
 );
 
 alter table module_kpi_snapshots add constraint module_kpi_snapshots_pkey PRIMARY KEY (id);
@@ -954,8 +1018,8 @@ create table if not exists profiles (
 
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);
 alter table profiles add constraint profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
-alter table profiles add constraint profiles_role_check CHECK ((role = ANY (ARRAY['trustee'::text, 'community'::text])));
 alter table profiles add constraint profiles_trustee_role_check CHECK ((trustee_role = ANY (ARRAY['standard'::text, 'admin'::text])));
+alter table profiles add constraint profiles_role_check CHECK ((role = ANY (ARRAY['trustee'::text, 'community'::text])));
 
 alter table profiles enable row level security;
 
@@ -1059,8 +1123,8 @@ create table if not exists risk_register (
 );
 
 alter table risk_register add constraint risk_register_pkey PRIMARY KEY (id);
-alter table risk_register add constraint risk_register_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 alter table risk_register add constraint risk_register_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES auth.users(id);
+alter table risk_register add constraint risk_register_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 
 alter table risk_register enable row level security;
 
@@ -1157,8 +1221,8 @@ create table if not exists tasks (
 );
 
 alter table tasks add constraint tasks_pkey PRIMARY KEY (id);
-alter table tasks add constraint tasks_parent_task_id_fkey FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE;
 alter table tasks add constraint tasks_workflow_instance_id_fkey FOREIGN KEY (workflow_instance_id) REFERENCES workflow_instances(id);
+alter table tasks add constraint tasks_parent_task_id_fkey FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE;
 alter table tasks add constraint tasks_priority_check CHECK ((priority = ANY (ARRAY['High'::text, 'Medium'::text, 'Low'::text])));
 alter table tasks add constraint tasks_status_check CHECK ((status = ANY (ARRAY['open'::text, 'in-progress'::text, 'completed'::text, 'cancelled'::text])));
 
@@ -1226,8 +1290,8 @@ create table if not exists workflow_instances (
 );
 
 alter table workflow_instances add constraint workflow_instances_pkey PRIMARY KEY (id);
-alter table workflow_instances add constraint workflow_instances_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
 alter table workflow_instances add constraint workflow_instances_template_id_fkey FOREIGN KEY (template_id) REFERENCES workflow_templates(id);
+alter table workflow_instances add constraint workflow_instances_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
 alter table workflow_instances add constraint workflow_instances_status_check CHECK ((status = ANY (ARRAY['active'::text, 'complete'::text, 'cancelled'::text])));
 
 alter table workflow_instances enable row level security;
