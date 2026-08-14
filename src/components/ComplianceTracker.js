@@ -19,14 +19,24 @@ const CATEGORIES = {
   other:                   { label: 'Other',                   icon: '📋', color: '#4a4438', bg: '#f5f0e8' },
 };
 
+const CLASSIFICATIONS = {
+  task:     { label: 'Task',     icon: '📅', color: '#1a4a3a', bg: '#e8f4ef' },
+  template: { label: 'Template', icon: '📄', color: '#1a4a8a', bg: '#e8eef8' },
+  workflow: { label: 'Workflow', icon: '🔄', color: '#6b42a8', bg: '#f0ecf8' },
+};
+
+// 3 items removed 15 August 2026 (migration 20260815000000): they duplicated
+// real obligations already tracked under civil_defence/health_safety with
+// shorter names -- "Civil Defence Emergency Plan — reviewed and up to date",
+// "Emergency contact list — trustees, key community members, Civil Defence
+// coordinator", "First aid kit — stocked and in date". Their canonical
+// versions now live under civil_defence/health_safety; keeping them here
+// would silently recreate the same duplicate pairs on any fresh marae.
 const EP_SEED_ITEMS = [
-  { name: 'Civil Defence Emergency Plan — reviewed and up to date',                    renewal_months: 12, notes: 'Must align with local Civil Defence Group plan. Review after any civil defence exercise or event.' },
-  { name: 'Emergency contact list — trustees, key community members, Civil Defence coordinator', renewal_months: 6, notes: 'Include cell numbers, alternative contacts, and local Civil Defence coordinator details.' },
   { name: 'Generator — tested, fuelled, serviced',                                     renewal_months: 3,  notes: 'Test under load monthly. Fuel stabiliser if stored long-term. Log every test run.' },
   { name: 'Water supply — 10,000L tank or alternative checked',                        renewal_months: 6,  notes: 'Inspect tank for leaks, contamination, and pump operation. Confirm potability.' },
   { name: 'Emergency food and supply kit — stocked and checked',                       renewal_months: 6,  notes: 'Check expiry dates on food and medications. Minimum 72-hour supply for likely occupancy.' },
   { name: 'Community welfare register — vulnerable whānau who need checking on',       renewal_months: 12, notes: 'List of kaumātua, disabled whānau, and others who may need welfare checks. Keep private and current.' },
-  { name: 'First aid kit — stocked and in date',                                       renewal_months: 6,  notes: 'Check all consumables for expiry. Restock after any use. Ensure AED pads/battery checked if applicable.' },
   { name: 'Evacuation routes — identified and communicated to committee',              renewal_months: 12, notes: 'Post maps in the marae. Brief all trustees and key volunteers. Include accessibility routes.' },
   { name: 'Emergency communications plan — contact community if power/internet down',  renewal_months: 12, notes: 'Document the plan: phone trees, community radio channel, meeting point. Test annually.' },
   { name: 'Marae structure — roof, walls, foundations checked for storm readiness',    renewal_months: 6,  notes: 'Visual inspection after major weather events. Engage qualified builder for structural assessment annually.' },
@@ -106,7 +116,9 @@ export default function ComplianceTracker() {
   const [loading, setLoading]   = useState(true);
   const [section, setSection]   = useState('items');
   const [catFilter, setCatFilter] = useState('all');
+  const [classFilter, setClassFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
+  const [expandedWhy, setExpandedWhy] = useState(null);
 
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -399,6 +411,7 @@ export default function ComplianceTracker() {
   const epAlert    = epOverdue.length + epNotSet.length;
 
   const filteredItems = (catFilter === 'all' ? items : items.filter(i => i.category === catFilter))
+    .filter(i => classFilter === 'all' || i.classification === classFilter)
     .filter(i => entityFilter === 'all' || i.entity_id === entityFilter || i.entity_id === null)
     .slice()
     .sort((a, b) => {
@@ -489,6 +502,25 @@ export default function ComplianceTracker() {
       {/* ── COMPLIANCE ITEMS SECTION ─────────────────────────────────────── */}
       {section === 'items' && (
         <>
+          {/* Classification filter — primary grouping */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+            {[{ key: 'all', label: 'All', icon: '📌' }, ...Object.entries(CLASSIFICATIONS).map(([k, v]) => ({ key: k, label: v.label, icon: v.icon }))].map(c => (
+              <button
+                key={c.key}
+                onClick={() => setClassFilter(c.key)}
+                style={{
+                  padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  borderRadius: 20, border: '1px solid var(--border)',
+                  background: classFilter === c.key ? 'var(--brand)' : 'var(--surface)',
+                  color: classFilter === c.key ? '#fff' : 'var(--text2)',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                {c.icon} {c.label}
+              </button>
+            ))}
+          </div>
+
           {/* Category filter */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
             {[{ key: 'all', label: 'All', icon: '📌' }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, icon: v.icon }))].map(c => (
@@ -528,6 +560,7 @@ export default function ComplianceTracker() {
                 const status = getStatus(item.due_date);
                 const scfg = STATUS_CFG[status];
                 const cat = CATEGORIES[item.category] || CATEGORIES.other;
+                const cls = CLASSIFICATIONS[item.classification] || CLASSIFICATIONS.task;
                 const dl = daysLabel(item.due_date);
                 const entityName = item.entity_id ? entities.find(e => e.id === item.entity_id)?.name : null;
                 return (
@@ -544,6 +577,17 @@ export default function ComplianceTracker() {
                           <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
                             {cat.icon} {cat.label}
                           </span>
+                          <span style={{ fontSize: 14, fontWeight: 600, background: cls.bg, color: cls.color, borderRadius: 20, padding: '3px 10px' }}>
+                            {cls.icon} {cls.label}
+                          </span>
+                          {item.legal_basis && (
+                            <button
+                              onClick={() => setExpandedWhy(id => id === item.id ? null : item.id)}
+                              style={{ fontSize: 14, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              ⓘ Why? {expandedWhy === item.id ? '▲' : '▼'}
+                            </button>
+                          )}
                           {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
                           {dl && (
                             <span style={{ fontSize: 14, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
@@ -565,9 +609,23 @@ export default function ComplianceTracker() {
                           )}
                         </div>
                         {item.notes && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
+                        {expandedWhy === item.id && item.legal_basis && (
+                          <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
+                            <strong>{item.legal_basis}</strong>
+                            {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
+                          </div>
+                        )}
                       </div>
                       {/* Right: doc + actions */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        {item.classification === 'template' && !item.document_url && (
+                          <span
+                            title="Document mapping not built yet"
+                            style={{ fontSize: 14, color: 'var(--text3)', opacity: 0.6, border: '1px dashed var(--border)', borderRadius: 6, padding: '4px 10px' }}
+                          >
+                            📄 Template
+                          </span>
+                        )}
                         {item.document_url && (
                           <a href={item.document_url} target="_blank" rel="noopener noreferrer"
                             style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
