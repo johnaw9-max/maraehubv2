@@ -947,6 +947,8 @@ serve(async () => {
       reason: 'This check\'s own Check-A RPC - locked to service_role from creation, 12 Aug 2026' },
     { function: 'get_security_definer_function_grants', grantees: ['postgres', 'service_role'],
       reason: 'This check\'s own Check-B RPC - locked to service_role from creation, 12 Aug 2026' },
+    { function: 'get_storage_buckets', grantees: ['postgres', 'service_role'],
+      reason: 'Stage 4 process/config safety check\'s own RPC - locked to service_role from creation, 14 Aug 2026. Caught flagging itself in this same allowlist during Stage 4\'s own manual verification, same self-referential gap Check-A/Check-B hit during Stage 3\'s build.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
@@ -1008,6 +1010,69 @@ serve(async () => {
     details: securityFindings,
   });
 
+  // ── STAGE 4: PROCESS/CONFIG SAFETY ──────────────────────────────────────
+  // Real gaps found while designing this stage, not theoretical: Tineka was
+  // missing the meeting-attachments storage bucket entirely (CommitteeMinutes.js
+  // depends on it), and missing the COMMUNITY_LOGIN_TOKEN secret entirely
+  // (community-auto-login depends on it). Both confirmed live before building.
+
+  const EXPECTED_BUCKETS = [
+    'documents', 'meeting-attachments', 'compliance-docs', 'finance-receipts', 'contractor-docs',
+  ];
+
+  const REQUIRED_SECRETS: { name: string; format?: RegExp }[] = [
+    { name: 'ADMIN_ALERT_EMAIL', format: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
+    { name: 'RESEND_API_KEY' },
+    { name: 'FROM_EMAIL',        format: /^([^<>]+<)?[^\s@]+@[^\s@]+\.[^\s@]+>?$/ },
+    { name: 'FRONTEND_URL',      format: /^https?:\/\// },
+    { name: 'COMMUNITY_LOGIN_TOKEN' },
+  ];
+
+  const processConfigFindings: { type: string; bucket?: string; secret?: string; error?: string }[] = [];
+
+  const bucketsRes = await db.rpc('get_storage_buckets');
+  if (bucketsRes.error) {
+    processConfigFindings.push({ type: 'storage_bucket_check_failed', error: bucketsRes.error.message });
+  } else {
+    const liveBucketIds = new Set((bucketsRes.data ?? []).map((b: { id: string }) => b.id));
+    for (const bucket of EXPECTED_BUCKETS) {
+      if (!liveBucketIds.has(bucket)) {
+        processConfigFindings.push({ type: 'missing_storage_bucket', bucket });
+      }
+    }
+  }
+
+  for (const secret of REQUIRED_SECRETS) {
+    const value = Deno.env.get(secret.name);
+    if (!value) {
+      processConfigFindings.push({ type: 'missing_required_secret', secret: secret.name });
+    } else if (secret.format && !secret.format.test(value)) {
+      processConfigFindings.push({ type: 'malformed_required_secret', secret: secret.name });
+    }
+  }
+
+  if (processConfigFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily process/config safety check found ${processConfigFindings.length} issue${processConfigFindings.length !== 1 ? 's' : ''}. This shouldn't happen through normal use of the app — worth a look.\n\n` +
+      processConfigFindings.map(f => f.error
+        ? `- ${f.type} — check could not run (${f.error})`
+        : f.bucket
+          ? `- ${f.type} — bucket: ${f.bucket}`
+          : `- ${f.type} — secret: ${f.secret}`
+      ).join('\n') +
+      `\n\nPlease review this directly.` +
+      footer();
+
+    await notifyAdmin(`Process/config safety check — ${processConfigFindings.length} issue${processConfigFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'process_config_safety',
+    findings_count: processConfigFindings.length,
+    details: processConfigFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -1019,6 +1084,7 @@ serve(async () => {
       orphaned_auth_users_findings: orphanedAuthFindings.length,
       schema_drift_findings: schemaDriftFindings.length,
       security_access_control_findings: securityFindings.length,
+      process_config_safety_findings: processConfigFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
