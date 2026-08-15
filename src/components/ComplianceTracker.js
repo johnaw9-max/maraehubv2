@@ -106,7 +106,7 @@ function nextDueDate(months) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function ComplianceTracker() {
+export default function ComplianceTracker({ onStartWorkflow }) {
   const profiles = useProfiles();
   const trustees = profiles.filter(p => p.role === 'trustee');
 
@@ -625,6 +625,19 @@ export default function ComplianceTracker() {
                           >
                             📄 Template
                           </span>
+                        )}
+                        {item.classification === 'workflow' && item.workflow_template_id && onStartWorkflow && (
+                          <button
+                            onClick={() => onStartWorkflow({
+                              templateId: item.workflow_template_id,
+                              workflowName: item.name,
+                              sourceName: item.name,
+                              triggerType: 'renewal_reminder',
+                            })}
+                            style={{ fontSize: 14, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            ⚙️ Start Workflow →
+                          </button>
                         )}
                         {item.document_url && (
                           <a href={item.document_url} target="_blank" rel="noopener noreferrer"

@@ -570,7 +570,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'compliance' && (
           <>
             <KpiBar tiles={kpis.compliance || []} loading={kpiLoading.compliance} count={4} />
-            <ComplianceTracker />
+            <ComplianceTracker onStartWorkflow={handleStartWorkflow} />
           </>
         )}
 
