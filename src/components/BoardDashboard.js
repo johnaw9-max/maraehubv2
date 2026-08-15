@@ -1251,6 +1251,26 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       </div>
 
+      {/* ── SUMMARY STRIP — reuses the 6 StatusCard levels, computes nothing new ── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 16px', padding: '10px 14px', marginBottom: 18, background: 'var(--surface2)', borderRadius: 8 }}>
+        {[
+          { icon: '📋', label: 'Compliance', level: complianceLevel, navTo: 'compliance' },
+          { icon: '🛡️', label: 'Risk', level: riskLevel, navTo: 'risks' },
+          { icon: '🎯', label: 'Goals', level: goalsLevel, navTo: 'goals' },
+          ...(isAdmin ? [{ icon: '📊', label: 'Finance', level: financeLevel, navTo: 'finance' }] : []),
+          { icon: '💰', label: 'Grants', level: grantsLevel, navTo: 'grants' },
+          { icon: '🔧', label: 'Assets', level: serviceLevel, navTo: 'assets' },
+        ].map(m => (
+          <span
+            key={m.label}
+            onClick={() => onNavigate && onNavigate(m.navTo)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default' }}
+          >
+            {m.icon} {m.label} {LEVEL_EMOJI[m.level]}
+          </span>
+        ))}
+      </div>
+
       {/* ── FOCUS THIS WEEK (ClickUp 86d3vc4yp) ──────────────────────────── */}
       <FocusThisWeekCard items={focusItems} total={focusItemsTotal} onNavigate={onNavigate} />
 
