@@ -76,9 +76,9 @@ function SectionTitle({ icon, title, count, note, rightContent }) {
         <span style={{ fontSize: 18 }}>{icon}</span>
         <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600, color: 'var(--brand)' }}>{title}</span>
         {count !== undefined && (
-          <span style={{ fontSize: 12, background: 'var(--brand)', color: '#fff', borderRadius: 20, padding: '1px 9px', fontWeight: 600, marginLeft: 4 }}>{count}</span>
+          <span style={{ fontSize: 14, background: 'var(--brand)', color: '#fff', borderRadius: 20, padding: '1px 9px', fontWeight: 600, marginLeft: 4 }}>{count}</span>
         )}
-        {note && <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 4 }}>{note}</span>}
+        {note && <span style={{ fontSize: 14, color: 'var(--text3)', marginLeft: 4 }}>{note}</span>}
       </div>
       {rightContent}
     </div>
@@ -87,7 +87,7 @@ function SectionTitle({ icon, title, count, note, rightContent }) {
 
 function GroupHeading({ title }) {
   return (
-    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '32px 0 14px', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
+    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '32px 0 14px', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
       {title}
     </div>
   );
@@ -109,7 +109,7 @@ function FocusThisWeekCard({ items, onNavigate }) {
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 700, color: '#1a4a3a', marginBottom: 4 }}>
           All clear this week
         </div>
-        <div style={{ fontSize: 13, color: '#1a4a3a', opacity: 0.85 }}>
+        <div style={{ fontSize: 14, color: '#1a4a3a', opacity: 0.85 }}>
           Nothing urgent needs your attention right now — great governance.
         </div>
       </div>
@@ -126,11 +126,11 @@ function FocusThisWeekCard({ items, onNavigate }) {
             <div key={i} style={{ borderRadius: 8, padding: '12px 14px', ...t }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', background: t.badgeBg, borderRadius: 20, padding: '2px 9px', marginRight: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', background: t.badgeBg, borderRadius: 20, padding: '2px 9px', marginRight: 8 }}>
                     {t.badgeLabel}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', lineHeight: 1.5 }}>{item.text}</span>
-                  <div style={{ fontSize: 12, color: t.color, marginTop: 5 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', lineHeight: 1.5 }}>{item.text}</span>
+                  <div style={{ fontSize: 14, color: t.color, marginTop: 5 }}>
                     {item.owner ? (
                       `👤 ${item.owner}`
                     ) : (
@@ -151,7 +151,7 @@ function FocusThisWeekCard({ items, onNavigate }) {
                 {onNavigate && (
                   <button
                     onClick={() => onNavigate(item.navTo)}
-                    style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: t.color, border: `1px solid ${t.badgeBg}`, borderRadius: 6, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+                    style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: t.color, border: `1px solid ${t.badgeBg}`, borderRadius: 6, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
                   >
                     {NAV_LABELS[item.navTo] || 'View →'}
                   </button>
@@ -969,14 +969,14 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 26, marginBottom: 2 }}>Board Overview</h1>
-          <div style={{ fontSize: 13, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
         <div className="no-print" style={{ display: 'flex', gap: 10 }}>
           {/* AI Report button — hidden for now, re-enable when ready
           <button
             onClick={generateReport}
             disabled={aiLoading}
-            style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             {aiLoading ? '⏳ Generating…' : '✨ AI Report'}
           </button>
@@ -986,7 +986,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               className="no-print"
               value={reportEntityFilter}
               onChange={e => setReportEntityFilter(e.target.value)}
-              style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+              style={{ fontSize: 14, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
             >
               <option value="all">All Entities</option>
               {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
@@ -994,19 +994,19 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           )}
           <button
             onClick={() => printFinancialReport(reportEntityFilter)}
-            style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             💰 Financial Report
           </button>
           <button
             onClick={() => printGovernanceReport(reportEntityFilter)}
-            style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             📋 Governance Report
           </button>
           <button
             onClick={() => window.print()}
-            style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             🖨️ Print
           </button>
@@ -1026,21 +1026,21 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 {aiReport && (
                   <button
                     onClick={copyReport}
-                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                   >
                     {copied ? '✅ Copied' : '📋 Copy'}
                   </button>
                 )}
                 <button
                   onClick={() => { setShowReport(false); setAiError(''); setAiReport(''); }}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 13, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
                 >
                   ✕
                 </button>
               </div>
             </div>
             {aiError ? (
-              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 13 }}>{aiError}</div>
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{aiError}</div>
             ) : (
               <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{aiReport}</div>
             )}
@@ -1106,14 +1106,14 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               lineHeight: 1.3,
               marginBottom: 3,
             }}>{tile.value}</div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 500 }}>{tile.label}</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>{tile.label}</div>
           </div>
         ))}
       </div>
 
       {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {PERIODS.map((p, i) => (
             <button
@@ -1121,7 +1121,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               type="button"
               onClick={() => setPeriod(p.key)}
               style={{
-                padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                padding: '7px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 background: period === p.key ? 'var(--brand)' : 'var(--surface)',
                 color: period === p.key ? '#fff' : 'var(--text2)',
                 border: 'none',
@@ -1152,13 +1152,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 }[ins.level];
                 const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
                 return (
-                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
+                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
                     <span style={{ flexShrink: 0 }}>{icon}</span>
                     <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
                     {ins.navTo && onNavigate && (
                       <button
                         onClick={() => onNavigate(ins.navTo)}
-                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
                       >
                         {NAV_LABELS[ins.navTo] || 'View →'}
                       </button>
@@ -1170,25 +1170,25 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           )}
           {d.workflowInstances.length > 0 && (
             <div style={{ marginTop: INSIGHTS.length > 0 ? 14 : 0, paddingTop: INSIGHTS.length > 0 ? 12 : 0, borderTop: INSIGHTS.length > 0 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
-                  <div style={{ fontSize: 10, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
+                  <div style={{ fontSize: 14, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
-                  <div style={{ fontSize: 10, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
+                  <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
                 </div>
                 {activeWorkflows.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
                     {activeWorkflows.slice(0, 3).map(w => (
-                      <div key={w.id} style={{ fontSize: 11, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div key={w.id} style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
                         {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
                       </div>
                     ))}
-                    {activeWorkflows.length > 3 && <div style={{ fontSize: 10, color: 'var(--text3)' }}>+{activeWorkflows.length - 3} more active</div>}
+                    {activeWorkflows.length > 3 && <div style={{ fontSize: 14, color: 'var(--text3)' }}>+{activeWorkflows.length - 3} more active</div>}
                   </div>
                 )}
               </div>
@@ -1211,7 +1211,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               className="no-print"
               value={complianceEntityFilter}
               onChange={e => setComplianceEntityFilter(e.target.value)}
-              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+              style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
             >
               <option value="all">All Entities</option>
               {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
@@ -1219,7 +1219,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           )}
         />
         {complianceForPanel.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
         ) : panelOverdueCompliance.length > 0 ? (
           // EXPANDED — prominent, red state naming specific overdue items
           <>
@@ -1233,11 +1233,11 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-                  <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                  <div style={{ fontSize: 14, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>
               🔴 {panelOverdueCompliance.length} item{panelOverdueCompliance.length !== 1 ? 's' : ''} overdue — needs immediate attention:
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: panelNeverAssessedCompliance.length > 0 ? 14 : 0 }}>
@@ -1249,19 +1249,19 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 return (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: overdue ? '9px 12px' : '7px 10px', background: bg, borderRadius: 7, borderLeft: `${overdue ? 4 : 3}px solid ${dot}`, gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: overdue ? 14 : 13, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                      <div style={{ fontSize: 14, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
                         {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
+                      <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
                         {overdue ? 'Overdue' : 'Due Soon'}
                       </span>
                       {onNavigate && (
                         <button
                           onClick={() => onNavigate('compliance')}
-                          style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                          style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
                         >
                           {NAV_LABELS.compliance}
                         </button>
@@ -1277,30 +1277,30 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   onClick={() => setShowNeverAssessedDetail(true)}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, cursor: 'pointer' }}
                 >
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
                     📋 {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — click to see
                   </span>
-                  <span style={{ fontSize: 12, color: 'var(--text3)' }}>▼</span>
+                  <span style={{ fontSize: 14, color: 'var(--text3)' }}>▼</span>
                 </div>
               ) : (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text3)' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
                       📋 {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — no due date, never checked:
                     </span>
-                    <span onClick={() => setShowNeverAssessedDetail(false)} style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer' }}>▲ Hide</span>
+                    <span onClick={() => setShowNeverAssessedDetail(false)} style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer' }}>▲ Hide</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {panelNeverAssessedCompliance.map(c => (
                       <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
                         </div>
                         {onNavigate && (
                           <button
                             onClick={() => onNavigate('compliance')}
-                            style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
                           >
                             {NAV_LABELS.compliance}
                           </button>
@@ -1325,29 +1325,29 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
                     {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} — compliance setup not started
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
                     Click to begin{panelDueSoonCompliance.length > 0 ? ` · ${panelDueSoonCompliance.length} due within 30 days` : ''}
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: 12, color: 'var(--text3)' }}>▼</span>
+              <span style={{ fontSize: 14, color: 'var(--text3)' }}>▼</span>
             </div>
           ) : (
             <>
               <div onClick={() => setShowNeverAssessedDetail(false)} style={{ display: 'flex', justifyContent: 'flex-end', cursor: 'pointer', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--text3)' }}>▲ Hide</span>
+                <span style={{ fontSize: 14, color: 'var(--text3)' }}>▲ Hide</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {panelNeverAssessedCompliance.map(c => (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
                     </div>
                     {onNavigate && (
                       <button
                         onClick={() => onNavigate('compliance')}
-                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
                       >
                         {NAV_LABELS.compliance}
                       </button>
@@ -1363,7 +1363,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             <span style={{ fontSize: 20 }}>✅</span>
             <div>
               <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>All clear</div>
-              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+              <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
                 {complianceForPanel.length} item{complianceForPanel.length !== 1 ? 's' : ''} tracked, none overdue
                 {panelDueSoonCompliance.length > 0 ? ` · ${panelDueSoonCompliance.length} due within 30 days` : ''}
                 {` · ${panelCompliancePct}% compliant`}
@@ -1386,7 +1386,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 {panelHighOpenRisks.length > 0 && (
                   <span
                     onClick={() => setShowFullRisks(v => !v)}
-                    style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+                    style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
                   >
                     {showFullRisks ? 'Show shorter risks' : 'Show full risks'}
                   </span>
@@ -1396,7 +1396,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                     className="no-print"
                     value={riskEntityFilter}
                     onChange={e => setRiskEntityFilter(e.target.value)}
-                    style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+                    style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
                   >
                     <option value="all">All Entities</option>
                     {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
@@ -1406,28 +1406,28 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             }
           />
           {panelHighOpenRisks.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+            <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
               ✅ No high-rated open risks
               {panelOpenRisks.length > 0 ? ` · ${panelRiskControlsPct}% of open risks have controls listed` : ''}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 2 }}>
+              <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
                 {panelRiskControlsPct}% of open risks have controls listed
               </div>
               {panelHighOpenRisks.map(r => (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
+                    <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                   </div>
-                  <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
+                  <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
                   {onNavigate && (
                     <button
                       onClick={() => onNavigate('risks')}
-                      style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                      style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
                     >
                       {NAV_LABELS.risks}
                     </button>
@@ -1439,7 +1439,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           {onNavigate && (
             <button
               onClick={() => onNavigate('risks')}
-              style={{ marginTop: 10, fontSize: 12, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+              style={{ marginTop: 10, fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
             >
               View Risk Register →
             </button>
@@ -1459,7 +1459,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             rightContent={overdueActions.length > 0 && (
               <span
                 onClick={() => setShowFullActions(v => !v)}
-                style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+                style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
               >
                 {showFullActions ? 'Show shorter actions' : 'Show full actions'}
               </span>
@@ -1480,13 +1480,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: 700,
                     color: 'var(--text1)',
                   }}>
                     Booking awaiting approval — {b.occasion}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
                     {fmt(b.start_date)} · {b.guests} guests
                   </div>
                 </div>
@@ -1494,7 +1494,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <button
                     onClick={() => onNavigate('bookings')}
                     style={{
-                      fontSize: 11,
+                      fontSize: 14,
                       background: '#fff',
                       color: '#7a4f00',
                       border: '1px solid #e8c880',
@@ -1523,13 +1523,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: 700,
                     color: 'var(--text1)',
                   }}>
                     Meeting action overdue — {showFullActions ? stripUrls(a.description) : truncate(stripUrls(a.description))}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: 'var(--danger)', marginTop: 2 }}>
                     Assigned to {a.assigned_to || 'unassigned'} · Due {fmt(a.due_date)}
                   </div>
                 </div>
@@ -1537,7 +1537,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <button
                     onClick={() => onNavigate('minutes')}
                     style={{
-                      fontSize: 11,
+                      fontSize: 14,
                       background: '#fff',
                       color: '#a63020',
                       border: '1px solid #f0b8b0',
@@ -1570,13 +1570,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: 700,
                       color: 'var(--text1)',
                     }}>
                       Grant deadline in {daysLeft} day{daysLeft !== 1 ? 's' : ''} — {g.name}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
+                    <div style={{ fontSize: 14, color: 'var(--danger)', marginTop: 2 }}>
                       {g.funder} · {fmtMoney(g.amount)} · Due {fmt(g.deadline)}
                     </div>
                   </div>
@@ -1584,7 +1584,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                     <button
                       onClick={() => onNavigate('grants')}
                       style={{
-                        fontSize: 11,
+                        fontSize: 14,
                         background: '#fff',
                         color: '#a63020',
                         border: '1px solid #f0b8b0',
@@ -1604,7 +1604,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               <div
                 onClick={() => onNavigate('minutes')}
                 style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   color: 'var(--brand)',
                   fontWeight: 600,
                   padding: '4px 14px',
@@ -1627,19 +1627,19 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         <div className="panel">
           <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
           {periodUpcoming.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
           ) : periodUpcoming.map(b => (
             <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{b.occasion}</div>
-                <div style={{ fontSize: 11, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{b.occasion}</div>
+                <div style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 10, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+                <span style={{ fontSize: 14, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
                 {onNavigate && (
                   <button
                     onClick={() => onNavigate('bookings')}
-                    style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
                   >
                     {NAV_LABELS.bookings}
                   </button>
@@ -1653,29 +1653,29 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         <div className="panel">
           <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
           {periodProjects.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
           ) : periodProjects.map(p => {
             const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
             return (
               <div key={p.id} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
                     {p.name}
-                    {overdue && <span style={{ fontSize: 9, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
+                    {overdue && <span style={{ fontSize: 14, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
                     {onNavigate && (
                       <button
                         onClick={() => onNavigate('projects')}
-                        style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                        style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
                       >
                         {NAV_LABELS.projects}
                       </button>
                     )}
                   </div>
                 </div>
-                {p.lead && <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
+                {p.lead && <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
                 <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
                 </div>
@@ -1692,10 +1692,10 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <div className="panel" style={{ marginBottom: 20 }}>
         <SectionTitle icon="🎯" title="Strategic Goals" count={d.goals.length} />
         {d.goals.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
         ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
           // COLLAPSED — calm, all on track or completed
-          <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+          <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
             ✅ All goals are on track or completed
             {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
           </div>
@@ -1712,7 +1712,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-                  <div style={{ fontSize: 10, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                  <div style={{ fontSize: 14, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -1726,18 +1726,18 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
                         {g.responsible_name && `👤 ${g.responsible_name}`}
                         {g.responsible_name && g.target_date && ' · '}
                         {g.target_date && `Target: ${fmt(g.target_date)}`}
                       </div>
                     </div>
-                    <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
                     {onNavigate && (
                       <button
                         onClick={() => onNavigate('goals')}
-                        style={{ fontSize: 11, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
                       >
                         {NAV_LABELS.goals}
                       </button>
@@ -1766,7 +1766,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               className="no-print"
               value={financeEntityFilter}
               onChange={e => setFinanceEntityFilter(e.target.value)}
-              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+              style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
             >
               <option value="all">All Entities</option>
               {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
@@ -1788,33 +1788,33 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             <div key={i} style={{ textAlign: 'center', padding: '12px 8px', background: t.bg, borderRadius: 8 }}>
               <div style={{ fontSize: 16, marginBottom: 4 }}>{t.icon}</div>
               <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, fontWeight: 700, color: t.color }}>{t.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{t.label}</div>
+              <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>{t.label}</div>
             </div>
           ))}
         </div>
         {xeroConnected ? (
-          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+          <div style={{ fontSize: 14, color: 'var(--text3)' }}>
             🔄 Synced from Xero, {minsAgo(d.xero.lastSyncedAt)}
           </div>
         ) : d.xero?.status === 'error' ? (
-          <div style={{ fontSize: 12, color: 'var(--danger)' }}>
+          <div style={{ fontSize: 14, color: 'var(--danger)' }}>
             ⚠️ Unable to sync with Xero right now
           </div>
         ) : finOverBudgetCats.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {finOverBudgetCats.map(cat => (
-              <span key={cat} onClick={() => onNavigate && onNavigate('finance')} style={{ fontSize: 11, fontWeight: 600, background: '#faeae7', color: 'var(--danger)', border: '1px solid #f0b8b0', borderRadius: 20, padding: '3px 10px', cursor: onNavigate ? 'pointer' : 'default' }}>
+              <span key={cat} onClick={() => onNavigate && onNavigate('finance')} style={{ fontSize: 14, fontWeight: 600, background: '#faeae7', color: 'var(--danger)', border: '1px solid #f0b8b0', borderRadius: 20, padding: '3px 10px', cursor: onNavigate ? 'pointer' : 'default' }}>
                 🔴 Over budget — {cat}
               </span>
             ))}
           </div>
         ) : (
           panelFinTotalIncome > 0 || panelFinTotalExpenses > 0 ? (
-            <div style={{ fontSize: 12, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '7px 12px', fontWeight: 500 }}>
+            <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '7px 12px', fontWeight: 500 }}>
               ✅ All budget categories within limits
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>No finance data recorded for this financial year — add income and expenses in the Finance tab</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No finance data recorded for this financial year — add income and expenses in the Finance tab</div>
           )
         )}
       </div>
@@ -1827,7 +1827,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         <div className="panel">
           <SectionTitle icon="💰" title="Grants Pipeline" count={periodPipeline.length} note={`(${pl})`} />
           {periodPipeline.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No active grant applications in this period</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active grant applications in this period</div>
           ) : periodPipeline.map(g => {
             const ss = STATUS_STYLES[g.status] || STATUS_STYLES.researching;
             const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24)) : null;
@@ -1835,18 +1835,18 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             return (
               <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                  <div style={{ fontSize: 11, color: urgent ? 'var(--warning)' : 'var(--text3)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                  <div style={{ fontSize: 14, color: urgent ? 'var(--warning)' : 'var(--text3)' }}>
                     {g.funder}{g.amount && ` · ${fmtMoney(g.amount)}`}
                     {g.deadline && ` · ${urgent ? `⚠️ ${daysLeft}d left` : `Due ${fmt(g.deadline)}`}`}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, background: ss.bg, color: ss.color, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{g.status}</span>
+                  <span style={{ fontSize: 14, background: ss.bg, color: ss.color, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{g.status}</span>
                   {onNavigate && (
                     <button
                       onClick={() => onNavigate('grants')}
-                      style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                      style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
                     >
                       {NAV_LABELS.grants}
                     </button>
@@ -1861,13 +1861,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         <div className="panel">
           <SectionTitle icon="🔧" title="Service Reminders (60 days)" count={upcomingReminders.length} />
           {upcomingReminders.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>
               No reminders due in next 60 days
               {d.assets.length > 0 ? ` · ${compliantPct}% of assets have no overdue service reminder` : ''}
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 8 }}>
+              <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 8 }}>
                 {compliantPct}% of assets have no overdue service reminder
               </div>
               {upcomingReminders.map(r => {
@@ -1878,10 +1878,10 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             return (
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--cream2)', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: overdue ? 600 : 400, color: overdue ? 'var(--danger)' : 'var(--text1)' }}>
+                  <div style={{ fontSize: 14, fontWeight: overdue ? 600 : 400, color: overdue ? 'var(--danger)' : 'var(--text1)' }}>
                     {assetName} — {r.type}
                   </div>
-                  <div style={{ fontSize: 11, color: overdue ? 'var(--danger)' : 'var(--text3)' }}>
+                  <div style={{ fontSize: 14, color: overdue ? 'var(--danger)' : 'var(--text3)' }}>
                     {overdue ? `Overdue by ${Math.abs(daysLeft)}d` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(r.due_date)}
                   </div>
                 </div>
@@ -1894,19 +1894,19 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                         sourceName: `${assetName} — ${r.type} due ${r.due_date}`,
                         triggerType: 'service_reminder',
                       })}
-                      style={{ fontSize: 11, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                      style={{ fontSize: 14, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
                       ⚙️ Start Workflow →
                     </button>
                   )}
                   {onNavigate && (
                     <button
                       onClick={() => onNavigate('assets')}
-                      style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                      style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
                     >
                       {NAV_LABELS.assets}
                     </button>
                   )}
-                  <span style={{ fontSize: 10, background: overdue ? '#faeae7' : '#fdf0dc', color: overdue ? 'var(--danger)' : '#7a4f00', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                  <span style={{ fontSize: 14, background: overdue ? '#faeae7' : '#fdf0dc', color: overdue ? 'var(--danger)' : '#7a4f00', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
                     {overdue ? 'Overdue' : 'Due soon'}
                   </span>
                 </div>
@@ -1930,7 +1930,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           rightContent={periodComments.length > 0 && (
             <span
               onClick={() => setShowAllFull(v => !v)}
-              style={{ fontSize: 12, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+              style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
             >
               {showAllFull ? 'Show shorter comments' : 'Show full comments'}
             </span>
@@ -1942,44 +1942,44 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               <>
                 <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 48, fontWeight: 700, color: '#f4a400', lineHeight: 1 }}>{Number(avgRating).toFixed(1)}</div>
                 <div style={{ fontSize: 22, color: '#f4a400', marginBottom: 6 }}><Stars rating={Number(avgRating)} /></div>
-                <div style={{ fontSize: 12, color: 'var(--text3)' }}>from {periodFeedbackScores.length} response{periodFeedbackScores.length !== 1 ? 's' : ''}</div>
+                <div style={{ fontSize: 14, color: 'var(--text3)' }}>from {periodFeedbackScores.length} response{periodFeedbackScores.length !== 1 ? 's' : ''}</div>
               </>
             ) : (
-              <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic', paddingTop: 16 }}>No feedback in this period</div>
+              <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic', paddingTop: 16 }}>No feedback in this period</div>
             )}
           </div>
           <div>
             {periodComments.length === 0 ? (
-              <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No comments in this period</div>
+              <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No comments in this period</div>
             ) : periodComments.map((f, i) => (
               <div key={i} style={{ padding: '10px 12px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <div style={{ display: 'flex', gap: 3 }}>
-                    {[1,2,3,4,5].map(n => <span key={n} style={{ fontSize: 12, color: n <= (f.rating_overall || 0) ? '#f4a400' : '#ddd' }}>★</span>)}
-                    <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 6 }}>
+                    {[1,2,3,4,5].map(n => <span key={n} style={{ fontSize: 14, color: n <= (f.rating_overall || 0) ? '#f4a400' : '#ddd' }}>★</span>)}
+                    <span style={{ fontSize: 14, color: 'var(--text3)', marginLeft: 6 }}>
                       {new Date(f.created_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                   {onNavigate && (
                     <button
                       onClick={() => onNavigate('bookings')}
-                      style={{ fontSize: 11, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                      style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
                     >
                       {NAV_LABELS.bookings}
                     </button>
                   )}
                 </div>
                 {showAllFull ? (
-                  <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
                     "{stripUrls(f.experience)}"
                   </div>
                 ) : (
-                  <div style={{ fontSize: 13, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.6 }}>
                     "{stripUrls(expandedComments.has(i) || f.experience.length <= 150 ? f.experience : f.experience.slice(0, 150) + '…')}"
                     {f.experience.length > 150 && (
                       <span
                         onClick={() => toggleComment(i)}
-                        style={{ marginLeft: 6, fontSize: 12, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
+                        style={{ marginLeft: 6, fontSize: 14, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600, fontStyle: 'normal' }}
                       >
                         {expandedComments.has(i) ? 'Show less' : 'Read more'}
                       </span>
@@ -2000,19 +2000,19 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
              onClick={() => setShowKpiHistory(v => !v)}>
           <SectionTitle icon="📈" title="Performance History" count={d.kpiSnapshots.length} />
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
+          <span style={{ fontSize: 14, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
         </div>
 
         {d.kpiSnapshots.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
         ) : !showKpiHistory ? (
-          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{d.kpiSnapshots.length} month{d.kpiSnapshots.length !== 1 ? 's' : ''} locked this year — click to view</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.kpiSnapshots.length} month{d.kpiSnapshots.length !== 1 ? 's' : ''} locked this year — click to view</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
                 {['Month','Compliance','Risk','Assets','Goals','Total Assets','Total Liabilities','Net Assets'].map(h => (
-                  <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                  <th key={h} style={{ textAlign: h === 'Month' ? 'left' : 'center', padding: '6px 8px', color: 'var(--text3)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2052,16 +2052,16 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <div className="panel" style={{ marginBottom: 20 }}>
         <SectionTitle icon="📊" title="Marae Health Score" />
         {hsInsufficient ? (
-          <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic' }}>Not enough data yet across enough categories to calculate a score</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Not enough data yet across enough categories to calculate a score</div>
         ) : (
           <>
-            <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
+            <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 10 }}>
               <strong style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, color: 'var(--brand)' }}>{hsFinalScore}</strong>
               <span style={{ color: 'var(--text3)' }}> / 100 · based on {hsCategories.map(c => c.name).join(' · ')}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {hsCategories.map(c => (
-                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text3)' }}>
+                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text3)' }}>
                   <span>{c.name}</span>
                   <span>{c.detail}</span>
                 </div>
