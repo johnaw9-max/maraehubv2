@@ -93,6 +93,63 @@ function GroupHeading({ title }) {
   );
 }
 
+// Stage 2 (86d41pc93) — unified status card. 4-state, not the task's literal
+// 3-color spec: 'grey' represents genuine no-data (never assessed / not set
+// up), kept distinct from red/amber so a real problem is never confused with
+// an unfilled setup step. red > amber > grey > green.
+const LEVEL_STYLES = {
+  red:   { dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+  amber: { dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+  grey:  { dot: '#7a7268', bg: '#f5f0e8', color: 'var(--text3)' },
+  green: { dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+};
+const LEVEL_EMOJI = { red: '🔴', amber: '🟡', grey: '⚪', green: '🟢' };
+
+// Shared header shape for all 6 Board View status sections: ICON → NAME →
+// traffic light → NUMBER → short message. Body content (stat grids, flagged
+// item lists) stays per-section as children -- their shapes differ too much
+// (due dates vs. deadlines vs. budget categories) to force into one generic
+// row format.
+function StatusCard({ icon, title, level, number, message, rightContent, children }) {
+  const s = LEVEL_STYLES[level];
+  return (
+    <div className="panel" style={{ marginBottom: 20, borderTop: `3px solid ${s.dot}` }}>
+      <SectionTitle
+        icon={icon}
+        title={title}
+        rightContent={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {rightContent}
+            <span style={{ fontSize: 18 }} title={level}>{LEVEL_EMOJI[level]}</span>
+          </div>
+        }
+      />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: children ? 14 : 0 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 30, fontWeight: 700, color: s.color, lineHeight: 1 }}>{number}</div>
+        <div style={{ fontSize: 14, color: 'var(--text3)' }}>{message}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// Owner line, reusing FocusThisWeekCard's exact proven pattern (line ~134).
+function OwnerLine({ owner, color, navTo, onNavigate }) {
+  return (
+    <div style={{ fontSize: 14, color, marginTop: 2 }}>
+      {owner ? `👤 ${owner}` : (
+        <>
+          No owner assigned{navTo && onNavigate && (
+            <>
+              {' '}· <span onClick={() => onNavigate(navTo)} style={{ cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}>Assign →</span>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // "Focus this week" card (ClickUp 86d3vc4yp, Step 3). Renders items from
 // focusItems.js's buildFocusItems() — not yet wired into the page or given
 // an empty-case design; both are Step 4.
@@ -216,7 +273,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
-      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id').order('due_date'),
+      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
       supabase.from('finance_income').select('amount, entity_id').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_expenses').select('amount, category, entity_id').gte('date', fyFrom).lte('date', fyTo),
@@ -291,6 +348,29 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const periodProjects      = d.projects.filter(p => p.status === 'active');
   const periodUpcoming      = periodBookings.filter(b => b.start_date >= todayStr).slice(0, 5);
   const periodPipeline      = d.grants.filter(g => !['approved','declined'].includes(g.status) && inPeriod(g.deadline));
+
+  // Stage 2 (86d41pc93) StatusCard. New section-level logic -- Grants Pipeline
+  // previously had no aggregate red/amber/green status at all, only per-item
+  // deadline badges. Reuses the same urgent (<=14d) threshold already used
+  // per-item below; 30d is a new amber threshold, not previously present.
+  const grantsDaysLeftArr  = periodPipeline.map(g => g.deadline ? Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / 86400000) : null);
+  const grantsUrgentCount  = grantsDaysLeftArr.filter(dl => dl !== null && dl >= 0 && dl <= 14).length;
+  const grantsWatchCount   = grantsDaysLeftArr.filter(dl => dl !== null && dl > 14 && dl <= 30).length;
+  const grantsLevel =
+    periodPipeline.length === 0 ? 'grey' :
+    grantsUrgentCount > 0 ? 'red' :
+    grantsWatchCount > 0 ? 'amber' :
+    'green';
+  const grantsNumber =
+    grantsLevel === 'grey' ? '—' :
+    grantsLevel === 'red' ? grantsUrgentCount :
+    grantsLevel === 'amber' ? grantsWatchCount :
+    periodPipeline.length;
+  const grantsMessage =
+    grantsLevel === 'grey' ? 'No active grant applications' :
+    grantsLevel === 'red' ? `deadline${grantsUrgentCount !== 1 ? 's' : ''} within 14 days` :
+    grantsLevel === 'amber' ? `deadline${grantsWatchCount !== 1 ? 's' : ''} within 30 days` :
+    `application${periodPipeline.length !== 1 ? 's' : ''} in pipeline, nothing urgent`;
   const periodComments      = periodFeedback.filter(f => f.experience).slice(0, 3);
 
   // ─── PERIOD-INDEPENDENT (always current-state) ─────────────────────────────
@@ -327,6 +407,20 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const panelFinTotalIncome   = xeroConnected ? finTotalIncome   : financeForPanel.income.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
   const panelFinTotalExpenses = xeroConnected ? finTotalExpenses : financeForPanel.expenses.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
   const panelFinNet           = xeroConnected ? finNet : panelFinTotalIncome - panelFinTotalExpenses;
+
+  // Stage 2 (86d41pc93) StatusCard. No amber -- budget status is binary
+  // (within/over) in the current data, no medium-risk threshold exists.
+  const financeLevel =
+    (panelFinTotalIncome === 0 && panelFinTotalExpenses === 0) ? 'grey' :
+    (finOverBudgetCats.length > 0 || panelFinNet < 0) ? 'red' :
+    'green';
+  const financeNumber =
+    financeLevel === 'grey' ? '—' :
+    `${panelFinNet >= 0 ? '+' : '-'}$${(Math.abs(panelFinNet) / 1000).toFixed(1)}k`;
+  const financeMessage =
+    financeLevel === 'grey' ? 'No finance data recorded' :
+    financeLevel === 'red' ? (finOverBudgetCats.length > 0 ? `${finOverBudgetCats.length} categor${finOverBudgetCats.length !== 1 ? 'ies' : 'y'} over budget` : 'net deficit') :
+    'net surplus, within budget';
   const fyLabelStr = `${d.fyYear}/${String(d.fyYear + 1).slice(2)}`;
 
   const zeroStockItems     = d.assets.filter(a => a.category === 'Inventory' && a.quantity != null && a.quantity === 0);
@@ -346,6 +440,28 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     compliant: panelCompliantComplianceArr,
     compliancePct: panelCompliancePct,
   } = getComplianceStatus(complianceForPanel);
+
+  // Stage 2 (86d41pc93) unified StatusCard — red > amber > grey > green, first match wins.
+  // Amber-on-due-soon-only is a deliberate behavior change from the old collapsed view,
+  // which silently folded due-soon-only into the all-clear state.
+  const complianceLevel =
+    complianceForPanel.length === 0 ? 'grey' :
+    panelOverdueCompliance.length > 0 ? 'red' :
+    panelDueSoonCompliance.length > 0 ? 'amber' :
+    panelNeverAssessedCompliance.length > 0 ? 'grey' :
+    'green';
+  const complianceNumber =
+    complianceForPanel.length === 0 ? '—' :
+    complianceLevel === 'red' ? panelOverdueCompliance.length :
+    complianceLevel === 'amber' ? panelDueSoonCompliance.length :
+    complianceLevel === 'grey' ? panelNeverAssessedCompliance.length :
+    `${panelCompliancePct}%`;
+  const complianceMessage =
+    complianceForPanel.length === 0 ? 'No compliance items set up' :
+    complianceLevel === 'red' ? `item${panelOverdueCompliance.length !== 1 ? 's' : ''} overdue` :
+    complianceLevel === 'amber' ? `item${panelDueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days` :
+    complianceLevel === 'grey' ? `item${panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed` :
+    `${complianceForPanel.length} item${complianceForPanel.length !== 1 ? 's' : ''} tracked, all clear`;
 
   // Emergency Preparedness — high-priority check (overdue OR no due_date set)
   const epCompliance      = d.compliance.filter(c => c.category === 'emergency_preparedness');
@@ -370,10 +486,48 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const activeGoals             = d.goals.filter(g => g.status !== 'not_started');
   const goalsOnTrackOrComplete   = activeGoals.filter(g => goalLight(g) === 'green' || g.status === 'completed');
   const goalsPct                 = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : 100;
+
+  // Stage 2 (86d41pc93) StatusCard.
+  const goalsLevel =
+    d.goals.length === 0 ? 'grey' :
+    goalsBehind.length > 0 ? 'red' :
+    goalsAtRisk.length > 0 ? 'amber' :
+    'green';
+  const goalsNumber =
+    d.goals.length === 0 ? '—' :
+    goalsLevel === 'red' ? goalsBehind.length :
+    goalsLevel === 'amber' ? goalsAtRisk.length :
+    `${goalsPct}%`;
+  const goalsMessage =
+    d.goals.length === 0 ? 'No strategic goals set' :
+    goalsLevel === 'red' ? `goal${goalsBehind.length !== 1 ? 's' : ''} behind` :
+    goalsLevel === 'amber' ? `goal${goalsAtRisk.length !== 1 ? 's' : ''} at risk` :
+    'on track or completed';
   const overdueReminders  = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
   const assetsWithOverdue = new Set(overdueReminders.map(r => r.asset_id));
   const compliantPct      = d.assets.length ? Math.round(((d.assets.length - assetsWithOverdue.size) / d.assets.length) * 100) : 100;
   const upcomingReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') <= in60).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+
+  // Stage 2 (86d41pc93) StatusCard. New section-level logic -- Service
+  // Reminders previously had no aggregate red/amber/green status, only
+  // per-item Overdue/Due Soon badges.
+  const srOverdueCount = upcomingReminders.filter(r => new Date(r.due_date + 'T12:00:00') < today).length;
+  const srDueSoonCount = upcomingReminders.length - srOverdueCount;
+  const serviceLevel =
+    d.assets.length === 0 ? 'grey' :
+    srOverdueCount > 0 ? 'red' :
+    srDueSoonCount > 0 ? 'amber' :
+    'green';
+  const serviceNumber =
+    serviceLevel === 'grey' ? '—' :
+    serviceLevel === 'red' ? srOverdueCount :
+    serviceLevel === 'amber' ? srDueSoonCount :
+    `${compliantPct}%`;
+  const serviceMessage =
+    serviceLevel === 'grey' ? 'No assets tracked' :
+    serviceLevel === 'red' ? `reminder${srOverdueCount !== 1 ? 's' : ''} overdue` :
+    serviceLevel === 'amber' ? `reminder${srDueSoonCount !== 1 ? 's' : ''} due within 60 days` :
+    'assets compliant, no overdue reminders';
   const actionsSorted     = [...d.actions].sort((a, b) => {
     const ao = a.due_date && new Date(a.due_date + 'T12:00:00') < today;
     const bo = b.due_date && new Date(b.due_date + 'T12:00:00') < today;
@@ -404,6 +558,23 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const panelOpenRisksWithControls = panelOpenRisks.filter(r => r.controls);
   const panelRiskControlsPct = panelOpenRisks.length ? Math.round((panelOpenRisksWithControls.length / panelOpenRisks.length) * 100) : 100;
   const { riskPct: panelRiskPct } = getRiskStatus(risksForPanel);
+
+  // Stage 2 (86d41pc93) StatusCard. Behavior change: an empty risk register
+  // now renders a grey card instead of not rendering at all, for consistency
+  // with Compliance's empty-state handling. No amber -- risk_rating has no
+  // medium-severity concept in the current data, only High/not-High.
+  const riskLevel =
+    risksForPanel.length === 0 ? 'grey' :
+    panelHighOpenRisks.length > 0 ? 'red' :
+    'green';
+  const riskNumber =
+    risksForPanel.length === 0 ? '—' :
+    riskLevel === 'red' ? panelHighOpenRisks.length :
+    `${panelRiskPct}%`;
+  const riskMessage =
+    risksForPanel.length === 0 ? 'No risks set up' :
+    riskLevel === 'red' ? `high-rated risk${panelHighOpenRisks.length !== 1 ? 's' : ''} open` :
+    'clear of high-rated risks';
 
   // ─── ENTITY REPORT (deliberately independent of the 3 panel filters above —
   // those are separate per-panel view state and can genuinely disagree; the
@@ -1201,28 +1372,29 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <GroupHeading title="Compliance" />
 
       {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
-      <div className="panel" style={{ marginBottom: 20, ...(complianceForPanel.length > 0 && panelOverdueCompliance.length > 0 ? { borderTop: '3px solid var(--danger)' } : {}) }}>
-        <SectionTitle
-          icon={complianceForPanel.length > 0 && panelOverdueCompliance.length > 0 ? '⚠️' : complianceForPanel.length > 0 && panelNeverAssessedCompliance.length > 0 ? '📋' : '✅'}
-          title="Compliance Tracker"
-          count={complianceForPanel.length}
-          rightContent={(d.entities || []).length > 0 && (
-            <select
-              className="no-print"
-              value={complianceEntityFilter}
-              onChange={e => setComplianceEntityFilter(e.target.value)}
-              style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
-            >
-              <option value="all">All Entities</option>
-              {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-            </select>
-          )}
-        />
+      <StatusCard
+        icon="📋"
+        title="Compliance Tracker"
+        level={complianceLevel}
+        number={complianceNumber}
+        message={complianceMessage}
+        rightContent={(d.entities || []).length > 0 && (
+          <select
+            className="no-print"
+            value={complianceEntityFilter}
+            onChange={e => setComplianceEntityFilter(e.target.value)}
+            style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+          >
+            <option value="all">All Entities</option>
+            {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        )}
+      >
         {complianceForPanel.length === 0 ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No compliance items set up — add items in the Compliance tab</div>
-        ) : panelOverdueCompliance.length > 0 ? (
-          // EXPANDED — prominent, red state naming specific overdue items
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add items in the Compliance tab</div>
+        ) : (
           <>
+            {/* Secondary detail — existing 5-stat grid, kept as-is, always shown when items exist */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
               {[
                 { label: 'Overdue',   count: panelOverdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
@@ -1237,40 +1409,44 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>
-              🔴 {panelOverdueCompliance.length} item{panelOverdueCompliance.length !== 1 ? 's' : ''} overdue — needs immediate attention:
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: panelNeverAssessedCompliance.length > 0 ? 14 : 0 }}>
-              {[...panelOverdueCompliance, ...panelDueSoonCompliance].map(c => {
-                const overdue = new Date(c.due_date + 'T12:00:00') < today;
-                const dot   = overdue ? '#d9534f' : '#c8902a';
-                const bg    = overdue ? '#faeae7' : '#fdf0dc';
-                const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
-                return (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: overdue ? '9px 12px' : '7px 10px', background: bg, borderRadius: 7, borderLeft: `${overdue ? 4 : 3}px solid ${dot}`, gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                      <div style={{ fontSize: 14, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
-                        {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
+
+            {/* Flagged items — overdue + due soon, shown whenever either exists */}
+            {(panelOverdueCompliance.length > 0 || panelDueSoonCompliance.length > 0) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: panelNeverAssessedCompliance.length > 0 ? 14 : 0 }}>
+                {[...panelOverdueCompliance, ...panelDueSoonCompliance].map(c => {
+                  const overdue = new Date(c.due_date + 'T12:00:00') < today;
+                  const dot   = overdue ? '#d9534f' : '#c8902a';
+                  const bg    = overdue ? '#faeae7' : '#fdf0dc';
+                  const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
+                  return (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: overdue ? '9px 12px' : '7px 10px', background: bg, borderRadius: 7, borderLeft: `${overdue ? 4 : 3}px solid ${dot}`, gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                        <div style={{ fontSize: 14, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
+                          {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
+                        </div>
+                        <OwnerLine owner={c.responsible_name} color={overdue ? dot : 'var(--text3)'} navTo="compliance" onNavigate={onNavigate} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
+                          {overdue ? 'Overdue' : 'Due Soon'}
+                        </span>
+                        {onNavigate && (
+                          <button
+                            onClick={() => onNavigate('compliance')}
+                            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                          >
+                            {NAV_LABELS.compliance}
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
-                        {overdue ? 'Overdue' : 'Due Soon'}
-                      </span>
-                      {onNavigate && (
-                        <button
-                          onClick={() => onNavigate('compliance')}
-                          style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                        >
-                          {NAV_LABELS.compliance}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Never-assessed — collapsible sub-section, unchanged behavior, shown whenever any exist */}
             {panelNeverAssessedCompliance.length > 0 && (
               !showNeverAssessedDetail ? (
                 <div
@@ -1296,6 +1472,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
                           <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                          <OwnerLine owner={c.responsible_name} color="var(--text3)" navTo="compliance" onNavigate={onNavigate} />
                         </div>
                         {onNavigate && (
                           <button
@@ -1311,141 +1488,89 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 </>
               )
             )}
+
+            {complianceLevel === 'green' && (
+              <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 500 }}>
+                ✅ {panelCompliantComplianceArr.length} item{panelCompliantComplianceArr.length !== 1 ? 's' : ''} compliant, none overdue
+              </div>
+            )}
           </>
-        ) : panelNeverAssessedCompliance.length > 0 ? (
-          // NEVER-ASSESSED ONLY — honest but calm; collapsed by default, click to see the list
-          !showNeverAssessedDetail ? (
-            <div
-              onClick={() => setShowNeverAssessedDetail(true)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 20 }}>📋</span>
-                <div>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
-                    {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} — compliance setup not started
-                  </div>
-                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
-                    Click to begin{panelDueSoonCompliance.length > 0 ? ` · ${panelDueSoonCompliance.length} due within 30 days` : ''}
-                  </div>
-                </div>
-              </div>
-              <span style={{ fontSize: 14, color: 'var(--text3)' }}>▼</span>
-            </div>
-          ) : (
-            <>
-              <div onClick={() => setShowNeverAssessedDetail(false)} style={{ display: 'flex', justifyContent: 'flex-end', cursor: 'pointer', marginBottom: 8 }}>
-                <span style={{ fontSize: 14, color: 'var(--text3)' }}>▲ Hide</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {panelNeverAssessedCompliance.map(c => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                      <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
-                    </div>
-                    {onNavigate && (
-                      <button
-                        onClick={() => onNavigate('compliance')}
-                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                      >
-                        {NAV_LABELS.compliance}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )
-        ) : (
-          // COLLAPSED — calm, small, all-clear state (original, unchanged)
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>✅</span>
-            <div>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 14, fontWeight: 700, color: 'var(--brand)' }}>All clear</div>
-              <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
-                {complianceForPanel.length} item{complianceForPanel.length !== 1 ? 's' : ''} tracked, none overdue
-                {panelDueSoonCompliance.length > 0 ? ` · ${panelDueSoonCompliance.length} due within 30 days` : ''}
-                {` · ${panelCompliancePct}% compliant`}
-              </div>
-            </div>
-          </div>
         )}
-      </div>
+      </StatusCard>
 
       {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
-      {(d.risks || []).length > 0 && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle
-            icon="🛡️"
-            title="Risk Register"
-            count={risksForPanel.length}
-            note={`${panelRiskPct}% clear of high-rated risks`}
-            rightContent={
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                {panelHighOpenRisks.length > 0 && (
-                  <span
-                    onClick={() => setShowFullRisks(v => !v)}
-                    style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    {showFullRisks ? 'Show shorter risks' : 'Show full risks'}
-                  </span>
-                )}
-                {(d.entities || []).length > 0 && (
-                  <select
-                    className="no-print"
-                    value={riskEntityFilter}
-                    onChange={e => setRiskEntityFilter(e.target.value)}
-                    style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
-                  >
-                    <option value="all">All Entities</option>
-                    {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-                  </select>
-                )}
-              </div>
-            }
-          />
-          {panelHighOpenRisks.length === 0 ? (
-            <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-              ✅ No high-rated open risks
-              {panelOpenRisks.length > 0 ? ` · ${panelRiskControlsPct}% of open risks have controls listed` : ''}
+      <StatusCard
+        icon="🛡️"
+        title="Risk Register"
+        level={riskLevel}
+        number={riskNumber}
+        message={riskMessage}
+        rightContent={
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {panelHighOpenRisks.length > 0 && (
+              <span
+                onClick={() => setShowFullRisks(v => !v)}
+                style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+              >
+                {showFullRisks ? 'Show shorter risks' : 'Show full risks'}
+              </span>
+            )}
+            {(d.entities || []).length > 0 && (
+              <select
+                className="no-print"
+                value={riskEntityFilter}
+                onChange={e => setRiskEntityFilter(e.target.value)}
+                style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+              >
+                <option value="all">All Entities</option>
+                {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+              </select>
+            )}
+          </div>
+        }
+      >
+        {risksForPanel.length === 0 ? (
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add risks in the Risk Register tab</div>
+        ) : panelHighOpenRisks.length === 0 ? (
+          <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+            ✅ No high-rated open risks
+            {panelOpenRisks.length > 0 ? ` · ${panelRiskControlsPct}% of open risks have controls listed` : ''}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
+              {panelRiskControlsPct}% of open risks have controls listed
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
-                {panelRiskControlsPct}% of open risks have controls listed
-              </div>
-              {panelHighOpenRisks.map(r => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
-                    </div>
-                    <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
+            {panelHighOpenRisks.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
                   </div>
-                  <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
-                  {onNavigate && (
-                    <button
-                      onClick={() => onNavigate('risks')}
-                      style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
-                    >
-                      {NAV_LABELS.risks}
-                    </button>
-                  )}
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
                 </div>
-              ))}
-            </div>
-          )}
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('risks')}
-              style={{ marginTop: 10, fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
-            >
-              View Risk Register →
-            </button>
-          )}
-        </div>
-      )}
+                <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate('risks')}
+                    style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                  >
+                    {NAV_LABELS.risks}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {onNavigate && risksForPanel.length > 0 && (
+          <button
+            onClick={() => onNavigate('risks')}
+            style={{ marginTop: 10, fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+          >
+            View Risk Register →
+          </button>
+        )}
+      </StatusCard>
 
       {/* ══════════════════════════ DECISIONS REQUIRED ══════════════════════════ */}
       <GroupHeading title="Decisions Required" />
@@ -1689,18 +1814,14 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <GroupHeading title="Governance" />
 
       {/* ── STRATEGIC GOALS SUMMARY ──────────────────────────────────── */}
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <SectionTitle icon="🎯" title="Strategic Goals" count={d.goals.length} />
+      <StatusCard icon="🎯" title="Strategic Goals" level={goalsLevel} number={goalsNumber} message={goalsMessage}>
         {d.goals.length === 0 ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No strategic goals set — add goals in the Goals tab</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add goals in the Goals tab</div>
         ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
-          // COLLAPSED — calm, all on track or completed
           <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
             ✅ All goals are on track or completed
-            {activeGoals.length > 0 ? ` · ${goalsPct}% on track or completed` : ''}
           </div>
         ) : (
-          // EXPANDED — pill grid + list, only shown when something needs attention
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
               {[
@@ -1727,11 +1848,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                      <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
-                        {g.responsible_name && `👤 ${g.responsible_name}`}
-                        {g.responsible_name && g.target_date && ' · '}
-                        {g.target_date && `Target: ${fmt(g.target_date)}`}
-                      </div>
+                      {g.target_date && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>Target: {fmt(g.target_date)}</div>}
+                      <OwnerLine owner={g.responsible_name} color={dot} navTo="goals" onNavigate={onNavigate} />
                     </div>
                     <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
                     {onNavigate && (
@@ -1748,7 +1866,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             </div>
           </>
         )}
-      </div>
+      </StatusCard>
 
 
       {/* ══════════════════════════ RESOURCES ══════════════════════════ */}
@@ -1756,23 +1874,25 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
 
       {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
       {isAdmin && (
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <SectionTitle
-          icon="📊"
-          title="Financial Health"
-          note={`(FY ${fyLabelStr})`}
-          rightContent={(d.entities || []).length > 0 && !xeroConnected && (
-            <select
-              className="no-print"
-              value={financeEntityFilter}
-              onChange={e => setFinanceEntityFilter(e.target.value)}
-              style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
-            >
-              <option value="all">All Entities</option>
-              {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-            </select>
-          )}
-        />
+      <StatusCard
+        icon="📊"
+        title="Financial Health"
+        level={financeLevel}
+        number={financeNumber}
+        message={financeMessage}
+        rightContent={(d.entities || []).length > 0 && !xeroConnected && (
+          <select
+            className="no-print"
+            value={financeEntityFilter}
+            onChange={e => setFinanceEntityFilter(e.target.value)}
+            style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+          >
+            <option value="all">All Entities</option>
+            {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        )}
+      >
+        <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 10 }}>FY {fyLabelStr}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: finOverBudgetCats.length > 0 ? 14 : 0 }}>
           {[
             { label: 'Total Income', value: `$${(panelFinTotalIncome/1000).toFixed(1)}k`, icon: '💵', bg: '#e8f4ef', color: 'var(--brand)' },
@@ -1814,18 +1934,18 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               ✅ All budget categories within limits
             </div>
           ) : (
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No finance data recorded for this financial year — add income and expenses in the Finance tab</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add income and expenses in the Finance tab</div>
           )
         )}
-      </div>
+      </StatusCard>
       )}
 
       {/* ── TWO-COLUMN: GRANTS + SERVICE REMINDERS (ASSETS) ────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
 
         {/* ── GRANTS PIPELINE ────────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="💰" title="Grants Pipeline" count={periodPipeline.length} note={`(${pl})`} />
+        <StatusCard icon="💰" title="Grants Pipeline" level={grantsLevel} number={grantsNumber} message={grantsMessage}>
+          <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: periodPipeline.length > 0 ? 8 : 0 }}>{pl}</div>
           {periodPipeline.length === 0 ? (
             <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active grant applications in this period</div>
           ) : periodPipeline.map(g => {
@@ -1855,21 +1975,16 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               </div>
             );
           })}
-        </div>
+        </StatusCard>
 
         {/* ── SERVICE REMINDERS ──────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="🔧" title="Service Reminders (60 days)" count={upcomingReminders.length} />
+        <StatusCard icon="🔧" title="Service Reminders (60 days)" level={serviceLevel} number={serviceNumber} message={serviceMessage}>
           {upcomingReminders.length === 0 ? (
             <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>
               No reminders due in next 60 days
-              {d.assets.length > 0 ? ` · ${compliantPct}% of assets have no overdue service reminder` : ''}
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 8 }}>
-                {compliantPct}% of assets have no overdue service reminder
-              </div>
               {upcomingReminders.map(r => {
             const overdue = new Date(r.due_date + 'T12:00:00') < today;
             const daysLeft = Math.ceil((new Date(r.due_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
@@ -1915,7 +2030,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               })}
             </>
           )}
-        </div>
+        </StatusCard>
       </div>
 
       {/* ══════════════════════════ COMMUNITY ══════════════════════════ */}
