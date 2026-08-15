@@ -110,7 +110,7 @@ const LEVEL_EMOJI = { red: '🔴', amber: '🟡', grey: '⚪', green: '🟢' };
 // item lists) stays per-section as children -- their shapes differ too much
 // (due dates vs. deadlines vs. budget categories) to force into one generic
 // row format.
-function StatusCard({ icon, title, level, number, message, rightContent, children }) {
+function StatusCard({ icon, title, level, number, message, rightContent, trend, children }) {
   const s = LEVEL_STYLES[level];
   return (
     <div className="panel" style={{ marginBottom: 20, borderTop: `3px solid ${s.dot}` }}>
@@ -126,6 +126,7 @@ function StatusCard({ icon, title, level, number, message, rightContent, childre
       />
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: children ? 14 : 0 }}>
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 30, fontWeight: 700, color: s.color, lineHeight: 1 }}>{number}</div>
+        <TrendArrow trend={trend} />
         <div style={{ fontSize: 14, color: 'var(--text3)' }}>{message}</div>
       </div>
       {children}
@@ -163,6 +164,37 @@ function ViewAllLink({ shown, total, navTo, onNavigate }) {
     >
       +{total - shown} more — {NAV_LABELS[navTo] || 'View All'} →
     </button>
+  );
+}
+
+// Stage 5 (86d41pc93) -- single locked-month-over-month trend arrow. Purely
+// historical (module_kpi_snapshots), independent of the live number shown
+// on the card -- comparing a live count against a locked percentage would
+// be comparing different units. Higher is always better for these 4
+// metrics (% compliant/clear/serviced/on-track).
+const TREND_CFG = {
+  up:   { arrow: '↑', color: '#2e7d52' },
+  down: { arrow: '↓', color: 'var(--danger)' },
+  flat: { arrow: '→', color: 'var(--text3)' },
+};
+
+function getTrend(pair, key) {
+  if (!pair) return null;
+  const [prev, latest] = pair;
+  const diff = latest[key] - prev[key];
+  return { dir: diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat', diff };
+}
+
+function TrendArrow({ trend }) {
+  if (!trend) return null;
+  const cfg = TREND_CFG[trend.dir];
+  return (
+    <span
+      style={{ fontSize: 14, color: cfg.color, fontWeight: 700, marginLeft: 8 }}
+      title={`${trend.diff > 0 ? '+' : ''}${trend.diff}pt vs last month`}
+    >
+      {cfg.arrow}
+    </span>
   );
 }
 
@@ -288,8 +320,8 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
-      supabase.from('grants').select('id, name, funder, amount, status, deadline').order('deadline'),
-      supabase.from('service_reminders').select('id, type, due_date, asset_id').order('due_date'),
+      supabase.from('grants').select('id, name, funder, amount, status, deadline, owner').order('deadline'),
+      supabase.from('service_reminders').select('id, type, due_date, asset_id, owner').order('due_date'),
       supabase.from('assets').select('*'),
       supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
@@ -1151,6 +1183,16 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
     assets: d.assets, today, truncate, fmtMoney,
   });
 
+  // Stage 5 (86d41pc93) -- locked-month-over-month trend, null until 2+
+  // months exist. d.kpiSnapshots is already sorted ascending by snapshot_month.
+  const kpiTrendPair = d.kpiSnapshots.length >= 2
+    ? [d.kpiSnapshots[d.kpiSnapshots.length - 2], d.kpiSnapshots[d.kpiSnapshots.length - 1]]
+    : null;
+  const complianceTrend = getTrend(kpiTrendPair, 'compliance_pct');
+  const riskTrend       = getTrend(kpiTrendPair, 'risk_pct');
+  const goalsTrend      = getTrend(kpiTrendPair, 'goals_pct');
+  const serviceTrend    = getTrend(kpiTrendPair, 'assets_pct');
+
   return (
     <div>
       <style>{`
@@ -1408,6 +1450,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         level={complianceLevel}
         number={complianceNumber}
         message={complianceMessage}
+        trend={complianceTrend}
         rightContent={(d.entities || []).length > 0 && (
           <select
             className="no-print"
@@ -1536,6 +1579,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         level={riskLevel}
         number={riskNumber}
         message={riskMessage}
+        trend={riskTrend}
         rightContent={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {panelHighOpenRisks.length > 0 && (
@@ -1849,7 +1893,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <GroupHeading title="Governance" />
 
       {/* ── STRATEGIC GOALS SUMMARY ──────────────────────────────────── */}
-      <StatusCard icon="🎯" title="Strategic Goals" level={goalsLevel} number={goalsNumber} message={goalsMessage}>
+      <StatusCard icon="🎯" title="Strategic Goals" level={goalsLevel} number={goalsNumber} message={goalsMessage} trend={goalsTrend}>
         {d.goals.length === 0 ? (
           <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add goals in the Goals tab</div>
         ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
@@ -1996,6 +2040,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                     {g.funder}{g.amount && ` · ${fmtMoney(g.amount)}`}
                     {g.deadline && ` · ${urgent ? `⚠️ ${daysLeft}d left` : `Due ${fmt(g.deadline)}`}`}
                   </div>
+                  <OwnerLine owner={g.owner} color="var(--text3)" navTo="grants" onNavigate={onNavigate} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                   <span style={{ fontSize: 14, background: ss.bg, color: ss.color, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{g.status}</span>
@@ -2015,7 +2060,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </StatusCard>
 
         {/* ── SERVICE REMINDERS ──────────────────────────────────────── */}
-        <StatusCard icon="🔧" title="Service Reminders (60 days)" level={serviceLevel} number={serviceNumber} message={serviceMessage}>
+        <StatusCard icon="🔧" title="Service Reminders (60 days)" level={serviceLevel} number={serviceNumber} message={serviceMessage} trend={serviceTrend}>
           {upcomingReminders.length === 0 ? (
             <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>
               No reminders due in next 60 days
@@ -2036,6 +2081,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <div style={{ fontSize: 14, color: overdue ? 'var(--danger)' : 'var(--text3)' }}>
                     {overdue ? `Overdue by ${Math.abs(daysLeft)}d` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(r.due_date)}
                   </div>
+                  <OwnerLine owner={r.owner} color={overdue ? 'var(--danger)' : 'var(--text3)'} navTo="assets" onNavigate={onNavigate} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                   {matchedTpl && onStartWorkflow && (

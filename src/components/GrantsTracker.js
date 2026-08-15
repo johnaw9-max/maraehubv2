@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
+import useProfiles from '../lib/useProfiles';
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -10,7 +11,7 @@ const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health
 const EMPTY_FORM = {
   name: '', funder: '', amount: '', category: 'Community', status: 'researching',
   deadline: '', submitted_date: '', decision_date: '', reporting_date: '',
-  contact_name: '', contact_email: '', notes: '',
+  contact_name: '', contact_email: '', owner: '', notes: '',
 };
 
 function fmt(d) {
@@ -30,6 +31,8 @@ function daysUntil(d) {
 }
 
 export default function GrantsTracker() {
+  const allProfiles = useProfiles();
+  const trustees = allProfiles.filter(p => p.role === 'trustee');
   const [grants, setGrants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -94,6 +97,7 @@ export default function GrantsTracker() {
       reporting_date: g.reporting_date || '',
       contact_name: g.contact_name || '',
       contact_email: g.contact_email || '',
+      owner: g.owner || '',
       notes: g.notes || '',
     });
     setEditId(g.id);
@@ -121,6 +125,7 @@ export default function GrantsTracker() {
       reporting_date: form.reporting_date || null,
       contact_name: form.contact_name.trim() || null,
       contact_email: form.contact_email.trim() || null,
+      owner: form.owner || null,
       notes: form.notes.trim() || null,
     };
 
@@ -262,6 +267,14 @@ export default function GrantsTracker() {
               </div>
             </div>
 
+            <div className="form-group">
+              <label className="form-label">Owner (Responsible Trustee)</label>
+              <select className="form-input" value={form.owner} onChange={e => setField('owner', e.target.value)}>
+                <option value="">— Select trustee —</option>
+                {trustees.map(t => <option key={t.full_name} value={t.full_name}>{t.full_name}</option>)}
+              </select>
+            </div>
+
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Status</label>
@@ -399,6 +412,7 @@ export default function GrantsTracker() {
                       { label: 'Reporting Due', val: fmt(g.reporting_date) },
                       { label: 'Contact', val: g.contact_name || '—' },
                       { label: 'Email', val: g.contact_email ? <a href={`mailto:${g.contact_email}`} style={{ color: 'var(--brand)' }}>{g.contact_email}</a> : '—' },
+                      { label: 'Owner', val: g.owner || '—' },
                     ].map(({ label, val }) => (
                       <div key={label}>
                         <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{label}: </span>

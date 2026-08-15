@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
+import useProfiles from '../lib/useProfiles';
 
 const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Inventory', 'Other'];
 const INVENTORY_CATEGORIES = ['Linen', 'Crockery', 'Kitchen', 'Other'];
@@ -17,9 +18,11 @@ const RECURRING_LABELS = { none: 'One-time', monthly: 'Monthly', quarterly: 'Qua
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
 const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technology: '💻', Grounds: '🌿', Inventory: '📦', Other: '📁' };
 const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '', inventory_category: 'Linen', quantity: '', last_stocktake: '', entity_id: '' };
-const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', notes: '' };
+const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', owner: '', notes: '' };
 
 export default function AssetsManager({ onStartWorkflow }) {
+  const allProfiles = useProfiles();
+  const trustees = allProfiles.filter(p => p.role === 'trustee');
   const [assets, setAssets] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -210,7 +213,7 @@ export default function AssetsManager({ onStartWorkflow }) {
   function openAddReminder() { setReminderForm(EMPTY_REMINDER); setEditReminderId(null); setError(''); setShowReminderModal(true); }
 
   function openEditReminder(r) {
-    setReminderForm({ type: r.type || '', due_date: r.due_date, recurring: r.recurring, notes: r.notes || '' });
+    setReminderForm({ type: r.type || '', due_date: r.due_date, recurring: r.recurring, owner: r.owner || '', notes: r.notes || '' });
     setEditReminderId(r.id); setError(''); setShowReminderModal(true);
   }
 
@@ -221,6 +224,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       type: reminderForm.type.trim(),
       due_date: reminderForm.due_date,
       recurring: reminderForm.recurring,
+      owner: reminderForm.owner || null,
       notes: reminderForm.notes.trim(),
     };
     const { error } = editReminderId
@@ -420,6 +424,13 @@ export default function AssetsManager({ onStartWorkflow }) {
                     <option value="2years">Every 2 years</option>
                   </select>
                 </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Owner (Responsible Trustee)</label>
+                <select className="form-input" value={reminderForm.owner} onChange={e => setRField('owner', e.target.value)}>
+                  <option value="">— Select trustee —</option>
+                  {trustees.map(t => <option key={t.full_name} value={t.full_name}>{t.full_name}</option>)}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Notes (optional)</label>
