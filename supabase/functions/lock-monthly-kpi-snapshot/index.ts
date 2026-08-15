@@ -215,13 +215,20 @@ serve(async (_req) => {
     // ── Compliance % ──────────────────────────────────────────────────────
     // Matches src/lib/complianceStatus.js's getComplianceStatus() exactly -
     // "compliant" requires EITHER a due date >30 days out OR no due date but
-    // a real last_checked_date. A never-assessed item (no due date, never
-    // checked) counts against the percentage here, same as the live tile -
-    // the previous formula had no concept of "never assessed" at all.
+    // a real last_checked_date. Never-assessed items (no due date, never
+    // checked) are excluded from the denominator, not counted against the
+    // percentage - they mean "no data yet", not "failing". Methodology
+    // change from the original version of this function: locked months
+    // before this fix were computed under the old formula and are NOT
+    // retroactively recomputed (ON CONFLICT DO NOTHING on snapshot_month),
+    // so a trend comparison spanning this change will show a jump that is
+    // a methodology artifact, not a real change in compliance.
+    const neverAssessedCompliance = compliance.filter(c => !c.due_date && !c.last_checked_date);
     const compliantCompliance = compliance.filter(c =>
       (c.due_date && new Date(c.due_date + 'T12:00:00') > in30) || (!c.due_date && c.last_checked_date)
     );
-    const compliancePct = compliance.length ? Math.round((compliantCompliance.length / compliance.length) * 100) : 100;
+    const assessedTotal = compliance.length - neverAssessedCompliance.length;
+    const compliancePct = assessedTotal ? Math.round((compliantCompliance.length / assessedTotal) * 100) : 100;
 
     // ── Risk Register % ───────────────────────────────────────────────────
     // Matches src/lib/riskStatus.js's getRiskStatus() exactly - "% clear of
