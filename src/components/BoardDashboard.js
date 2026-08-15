@@ -150,6 +150,22 @@ function OwnerLine({ owner, color, navTo, onNavigate }) {
   );
 }
 
+// Stage 4 (86d41pc93) -- cap+view-all for single-tab flagged-item lists.
+// Only for sections that map to exactly one real tab; cross-section
+// aggregators (Focus This Week, Top Priorities) use plain "+N more" text
+// instead, since there is no single destination to link to.
+function ViewAllLink({ shown, total, navTo, onNavigate }) {
+  if (total <= shown || !onNavigate) return null;
+  return (
+    <button
+      onClick={() => onNavigate(navTo)}
+      style={{ fontSize: 14, background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontWeight: 700, textDecoration: 'underline', padding: '4px 0', fontFamily: 'DM Sans, sans-serif', textAlign: 'center', width: '100%' }}
+    >
+      +{total - shown} more — {NAV_LABELS[navTo] || 'View All'} →
+    </button>
+  );
+}
+
 // "Focus this week" card (ClickUp 86d3vc4yp, Step 3). Renders items from
 // focusItems.js's buildFocusItems() — not yet wired into the page or given
 // an empty-case design; both are Step 4.
@@ -158,7 +174,7 @@ const TIER_STYLES = {
   'worth-a-look': { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00',        badgeBg: '#c8902a',      badgeLabel: 'Worth a look' },
 };
 
-function FocusThisWeekCard({ items, onNavigate }) {
+function FocusThisWeekCard({ items, total, onNavigate }) {
   if (!items || items.length === 0) {
     return (
       <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid #2e7d52', background: '#e8f4ef', textAlign: 'center', padding: '20px 16px' }}>
@@ -217,6 +233,11 @@ function FocusThisWeekCard({ items, onNavigate }) {
             </div>
           );
         })}
+        {total > items.length && (
+          <div style={{ fontSize: 14, color: 'var(--text3)', textAlign: 'center' }}>
+            +{total - items.length} more this week — check Risks, Minutes, Assets, and Finance directly
+          </div>
+        )}
       </div>
     </div>
   );
@@ -892,7 +913,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   const normalizeInsight = (item, level) =>
     typeof item === 'string' ? { text: item, level } : { ...item, level };
 
-  const INSIGHTS = [
+  const INSIGHTS_ALL = [
     ...redInsights.map(item => normalizeInsight(item, 'red')),
     ...(d.activeInterestCount > 0 ? [{
       text: `${d.activeInterestCount} active conflict of interest declaration${d.activeInterestCount !== 1 ? 's' : ''} — review before next meeting`,
@@ -901,7 +922,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     }] : []),
     ...amberInsights.map(item => normalizeInsight(item, 'amber')),
     ...greenInsights.slice(0, 1).map(item => normalizeInsight(item, 'green')),
-  ].slice(0, 5);
+  ];
+  // Stage 4 (86d41pc93): real total preserved alongside the cap, dropped
+  // from 5 to 3 for consistency with Focus This Week and Workflow Activity.
+  const INSIGHTS_TOTAL = INSIGHTS_ALL.length;
+  const INSIGHTS = INSIGHTS_ALL.slice(0, 3);
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
@@ -1121,7 +1146,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
 
-  const focusItems = buildFocusItems({
+  const { items: focusItems, total: focusItemsTotal } = buildFocusItems({
     overdueActions, overdueReminders, finNet, highOpenRisks,
     assets: d.assets, today, truncate, fmtMoney,
   });
@@ -1185,7 +1210,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
 
       {/* ── FOCUS THIS WEEK (ClickUp 86d3vc4yp) ──────────────────────────── */}
-      <FocusThisWeekCard items={focusItems} onNavigate={onNavigate} />
+      <FocusThisWeekCard items={focusItems} total={focusItemsTotal} onNavigate={onNavigate} />
 
       {/* ── AI REPORT MODAL ────────────────────────────────────────────── */}
       {(showReport || aiError) && (
@@ -1337,6 +1362,11 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   </div>
                 );
               })}
+              {INSIGHTS_TOTAL > INSIGHTS.length && (
+                <div style={{ fontSize: 14, color: 'var(--text3)', textAlign: 'center' }}>
+                  +{INSIGHTS_TOTAL - INSIGHTS.length} more priorities not shown
+                </div>
+              )}
             </div>
           )}
           {d.workflowInstances.length > 0 && (
@@ -1413,7 +1443,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {/* Flagged items — overdue + due soon, shown whenever either exists */}
             {(panelOverdueCompliance.length > 0 || panelDueSoonCompliance.length > 0) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: panelNeverAssessedCompliance.length > 0 ? 14 : 0 }}>
-                {[...panelOverdueCompliance, ...panelDueSoonCompliance].map(c => {
+                {[...panelOverdueCompliance, ...panelDueSoonCompliance].slice(0, 3).map(c => {
                   const overdue = new Date(c.due_date + 'T12:00:00') < today;
                   const dot   = overdue ? '#d9534f' : '#c8902a';
                   const bg    = overdue ? '#faeae7' : '#fdf0dc';
@@ -1443,6 +1473,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                     </div>
                   );
                 })}
+                <ViewAllLink shown={3} total={panelOverdueCompliance.length + panelDueSoonCompliance.length} navTo="compliance" onNavigate={onNavigate} />
               </div>
             )}
 
@@ -1541,7 +1572,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
               {panelRiskControlsPct}% of open risks have controls listed
             </div>
-            {panelHighOpenRisks.map(r => (
+            {panelHighOpenRisks.slice(0, 3).map(r => (
               <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1563,6 +1594,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 )}
               </div>
             ))}
+            <ViewAllLink shown={3} total={panelHighOpenRisks.length} navTo="risks" onNavigate={onNavigate} />
           </div>
         )}
         {onNavigate && risksForPanel.length > 0 && (
@@ -1841,7 +1873,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[...goalsBehind, ...goalsAtRisk].map(g => {
+              {[...goalsBehind, ...goalsAtRisk].slice(0, 3).map(g => {
                 const light = goalLight(g);
                 const dot   = light === 'red' ? '#d9534f' : '#c8902a';
                 const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
@@ -1866,6 +1898,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   </div>
                 );
               })}
+              <ViewAllLink shown={3} total={goalsBehind.length + goalsAtRisk.length} navTo="goals" onNavigate={onNavigate} />
             </div>
           </>
         )}
@@ -1951,7 +1984,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: periodPipeline.length > 0 ? 8 : 0 }}>{pl}</div>
           {periodPipeline.length === 0 ? (
             <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active grant applications in this period</div>
-          ) : periodPipeline.map(g => {
+          ) : <>{periodPipeline.slice(0, 3).map(g => {
             const ss = STATUS_STYLES[g.status] || STATUS_STYLES.researching;
             const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24)) : null;
             const urgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 14;
@@ -1978,6 +2011,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               </div>
             );
           })}
+          <ViewAllLink shown={3} total={periodPipeline.length} navTo="grants" onNavigate={onNavigate} /></>}
         </StatusCard>
 
         {/* ── SERVICE REMINDERS ──────────────────────────────────────── */}
@@ -1988,7 +2022,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             </div>
           ) : (
             <>
-              {upcomingReminders.map(r => {
+              {upcomingReminders.slice(0, 3).map(r => {
             const overdue = new Date(r.due_date + 'T12:00:00') < today;
             const daysLeft = Math.ceil((new Date(r.due_date + 'T12:00:00') - today) / (1000 * 60 * 60 * 24));
             const matchedTpl = matchWorkflowTemplate(r.type, d.templates || []);
@@ -2031,6 +2065,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               </div>
             );
               })}
+              <ViewAllLink shown={3} total={upcomingReminders.length} navTo="assets" onNavigate={onNavigate} />
             </>
           )}
         </StatusCard>

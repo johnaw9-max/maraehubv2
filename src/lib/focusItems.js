@@ -100,5 +100,8 @@ export function buildFocusItems({ overdueActions, overdueReminders, finNet, high
     return SOURCE_PRIORITY[a.source] - SOURCE_PRIORITY[b.source];
   });
 
-  return candidates.slice(0, 3);
+  // Stage 4 (86d41pc93): total preserved alongside the cap so the card can
+  // show "+N more" instead of silently dropping items. Can only ever be
+  // capped-vs-total 4-vs-3 at most, since there's one candidate per source.
+  return { items: candidates.slice(0, 3), total: candidates.length };
 }
