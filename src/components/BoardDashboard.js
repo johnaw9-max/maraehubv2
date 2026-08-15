@@ -719,6 +719,14 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const hsMaxTotal     = hsCategories.reduce((s, c) => s + c.max, 0);
   const hsFinalScore   = hsMaxTotal ? Math.round((hsRawTotal / hsMaxTotal) * 100) : 0;
 
+  // Health Score breakdown dots -- reuses the same 4 levels as the summary
+  // strip for Compliance/Risk/Finance/Goals. Tasks has no level anywhere
+  // else in this file; this new 2-state threshold mirrors hsCategories'
+  // own Tasks scoring above (overdueTasks.length), just expressed as a dot.
+  const tasksLevel = overdueTasks.length > 0 ? 'red' : 'green';
+  const HS_ICON  = { Compliance: '📋', Risk: '🛡️', Tasks: '📝', Finance: '📊', Goals: '🎯' };
+  const HS_LEVEL = { Compliance: complianceLevel, Risk: riskLevel, Tasks: tasksLevel, Finance: financeLevel, Goals: goalsLevel };
+
   const ALERTS = [
     epUrgentCount              && { label: `🆘 Emergency Preparedness — ${epUrgentCount} item${epUrgentCount !== 1 ? 's' : ''} overdue or not scheduled`, level: 'red', tab: 'compliance' },
     overdueCompliance.length   && { label: `${overdueCompliance.length} compliance item${overdueCompliance.length !== 1 ? 's' : ''} overdue`, level: 'red', tab: 'compliance' },
@@ -1251,15 +1259,20 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       </div>
 
-      {/* ── SUMMARY STRIP — reuses the 6 StatusCard levels, computes nothing new ── */}
+      {/* ── SUMMARY STRIP — reuses the 6 StatusCard levels/numbers/messages, computes nothing new ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 16px', padding: '10px 14px', marginBottom: 18, background: 'var(--surface2)', borderRadius: 8 }}>
         {[
-          { icon: '📋', label: 'Compliance', level: complianceLevel, navTo: 'compliance' },
-          { icon: '🛡️', label: 'Risk', level: riskLevel, navTo: 'risks' },
-          { icon: '🎯', label: 'Goals', level: goalsLevel, navTo: 'goals' },
-          ...(isAdmin ? [{ icon: '📊', label: 'Finance', level: financeLevel, navTo: 'finance' }] : []),
-          { icon: '💰', label: 'Grants', level: grantsLevel, navTo: 'grants' },
-          { icon: '🔧', label: 'Assets', level: serviceLevel, navTo: 'assets' },
+          {
+            icon: '📋', label: 'Compliance', level: complianceLevel, navTo: 'compliance',
+            // Fraction, not complianceNumber/Message -- compliant/assessed, consistent
+            // with the compliancePct fix (never-assessed excluded from the denominator).
+            detail: `${panelCompliantComplianceArr.length}/${complianceForPanel.length - panelNeverAssessedCompliance.length}`,
+          },
+          { icon: '🛡️', label: 'Risk', level: riskLevel, navTo: 'risks', detail: `${riskNumber} ${riskMessage}` },
+          { icon: '🎯', label: 'Goals', level: goalsLevel, navTo: 'goals', detail: `${goalsNumber} ${goalsMessage}` },
+          ...(isAdmin ? [{ icon: '📊', label: 'Finance', level: financeLevel, navTo: 'finance', detail: `${financeNumber} ${financeMessage}` }] : []),
+          { icon: '💰', label: 'Grants', level: grantsLevel, navTo: 'grants', detail: `${grantsNumber} ${grantsMessage}` },
+          { icon: '🔧', label: 'Assets', level: serviceLevel, navTo: 'assets', detail: `${serviceNumber} ${serviceMessage}` },
         ].map(m => (
           <span
             key={m.label}
@@ -1267,6 +1280,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default' }}
           >
             {m.icon} {m.label} {LEVEL_EMOJI[m.level]}
+            <span style={{ fontWeight: 400, color: 'var(--text3)' }}>{m.detail}</span>
           </span>
         ))}
       </div>
@@ -2280,8 +2294,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {hsCategories.map(c => (
-                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text3)' }}>
-                  <span>{c.name}</span>
+                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: 'var(--text3)' }}>
+                  <span>{HS_ICON[c.name]} {c.name} {LEVEL_EMOJI[HS_LEVEL[c.name]]}</span>
                   <span>{c.detail}</span>
                 </div>
               ))}
