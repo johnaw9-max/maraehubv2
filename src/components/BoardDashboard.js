@@ -283,7 +283,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
       supabase.from('interest_register').select('id').eq('status', 'Active'),
-      supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls, entity_id').order('created_at', { ascending: false }),
+      supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls, entity_id, owner, review_date').order('created_at', { ascending: false }),
       supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct, net_assets, total_assets, total_liabilities').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
       supabase.from('entities').select('id, name').order('name'),
       fetchXeroFinancials(),
@@ -1547,7 +1547,10 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
                   </div>
-                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>{r.category} · {r.status}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>
+                    {r.category} · {r.status}{r.review_date && ` · Review by ${fmt(r.review_date)}`}
+                  </div>
+                  <OwnerLine owner={r.owner} color="#a63020" navTo="risks" onNavigate={onNavigate} />
                 </div>
                 <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
                 {onNavigate && (
