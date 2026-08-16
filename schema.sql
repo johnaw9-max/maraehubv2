@@ -2,19 +2,20 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-16 (previously 2026-08-14).
+-- pg_catalog introspection, most recently 2026-08-17 (previously 2026-08-16).
 -- This re-sync exists specifically to close the schema_drift check's own
 -- known, previously-observed-live limitation (ClickUp 86d3u7790): nothing
 -- enforces this file getting regenerated when new migrations land.
 -- Real diff this time, computed directly against live Opeke before
--- editing anything, not assumed: grants.owner and service_reminders.owner
--- (migration 20260816000000) -- both added, nothing else changed, 45
--- tables before and after. NOT reflected here: compliance_items'
--- classification/legal_basis/legal_basis_detail/workflow_template_id --
--- deliberately Tineka-only per the standing block on 86d41hgzx, genuinely
--- absent from live Opeke, so correctly absent here too. schema_drift will
--- keep flagging those as missing on Opeke until that investigation
--- resolves -- a real, accurate signal, not noise.
+-- editing anything, not assumed: compliance_items gained
+-- classification/legal_basis/legal_basis_detail/workflow_template_id
+-- (migration 20260817000000) -- the column-add half only, applied as
+-- Stage 1 of the Fire Safety Readiness task. Values are NOT yet
+-- classified on Opeke (all 10 real rows default to 'task') -- that
+-- backfill is deliberately deferred to its own, separate task since
+-- Opeke's real compliance_items differ from the 17-item set Tineka's
+-- Stage 1 audit was built against. 86d41hgzx is partially unblocked,
+-- not fully resolved.
 -- 45 real base tables (the pre-existing xero_connection_status VIEW is
 -- correctly excluded).
 -- Tables are listed alphabetically (not dependency order — accuracy over
@@ -259,12 +260,18 @@ create table if not exists compliance_items (
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   last_checked_date date,
-  entity_id uuid
+  entity_id uuid,
+  classification text not null default 'task',
+  legal_basis text,
+  legal_basis_detail text,
+  workflow_template_id uuid
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
 alter table compliance_items add constraint compliance_items_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 alter table compliance_items add constraint compliance_items_category_check CHECK ((category = ANY (ARRAY['building'::text, 'insurance'::text, 'trustee'::text, 'health_safety'::text, 'civil_defence'::text, 'other'::text, 'emergency_preparedness'::text])));
+alter table compliance_items add constraint compliance_items_classification_check CHECK ((classification = ANY (ARRAY['task'::text, 'template'::text, 'workflow'::text])));
+alter table compliance_items add constraint compliance_items_workflow_template_id_fkey FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id);
 
 alter table compliance_items enable row level security;
 
