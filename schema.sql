@@ -2,18 +2,21 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-14 (previously 2026-08-13).
+-- pg_catalog introspection, most recently 2026-08-16 (previously 2026-08-14).
 -- This re-sync exists specifically to close the schema_drift check's own
 -- known, previously-observed-live limitation (ClickUp 86d3u7790): nothing
--- enforces this file getting regenerated when new migrations land, and two
--- had -- emergency_plan_hazards/emergency_plan_people (Emergency Plan
--- Sections 1-4, migration 20260813010000) and goals.focus_area/
--- related_module (migration 20260814000000) -- neither reflected here
--- until now. Done proactively, before the next 08:00 UTC cron run, rather
--- than waiting for schema_drift to report them as findings.
+-- enforces this file getting regenerated when new migrations land.
+-- Real diff this time, computed directly against live Opeke before
+-- editing anything, not assumed: grants.owner and service_reminders.owner
+-- (migration 20260816000000) -- both added, nothing else changed, 45
+-- tables before and after. NOT reflected here: compliance_items'
+-- classification/legal_basis/legal_basis_detail/workflow_template_id --
+-- deliberately Tineka-only per the standing block on 86d41hgzx, genuinely
+-- absent from live Opeke, so correctly absent here too. schema_drift will
+-- keep flagging those as missing on Opeke until that investigation
+-- resolves -- a real, accurate signal, not noise.
 -- 45 real base tables (the pre-existing xero_connection_status VIEW is
--- correctly excluded -- caught and fixed during this re-sync's own table
--- count verification, not assumed).
+-- correctly excluded).
 -- Tables are listed alphabetically (not dependency order — accuracy over
 -- runnable ordering; foreign keys mean this file is not guaranteed to run
 -- top-to-bottom against a fresh empty database without reordering).
@@ -694,7 +697,8 @@ create table if not exists grants (
   contact_name text,
   contact_email text,
   notes text,
-  created_at timestamp without time zone default now()
+  created_at timestamp without time zone default now(),
+  owner text
 );
 
 alter table grants add constraint grants_pkey PRIMARY KEY (id);
@@ -1148,7 +1152,8 @@ create table if not exists service_reminders (
   recurring text default 'annual'::text,
   notes text,
   created_at timestamp with time zone default now(),
-  auto_workflow_enabled boolean not null default false
+  auto_workflow_enabled boolean not null default false,
+  owner text
 );
 
 alter table service_reminders add constraint service_reminders_pkey PRIMARY KEY (id);

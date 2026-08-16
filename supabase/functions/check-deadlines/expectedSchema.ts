@@ -288,7 +288,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "contact_name",
     "contact_email",
     "notes",
-    "created_at"
+    "created_at",
+    "owner"
   ],
   "incidents": [
     "id",
@@ -448,7 +449,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "recurring",
     "notes",
     "created_at",
-    "auto_workflow_enabled"
+    "auto_workflow_enabled",
+    "owner"
   ],
   "system_check_log": [
     "id",
