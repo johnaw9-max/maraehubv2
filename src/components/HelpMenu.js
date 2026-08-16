@@ -487,6 +487,45 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Fire Safety Readiness',
+      icon: '🔥',
+      items: [
+        { q: 'What does Fire Safety Readiness track?', a: [
+          { text: 'Fire safety is spread across four modules working together, rather than one single fire safety screen — Compliance, Emergency Plan, Assets, and Workflows.' },
+          { items: [
+            'Compliance — 5 real fire safety items with their own renewal cadences',
+            'Emergency Plan — a Fire hazard entry with likely impact and what to do',
+            'Assets — your fire extinguishers and fire alarms, each with a service reminder',
+            'Workflows — a real, detailed step-by-step fire safety check process',
+          ]},
+        ] },
+        { q: 'What are the 5 fire safety compliance items?', a: [
+          { items: [
+            'Fire extinguishers — inspected and serviced (annually)',
+            'Fire alarms — tested and detection confirmed working (6-monthly)',
+            'Emergency exits — checked clear, signed and operational (6-monthly)',
+            'Evacuation scheme — reviewed and trial evacuation completed (6-monthly)',
+            'Fire warden arrangements — trained and refreshed (6-monthly)',
+          ]},
+          { text: 'Go to the Compliance tab to see their current status and mark them done as you complete each check.' },
+        ] },
+        { q: 'What is the Fire Safety Compliance Check workflow?', a: [
+          { text: 'The Evacuation scheme compliance item is linked to a real, 10-step workflow covering the whole annual review process — reviewing the evacuation plan, inspecting extinguishers, testing alarms, checking exits, booking warden training, running a drill, servicing equipment, updating contacts, updating the compliance record, and filing certificates.' },
+          { text: 'Open Compliance, find "Evacuation scheme — reviewed and trial evacuation completed", and click "⚙️ Start Workflow →" to begin it. It appears in the Workflows tab and Task Board like any other workflow.' },
+        ] },
+        { q: 'What does the Emergency Plan show for Fire?', a: 'Go to Assets & Compliance → Emergency Plan → Hazards, and open "Fire". It has real Likely Impact and What To Do content, based on Fire and Emergency New Zealand\'s own marae evacuation scheme guidance — including the exact alert procedure ("Fire, Fire, Fire" / "He ahi, He ahi"), the 111 call, and reporting to the Fire Warden at your assembly point.' },
+        { q: 'What fire equipment is tracked in Assets?', a: 'Fire Extinguishers and Fire Alarms / Smoke Detectors are recorded in the Assets tab, each with its own service reminder — annual for extinguishers, and a test/battery check for alarms. Use "🔔 Reminders" on each asset to mark them serviced once checked.' },
+        { q: 'What do I still need to do myself?', a: [
+          { text: 'Honestly, two things MaraeHub cannot fill in for you — they are real decisions for your trustees, not something the system can decide.' },
+          { items: [
+            'A named Fire Warden — who is responsible on the night, recorded as a real contact.',
+            'Real supporting documents — your actual evacuation plan and any extinguisher/alarm service certificates, uploaded to Documents once you have them.',
+          ]},
+          { text: 'Everything else — the compliance items, the linked workflow, the Emergency Plan entry, and the equipment records — is already set up and ready to use.' },
+        ] },
+      ]
+    },
+    {
       category: 'Getting Started',
       icon: '🚀',
       items: [
