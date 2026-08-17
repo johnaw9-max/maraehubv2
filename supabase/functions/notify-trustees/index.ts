@@ -30,6 +30,17 @@ const FROM_ADDRESS     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@res
 const APP_URL          = Deno.env.get('APP_URL') ?? 'https://maraehubv2.vercel.app';
 const TEST_EMAIL       = Deno.env.get('RESEND_TEST_EMAIL') ?? '';
 
+// Paused at Waj's request, Opeke only -- concern about compliance/overdue-
+// action emails going out cold to all 7 real trustees before a human
+// approach is worked out. Tineka is unaffected: bookings/grants/goals stay
+// live everywhere, only these two are scoped off, and only on Opeke.
+// Runtime-scoped (not a manual per-project deploy discipline) so the exact
+// same source file is safe to deploy to both projects -- Tineka evaluates
+// IS_OPEKE false and runs unchanged. Flip PAUSE_* back to false to resume.
+const IS_OPEKE = SUPABASE_URL.includes('cbeenkpjpnhmtqtnjiyd');
+const PAUSE_COMPLIANCE_REMINDERS = IS_OPEKE;
+const PAUSE_ACTION_REMINDERS     = IS_OPEKE;
+
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -181,7 +192,7 @@ serve(async (req) => {
     }
 
     // ── 2. Compliance items due within 30 days ─────────────────────────────────
-    if (prefs.compliance !== false) {
+    if (!PAUSE_COMPLIANCE_REMINDERS && prefs.compliance !== false) {
       const fresh = compItems.filter(c => !wasSent(log, 'compliance_due', c.id, id, undefined, 25));
       if (fresh.length > 0) {
         const rows = fresh.map(c => {
@@ -274,7 +285,7 @@ serve(async (req) => {
     }
 
     // ── 4. Meeting actions overdue 7+ days ─────────────────────────────────────
-    if (prefs.actions !== false) {
+    if (!PAUSE_ACTION_REMINDERS && prefs.actions !== false) {
       const fresh = actions.filter(a => !wasSent(log, 'action_overdue', a.id, id, undefined, 7));
       if (fresh.length > 0) {
         const rows = fresh.map(a => {
