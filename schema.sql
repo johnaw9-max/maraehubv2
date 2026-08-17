@@ -2,20 +2,21 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-17 (previously 2026-08-16).
+-- pg_catalog introspection, most recently 2026-08-18 (previously 2026-08-17).
 -- This re-sync exists specifically to close the schema_drift check's own
 -- known, previously-observed-live limitation (ClickUp 86d3u7790): nothing
 -- enforces this file getting regenerated when new migrations land.
 -- Real diff this time, computed directly against live Opeke before
--- editing anything, not assumed: compliance_items gained
+-- editing anything, not assumed: profiles and contacts both gained
+-- is_fire_warden boolean (migration 20260817120000, Fire Warden
+-- Contacts checkbox/filter work). compliance_items' earlier
 -- classification/legal_basis/legal_basis_detail/workflow_template_id
--- (migration 20260817000000) -- the column-add half only, applied as
--- Stage 1 of the Fire Safety Readiness task. Values are NOT yet
--- classified on Opeke (all 10 real rows default to 'task') -- that
--- backfill is deliberately deferred to its own, separate task since
--- Opeke's real compliance_items differ from the 17-item set Tineka's
--- Stage 1 audit was built against. 86d41hgzx is partially unblocked,
--- not fully resolved.
+-- catch-up (20260817000000) is also now genuinely classified for real
+-- rows, not just column-added -- 5 of Opeke's real items were
+-- reclassified to workflow with real linked templates same session
+-- (20260817010000, 20260817020000), the other 10 correctly stay task.
+-- goals.focus_area/related_module (86d410evh) were already captured
+-- here from an earlier session, confirmed still accurate.
 -- 45 real base tables (the pre-existing xero_connection_status VIEW is
 -- correctly excluded).
 -- Tables are listed alphabetically (not dependency order — accuracy over
@@ -294,7 +295,8 @@ create table if not exists contacts (
   email text,
   phone text,
   notes text,
-  created_at timestamp without time zone default now()
+  created_at timestamp without time zone default now(),
+  is_fire_warden boolean not null default false
 );
 
 alter table contacts add constraint contacts_pkey PRIMARY KEY (id);
@@ -1024,7 +1026,8 @@ create table if not exists profiles (
   created_at timestamp without time zone default now(),
   notes text,
   notification_prefs jsonb not null default '{"goals": true, "grants": true, "actions": true, "bookings": true, "compliance": true}'::jsonb,
-  trustee_role text default 'standard'::text
+  trustee_role text default 'standard'::text,
+  is_fire_warden boolean not null default false
 );
 
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);
