@@ -120,6 +120,7 @@ export default function ComplianceTracker({ onStartWorkflow }) {
   const [classFilter, setClassFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
   const [expandedWhy, setExpandedWhy] = useState(null);
+  const [showNeverAssessed, setShowNeverAssessed] = useState(false);
 
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -434,7 +435,143 @@ export default function ComplianceTracker({ onStartWorkflow }) {
       return new Date(a.due_date) - new Date(b.due_date);
     });
 
+  // Urgency-first (86d420evd): never-assessed items collapse into a single,
+  // honest count by default rather than rendering as full rows -- same
+  // "collapse, don't hide" pattern already proven by the Resolved Incident
+  // Archive below. Ordering itself (overdue -> due_soon -> compliant ->
+  // not_set) was already correct via STATUS_ORDER, nothing changed there.
+  const visibleItems = filteredItems.filter(i => getStatus(i.due_date) !== 'not_set');
+  const neverAssessedItems = filteredItems.filter(i => getStatus(i.due_date) === 'not_set');
+
   if (loading) return <div className="loading">Loading compliance data...</div>;
+
+  function renderItemRow(item) {
+    const status = getStatus(item.due_date);
+    const scfg = STATUS_CFG[status];
+    const cat = CATEGORIES[item.category] || CATEGORIES.other;
+    const cls = CLASSIFICATIONS[item.classification] || CLASSIFICATIONS.task;
+    const dl = daysLabel(item.due_date);
+    const entityName = item.entity_id ? entities.find(e => e.id === item.entity_id)?.name : null;
+    return (
+      <div
+        key={item.id}
+        className="panel"
+        style={{ padding: '14px 16px', borderLeft: `4px solid ${scfg.dot}` }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          {/* Left: status + name */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+              <StatusPill status={status} />
+              <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
+                {cat.icon} {cat.label}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 600, background: cls.bg, color: cls.color, borderRadius: 20, padding: '3px 10px' }}>
+                {cls.icon} {cls.label}
+              </span>
+              {item.legal_basis && (
+                <button
+                  onClick={() => setExpandedWhy(id => id === item.id ? null : item.id)}
+                  style={{ fontSize: 14, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  ⓘ Why? {expandedWhy === item.id ? '▲' : '▼'}
+                </button>
+              )}
+              {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
+              {dl && (
+                <span style={{ fontSize: 14, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
+                  {dl}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{item.name}</div>
+            {item.name === 'Fire warden arrangements — trained and refreshed' && (
+              <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 3 }}>
+                🔥 {fireWardens.length > 0 ? `Fire Warden${fireWardens.length > 1 ? 's' : ''}: ${fireWardens.join(', ')}` : 'No Fire Warden set yet — add one in Contacts'}
+              </div>
+            )}
+            <div style={{ fontSize: 14, color: 'var(--text3)' }}>
+              {item.due_date && <span>Next due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
+              {item.due_date && item.renewal_months && <span style={{ margin: '0 6px' }}>·</span>}
+              {item.renewal_months && <span>Renews every {item.renewal_months >= 12 ? `${item.renewal_months / 12}yr` : `${item.renewal_months}mo`}</span>}
+              {(item.due_date || item.renewal_months) && item.responsible_name && <span style={{ margin: '0 6px' }}>·</span>}
+              {item.responsible_name && <span>👤 {item.responsible_name}</span>}
+              {item.last_checked_date && (
+                <span style={{ marginLeft: 6 }}>
+                  · Last checked: <strong style={{ color: 'var(--text2)' }}>{fmt(item.last_checked_date)}</strong>
+                </span>
+              )}
+            </div>
+            {item.notes && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
+            {expandedWhy === item.id && item.legal_basis && (
+              <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
+                <strong>{item.legal_basis}</strong>
+                {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
+              </div>
+            )}
+          </div>
+          {/* Right: doc + actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {item.classification === 'template' && !item.document_url && (
+              <span
+                title="Document mapping not built yet"
+                style={{ fontSize: 14, color: 'var(--text3)', opacity: 0.6, border: '1px dashed var(--border)', borderRadius: 6, padding: '4px 10px' }}
+              >
+                📄 Template
+              </span>
+            )}
+            {item.classification === 'workflow' && item.workflow_template_id && onStartWorkflow && (
+              <button
+                onClick={() => onStartWorkflow({
+                  templateId: item.workflow_template_id,
+                  workflowName: item.name,
+                  sourceName: item.name,
+                  triggerType: 'renewal_reminder',
+                })}
+                style={{ fontSize: 14, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                ⚙️ Start Workflow →
+              </button>
+            )}
+            {item.document_url && (
+              <a href={item.document_url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
+                title={item.document_name || 'View document'}
+              >
+                📎 Doc
+              </a>
+            )}
+            <button
+              onClick={() => handleMarkDone(item)}
+              title={item.renewal_months
+                ? `Mark done today — next due date set to ${nextDueDate(item.renewal_months)}`
+                : 'Mark as checked today'}
+              style={{
+                fontSize: 14, fontWeight: 700,
+                color: '#1a4a3a', background: '#e8f4ef',
+                border: '1px solid #a8d8c0', borderRadius: 6,
+                padding: '4px 10px', cursor: 'pointer',
+              }}
+            >
+              ✓ Done
+            </button>
+            <button
+              onClick={() => openEditItem(item)}
+              style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => deleteItem(item.id)}
+              style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── INCIDENT ARCHIVE SPLIT ─────────────────────────────────────────────────
   const INCIDENT_ARCHIVE_THRESHOLD = 50;
@@ -566,133 +703,32 @@ export default function ComplianceTracker({ onStartWorkflow }) {
             <div className="empty-state"><div className="emoji">✅</div><div>No compliance items in this category</div></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredItems.map(item => {
-                const status = getStatus(item.due_date);
-                const scfg = STATUS_CFG[status];
-                const cat = CATEGORIES[item.category] || CATEGORIES.other;
-                const cls = CLASSIFICATIONS[item.classification] || CLASSIFICATIONS.task;
-                const dl = daysLabel(item.due_date);
-                const entityName = item.entity_id ? entities.find(e => e.id === item.entity_id)?.name : null;
-                return (
-                  <div
-                    key={item.id}
-                    className="panel"
-                    style={{ padding: '14px 16px', borderLeft: `4px solid ${scfg.dot}` }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                      {/* Left: status + name */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                          <StatusPill status={status} />
-                          <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
-                            {cat.icon} {cat.label}
-                          </span>
-                          <span style={{ fontSize: 14, fontWeight: 600, background: cls.bg, color: cls.color, borderRadius: 20, padding: '3px 10px' }}>
-                            {cls.icon} {cls.label}
-                          </span>
-                          {item.legal_basis && (
-                            <button
-                              onClick={() => setExpandedWhy(id => id === item.id ? null : item.id)}
-                              style={{ fontSize: 14, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}
-                            >
-                              ⓘ Why? {expandedWhy === item.id ? '▲' : '▼'}
-                            </button>
-                          )}
-                          {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
-                          {dl && (
-                            <span style={{ fontSize: 14, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
-                              {dl}
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{item.name}</div>
-                        {item.name === 'Fire warden arrangements — trained and refreshed' && (
-                          <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 3 }}>
-                            🔥 {fireWardens.length > 0 ? `Fire Warden${fireWardens.length > 1 ? 's' : ''}: ${fireWardens.join(', ')}` : 'No Fire Warden set yet — add one in Contacts'}
-                          </div>
-                        )}
-                        <div style={{ fontSize: 14, color: 'var(--text3)' }}>
-                          {item.due_date && <span>Next due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
-                          {item.due_date && item.renewal_months && <span style={{ margin: '0 6px' }}>·</span>}
-                          {item.renewal_months && <span>Renews every {item.renewal_months >= 12 ? `${item.renewal_months / 12}yr` : `${item.renewal_months}mo`}</span>}
-                          {(item.due_date || item.renewal_months) && item.responsible_name && <span style={{ margin: '0 6px' }}>·</span>}
-                          {item.responsible_name && <span>👤 {item.responsible_name}</span>}
-                          {item.last_checked_date && (
-                            <span style={{ marginLeft: 6 }}>
-                              · Last checked: <strong style={{ color: 'var(--text2)' }}>{fmt(item.last_checked_date)}</strong>
-                            </span>
-                          )}
-                        </div>
-                        {item.notes && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
-                        {expandedWhy === item.id && item.legal_basis && (
-                          <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
-                            <strong>{item.legal_basis}</strong>
-                            {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
-                          </div>
-                        )}
-                      </div>
-                      {/* Right: doc + actions */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        {item.classification === 'template' && !item.document_url && (
-                          <span
-                            title="Document mapping not built yet"
-                            style={{ fontSize: 14, color: 'var(--text3)', opacity: 0.6, border: '1px dashed var(--border)', borderRadius: 6, padding: '4px 10px' }}
-                          >
-                            📄 Template
-                          </span>
-                        )}
-                        {item.classification === 'workflow' && item.workflow_template_id && onStartWorkflow && (
-                          <button
-                            onClick={() => onStartWorkflow({
-                              templateId: item.workflow_template_id,
-                              workflowName: item.name,
-                              sourceName: item.name,
-                              triggerType: 'renewal_reminder',
-                            })}
-                            style={{ fontSize: 14, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontWeight: 600, cursor: 'pointer' }}
-                          >
-                            ⚙️ Start Workflow →
-                          </button>
-                        )}
-                        {item.document_url && (
-                          <a href={item.document_url} target="_blank" rel="noopener noreferrer"
-                            style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
-                            title={item.document_name || 'View document'}
-                          >
-                            📎 Doc
-                          </a>
-                        )}
-                        <button
-                          onClick={() => handleMarkDone(item)}
-                          title={item.renewal_months
-                            ? `Mark done today — next due date set to ${nextDueDate(item.renewal_months)}`
-                            : 'Mark as checked today'}
-                          style={{
-                            fontSize: 14, fontWeight: 700,
-                            color: '#1a4a3a', background: '#e8f4ef',
-                            border: '1px solid #a8d8c0', borderRadius: 6,
-                            padding: '4px 10px', cursor: 'pointer',
-                          }}
-                        >
-                          ✓ Done
-                        </button>
-                        <button
-                          onClick={() => openEditItem(item)}
-                          style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {visibleItems.map(renderItemRow)}
+            </div>
+          )}
+
+          {/* Never Assessed — collapsed by default, same pattern as Resolved Incident Archive */}
+          {neverAssessedItems.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setShowNeverAssessed(s => !s)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                <span>{showNeverAssessed ? '▲' : '▼'}</span>
+                <span>📋 Never Assessed — {neverAssessedItems.length} item{neverAssessedItems.length !== 1 ? 's' : ''}</span>
+              </button>
+              {showNeverAssessed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                  {neverAssessedItems.map(renderItemRow)}
+                </div>
+              )}
             </div>
           )}
         </>
