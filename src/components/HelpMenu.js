@@ -509,19 +509,21 @@ const HELP_TOPICS = {
           ]},
           { text: 'Go to the Compliance tab to see their current status and mark them done as you complete each check.' },
         ] },
+        { q: 'Will trustees actually be reminded when something is due?', a: 'Yes — genuinely, not just in theory. Once a fire safety item has a real due date set, MaraeHub emails trustees automatically starting 30 days before it\'s due (see Email Notifications). This was quietly broken behind the scenes until recently — it\'s now confirmed working end-to-end, including for these fire safety items specifically.' },
         { q: 'What is the Fire Safety Compliance Check workflow?', a: [
           { text: 'The Evacuation scheme compliance item is linked to a real, 10-step workflow covering the whole annual review process — reviewing the evacuation plan, inspecting extinguishers, testing alarms, checking exits, booking warden training, running a drill, servicing equipment, updating contacts, updating the compliance record, and filing certificates.' },
           { text: 'Open Compliance, find "Evacuation scheme — reviewed and trial evacuation completed", and click "⚙️ Start Workflow →" to begin it. It appears in the Workflows tab and Task Board like any other workflow.' },
         ] },
         { q: 'What does the Emergency Plan show for Fire?', a: 'Go to Assets & Compliance → Emergency Plan → Hazards, and open "Fire". It has real Likely Impact and What To Do content, based on Fire and Emergency New Zealand\'s own marae evacuation scheme guidance — including the exact alert procedure ("Fire, Fire, Fire" / "He ahi, He ahi"), the 111 call, and reporting to the Fire Warden at your assembly point.' },
         { q: 'What fire equipment is tracked in Assets?', a: 'Fire Extinguishers and Fire Alarms / Smoke Detectors are recorded in the Assets tab, each with its own service reminder — annual for extinguishers, and a test/battery check for alarms. Use "🔔 Reminders" on each asset to mark them serviced once checked.' },
+        { q: 'How do I record who your Fire Warden is?', a: 'Go to Contacts, add or edit the relevant person, and tick the 🔥 Fire Warden checkbox in the form. Once ticked, they show a 🔥 Fire Warden badge in the Contacts list, and you can filter the whole list down to just Fire Wardens using the 🔥 Fire Wardens pill at the top. Their name also appears automatically next to the "Fire warden arrangements" item in Compliance, so trustees can see who\'s responsible without digging through Contacts.' },
         { q: 'What do I still need to do myself?', a: [
-          { text: 'Honestly, two things MaraeHub cannot fill in for you — they are real decisions for your trustees, not something the system can decide.' },
+          { text: 'Honestly, one thing MaraeHub still cannot fill in for you — it\'s a real decision for your trustees, not something the system can decide.' },
           { items: [
-            'A named Fire Warden — who is responsible on the night, recorded as a real contact.',
             'Real supporting documents — your actual evacuation plan and any extinguisher/alarm service certificates, uploaded to Documents once you have them.',
           ]},
-          { text: 'Everything else — the compliance items, the linked workflow, the Emergency Plan entry, and the equipment records — is already set up and ready to use.' },
+          { text: 'Naming your actual Fire Warden is also still your trustees\' call — but the mechanism for recording it (the checkbox, the filter, and the Compliance display) is now fully built and ready; there\'s no longer anything to build, just a name to decide on.' },
+          { text: 'Everything else — the compliance items, the linked workflow, the Emergency Plan entry, the equipment records, the email reminders, and the Fire Warden tracking — is already set up and genuinely working.' },
         ] },
       ]
     },
