@@ -113,6 +113,7 @@ export default function ComplianceTracker({ onStartWorkflow }) {
   const [items, setItems]       = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [entities, setEntities] = useState([]);
+  const [fireWardens, setFireWardens] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [section, setSection]   = useState('items');
   const [catFilter, setCatFilter] = useState('all');
@@ -146,7 +147,16 @@ export default function ComplianceTracker({ onStartWorkflow }) {
       await createOverdueTasks(items);
       await createUpcomingTasks(items);
     });
+    fetchFireWardens();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchFireWardens() {
+    const [pRes, cRes] = await Promise.all([
+      supabase.from('profiles').select('full_name').eq('is_fire_warden', true),
+      supabase.from('contacts').select('full_name').eq('is_fire_warden', true),
+    ]);
+    setFireWardens([...(pRes.data || []), ...(cRes.data || [])].map(p => p.full_name));
+  }
 
   async function deduplicateItems(currentItems) {
     const seen = {};
@@ -596,6 +606,11 @@ export default function ComplianceTracker({ onStartWorkflow }) {
                           )}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{item.name}</div>
+                        {item.name === 'Fire warden arrangements — trained and refreshed' && (
+                          <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 3 }}>
+                            🔥 {fireWardens.length > 0 ? `Fire Warden${fireWardens.length > 1 ? 's' : ''}: ${fireWardens.join(', ')}` : 'No Fire Warden set yet — add one in Contacts'}
+                          </div>
+                        )}
                         <div style={{ fontSize: 14, color: 'var(--text3)' }}>
                           {item.due_date && <span>Next due: <strong style={{ color: status === 'overdue' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(item.due_date)}</strong></span>}
                           {item.due_date && item.renewal_months && <span style={{ margin: '0 6px' }}>·</span>}

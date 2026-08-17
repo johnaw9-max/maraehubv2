@@ -22,7 +22,7 @@ const TRADE_STYLE = {
   Other:       { bg: '#f5f0e8', color: '#7a7268' },
 };
 
-const EMPTY_USER_FORM       = { full_name: '', email: '', password: '', phone: '', role: 'community', notes: '' };
+const EMPTY_USER_FORM       = { full_name: '', email: '', password: '', phone: '', role: 'community', notes: '', is_fire_warden: false };
 const EMPTY_CONTRACTOR_FORM = { name: '', trade: 'Plumber', company: '', phone: '', email: '', address: '', notes: '', preferred: false, document_url: null, document_name: null };
 
 // Pinned to the bottom of the Contacts list regardless of created_at (Support Admin, at Waj's request)
@@ -111,6 +111,7 @@ export default function ContactsManager() {
     community:   users.filter(u => u.role === 'community').length,
     contractors: contractors.length,
     preferred:   contractors.filter(c => c.preferred).length,
+    fireWardens: users.filter(u => u.is_fire_warden).length,
   }), [users, contractors]);
 
   // ─── FILTERED LISTS ────────────────────────────────────────────────────────
@@ -120,15 +121,16 @@ export default function ContactsManager() {
   const filteredUsers = useMemo(() => {
     if (filter === 'contractors') return [];
     return users.filter(u => {
-      if (filter === 'trustees'  && u.role !== 'trustee')   return false;
-      if (filter === 'community' && u.role !== 'community') return false;
+      if (filter === 'trustees'     && u.role !== 'trustee')   return false;
+      if (filter === 'community'    && u.role !== 'community') return false;
+      if (filter === 'fire_wardens' && !u.is_fire_warden)      return false;
       if (!q) return true;
       return u.full_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
     });
   }, [users, filter, q]);
 
   const filteredContractors = useMemo(() => {
-    if (filter === 'trustees' || filter === 'community') return [];
+    if (filter === 'trustees' || filter === 'community' || filter === 'fire_wardens') return [];
     return contractors.filter(c => {
       if (!q) return true;
       return c.name?.toLowerCase().includes(q) || c.trade?.toLowerCase().includes(q) || c.company?.toLowerCase().includes(q);
@@ -146,7 +148,7 @@ export default function ContactsManager() {
   }
 
   function openEditUser(u) {
-    setUserForm({ full_name: u.full_name || '', email: u.email || '', password: '', phone: u.phone || '', role: u.role, notes: u.notes || '' });
+    setUserForm({ full_name: u.full_name || '', email: u.email || '', password: '', phone: u.phone || '', role: u.role, notes: u.notes || '', is_fire_warden: !!u.is_fire_warden });
     setEditUserId(u.id);
     setEditUserSource(u._source || 'profiles');
     setEditUserOriginalEmail(u.email || '');
@@ -166,7 +168,7 @@ export default function ContactsManager() {
         const { data: sd, error: se } = await supabase.auth.signUp({ email: userForm.email.trim(), password: userForm.password });
         if (se) { setError(se.message); setSaving(false); return; }
         if (sd?.user) {
-          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null });
+          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null, is_fire_warden: userForm.is_fire_warden });
           await supabase.from('contacts').delete().eq('id', editUserId);
         }
       } else {
@@ -176,6 +178,7 @@ export default function ContactsManager() {
           email:     userForm.email.trim()  || null,
           phone:     userForm.phone.trim()  || null,
           notes:     userForm.notes.trim()  || null,
+          is_fire_warden: userForm.is_fire_warden,
         };
         const { error: err } = await supabase.from(editUserSource).update(updates).eq('id', editUserId);
         if (err) { setError(err.message); setSaving(false); return; }
@@ -187,10 +190,10 @@ export default function ContactsManager() {
         const { data: sd, error: se } = await supabase.auth.signUp({ email: userForm.email.trim(), password: userForm.password });
         if (se) { setError(se.message); setSaving(false); return; }
         if (sd?.user) {
-          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null });
+          await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null, is_fire_warden: userForm.is_fire_warden });
         }
       } else {
-        const { error: err } = await supabase.from('contacts').insert({ full_name: userForm.full_name.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null });
+        const { error: err } = await supabase.from('contacts').insert({ full_name: userForm.full_name.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null, is_fire_warden: userForm.is_fire_warden });
         if (err) { setError(err.message); setSaving(false); return; }
       }
       setSuccess(userForm.full_name + ' added.');
@@ -333,7 +336,7 @@ export default function ContactsManager() {
           />
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          {(filter === 'all' || filter === 'trustees' || filter === 'community') && (
+          {(filter === 'all' || filter === 'trustees' || filter === 'community' || filter === 'fire_wardens') && (
             <button className="btn-primary" onClick={openAddUser} style={{ fontSize: 13 }}>+ Add User</button>
           )}
           {(filter === 'all' || filter === 'contractors') && (
@@ -353,6 +356,7 @@ export default function ContactsManager() {
         <Pill label="Trustees"    count={kpis.trustees}                     active={filter === 'trustees'}    onClick={() => setFilter('trustees')} />
         <Pill label="Community"   count={kpis.community}                    active={filter === 'community'}   onClick={() => setFilter('community')} />
         <Pill label="Contractors" count={kpis.contractors}                  active={filter === 'contractors'} onClick={() => setFilter('contractors')} />
+        <Pill label="🔥 Fire Wardens" count={kpis.fireWardens}              active={filter === 'fire_wardens'} onClick={() => setFilter('fire_wardens')} />
       </div>
 
       {/* ── ALERTS ─────────────────────────────────────────────────────────── */}
@@ -403,6 +407,12 @@ export default function ContactsManager() {
           <div className="form-group">
             <label className="form-label">Notes</label>
             <textarea className="form-input" value={userForm.notes} onChange={e => setUserForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any additional notes..." rows={2} style={{ resize: 'vertical' }} />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input type="checkbox" checked={userForm.is_fire_warden} onChange={e => setUserForm(f => ({ ...f, is_fire_warden: e.target.checked }))} />
+              🔥 Fire Warden
+            </label>
           </div>
           <div className="modal-actions">
             <button className="btn-secondary" onClick={() => { setShowUserForm(false); setEditUserId(null); }}>Cancel</button>
@@ -545,6 +555,11 @@ export default function ContactsManager() {
                     <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: isTrustee ? '#e8f4ef' : '#e8eef8', color: isTrustee ? '#1a4a3a' : '#1a4a8a', flexShrink: 0 }}>
                       {isTrustee ? 'Trustee' : 'Community'}
                     </span>
+                    {u.is_fire_warden && (
+                      <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 10px', fontWeight: 600, background: '#fdf0dc', color: '#7a4f00', flexShrink: 0 }}>
+                        🔥 Fire Warden
+                      </span>
+                    )}
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       <button onClick={() => openEditUser(u)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Edit</button>
                       <button onClick={() => handleUpdateRole(u.id, isTrustee ? 'community' : 'trustee')} style={{ fontSize: 11, color: 'var(--text2)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
