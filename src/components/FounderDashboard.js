@@ -85,13 +85,13 @@ async function fetchEnvKPIs(client, label = '') {
   if (!client) return null;
   const todayStr = new Date().toISOString().split('T')[0];
   const [trusteesRes, compRes, bookRes, assetsRes] = await Promise.all([
-    client.rpc('get_trustee_login_activity'),
+    client.functions.invoke('get-trustee-login-activity'),
     client.from('compliance_items').select('id', { count: 'exact', head: true }),
     client.from('bookings').select('id', { count: 'exact', head: true }).gte('start_date', todayStr),
     client.from('assets').select('id', { count: 'exact', head: true }),
   ]);
 
-  let trustees = trusteesRes.data || [];
+  let trustees = trusteesRes.data?.trustees || [];
   if (trusteesRes.error || !trustees.length) {
     const { data: profiles } = await client
       .from('profiles')
