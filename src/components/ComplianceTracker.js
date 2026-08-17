@@ -469,12 +469,12 @@ export default function ComplianceTracker({ onStartWorkflow }) {
               <span style={{ fontSize: 14, fontWeight: 600, background: cls.bg, color: cls.color, borderRadius: 20, padding: '3px 10px' }}>
                 {cls.icon} {cls.label}
               </span>
-              {item.legal_basis && (
+              {(item.notes || item.legal_basis) && (
                 <button
                   onClick={() => setExpandedWhy(id => id === item.id ? null : item.id)}
                   style={{ fontSize: 14, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}
                 >
-                  ⓘ Why? {expandedWhy === item.id ? '▲' : '▼'}
+                  ⓘ Details {expandedWhy === item.id ? '▲' : '▼'}
                 </button>
               )}
               {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
@@ -502,11 +502,15 @@ export default function ComplianceTracker({ onStartWorkflow }) {
                 </span>
               )}
             </div>
-            {item.notes && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic' }}>{item.notes}</div>}
-            {expandedWhy === item.id && item.legal_basis && (
+            {expandedWhy === item.id && (item.notes || item.legal_basis) && (
               <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
-                <strong>{item.legal_basis}</strong>
-                {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
+                {item.notes && <div style={{ fontStyle: 'italic', color: 'var(--text3)' }}>{item.notes}</div>}
+                {item.legal_basis && (
+                  <div style={{ marginTop: item.notes ? 6 : 0 }}>
+                    <strong>{item.legal_basis}</strong>
+                    {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
+                  </div>
+                )}
               </div>
             )}
           </div>
