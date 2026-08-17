@@ -118,7 +118,11 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_at",
     "updated_at",
     "last_checked_date",
-    "entity_id"
+    "entity_id",
+    "classification",
+    "legal_basis",
+    "legal_basis_detail",
+    "workflow_template_id"
   ],
   "contacts": [
     "id",
@@ -127,7 +131,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "email",
     "phone",
     "notes",
-    "created_at"
+    "created_at",
+    "is_fire_warden"
   ],
   "contractors": [
     "id",
@@ -402,7 +407,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_at",
     "notes",
     "notification_prefs",
-    "trustee_role"
+    "trustee_role",
+    "is_fire_warden"
   ],
   "projects": [
     "id",
