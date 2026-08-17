@@ -285,8 +285,18 @@ serve(async (req) => {
     }
 
     // ── 4. Meeting actions overdue 7+ days ─────────────────────────────────────
+    // Real fix, priority: only the person actually assigned sees their own
+    // overdue actions -- previously every trustee saw every overdue action
+    // regardless of who it was assigned to. Genuinely unowned/shared actions
+    // (assigned_to null or empty) still notify everyone, since there is no
+    // single owner to narrow to. Strictly assigned-person-only, no admin
+    // exception. If assigned_to names someone who is not a real trustee
+    // (e.g. a Contacts-only person), it resolves to nobody via this
+    // pipeline, not a fallback to everyone -- matches the real intent of
+    // this fix, this function is scoped to trustees.
     if (!PAUSE_ACTION_REMINDERS && prefs.actions !== false) {
-      const fresh = actions.filter(a => !wasSent(log, 'action_overdue', a.id, id, undefined, 7));
+      const myActions = actions.filter(a => !a.assigned_to || a.assigned_to.trim() === trustee.full_name);
+      const fresh = myActions.filter(a => !wasSent(log, 'action_overdue', a.id, id, undefined, 7));
       if (fresh.length > 0) {
         const rows = fresh.map(a => {
           const days = Math.ceil((today.getTime() - new Date(a.due_date + 'T12:00:00').getTime()) / 86400000);
