@@ -8,15 +8,35 @@ const GOAL_STATUSES = ['not_started', 'in_progress', 'at_risk', 'completed'];
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
-const CATEGORIES = {
-  governance:  { label: 'Governance',  icon: '🏛️', color: '#1a4a8a', bg: '#e8eef8' },
-  compliance:  { label: 'Compliance',  icon: '✅', color: '#1a4a3a', bg: '#e8f4ef' },
-  projects:    { label: 'Projects',    icon: '📋', color: '#6b42a8', bg: '#f0ecf8' },
-  funding:     { label: 'Funding',     icon: '💰', color: '#0a5a48', bg: '#e8f8f4' },
-  community:   { label: 'Community',   icon: '🤝', color: '#7a4f00', bg: '#fdf0dc' },
-  assets:      { label: 'Assets',      icon: '🏗️', color: '#a63020', bg: '#faeae7' },
-  finance:     { label: 'Finance',     icon: '📊', color: '#4a4438', bg: '#f5f0e8' },
-  whakapapa:   { label: 'Whakapapa',   icon: '🌿', color: '#2d5a3a', bg: '#e8f4ee' },
+// Two real, independent dimensions (ClickUp 86d410evh) -- Focus Area answers
+// "why does this goal matter" (the 5 values-based categories from Te Puni
+// Kokiri's real Marae Development Plan Guide, 2018, plus a deliberate 6th
+// "General" fallback); Related Module answers "where does this goal live
+// day-to-day" and is optional, tagging goals against MaraeHub's real
+// existing tabs (verified against TrusteeDashboard.js's NAV_GROUPS
+// directly). The old single `category` field is deprecated but the column
+// stays in the database, not dropped.
+
+const FOCUS_AREAS = {
+  'Cultural':            { label: 'Cultural',            icon: '🌺', color: '#7a1a4a', bg: '#fbe8f0' },
+  'Facilities':          { label: 'Facilities',          icon: '🏗️', color: '#a63020', bg: '#faeae7' },
+  'Health & Wellbeing':  { label: 'Health & Wellbeing',  icon: '⛑️', color: '#1a4a3a', bg: '#e8f4ef' },
+  'Rangatahi':           { label: 'Rangatahi',           icon: '🌱', color: '#2d5a3a', bg: '#e8f4ee' },
+  'Taonga preservation': { label: 'Taonga preservation', icon: '🪶', color: '#7a4f00', bg: '#fdf0dc' },
+  'General':             { label: 'General',             icon: '📌', color: '#4a4438', bg: '#f5f0e8' },
+};
+
+const RELATED_MODULES = {
+  'Compliance':     { label: 'Compliance',     icon: '✅', color: '#1a4a3a', bg: '#e8f4ef' },
+  'Risk Register':  { label: 'Risk Register',  icon: '🛡️', color: '#a63020', bg: '#faeae7' },
+  'Finance':        { label: 'Finance',        icon: '📊', color: '#4a4438', bg: '#f5f0e8' },
+  'Assets':         { label: 'Assets',         icon: '🏗️', color: '#1a4a8a', bg: '#e8eef8' },
+  'Bookings':       { label: 'Bookings',       icon: '📅', color: '#7a4f00', bg: '#fdf0dc' },
+  'Grants':         { label: 'Grants',         icon: '💰', color: '#0a5a48', bg: '#e8f8f4' },
+  'Projects':       { label: 'Projects',       icon: '📋', color: '#6b42a8', bg: '#f0ecf8' },
+  'Contacts':       { label: 'Contacts',       icon: '👥', color: '#1a4a3a', bg: '#e8f4ef' },
+  'Documents':      { label: 'Documents',      icon: '📁', color: '#4a4438', bg: '#f5f0e8' },
+  'Emergency Plan': { label: 'Emergency Plan', icon: '📖', color: '#8b0000', bg: '#fce8e8' },
 };
 
 const STATUS_CFG = {
@@ -38,7 +58,7 @@ const GRANT_PROGRESS = {
 };
 
 const EMPTY_FORM = {
-  name: '', description: '', category: 'governance', responsible_name: '',
+  name: '', description: '', focus_area: 'General', related_module: '', responsible_name: '',
   start_date: '', target_date: '', status: 'not_started', progress: 0, notes: '',
 };
 
@@ -177,8 +197,10 @@ export default function GoalsReporting() {
   const [loading, setLoading]         = useState(true);
 
   const [section, setSection]         = useState('board');
-  const [catFilter, setCatFilter]     = useState('all');
+  const [focusAreaFilter, setFocusAreaFilter] = useState('all');
+  const [moduleFilter, setModuleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const [showModal, setShowModal]     = useState(false);
   const [editGoal, setEditGoal]       = useState(null);
@@ -280,7 +302,8 @@ export default function GoalsReporting() {
     setForm({
       name: goal.name || '',
       description: goal.description || '',
-      category: goal.category || 'governance',
+      focus_area: goal.focus_area || 'General',
+      related_module: goal.related_module || '',
       responsible_name: goal.responsible_name || '',
       start_date: goal.start_date || '',
       target_date: goal.target_date || '',
@@ -305,7 +328,8 @@ export default function GoalsReporting() {
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
-      category: form.category,
+      focus_area: form.focus_area,
+      related_module: form.related_module || null,
       responsible_name: form.responsible_name || null,
       start_date: form.start_date || null,
       target_date: form.target_date || null,
@@ -366,12 +390,140 @@ export default function GoalsReporting() {
   });
 
   const filteredGoals = goals.filter(g => {
-    if (catFilter !== 'all' && g.category !== catFilter) return false;
+    if (focusAreaFilter !== 'all' && g.focus_area !== focusAreaFilter) return false;
+    if (moduleFilter !== 'all' && g.related_module !== moduleFilter) return false;
     if (statusFilter !== 'all' && g.status !== statusFilter) return false;
     return true;
   });
 
+  // Urgency-first (86d420evd): getTrafficLight() maps status 'completed' to
+  // 'green' too, same as a genuinely on-track goal -- completed is split out
+  // by real status here rather than trusting tl alone, so "still working on
+  // it" and "genuinely finished" don't get merged into one bucket.
+  const byTargetDateAsc = (a, b) => {
+    if (!a.target_date && !b.target_date) return 0;
+    if (!a.target_date) return 1;
+    if (!b.target_date) return -1;
+    return new Date(a.target_date) - new Date(b.target_date);
+  };
+  const behindGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'red').sort(byTargetDateAsc);
+  const atRiskGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'orange').sort(byTargetDateAsc);
+  const onTrackGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'green' && g.status !== 'completed').sort(byTargetDateAsc);
+  const completedGoals = filteredGoals.filter(g => g.status === 'completed').sort(byTargetDateAsc);
+  const visibleGoals = [...behindGoals, ...atRiskGoals, ...onTrackGoals];
+
   if (loading) return <div className="loading">Loading goals...</div>;
+
+  function renderGoalRow(goal) {
+    const eff = getEffectiveProgress(goal);
+    const tl = getTrafficLight(goal, eff);
+    const tlCfg = TRAFFIC_LIGHT_CFG[tl];
+    const focusArea = FOCUS_AREAS[goal.focus_area] || FOCUS_AREAS.General;
+    const relModule = goal.related_module ? RELATED_MODULES[goal.related_module] : null;
+    const links = getLinksForGoal(goal.id);
+    const auto = isAutoProgress(goal);
+    return (
+      <div
+        key={goal.id}
+        className="panel"
+        style={{ padding: '14px 16px', borderLeft: `4px solid ${tlCfg.dot}` }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Tags row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+              <StatusPill
+                status={goal.status}
+                options={GOAL_STATUSES}
+                onStatusChange={s => handleGoalStatusChange(goal.id, s)}
+              />
+              <span style={{ fontSize: 14, fontWeight: 600, background: focusArea.bg, color: focusArea.color, borderRadius: 20, padding: '3px 10px' }}>
+                {focusArea.icon} {focusArea.label}
+              </span>
+              {relModule && (
+                <span style={{ fontSize: 14, fontWeight: 600, background: relModule.bg, color: relModule.color, borderRadius: 20, padding: '3px 10px' }}>
+                  {relModule.icon} {relModule.label}
+                </span>
+              )}
+              <span style={{ fontSize: 14, background: tlCfg.bg, color: tlCfg.dot, borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                ● {tlCfg.label}
+              </span>
+            </div>
+
+            {/* Name */}
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{goal.name}</div>
+            {goal.description && (
+              <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 6, lineHeight: 1.5 }}>{goal.description}</div>
+            )}
+
+            {/* Progress bar */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>
+                  Progress{auto ? ' (auto-tracked)' : ''}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: tlCfg.dot }}>{eff}%</span>
+              </div>
+              <div style={{ height: 7, background: 'var(--cream2)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${eff}%`, background: tlCfg.dot, borderRadius: 4, transition: 'width 0.3s' }} />
+              </div>
+            </div>
+
+            {/* Meta */}
+            <div style={{ fontSize: 14, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 14px' }}>
+              {goal.start_date && <span>Start: {fmt(goal.start_date)}</span>}
+              {goal.target_date && <span>Target: <strong style={{ color: tl === 'red' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(goal.target_date)}</strong></span>}
+              {goal.responsible_name && <span>👤 {goal.responsible_name}</span>}
+            </div>
+
+            {/* Links */}
+            {links.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {links.map(link => {
+                  let label = '';
+                  if (link.link_type === 'project') {
+                    const p = projects.find(x => x.id === link.link_id);
+                    label = p ? `📋 ${p.name}` : '📋 Project';
+                  } else if (link.link_type === 'compliance_item') {
+                    const c = complianceItems.find(x => x.id === link.link_id);
+                    label = c ? `✅ ${c.name}` : '✅ Compliance';
+                  } else if (link.link_type === 'grant') {
+                    const g = grants.find(x => x.id === link.link_id);
+                    label = g ? `💰 ${g.name}` : '💰 Grant';
+                  }
+                  return label ? (
+                    <span key={link.id} style={{ fontSize: 14, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px', color: 'var(--text2)' }}>
+                      {label}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            )}
+
+            {goal.notes && (
+              <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 6, fontStyle: 'italic' }}>{goal.notes}</div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            <button
+              onClick={() => openEdit(goal)}
+              style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => deleteGoal(goal)}
+              style={{ fontSize: 14, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
+            >
+              🗑 Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── RENDER ────────────────────────────────────────────────────────────────
 
@@ -412,7 +564,7 @@ export default function GoalsReporting() {
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
             {/* Table header */}
             <div style={{ display: 'grid', gridTemplateColumns: '40px 2fr 150px 160px 100px 125px 125px', gap: 0, background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
-              {['', 'Goal', 'Category', 'Progress', 'Status', 'Target Date', 'Responsible'].map((h, i) => (
+              {['', 'Goal', 'Focus / Module', 'Progress', 'Status', 'Target Date', 'Responsible'].map((h, i) => (
                 <div key={i} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
               ))}
             </div>
@@ -428,7 +580,8 @@ export default function GoalsReporting() {
                 const eff = getEffectiveProgress(goal);
                 const tl = getTrafficLight(goal, eff);
                 const tlCfg = TRAFFIC_LIGHT_CFG[tl];
-                const cat = CATEGORIES[goal.category] || CATEGORIES.governance;
+                const focusArea = FOCUS_AREAS[goal.focus_area] || FOCUS_AREAS.General;
+                const relModule = goal.related_module ? RELATED_MODULES[goal.related_module] : null;
                 const auto = isAutoProgress(goal);
                 return (
                   <div
@@ -451,11 +604,16 @@ export default function GoalsReporting() {
                         <div style={{ fontSize: 14, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.description}</div>
                       )}
                     </div>
-                    {/* Category */}
-                    <div>
-                      <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '4px 10px', whiteSpace: 'nowrap' }}>
-                        {cat.icon} {cat.label}
+                    {/* Focus Area / Related Module */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, background: focusArea.bg, color: focusArea.color, borderRadius: 20, padding: '3px 9px', whiteSpace: 'nowrap' }}>
+                        {focusArea.icon} {focusArea.label}
                       </span>
+                      {relModule && (
+                        <span style={{ fontSize: 14, fontWeight: 600, background: relModule.bg, color: relModule.color, borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                          {relModule.icon} {relModule.label}
+                        </span>
+                      )}
                     </div>
                     {/* Progress */}
                     <div style={{ paddingRight: 12 }}>
@@ -523,17 +681,17 @@ export default function GoalsReporting() {
       {section === 'goals' && (
         <>
           {/* Filters */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[{ key: 'all', label: 'All Categories', icon: '📌' }, ...Object.entries(CATEGORIES).map(([k, v]) => ({ key: k, label: v.label, icon: v.icon }))].map(c => (
+              {[{ key: 'all', label: 'All Focus Areas', icon: '📌' }, ...Object.entries(FOCUS_AREAS).map(([k, v]) => ({ key: k, label: v.label, icon: v.icon }))].map(c => (
                 <button
                   key={c.key}
-                  onClick={() => setCatFilter(c.key)}
+                  onClick={() => setFocusAreaFilter(c.key)}
                   style={{
                     padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                     borderRadius: 20, border: '1px solid var(--border)',
-                    background: catFilter === c.key ? 'var(--brand)' : 'var(--surface)',
-                    color: catFilter === c.key ? '#fff' : 'var(--text2)',
+                    background: focusAreaFilter === c.key ? 'var(--brand)' : 'var(--surface)',
+                    color: focusAreaFilter === c.key ? '#fff' : 'var(--text2)',
                     fontFamily: 'DM Sans, sans-serif',
                   }}
                 >
@@ -541,6 +699,17 @@ export default function GoalsReporting() {
                 </button>
               ))}
             </div>
+            <select
+              className="form-input"
+              value={moduleFilter}
+              onChange={e => setModuleFilter(e.target.value)}
+              style={{ width: 'auto', fontSize: 14, padding: '6px 12px', borderRadius: 20 }}
+            >
+              <option value="all">All Related Modules</option>
+              {Object.entries(RELATED_MODULES).map(([k, v]) => (
+                <option key={k} value={k}>{v.icon} {v.label}</option>
+              ))}
+            </select>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
             {[{ key: 'all', label: 'All Statuses' }, ...Object.entries(STATUS_CFG).map(([k, v]) => ({ key: k, label: v.label }))].map(s => (
@@ -565,110 +734,32 @@ export default function GoalsReporting() {
             <div className="empty-state"><div className="emoji">🎯</div><div>No goals match your filters</div></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredGoals.map(goal => {
-                const eff = getEffectiveProgress(goal);
-                const tl = getTrafficLight(goal, eff);
-                const tlCfg = TRAFFIC_LIGHT_CFG[tl];
-                const cat = CATEGORIES[goal.category] || CATEGORIES.governance;
-                const links = getLinksForGoal(goal.id);
-                const auto = isAutoProgress(goal);
-                return (
-                  <div
-                    key={goal.id}
-                    className="panel"
-                    style={{ padding: '14px 16px', borderLeft: `4px solid ${tlCfg.dot}` }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Tags row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                          <StatusPill
-                            status={goal.status}
-                            options={GOAL_STATUSES}
-                            onStatusChange={s => handleGoalStatusChange(goal.id, s)}
-                          />
-                          <span style={{ fontSize: 14, fontWeight: 600, background: cat.bg, color: cat.color, borderRadius: 20, padding: '3px 10px' }}>
-                            {cat.icon} {cat.label}
-                          </span>
-                          <span style={{ fontSize: 14, background: tlCfg.bg, color: tlCfg.dot, borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
-                            ● {tlCfg.label}
-                          </span>
-                        </div>
+              {visibleGoals.map(renderGoalRow)}
+            </div>
+          )}
 
-                        {/* Name */}
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{goal.name}</div>
-                        {goal.description && (
-                          <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 6, lineHeight: 1.5 }}>{goal.description}</div>
-                        )}
-
-                        {/* Progress bar */}
-                        <div style={{ marginBottom: 8 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>
-                              Progress{auto ? ' (auto-tracked)' : ''}
-                            </span>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: tlCfg.dot }}>{eff}%</span>
-                          </div>
-                          <div style={{ height: 7, background: 'var(--cream2)', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${eff}%`, background: tlCfg.dot, borderRadius: 4, transition: 'width 0.3s' }} />
-                          </div>
-                        </div>
-
-                        {/* Meta */}
-                        <div style={{ fontSize: 14, color: 'var(--text3)', display: 'flex', flexWrap: 'wrap', gap: '0 14px' }}>
-                          {goal.start_date && <span>Start: {fmt(goal.start_date)}</span>}
-                          {goal.target_date && <span>Target: <strong style={{ color: tl === 'red' ? 'var(--danger)' : 'var(--text2)' }}>{fmt(goal.target_date)}</strong></span>}
-                          {goal.responsible_name && <span>👤 {goal.responsible_name}</span>}
-                        </div>
-
-                        {/* Links */}
-                        {links.length > 0 && (
-                          <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {links.map(link => {
-                              let label = '';
-                              if (link.link_type === 'project') {
-                                const p = projects.find(x => x.id === link.link_id);
-                                label = p ? `📋 ${p.name}` : '📋 Project';
-                              } else if (link.link_type === 'compliance_item') {
-                                const c = complianceItems.find(x => x.id === link.link_id);
-                                label = c ? `✅ ${c.name}` : '✅ Compliance';
-                              } else if (link.link_type === 'grant') {
-                                const g = grants.find(x => x.id === link.link_id);
-                                label = g ? `💰 ${g.name}` : '💰 Grant';
-                              }
-                              return label ? (
-                                <span key={link.id} style={{ fontSize: 14, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px', color: 'var(--text2)' }}>
-                                  {label}
-                                </span>
-                              ) : null;
-                            })}
-                          </div>
-                        )}
-
-                        {goal.notes && (
-                          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 6, fontStyle: 'italic' }}>{goal.notes}</div>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button
-                          onClick={() => openEdit(goal)}
-                          style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteGoal(goal)}
-                          style={{ fontSize: 14, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
-                        >
-                          🗑 Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Completed — collapsed by default, same pattern as Compliance's Never Assessed */}
+          {completedGoals.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setShowCompleted(s => !s)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  background: 'var(--surface2)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                <span>{showCompleted ? '▲' : '▼'}</span>
+                <span>🎯 Completed — {completedGoals.length} goal{completedGoals.length !== 1 ? 's' : ''}</span>
+              </button>
+              {showCompleted && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                  {completedGoals.map(renderGoalRow)}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -704,15 +795,25 @@ export default function GoalsReporting() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Category</label>
-                <select className="form-input" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                  {Object.entries(CATEGORIES).map(([k, v]) => (
+                <label className="form-label">Focus Area *</label>
+                <select className="form-input" value={form.focus_area} onChange={e => setForm(f => ({ ...f, focus_area: e.target.value }))}>
+                  {Object.entries(FOCUS_AREAS).map(([k, v]) => (
                     <option key={k} value={k}>{v.icon} {v.label}</option>
                   ))}
                 </select>
               </div>
 
               <div className="form-group">
+                <label className="form-label">Related Module</label>
+                <select className="form-input" value={form.related_module} onChange={e => setForm(f => ({ ...f, related_module: e.target.value }))}>
+                  <option value="">— Not linked to a module —</option>
+                  {Object.entries(RELATED_MODULES).map(([k, v]) => (
+                    <option key={k} value={k}>{v.icon} {v.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Status</label>
                 <select className="form-input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                   {Object.entries(STATUS_CFG).map(([k, v]) => (
