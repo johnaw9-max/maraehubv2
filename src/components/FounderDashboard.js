@@ -259,8 +259,27 @@ export default function FounderDashboard({ profile }) {
 
   if (!FOUNDER_EMAILS.includes(profile?.email)) return null;
 
+  async function ensureTinekaSession() {
+    // Real fix for 86d40pp1u / the 18 Aug feedback investigation --
+    // supabaseTineka has its own separate session (storageKey
+    // maraehub-tineka-auth) that nothing has ever established, so
+    // every RLS-gated Tineka read has been silently returning empty.
+    // Mint one via the founder's real, already-authenticated Opeke
+    // session -- only needs to run once per real browser session,
+    // Supabase persists and auto-refreshes it after that.
+    const { data: { session } } = await supabaseTineka.auth.getSession();
+    if (session) return;
+    const { data, error } = await supabase.functions.invoke('get-tineka-session');
+    if (error || !data?.access_token) {
+      console.error('[FounderDashboard] could not establish Tineka session:', error?.message || data?.error);
+      return;
+    }
+    await supabaseTineka.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+  }
+
   async function loadAll() {
     setLoading(true);
+    await ensureTinekaSession();
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
     const startOfMonthIso = startOfMonth.toISOString();
 
