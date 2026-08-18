@@ -10,13 +10,21 @@ import { supabase } from '../lib/supabase';
 // asked at all counts, not just answering. Mounted once at the
 // TrusteeDashboard root, not per-tab, so it was never re-triggering per
 // module in the first place.
+//
+// Real insert failure is checked (found while investigating a real,
+// missing-row report) -- the original version showed "thanks for the
+// feedback" unconditionally, even if the write silently failed, so a
+// genuine failure was indistinguishable from success. On error, the
+// session flag is deliberately not set, since the goal (a real,
+// recorded response) was not actually achieved -- Try again re-shows
+// the prompt in the same session rather than waiting for a new one.
 
 const STORAGE_KEY = 'maraehub_ux_pulse_shown';
 const SHOW_DELAY_MS = 3000;
 
 export default function UxPulsePrompt({ profile }) {
   const [visible, setVisible] = useState(false);
-  const [step, setStep] = useState('ask'); // ask | confusing | done
+  const [step, setStep] = useState('ask'); // ask | confusing | done | error
   const [confusing, setConfusing] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -34,7 +42,7 @@ export default function UxPulsePrompt({ profile }) {
   async function submit(rating, message) {
     setSaving(true);
     const { data: settings } = await supabase.from('marae_settings').select('marae_name').single();
-    await supabase.from('feedback').insert({
+    const { error } = await supabase.from('feedback').insert({
       user_id: profile?.id,
       user_name: profile?.full_name,
       user_email: profile?.email,
@@ -45,6 +53,11 @@ export default function UxPulsePrompt({ profile }) {
       marae: settings?.marae_name || null,
     });
     setSaving(false);
+    if (error) {
+      console.error('[UxPulsePrompt] insert failed:', error.message);
+      setStep('error');
+      return;
+    }
     setStep('done');
     sessionStorage.setItem(STORAGE_KEY, '1');
     setTimeout(() => setVisible(false), 2000);
@@ -115,6 +128,20 @@ export default function UxPulsePrompt({ profile }) {
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
           <div style={{ fontSize: 24, marginBottom: 6 }}>🙏</div>
           <div style={{ fontSize: 13, color: 'var(--text3)' }}>Ngā mihi — thanks for the feedback.</div>
+        </div>
+      )}
+
+      {step === 'error' && (
+        <div style={{ textAlign: 'center', padding: '8px 0' }}>
+          <div style={{ fontSize: 13, color: 'var(--danger, #c0392b)', marginBottom: 10 }}>
+            Something went wrong sending your feedback.
+          </div>
+          <button
+            onClick={() => setStep('ask')}
+            style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            Try again
+          </button>
         </div>
       )}
     </div>
