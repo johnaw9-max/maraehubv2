@@ -214,6 +214,7 @@ export default function FounderDashboard({ profile }) {
   const [kpiOpeke,  setKpiOpeke]  = useState(null);
   const [kpiTineka, setKpiTineka] = useState(null);
   const [recentFeedback, setRecentFeedback] = useState([]);
+  const [uxPulseSummary, setUxPulseSummary] = useState({ up: 0, down: 0 });
 
   // Custom marae added by founder
   const [customMarae,    setCustomMarae]    = useState([]);
@@ -260,15 +261,22 @@ export default function FounderDashboard({ profile }) {
 
   async function loadAll() {
     setLoading(true);
-    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes, fbOpekeRes, fbTinekaRes] = await Promise.all([
+    const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonthIso = startOfMonth.toISOString();
+
+    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes, fbOpekeRes, fbTinekaRes, uxOpekeRes, uxTinekaRes] = await Promise.all([
       supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       fetchEnvKPIs(supabase, 'Opeke'),
       fetchEnvKPIs(supabaseTineka, 'Tineka'),
       supabase.from('founder_notes').select('marae_name, step_key, completed, data'),
-      supabase.from('feedback').select('id, type, user_name, user_email, message, created_at').order('created_at', { ascending: false }).limit(20),
-      supabaseTineka.from('feedback').select('id, type, user_name, user_email, message, created_at').order('created_at', { ascending: false }).limit(20),
+      // ux_pulse rows excluded here -- shown as their own summary below, not
+      // mixed in with real bug reports/suggestions/questions/compliments.
+      supabase.from('feedback').select('id, type, user_name, user_email, message, created_at').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
+      supabaseTineka.from('feedback').select('id, type, user_name, user_email, message, created_at').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
+      supabase.from('feedback').select('rating').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
+      supabaseTineka.from('feedback').select('rating').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
     ]);
 
     if (settingsRes.data) {
@@ -290,6 +298,12 @@ export default function FounderDashboard({ profile }) {
     const fbOpeke  = (fbOpekeRes.data  || []).map(f => ({ ...f, envLabel: 'Opeke' }));
     const fbTineka = (fbTinekaRes.data || []).map(f => ({ ...f, envLabel: 'Tineka' }));
     setRecentFeedback([...fbOpeke, ...fbTineka].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20));
+
+    const uxAll = [...(uxOpekeRes.data || []), ...(uxTinekaRes.data || [])];
+    setUxPulseSummary({
+      up:   uxAll.filter(r => r.rating === 'up').length,
+      down: uxAll.filter(r => r.rating === 'down').length,
+    });
 
     const cl = {}, leads = [], marae = [], pipe = [], sn = {};
     for (const row of (notesRes.data || [])) {
@@ -546,6 +560,11 @@ export default function FounderDashboard({ profile }) {
       {/* ── RECENT FEEDBACK ────────────────────────────────────────────── */}
       <Card style={{ marginBottom: 24 }}>
         <SectionTitle>Recent Feedback</SectionTitle>
+        {(uxPulseSummary.up > 0 || uxPulseSummary.down > 0) && (
+          <div style={{ fontSize: 13, color: TEXT1, padding: '8px 12px', background: CREAM, borderRadius: 8, marginBottom: 14, border: `1px solid ${BORDER}` }}>
+            🎯 App ease-of-use (this month): {uxPulseSummary.up} 👍 / {uxPulseSummary.down} 👎
+          </div>
+        )}
         {recentFeedback.length === 0 ? (
           <div style={{ fontSize: 13, color: TEXT3 }}>No feedback submitted yet.</div>
         ) : (

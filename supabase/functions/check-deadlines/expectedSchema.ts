@@ -191,7 +191,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "message",
     "page",
     "created_at",
-    "marae"
+    "marae",
+    "rating"
   ],
   "finance_balance_sheet": [
     "id",

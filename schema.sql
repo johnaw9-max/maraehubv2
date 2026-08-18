@@ -455,7 +455,8 @@ create table if not exists feedback (
   message text,
   page text,
   created_at timestamp without time zone default now(),
-  marae text
+  marae text,
+  rating text
 );
 
 alter table feedback add constraint feedback_pkey PRIMARY KEY (id);
