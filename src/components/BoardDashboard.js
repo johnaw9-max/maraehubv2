@@ -206,7 +206,73 @@ const TIER_STYLES = {
   'worth-a-look': { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00',        badgeBg: '#c8902a',      badgeLabel: 'Worth a look' },
 };
 
-function FocusThisWeekCard({ items, total, onNavigate }) {
+function InsightRow({ ins, onNavigate }) {
+  const s = {
+    red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
+    amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
+    green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
+  }[ins.level];
+  const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
+  return (
+    <div style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
+      <span style={{ flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
+      {ins.navTo && onNavigate && (
+        <button
+          onClick={() => onNavigate(ins.navTo)}
+          style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+        >
+          {NAV_LABELS[ins.navTo] || 'View →'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FocusThisWeekRow({ item, onNavigate }) {
+  const t = TIER_STYLES[item.tier];
+  return (
+    <div style={{ borderRadius: 8, padding: '12px 14px', ...t }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', background: t.badgeBg, borderRadius: 20, padding: '2px 9px', marginRight: 8 }}>
+            {t.badgeLabel}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', lineHeight: 1.5 }}>{item.text}</span>
+          <div style={{ fontSize: 14, color: t.color, marginTop: 5 }}>
+            {item.owner ? (
+              `👤 ${item.owner}`
+            ) : (
+              <>
+                No owner assigned ·{' '}
+                {onNavigate && (
+                  <span
+                    onClick={() => onNavigate(item.navTo)}
+                    style={{ cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}
+                  >
+                    Assign →
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate(item.navTo)}
+            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: t.color, border: `1px solid ${t.badgeBg}`, borderRadius: 6, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
+          >
+            {NAV_LABELS[item.navTo] || 'View →'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FocusThisWeekCard({ items, total, allItems, onNavigate }) {
+  const [showMore, setShowMore] = useState(false);
+
   if (!items || items.length === 0) {
     return (
       <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid #2e7d52', background: '#e8f4ef', textAlign: 'center', padding: '20px 16px' }}>
@@ -221,53 +287,34 @@ function FocusThisWeekCard({ items, total, onNavigate }) {
     );
   }
 
+  const extra = (allItems || []).slice(items.length);
+
   return (
     <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--brand)' }}>
       <SectionTitle icon="🎯" title="Focus This Week" count={items.length} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {items.map((item, i) => {
-          const t = TIER_STYLES[item.tier];
-          return (
-            <div key={i} style={{ borderRadius: 8, padding: '12px 14px', ...t }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', background: t.badgeBg, borderRadius: 20, padding: '2px 9px', marginRight: 8 }}>
-                    {t.badgeLabel}
-                  </span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', lineHeight: 1.5 }}>{item.text}</span>
-                  <div style={{ fontSize: 14, color: t.color, marginTop: 5 }}>
-                    {item.owner ? (
-                      `👤 ${item.owner}`
-                    ) : (
-                      <>
-                        No owner assigned ·{' '}
-                        {onNavigate && (
-                          <span
-                            onClick={() => onNavigate(item.navTo)}
-                            style={{ cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}
-                          >
-                            Assign →
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                {onNavigate && (
-                  <button
-                    onClick={() => onNavigate(item.navTo)}
-                    style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: t.color, border: `1px solid ${t.badgeBg}`, borderRadius: 6, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
-                  >
-                    {NAV_LABELS[item.navTo] || 'View →'}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {items.map((item, i) => <FocusThisWeekRow key={i} item={item} onNavigate={onNavigate} />)}
         {total > items.length && (
-          <div style={{ fontSize: 14, color: 'var(--text3)', textAlign: 'center' }}>
-            +{total - items.length} more this week — check Risks, Minutes, Assets, and Finance directly
+          <div style={{ marginTop: 2 }}>
+            <button
+              type="button"
+              onClick={() => setShowMore(s => !s)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                background: 'var(--surface2)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+            >
+              <span>{showMore ? '▲' : '▼'}</span>
+              <span>+{total - items.length} more this week</span>
+            </button>
+            {showMore && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+                {extra.map((item, i) => <FocusThisWeekRow key={i} item={item} onNavigate={onNavigate} />)}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -301,6 +348,8 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [riskEntityFilter, setRiskEntityFilter] = useState('all');
   const [reportEntityFilter, setReportEntityFilter] = useState('all');
   const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
+  const [showMorePriorities, setShowMorePriorities] = useState(false);
+  const [showMoreWorkflows, setShowMoreWorkflows] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [expandedComments, setExpandedComments] = useState(new Set());
   const [showAllFull, setShowAllFull] = useState(false);
@@ -1186,7 +1235,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
 
-  const { items: focusItems, total: focusItemsTotal } = buildFocusItems({
+  const { items: focusItems, total: focusItemsTotal, all: focusItemsAll } = buildFocusItems({
     overdueActions, overdueReminders, finNet, highOpenRisks,
     assets: d.assets, today, truncate, fmtMoney,
   });
@@ -1286,7 +1335,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
 
       {/* ── FOCUS THIS WEEK (ClickUp 86d3vc4yp) ──────────────────────────── */}
-      <FocusThisWeekCard items={focusItems} total={focusItemsTotal} onNavigate={onNavigate} />
+      <FocusThisWeekCard items={focusItems} total={focusItemsTotal} allItems={focusItemsAll} onNavigate={onNavigate} />
 
       {/* ── AI REPORT MODAL ────────────────────────────────────────────── */}
       {(showReport || aiError) && (
@@ -1416,31 +1465,28 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           <SectionTitle icon="💡" title="Top Priorities" count={INSIGHTS.length || undefined} />
           {INSIGHTS.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {INSIGHTS.map((ins, i) => {
-                const s = {
-                  red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
-                  amber: { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00' },
-                  green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
-                }[ins.level];
-                const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
-                return (
-                  <div key={i} style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
-                    <span style={{ flexShrink: 0 }}>{icon}</span>
-                    <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
-                    {ins.navTo && onNavigate && (
-                      <button
-                        onClick={() => onNavigate(ins.navTo)}
-                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a4f00', border: '1px solid #c8a050', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
-                      >
-                        {NAV_LABELS[ins.navTo] || 'View →'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+              {INSIGHTS.map((ins, i) => <InsightRow key={i} ins={ins} onNavigate={onNavigate} />)}
               {INSIGHTS_TOTAL > INSIGHTS.length && (
-                <div style={{ fontSize: 14, color: 'var(--text3)', textAlign: 'center' }}>
-                  +{INSIGHTS_TOTAL - INSIGHTS.length} more priorities not shown
+                <div style={{ marginTop: 2 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowMorePriorities(s => !s)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                      background: 'var(--surface2)', border: '1px solid var(--border)',
+                      borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                      fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >
+                    <span>{showMorePriorities ? '▲' : '▼'}</span>
+                    <span>+{INSIGHTS_TOTAL - INSIGHTS.length} more priorities</span>
+                  </button>
+                  {showMorePriorities && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                      {INSIGHTS_ALL.slice(INSIGHTS.length).map((ins, i) => <InsightRow key={i} ins={ins} onNavigate={onNavigate} />)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1459,13 +1505,28 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 </div>
                 {activeWorkflows.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
-                    {activeWorkflows.slice(0, 3).map(w => (
+                    {(showMoreWorkflows ? activeWorkflows : activeWorkflows.slice(0, 3)).map(w => (
                       <div key={w.id} style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
                         {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
                       </div>
                     ))}
-                    {activeWorkflows.length > 3 && <div style={{ fontSize: 14, color: 'var(--text3)' }}>+{activeWorkflows.length - 3} more active</div>}
+                    {activeWorkflows.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowMoreWorkflows(s => !s)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content',
+                          background: 'var(--surface2)', border: '1px solid var(--border)',
+                          borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                          fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                          fontFamily: 'DM Sans, sans-serif', marginTop: 2,
+                        }}
+                      >
+                        <span>{showMoreWorkflows ? '▲' : '▼'}</span>
+                        <span>{showMoreWorkflows ? 'Show less' : `+${activeWorkflows.length - 3} more active`}</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

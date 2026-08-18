@@ -103,5 +103,8 @@ export function buildFocusItems({ overdueActions, overdueReminders, finNet, high
   // Stage 4 (86d41pc93): total preserved alongside the cap so the card can
   // show "+N more" instead of silently dropping items. Can only ever be
   // capped-vs-total 4-vs-3 at most, since there's one candidate per source.
-  return { items: candidates.slice(0, 3), total: candidates.length };
+  // `all` added later so the card can genuinely expand into the hidden
+  // item(s) instead of "+N more" being a dead end -- purely additive,
+  // items/total unchanged.
+  return { items: candidates.slice(0, 3), total: candidates.length, all: candidates };
 }
