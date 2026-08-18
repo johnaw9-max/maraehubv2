@@ -215,6 +215,8 @@ export default function FounderDashboard({ profile }) {
   const [kpiTineka, setKpiTineka] = useState(null);
   const [recentFeedback, setRecentFeedback] = useState([]);
   const [uxPulseSummary, setUxPulseSummary] = useState({ up: 0, down: 0 });
+  const [uxPulseEntries, setUxPulseEntries] = useState([]);
+  const [showUxPulseDetail, setShowUxPulseDetail] = useState(false);
 
   // Custom marae added by founder
   const [customMarae,    setCustomMarae]    = useState([]);
@@ -294,8 +296,8 @@ export default function FounderDashboard({ profile }) {
       // mixed in with real bug reports/suggestions/questions/compliments.
       supabase.from('feedback').select('id, type, user_name, user_email, message, created_at').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
       supabaseTineka.from('feedback').select('id, type, user_name, user_email, message, created_at').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
-      supabase.from('feedback').select('rating').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
-      supabaseTineka.from('feedback').select('rating').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
+      supabase.from('feedback').select('rating, message, created_at').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
+      supabaseTineka.from('feedback').select('rating, message, created_at').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
     ]);
 
     if (settingsRes.data) {
@@ -318,11 +320,14 @@ export default function FounderDashboard({ profile }) {
     const fbTineka = (fbTinekaRes.data || []).map(f => ({ ...f, envLabel: 'Tineka' }));
     setRecentFeedback([...fbOpeke, ...fbTineka].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20));
 
-    const uxAll = [...(uxOpekeRes.data || []), ...(uxTinekaRes.data || [])];
+    const uxOpeke  = (uxOpekeRes.data  || []).map(r => ({ ...r, envLabel: 'Opeke' }));
+    const uxTineka = (uxTinekaRes.data || []).map(r => ({ ...r, envLabel: 'Tineka' }));
+    const uxAll = [...uxOpeke, ...uxTineka];
     setUxPulseSummary({
       up:   uxAll.filter(r => r.rating === 'up').length,
       down: uxAll.filter(r => r.rating === 'down').length,
     });
+    setUxPulseEntries(uxAll.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
 
     const cl = {}, leads = [], marae = [], pipe = [], sn = {};
     for (const row of (notesRes.data || [])) {
@@ -580,8 +585,27 @@ export default function FounderDashboard({ profile }) {
       <Card style={{ marginBottom: 24 }}>
         <SectionTitle>Recent Feedback</SectionTitle>
         {(uxPulseSummary.up > 0 || uxPulseSummary.down > 0) && (
-          <div style={{ fontSize: 13, color: TEXT1, padding: '8px 12px', background: CREAM, borderRadius: 8, marginBottom: 14, border: `1px solid ${BORDER}` }}>
-            🎯 App ease-of-use (this month): {uxPulseSummary.up} 👍 / {uxPulseSummary.down} 👎
+          <div style={{ marginBottom: 14 }}>
+            <button
+              onClick={() => setShowUxPulseDetail(s => !s)}
+              style={{ width: '100%', textAlign: 'left', fontSize: 13, color: TEXT1, padding: '8px 12px', background: CREAM, borderRadius: 8, border: `1px solid ${BORDER}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'inherit' }}
+            >
+              <span>🎯 App ease-of-use (this month): {uxPulseSummary.up} 👍 / {uxPulseSummary.down} 👎</span>
+              <span style={{ color: TEXT3 }}>{showUxPulseDetail ? '▲' : '▼'}</span>
+            </button>
+            {showUxPulseDetail && (
+              <div style={{ padding: '10px 12px', background: CREAM, borderRadius: 8, marginTop: 6, border: `1px solid ${BORDER}` }}>
+                {uxPulseEntries.map((r, i) => (
+                  <div key={i} style={{ padding: '6px 0', borderBottom: i < uxPulseEntries.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: TEXT1 }}>{r.rating === 'up' ? '👍' : '👎'} {r.envLabel}</span>
+                      <span style={{ fontSize: 11, color: TEXT3 }}>{new Date(r.created_at).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: r.message ? TEXT1 : TEXT3, fontStyle: r.message ? 'normal' : 'italic' }}>{r.message || 'No comment left'}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {recentFeedback.length === 0 ? (
