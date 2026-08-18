@@ -89,7 +89,8 @@ function emailHtml(title: string, intro: string, rows: string[]): string {
   </td></tr>
   <tr><td style="padding:16px 32px;border-top:1px solid #f0ebe3;font-size:12px;color:#9a9088;line-height:1.6;">
     Nō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.<br>
-    <a href="${APP_URL}" style="color:#1a4a3a;text-decoration:none;">MaraeHub</a> · maraehub.com
+    <a href="${APP_URL}" style="color:#1a4a3a;text-decoration:none;">MaraeHub</a> · maraehub.com<br>
+    <a href="${APP_URL}/?tab=settings#email-notifications" style="color:#9a9088;text-decoration:underline;">Manage your email preferences</a>
   </td></tr>
 </table>
 </td></tr></table>

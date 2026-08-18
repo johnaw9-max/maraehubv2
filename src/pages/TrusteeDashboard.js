@@ -149,6 +149,17 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [xeroConnected, setXeroConnected] = useState(false);
 
   useEffect(() => {
+    // Deep-link support (?tab=settings) for links sent from outside the app,
+    // e.g. "Manage your email preferences" in notify-trustees emails.
+    // General-purpose, not hardcoded to settings -- validated against the
+    // real, current tab keys so a stale/garbage param can't set activeTab
+    // to something nothing renders for.
+    const validKeys = NAV_GROUPS.flatMap(g => g.tabs.map(t => t.key));
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (requestedTab && validKeys.includes(requestedTab)) setActiveTab(requestedTab);
+  }, []);
+
+  useEffect(() => {
     const handler = (e) => setActiveTab(e.detail);
     window.addEventListener('marae:navigate', handler);
     return () => window.removeEventListener('marae:navigate', handler);

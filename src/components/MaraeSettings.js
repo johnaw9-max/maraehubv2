@@ -126,6 +126,15 @@ export default function MaraeSettings({ profile, isAdmin }) {
       setXeroBannerReason(params.get('reason') || '');
       window.history.replaceState(null, '', window.location.pathname);
     }
+
+    // Deep-link scroll target, e.g. #email-notifications from the "Manage
+    // your email preferences" link in notify-trustees emails. Deferred a
+    // tick so the section has actually rendered before scrolling to it.
+    if (window.location.hash) {
+      setTimeout(() => {
+        document.querySelector(window.location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchXeroStatus() {
@@ -645,7 +654,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       </div>
 
       {/* ── EMAIL NOTIFICATIONS ── */}
-      <div className="panel" style={{ marginTop: 20 }}>
+      <div id="email-notifications" className="panel" style={{ marginTop: 20 }}>
         <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
           Email Notifications
         </div>
