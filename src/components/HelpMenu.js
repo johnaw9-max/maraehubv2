@@ -537,6 +537,42 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Water Safety Readiness',
+      icon: '💧',
+      items: [
+        { q: 'What does Water Safety Readiness track?', a: [
+          { text: 'Like Fire Safety, water safety is spread across the modules that already exist, not one single water screen — Compliance, Emergency Plan, and Workflows.' },
+          { items: [
+            'Compliance — a dedicated Water category with 3 real items and their own renewal cadences',
+            'Emergency Plan — a Water Contamination hazard entry with likely impact and what to do',
+            'Workflows — a real, detailed step-by-step water contamination response process',
+          ]},
+        ] },
+        { q: 'What are the 3 water compliance items?', a: [
+          { items: [
+            'Drinking water testing and monitoring — confirmed against your supply\'s requirements (6-monthly)',
+            'Water treatment system — serviced and confirmed working, if applicable (12-monthly)',
+            'Water supply classification and registration — confirmed with Taumata Arowai (12-monthly)',
+          ]},
+          { text: 'Go to Compliance and filter by the 💧 Water category to see their current status and mark them done as you complete each check.' },
+        ] },
+        { q: 'Will trustees actually be reminded when something is due?', a: 'Yes — these are ordinary compliance items, so they use the exact same email reminder mechanism as everything else in Compliance. Once a water item has a real due date set, MaraeHub emails the responsible trustee automatically starting 30 days before it\'s due (see Email Notifications).' },
+        { q: 'What is the Water Contamination Response workflow?', a: [
+          { text: 'A real, 10-step workflow covering what to do if your water supply is suspected or confirmed unsafe — stopping use, providing alternative water, notifying Taumata Arowai and Public Health if advised, arranging retesting, repairing the cause, confirming results before resuming use, logging the incident, and closing out the record.' },
+          { text: 'Unlike the Fire Safety workflow, this one is not linked to a specific compliance item — a water contamination event is something that happens unexpectedly, not a scheduled annual review. Go to the Workflows tab and start "Water Contamination Response" directly from the template list whenever it is actually needed.' },
+        ] },
+        { q: 'What does the Emergency Plan show for Water Contamination?', a: 'Go to Assets & Compliance → Emergency Plan → Hazards, and open "Water Contamination". It has real Likely Impact and What To Do content, based on current Taumata Arowai guidance — including the real 0800 454 717 hotline for an imminent risk of serious illness or death, and the standard notify-us process for less urgent issues.' },
+        { q: 'What do I still need to do myself?', a: [
+          { text: 'Honestly, the most important thing MaraeHub cannot fill in for you — it is a real decision for your trustees, not something the system can determine.' },
+          { items: [
+            'Your real water supply classification and testing requirements — these depend on your specific supply (source, treatment, whether it is a public/community or self-supply) and must be confirmed directly with Taumata Arowai, not guessed or assumed here.',
+          ]},
+          { text: 'MaraeHub gives you a structured place to record what you have been told applies to your supply, track the dates and responsible trustee, store the evidence, and get reminded — a record-keeping and reminder aid, not a compliance decision-maker. Using this system does not, on its own, make your marae\'s water supply legally compliant.' },
+          { text: 'Everything else — the compliance items, the standalone workflow, and the Emergency Plan entry — is already set up and genuinely working.' },
+        ] },
+      ]
+    },
+    {
       category: 'Getting Started',
       icon: '🚀',
       items: [
