@@ -16,6 +16,7 @@ const CATEGORIES = {
   health_safety:           { label: 'Health & Safety',         icon: '⛑️', color: '#a63020', bg: '#faeae7' },
   civil_defence:           { label: 'Civil Defence',           icon: '🚨', color: '#7a4f00', bg: '#fdf0dc' },
   emergency_preparedness:  { label: 'Emergency Preparedness',  icon: '🆘', color: '#8b0000', bg: '#fce8e8' },
+  water:                   { label: 'Water',                   icon: '💧', color: '#0a6e8a', bg: '#e6f4f8' },
   other:                   { label: 'Other',                   icon: '📋', color: '#4a4438', bg: '#f5f0e8' },
 };
 

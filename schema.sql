@@ -270,7 +270,7 @@ create table if not exists compliance_items (
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
 alter table compliance_items add constraint compliance_items_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
-alter table compliance_items add constraint compliance_items_category_check CHECK ((category = ANY (ARRAY['building'::text, 'insurance'::text, 'trustee'::text, 'health_safety'::text, 'civil_defence'::text, 'other'::text, 'emergency_preparedness'::text])));
+alter table compliance_items add constraint compliance_items_category_check CHECK ((category = ANY (ARRAY['building'::text, 'insurance'::text, 'trustee'::text, 'health_safety'::text, 'civil_defence'::text, 'other'::text, 'emergency_preparedness'::text, 'water'::text])));
 alter table compliance_items add constraint compliance_items_classification_check CHECK ((classification = ANY (ARRAY['task'::text, 'template'::text, 'workflow'::text])));
 alter table compliance_items add constraint compliance_items_workflow_template_id_fkey FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id);
 
