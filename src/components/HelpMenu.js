@@ -238,6 +238,15 @@ const HELP_TOPICS = {
           ]},
         ] },
         { q: 'How do I turn email notifications on or off?', a: 'Go to Settings and open the "Email Notifications" section. Each notification type has its own toggle — you can turn individual types on or off independently. For example, you might keep compliance and grant reminders on but turn off booking notifications if another trustee handles approvals. Changes take effect immediately and apply only to your account — each trustee controls their own notification preferences.' },
+        { q: 'What does the "Compliance & Overdue-Action Emails" toggle in Settings do?', a: [
+          { text: 'This is a separate, marae-wide switch, not a personal notification preference. It controls whether compliance and overdue-action reminder emails are sent to any trustee at all.' },
+          { items: [
+            'Admin only — only trustees with the Admin role can see or change it. Standard trustees do not have access to this switch.',
+            'It sits above the personal "Email Notifications" preferences: if this switch is off, compliance and overdue-action emails do not go out to anyone, even if a trustee has those two types turned on in their own preferences. If it is on, each trustee\'s own preferences decide whether they personally receive them.',
+            'It only affects the Compliance and Overdue Actions notification types — booking, grant, and goal emails are unaffected and always follow each trustee\'s personal preferences.',
+          ]},
+          { text: 'This exists so a marae can hold off on these two email types marae-wide (for example, while trustees are still getting used to the platform) without needing a code change — an admin can turn it back on themselves whenever they are ready.' },
+        ] },
         { q: 'Will I get the same email about the same item every day?', a: 'No. MaraeHub tracks what has already been sent and will not email you about the same item more than once every 25 days. If a compliance item is still due in 30 days and has not been updated, you will receive one notification about it — and then not again for another 25 days. This prevents your inbox from filling up with repeated reminders about the same unresolved issue.' },
       ]
     },
