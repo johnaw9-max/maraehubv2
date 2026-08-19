@@ -379,7 +379,7 @@ create table if not exists emergency_plan_hazards (
 
 alter table emergency_plan_hazards add constraint emergency_plan_hazards_pkey PRIMARY KEY (id);
 alter table emergency_plan_hazards add constraint emergency_plan_hazards_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
-alter table emergency_plan_hazards add constraint emergency_plan_hazards_hazard_type_check CHECK ((hazard_type = ANY (ARRAY['Landslide'::text, 'Flood'::text, 'Earthquake'::text, 'Fire'::text, 'Storm'::text, 'Tsunami'::text, 'Volcano'::text, 'Pandemic'::text, 'Man-Made Hazard'::text])));
+alter table emergency_plan_hazards add constraint emergency_plan_hazards_hazard_type_check CHECK ((hazard_type = ANY (ARRAY['Landslide'::text, 'Flood'::text, 'Earthquake'::text, 'Fire'::text, 'Storm'::text, 'Tsunami'::text, 'Volcano'::text, 'Pandemic'::text, 'Man-Made Hazard'::text, 'Water Contamination'::text])));
 
 alter table emergency_plan_hazards enable row level security;
 
