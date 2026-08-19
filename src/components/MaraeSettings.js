@@ -7,6 +7,7 @@ const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
   payment_details: '',
   automation_level: 'assisted',
+  reminders_paused: false,
 
 };
 
@@ -196,6 +197,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
         website: data.website || '',
         payment_details: data.payment_details || '',
         automation_level: data.automation_level || 'assisted',
+        reminders_paused: data.reminders_paused === true,
       });
     }
     setLoading(false);
@@ -702,6 +704,48 @@ export default function MaraeSettings({ profile, isAdmin }) {
           {notifSaving ? 'Saving...' : 'Save Notification Preferences'}
         </button>
       </div>
+
+      {/* ── MARAE-WIDE REMINDER CONTROL (admin only) ── */}
+      {isAdmin && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            Compliance & Overdue-Action Emails
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+            Controls whether compliance and overdue-action reminder emails go out to trustees at all, marae-wide. This is separate from the personal preferences above — those only apply once this is switched on.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>Send these emails</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 1 }}>
+                {form.reminders_paused ? 'Currently off — no compliance or overdue-action emails are being sent.' : 'Currently on — compliance and overdue-action emails send daily as normal.'}
+              </div>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!form.reminders_paused}
+                onChange={async e => {
+                  const enabled = e.target.checked;
+                  setField('reminders_paused', !enabled);
+                  if (!settingsId) return;
+                  await supabase.from('marae_settings').update({ reminders_paused: !enabled }).eq('id', settingsId);
+                }}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', inset: 0, borderRadius: 24, transition: 'background 0.2s',
+                background: !form.reminders_paused ? 'var(--brand)' : '#d0cbc4',
+              }} />
+              <span style={{
+                position: 'absolute', top: 3, left: !form.reminders_paused ? 23 : 3,
+                width: 18, height: 18, background: '#fff', borderRadius: '50%',
+                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }} />
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* ── AUTOMATION LEVEL ── */}
       {isAdmin && (

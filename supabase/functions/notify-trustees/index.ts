@@ -30,17 +30,6 @@ const FROM_ADDRESS     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@res
 const APP_URL          = Deno.env.get('APP_URL') ?? 'https://maraehubv2.vercel.app';
 const TEST_EMAIL       = Deno.env.get('RESEND_TEST_EMAIL') ?? '';
 
-// Paused at Waj's request, Opeke only -- concern about compliance/overdue-
-// action emails going out cold to all 7 real trustees before a human
-// approach is worked out. Tineka is unaffected: bookings/grants/goals stay
-// live everywhere, only these two are scoped off, and only on Opeke.
-// Runtime-scoped (not a manual per-project deploy discipline) so the exact
-// same source file is safe to deploy to both projects -- Tineka evaluates
-// IS_OPEKE false and runs unchanged. Flip PAUSE_* back to false to resume.
-const IS_OPEKE = SUPABASE_URL.includes('cbeenkpjpnhmtqtnjiyd');
-const PAUSE_COMPLIANCE_REMINDERS = IS_OPEKE;
-const PAUSE_ACTION_REMINDERS     = IS_OPEKE;
-
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -134,9 +123,13 @@ serve(async (req) => {
 
   // Pre-fetch everything needed for all notification types in parallel
   const [
+    settingsRes,
     trusteesRes, logRes,
     bookingsRes, complianceRes, grants30Res, grants14Res, grants7Res, actionsRes, goalsRes,
   ] = await Promise.all([
+    // Admin-controlled from Settings (reminders_paused) -- replaces the old
+    // hardcoded IS_OPEKE constant now that Jason can flip this himself.
+    db.from('marae_settings').select('reminders_paused').limit(1).single(),
     db.from('profiles').select('id, full_name, email, notification_prefs').eq('role', 'trustee').not('email', 'is', null),
     db.from('notification_log').select('notification_type, entity_id, entity_key, trustee_id, sent_at').gte('sent_at', new Date(Date.now() - 35 * 86400000).toISOString()),
     // Bookings starting in exactly 48h (date = today+2)
@@ -155,6 +148,7 @@ serve(async (req) => {
     db.from('goals').select('id, name, status, target_date, responsible_name').in('status', ['at_risk', 'completed']),
   ]);
 
+  const remindersPaused = settingsRes.data?.reminders_paused === true;
   const trustees  = trusteesRes.data   ?? [];
   const log       = (logRes.data ?? []) as LogEntry[];
   const bookings  = bookingsRes.data   ?? [];
@@ -193,7 +187,7 @@ serve(async (req) => {
     }
 
     // ── 2. Compliance items due within 30 days ─────────────────────────────────
-    if (!PAUSE_COMPLIANCE_REMINDERS && prefs.compliance !== false) {
+    if (!remindersPaused && prefs.compliance !== false) {
       const fresh = compItems.filter(c => !wasSent(log, 'compliance_due', c.id, id, undefined, 25));
       if (fresh.length > 0) {
         const rows = fresh.map(c => {
@@ -295,7 +289,7 @@ serve(async (req) => {
     // (e.g. a Contacts-only person), it resolves to nobody via this
     // pipeline, not a fallback to everyone -- matches the real intent of
     // this fix, this function is scoped to trustees.
-    if (!PAUSE_ACTION_REMINDERS && prefs.actions !== false) {
+    if (!remindersPaused && prefs.actions !== false) {
       const myActions = actions.filter(a => !a.assigned_to || a.assigned_to.trim() === trustee.full_name);
       const fresh = myActions.filter(a => !wasSent(log, 'action_overdue', a.id, id, undefined, 7));
       if (fresh.length > 0) {

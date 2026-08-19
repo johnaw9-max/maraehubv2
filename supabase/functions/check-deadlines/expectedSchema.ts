@@ -341,7 +341,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "payment_details",
     "bank_csv_mapping",
     "emergency_plan_supported_by",
-    "emergency_plan_history"
+    "emergency_plan_history",
+    "reminders_paused"
   ],
   "meeting_actions": [
     "id",

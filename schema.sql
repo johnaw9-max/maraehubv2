@@ -826,7 +826,8 @@ create table if not exists marae_settings (
   payment_details text,
   bank_csv_mapping jsonb,
   emergency_plan_supported_by text,
-  emergency_plan_history text
+  emergency_plan_history text,
+  reminders_paused boolean not null default false
 );
 
 alter table marae_settings add constraint marae_settings_pkey PRIMARY KEY (id);
