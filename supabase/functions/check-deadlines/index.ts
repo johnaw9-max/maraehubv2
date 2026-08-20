@@ -1073,6 +1073,63 @@ serve(async () => {
     details: processConfigFindings,
   });
 
+  // ── Dead-field detection check (ClickUp 86d438jjv, check #2) ────────────────
+  // Real confirmed case (86d42yxhx, Task 1): assets.replacement_date is read
+  // by 3 live UI features (Asset Health Summary, Board View replacement
+  // insights, lifecycle badges) but nothing writes it — permanently null
+  // despite real asset rows existing. This watches for that same shape
+  // recurring: a column with real, non-trivial row data where every single
+  // row's value for a specific expected-to-be-written field is still null.
+  //
+  // assets.purchase_date and assets.lifespan_years are deliberately NOT
+  // candidates yet — both already exist on the table but are also currently
+  // unwritten because Task 1 (the form field) hasn't shipped. Flagging them
+  // now would mean a known, already-tracked gap, not a genuine regression.
+  const DEAD_FIELD_CANDIDATES: { table: string; column: string }[] = [
+    { table: 'assets', column: 'replacement_date' },
+  ];
+
+  const deadFieldFindings: { table: string; column: string; total_rows?: number; error?: string }[] = [];
+
+  for (const candidate of DEAD_FIELD_CANDIDATES) {
+    const [totalRes, nonNullRes] = await Promise.all([
+      db.from(candidate.table).select('id', { count: 'exact', head: true }),
+      db.from(candidate.table).select('id', { count: 'exact', head: true }).not(candidate.column, 'is', null),
+    ]);
+
+    if (totalRes.error || nonNullRes.error) {
+      deadFieldFindings.push({ table: candidate.table, column: candidate.column, error: 'query failed' });
+      continue;
+    }
+
+    const totalCount = totalRes.count ?? 0;
+    const nonNullCount = nonNullRes.count ?? 0;
+
+    if (totalCount > 0 && nonNullCount === 0) {
+      deadFieldFindings.push({ table: candidate.table, column: candidate.column, total_rows: totalCount });
+    }
+  }
+
+  if (deadFieldFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily dead-field check found ${deadFieldFindings.length} column${deadFieldFindings.length !== 1 ? 's' : ''} with real data present but nothing has ever populated. This usually means a UI feature reads a field with no way to write it — worth a look.\n\n` +
+      deadFieldFindings.map(f => f.error
+        ? `- ${f.table}.${f.column} — check could not run (${f.error})`
+        : `- ${f.table}.${f.column} — ${f.total_rows} row${f.total_rows !== 1 ? 's' : ''}, none with a value set`
+      ).join('\n') +
+      `\n\nPlease check whether this field has a real write path.` +
+      footer();
+
+    await notifyAdmin(`Dead-field check — ${deadFieldFindings.length} issue${deadFieldFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'dead_field_detection',
+    findings_count: deadFieldFindings.length,
+    details: deadFieldFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -1085,6 +1142,7 @@ serve(async () => {
       schema_drift_findings: schemaDriftFindings.length,
       security_access_control_findings: securityFindings.length,
       process_config_safety_findings: processConfigFindings.length,
+      dead_field_detection_findings: deadFieldFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
