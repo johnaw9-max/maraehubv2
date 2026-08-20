@@ -4,3 +4,4 @@ build/
 .env.local
 .env.production.local
 supabase/.temp/
+.DS_Store

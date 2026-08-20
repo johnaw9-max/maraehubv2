@@ -88,6 +88,23 @@ export default function WelcomeLanding() {
         </div>
       </div>
 
+      <div style={{ background: 'var(--surface2)', padding: '70px 20px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, color: 'var(--text1)', margin: 0 }}>
+            See MaraeHub in action
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text2)', marginTop: 14, marginBottom: 32, lineHeight: 1.6 }}>
+            Real screenshots from the real application — no mockups.
+          </p>
+          <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
+            <img src="/screenshots/board-view.png" alt="MaraeHub Board View — compliance, risk, goals, finance and grants at a glance" style={{ width: '100%', display: 'block' }} />
+          </div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 14, fontStyle: 'italic' }}>
+            Board View — everything a trustee needs, at a glance
+          </div>
+        </div>
+      </div>
+
       <div style={{ background: 'var(--brand)', padding: '70px 20px' }}>
         <div style={{ maxWidth: 480, margin: '0 auto', background: '#fff', borderRadius: 16, padding: '40px 32px', textAlign: 'center', border: '2px solid #c8902a', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#c8902a', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
