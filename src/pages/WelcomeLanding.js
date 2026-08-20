@@ -116,7 +116,21 @@ export default function WelcomeLanding() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface2)', padding: '50px 20px', textAlign: 'center' }}>
+      <div style={{ background: 'var(--surface2)', padding: '60px 20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            Who's Building MaraeHub
+          </div>
+          <p style={{ fontSize: 16, color: 'var(--text1)', lineHeight: 1.6, margin: 0 }}>
+            Built by a marae trustee with a background in facilities management and health & safety.
+          </p>
+          <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.6, marginTop: 14 }}>
+            MaraeHub is being developed around the real operational challenges faced by marae — not adapted from generic business software.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--surface2)', padding: '50px 20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
         <div style={{ fontSize: 15, color: 'var(--text3)', maxWidth: 480, margin: '0 auto' }}>
           More coming soon — we're building this page section by section.
         </div>
