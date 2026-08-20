@@ -32,6 +32,13 @@ const EDUCATION_TOPICS = [
   { icon: '🔧', label: 'Asset Management' },
 ];
 
+const OFFICIAL_SOURCES = [
+  { label: 'Taumata Arowai', url: 'https://www.taumataarowai.govt.nz' },
+  { label: 'Fire and Emergency New Zealand', url: 'https://www.fireandemergency.nz' },
+  { label: 'MBIE', url: 'https://www.mbie.govt.nz' },
+  { label: 'WorkSafe New Zealand', url: 'https://www.worksafe.govt.nz' },
+];
+
 export default function WelcomeLanding() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand)' }}>
@@ -154,6 +161,24 @@ export default function WelcomeLanding() {
                 <span style={{ fontSize: 18 }}>{t.icon}</span>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{t.label}</span>
               </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--surface2)', padding: '60px 20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            Official Sources
+          </div>
+          <p style={{ fontSize: 15, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 24 }}>
+            MaraeHub is not a regulator or legal authority. Always check current official guidance directly — requirements depend on your marae's specific circumstances.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+            {OFFICIAL_SOURCES.map(s => (
+              <a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '8px 18px', fontSize: 14, fontWeight: 600, color: 'var(--brand)', textDecoration: 'none' }}>
+                {s.label} ↗
+              </a>
             ))}
           </div>
         </div>
