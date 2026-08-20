@@ -20,6 +20,7 @@ const PROBLEMS = [
 ];
 
 const FOUNDING_EMAIL = 'mailto:maraehub@gmail.com?subject=Founding%20Marae%20Enquiry';
+const DEMO_EMAIL = 'mailto:maraehub@gmail.com?subject=Demo%20Request';
 
 export default function WelcomeLanding() {
   return (
@@ -97,6 +98,20 @@ export default function WelcomeLanding() {
 
           <a href={FOUNDING_EMAIL} style={{ display: 'inline-block', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
             BECOME A FOUNDING MARAE
+          </a>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--surface)', padding: '60px 20px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: 'var(--text1)', margin: 0 }}>
+            Not sure if MaraeHub is right for your marae?
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text2)', marginTop: 14, lineHeight: 1.6 }}>
+            Book a 20-minute kōrero and demonstration. No pressure. No commitment. We'll show you how it works and answer your questions.
+          </p>
+          <a href={DEMO_EMAIL} style={{ display: 'inline-block', marginTop: 24, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
+            BOOK A DEMO
           </a>
         </div>
       </div>
