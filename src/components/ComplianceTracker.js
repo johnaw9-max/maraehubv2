@@ -4,6 +4,7 @@ import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
+import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -77,16 +78,6 @@ const EMPTY_INCIDENT = {
 function fmt(d) {
   if (!d) return '—';
   return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function getStatus(dueDate) {
-  if (!dueDate) return 'not_set';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + 'T12:00:00');
-  const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
-  if (due < today) return 'overdue';
-  if (due <= in30) return 'due_soon';
-  return 'compliant';
 }
 
 function daysLabel(dueDate) {
@@ -415,11 +406,11 @@ export default function ComplianceTracker({ onStartWorkflow }) {
   // ── COMPUTED ───────────────────────────────────────────────────────────────
 
   const counts = { overdue: 0, due_soon: 0, compliant: 0, not_set: 0 };
-  items.forEach(item => counts[getStatus(item.due_date)]++);
+  items.forEach(item => counts[getItemComplianceStatus(item)]++);
 
   const epItems = items.filter(i => i.category === 'emergency_preparedness');
-  const epOverdue  = epItems.filter(i => getStatus(i.due_date) === 'overdue');
-  const epNotSet   = epItems.filter(i => getStatus(i.due_date) === 'not_set');
+  const epOverdue  = epItems.filter(i => getItemComplianceStatus(i) === 'overdue');
+  const epNotSet   = epItems.filter(i => getItemComplianceStatus(i) === 'not_set');
   const epAlert    = epOverdue.length + epNotSet.length;
 
   const filteredItems = (catFilter === 'all' ? items : items.filter(i => i.category === catFilter))
@@ -427,8 +418,8 @@ export default function ComplianceTracker({ onStartWorkflow }) {
     .filter(i => entityFilter === 'all' || i.entity_id === entityFilter || i.entity_id === null)
     .slice()
     .sort((a, b) => {
-      const sa = STATUS_ORDER[getStatus(a.due_date)];
-      const sb = STATUS_ORDER[getStatus(b.due_date)];
+      const sa = STATUS_ORDER[getItemComplianceStatus(a)];
+      const sb = STATUS_ORDER[getItemComplianceStatus(b)];
       if (sa !== sb) return sa - sb;
       if (!a.due_date && !b.due_date) return 0;
       if (!a.due_date) return 1;
@@ -441,13 +432,13 @@ export default function ComplianceTracker({ onStartWorkflow }) {
   // "collapse, don't hide" pattern already proven by the Resolved Incident
   // Archive below. Ordering itself (overdue -> due_soon -> compliant ->
   // not_set) was already correct via STATUS_ORDER, nothing changed there.
-  const visibleItems = filteredItems.filter(i => getStatus(i.due_date) !== 'not_set');
-  const neverAssessedItems = filteredItems.filter(i => getStatus(i.due_date) === 'not_set');
+  const visibleItems = filteredItems.filter(i => getItemComplianceStatus(i) !== 'not_set');
+  const neverAssessedItems = filteredItems.filter(i => getItemComplianceStatus(i) === 'not_set');
 
   if (loading) return <div className="loading">Loading compliance data...</div>;
 
   function renderItemRow(item) {
-    const status = getStatus(item.due_date);
+    const status = getItemComplianceStatus(item);
     const scfg = STATUS_CFG[status];
     const cat = CATEGORIES[item.category] || CATEGORIES.other;
     const cls = CLASSIFICATIONS[item.classification] || CLASSIFICATIONS.task;
