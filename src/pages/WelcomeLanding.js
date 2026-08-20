@@ -19,6 +19,8 @@ const PROBLEMS = [
   'Nobody knows who is responsible for an action',
 ];
 
+const FOUNDING_EMAIL = 'mailto:maraehub@gmail.com?subject=Founding%20Marae%20Enquiry';
+
 export default function WelcomeLanding() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand)' }}>
@@ -65,6 +67,37 @@ export default function WelcomeLanding() {
           <p style={{ fontSize: 16, color: 'var(--text2)', marginTop: 36, lineHeight: 1.6 }}>
             MaraeHub is a shared system — so your marae's compliance, maintenance and governance don't depend on one person remembering everything.
           </p>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--brand)', padding: '70px 20px' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto', background: '#fff', borderRadius: 16, padding: '40px 32px', textAlign: 'center', border: '2px solid #c8902a', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#c8902a', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            Founding Marae Offer
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
+            <span style={{ fontSize: 18, color: 'var(--text3)', textDecoration: 'line-through' }}>$99/month</span>
+            <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 40, fontWeight: 700, color: 'var(--brand)' }}>
+              $49.50<span style={{ fontSize: 16, fontWeight: 600 }}>/month</span>
+            </span>
+          </div>
+
+          <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 20 }}>
+            50% off for your first 12 months
+          </div>
+
+          <div style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.6, marginBottom: 20 }}>
+            After your first 12 months, standard pricing of $99/month applies. This is not a permanent discount.
+          </div>
+
+          <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 24 }}>
+            Limited to the first 10 marae
+          </div>
+
+          <a href={FOUNDING_EMAIL} style={{ display: 'inline-block', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
+            BECOME A FOUNDING MARAE
+          </a>
         </div>
       </div>
 
