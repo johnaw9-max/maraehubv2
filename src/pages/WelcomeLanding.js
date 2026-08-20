@@ -11,6 +11,14 @@ const AREAS = [
   { icon: '📁', label: 'Projects' },
 ];
 
+const PROBLEMS = [
+  'Compliance renewal gets missed',
+  'Fire extinguisher service becomes overdue',
+  'Grant deadline is missed',
+  'Important document cannot be found',
+  'Nobody knows who is responsible for an action',
+];
+
 export default function WelcomeLanding() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand)' }}>
@@ -39,7 +47,28 @@ export default function WelcomeLanding() {
         </a>
       </div>
 
-      <div id="more" style={{ background: 'var(--surface)', padding: '70px 20px', textAlign: 'center' }}>
+      <div id="more" style={{ background: 'var(--surface)', padding: '70px 20px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, color: 'var(--text1)', margin: 0, lineHeight: 1.3 }}>
+            What happens when the person who remembers everything isn't available?
+          </h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 36, textAlign: 'left' }}>
+            {PROBLEMS.map(p => (
+              <div key={p} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 16 }}>⚠️</span>
+                <span style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.4 }}>{p}</span>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 16, color: 'var(--text2)', marginTop: 36, lineHeight: 1.6 }}>
+            MaraeHub is a shared system — so your marae's compliance, maintenance and governance don't depend on one person remembering everything.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--surface2)', padding: '50px 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 15, color: 'var(--text3)', maxWidth: 480, margin: '0 auto' }}>
           More coming soon — we're building this page section by section.
         </div>
