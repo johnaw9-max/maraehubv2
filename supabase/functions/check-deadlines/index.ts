@@ -1074,27 +1074,34 @@ serve(async () => {
   });
 
   // ── Dead-field detection check (ClickUp 86d438jjv, check #2) ────────────────
-  // Real confirmed case (86d42yxhx, Task 1): assets.replacement_date is read
-  // by 3 live UI features (Asset Health Summary, Board View replacement
-  // insights, lifecycle badges) but nothing writes it — permanently null
-  // despite real asset rows existing. This watches for that same shape
-  // recurring: a column with real, non-trivial row data where every single
-  // row's value for a specific expected-to-be-written field is still null.
+  // Flags a column with real, non-trivial row data where every single row's
+  // value for a specific field is still null — could mean no write path
+  // exists, OR the column is a Postgres GENERATED ALWAYS column whose real
+  // source fields are simply empty. Queries is_generated via the
+  // check_column_generated() RPC to tell the two apart and phrase the alert
+  // correctly. See 86d42yxhx Task 1 for the real incident this came from:
+  // assets.replacement_date looked dead but is actually DB-generated from
+  // purchase_date + lifespan_years — the original wrong "no write path"
+  // diagnosis briefly broke a live save before being caught and reverted.
   //
   // assets.purchase_date and assets.lifespan_years are deliberately NOT
-  // candidates yet — both already exist on the table but are also currently
-  // unwritten because Task 1 (the form field) hasn't shipped. Flagging them
-  // now would mean a known, already-tracked gap, not a genuine regression.
+  // candidates — they're the real source fields, expected to be empty on
+  // unfilled real assets; flagging them would just be known, non-actionable
+  // noise until real data-entry happens.
   const DEAD_FIELD_CANDIDATES: { table: string; column: string }[] = [
     { table: 'assets', column: 'replacement_date' },
   ];
 
-  const deadFieldFindings: { table: string; column: string; total_rows?: number; error?: string }[] = [];
+  const deadFieldFindings: {
+    table: string; column: string; total_rows?: number; error?: string;
+    is_generated?: boolean; generation_expression?: string;
+  }[] = [];
 
   for (const candidate of DEAD_FIELD_CANDIDATES) {
-    const [totalRes, nonNullRes] = await Promise.all([
+    const [totalRes, nonNullRes, genRes] = await Promise.all([
       db.from(candidate.table).select('id', { count: 'exact', head: true }),
       db.from(candidate.table).select('id', { count: 'exact', head: true }).not(candidate.column, 'is', null),
+      db.rpc('check_column_generated', { p_table: candidate.table, p_column: candidate.column }),
     ]);
 
     if (totalRes.error || nonNullRes.error) {
@@ -1104,22 +1111,30 @@ serve(async () => {
 
     const totalCount = totalRes.count ?? 0;
     const nonNullCount = nonNullRes.count ?? 0;
+    const genRow = !genRes.error ? genRes.data?.[0] : null;
+    const isGenerated = genRow?.is_generated === true;
 
     if (totalCount > 0 && nonNullCount === 0) {
-      deadFieldFindings.push({ table: candidate.table, column: candidate.column, total_rows: totalCount });
+      deadFieldFindings.push({
+        table: candidate.table, column: candidate.column, total_rows: totalCount,
+        is_generated: isGenerated,
+        ...(isGenerated ? { generation_expression: genRow.generation_expression } : {}),
+      });
     }
   }
 
   if (deadFieldFindings.length > 0) {
     const body =
       `Tēnā koutou,\n\n` +
-      `MaraeHub's daily dead-field check found ${deadFieldFindings.length} column${deadFieldFindings.length !== 1 ? 's' : ''} with real data present but nothing has ever populated. This usually means a UI feature reads a field with no way to write it — worth a look.\n\n` +
-      deadFieldFindings.map(f => f.error
-        ? `- ${f.table}.${f.column} — check could not run (${f.error})`
-        : `- ${f.table}.${f.column} — ${f.total_rows} row${f.total_rows !== 1 ? 's' : ''}, none with a value set`
-      ).join('\n') +
-      `\n\nPlease check whether this field has a real write path.` +
-      footer();
+      `MaraeHub's daily dead-field check found ${deadFieldFindings.length} column${deadFieldFindings.length !== 1 ? 's' : ''} with real data present but no value has ever been set. Each finding below notes whether it's a genuine missing write path or a database-generated column waiting on empty source data.\n\n` +
+      deadFieldFindings.map(f => {
+        if (f.error) return `- ${f.table}.${f.column} — check could not run (${f.error})`;
+        const base = `- ${f.table}.${f.column} — ${f.total_rows} row${f.total_rows !== 1 ? 's' : ''}, none with a value set.`;
+        return f.is_generated
+          ? `${base} This is a database-generated column (${f.generation_expression}) — its source fields are empty, not a missing write path. Real action: data entry on the source fields, not a code fix.`
+          : `${base} No write path found — worth investigating.`;
+      }).join('\n') +
+      `\n` + footer();
 
     await notifyAdmin(`Dead-field check — ${deadFieldFindings.length} issue${deadFieldFindings.length !== 1 ? 's' : ''} found`, body);
   }
