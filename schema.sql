@@ -61,7 +61,9 @@ create table if not exists assets (
   purchase_cost numeric,
   lifespan_years integer,
   replacement_cost numeric,
-  replacement_date date,
+  -- generated column, confirmed live on both Tineka and Opeke; no migration file exists for it,
+  -- so this schema.sql entry is currently the only git-tracked record of it (86d42yxhx Task 1)
+  replacement_date date GENERATED ALWAYS AS (purchase_date + (lifespan_years * interval '1 year')) STORED,
   inventory_category text,
   quantity integer,
   last_stocktake date,
