@@ -22,6 +22,16 @@ const PROBLEMS = [
 const FOUNDING_EMAIL = 'mailto:maraehub@gmail.com?subject=Founding%20Marae%20Enquiry';
 const DEMO_EMAIL = 'mailto:maraehub@gmail.com?subject=Demo%20Request';
 
+const EDUCATION_TOPICS = [
+  { icon: '🔥', label: 'Fire Safety' },
+  { icon: '💧', label: 'Water Safety' },
+  { icon: '🏗️', label: 'Building Compliance' },
+  { icon: '🚨', label: 'Emergency Preparedness' },
+  { icon: '⛑️', label: 'Health & Safety' },
+  { icon: '🏛️', label: 'Governance' },
+  { icon: '🔧', label: 'Asset Management' },
+];
+
 export default function WelcomeLanding() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand)' }}>
@@ -127,6 +137,25 @@ export default function WelcomeLanding() {
           <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.6, marginTop: 14 }}>
             MaraeHub is being developed around the real operational challenges faced by marae — not adapted from generic business software.
           </p>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--surface)', padding: '70px 20px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, color: 'var(--text1)', margin: 0 }}>
+            Learn. Prepare. Strengthen your marae.
+          </h2>
+          <p style={{ fontSize: 15, color: 'var(--text2)', marginTop: 16, lineHeight: 1.6 }}>
+            MaraeHub shares free education on Facebook to help trustees understand what's actually required — before it becomes an urgent problem.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 32, textAlign: 'left' }}>
+            {EDUCATION_TOPICS.map(t => (
+              <div key={t.label} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 18 }}>{t.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{t.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
