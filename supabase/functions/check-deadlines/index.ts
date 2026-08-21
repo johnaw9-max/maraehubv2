@@ -1126,19 +1126,32 @@ serve(async () => {
   }
 
   if (deadFieldFindings.length > 0) {
-    const body =
-      `Tēnā koutou,\n\n` +
-      `MaraeHub's daily dead-field check found ${deadFieldFindings.length} column${deadFieldFindings.length !== 1 ? 's' : ''} with real data present but no value has ever been set. Each finding below notes whether it's a genuine missing write path or a database-generated column waiting on empty source data.\n\n` +
-      deadFieldFindings.map(f => {
-        if (f.error) return `- ${f.table}.${f.column} — check could not run (${f.error})`;
-        const base = `- ${f.table}.${f.column} — ${f.total_rows} row${f.total_rows !== 1 ? 's' : ''}, none with a value set.`;
-        return f.is_generated
-          ? `${base} This is a database-generated column (${f.generation_expression}) — its source fields are empty, not a missing write path. Real action: data entry on the source fields, not a code fix.`
-          : `${base} No write path found — worth investigating.`;
-      }).join('\n') +
-      `\n` + footer();
+    const ALERT_INTERVAL_DAYS = 7;
+    const { data: alertState } = await db
+      .from('check_alert_state')
+      .select('last_alerted_at')
+      .eq('check_name', 'dead_field_detection')
+      .maybeSingle();
+    const daysSinceLastAlert = alertState?.last_alerted_at
+      ? (Date.now() - new Date(alertState.last_alerted_at).getTime()) / (1000 * 60 * 60 * 24)
+      : Infinity;
 
-    await notifyAdmin(`Dead-field check — ${deadFieldFindings.length} issue${deadFieldFindings.length !== 1 ? 's' : ''} found`, body);
+    if (daysSinceLastAlert >= ALERT_INTERVAL_DAYS) {
+      const body =
+        `Tēnā koutou,\n\n` +
+        `MaraeHub's dead-field check found ${deadFieldFindings.length} column${deadFieldFindings.length !== 1 ? 's' : ''} with real data present but no value has ever been set. This check runs daily, but this alert only repeats at most once a week while the gap remains. Each finding below notes whether it's a genuine missing write path or a database-generated column waiting on empty source data.\n\n` +
+        deadFieldFindings.map(f => {
+          if (f.error) return `- ${f.table}.${f.column} — check could not run (${f.error})`;
+          const base = `- ${f.table}.${f.column} — ${f.total_rows} row${f.total_rows !== 1 ? 's' : ''}, none with a value set.`;
+          return f.is_generated
+            ? `${base} This is a database-generated column (${f.generation_expression}) — its source fields are empty, not a missing write path. Real action: data entry on the source fields, not a code fix.`
+            : `${base} No write path found — worth investigating.`;
+        }).join('\n') +
+        `\n` + footer();
+
+      await notifyAdmin(`Dead-field check — ${deadFieldFindings.length} issue${deadFieldFindings.length !== 1 ? 's' : ''} found`, body);
+      await db.from('check_alert_state').upsert({ check_name: 'dead_field_detection', last_alerted_at: new Date().toISOString() });
+    }
   }
 
   await db.from('system_check_log').insert({
