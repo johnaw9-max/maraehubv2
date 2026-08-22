@@ -230,7 +230,7 @@ const HELP_TOPICS = {
         { q: 'What triggers an email notification?', a: [
           { text: 'Five types of items trigger notifications.' },
           { items: [
-            'Compliance items due within 30 days — so you have time to renew before the deadline.',
+            'Compliance items due within 30 days (a due-soon warning), and separately, compliance items that are now overdue — an alert starting the day the due date passes and repeating weekly until it\'s resolved.',
             'Bookings starting within 48 hours — a heads-up before the marae is due to be used.',
             'Grant deadlines within 14 days — an early reminder to submit or finalise applications in time.',
             'Meeting actions that are overdue by 7 or more days — flagging tasks that have been assigned but not yet completed.',
@@ -247,7 +247,8 @@ const HELP_TOPICS = {
           ]},
           { text: 'This exists so a marae can hold off on these two email types marae-wide (for example, while trustees are still getting used to the platform) without needing a code change — an admin can turn it back on themselves whenever they are ready.' },
         ] },
-        { q: 'Will I get the same email about the same item every day?', a: 'No. MaraeHub tracks what has already been sent and will not email you about the same item more than once every 25 days. If a compliance item is still due in 30 days and has not been updated, you will receive one notification about it — and then not again for another 25 days. This prevents your inbox from filling up with repeated reminders about the same unresolved issue.' },
+        { q: 'Will I get the same email about the same item every day?', a: 'No, but it depends which type. The due-soon warning (30 days out) won\'t repeat for the same item more than once every 25 days — if a compliance item is still due in 30 days and hasn\'t been updated, you\'ll get one notification, then nothing again for another 25 days. The overdue alert works differently: once an item is actually overdue, MaraeHub reminds at most once every 7 days until it\'s resolved — more frequent, because an overdue item is more urgent than one still approaching its deadline. Either way, you won\'t be emailed daily about the same unresolved issue.' },
+        { q: 'Who receives the overdue compliance alert?', a: 'Unlike the due-soon warning, which goes to every trustee who has compliance notifications turned on, the overdue alert goes directly to that item\'s responsible person. If no responsible person is set, or MaraeHub can\'t find a matching email for the name on file, it emails all trustees instead so someone can fix the assignment.' },
       ]
     },
     {
@@ -988,12 +989,14 @@ const HELP_TOPICS = {
           { items: [
             'Enter a description of the risk',
             'Select a category',
+            'Optionally link it to a specific Asset, if the risk relates to one — a vehicle, building, or piece of equipment',
             'Set the likelihood and consequence using the dropdowns, and the risk rating will be calculated for you automatically',
             'Add the controls currently in place',
             'Assign an owner (the trustee responsible)',
             'Set a review date',
             'Save',
           ]},
+          { text: 'If you link a risk to an asset, it shows a 🔧 tag with the asset\'s name in the Risk Register list, so you can see at a glance which risks are tied to a specific asset.' },
         ] },
         { q: 'How is the risk rating calculated?', a: [
           { text: 'MaraeHub calculates the rating automatically from the likelihood and consequence you select — you do not need to work it out yourself.' },
