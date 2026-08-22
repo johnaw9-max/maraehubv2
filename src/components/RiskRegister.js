@@ -42,11 +42,13 @@ const EMPTY = {
   status:      'Open',
   notes:       '',
   entity_id:   '',
+  asset_id:    '',
 };
 
 export default function RiskRegister() {
   const [risks, setRisks]         = useState([]);
   const [entities, setEntities]   = useState([]);
+  const [assets, setAssets]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editRisk, setEditRisk]   = useState(null);
@@ -62,12 +64,14 @@ export default function RiskRegister() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [risksRes, entRes] = await Promise.all([
+    const [risksRes, entRes, assetsRes] = await Promise.all([
       supabase.from('risk_register').select('*').order('created_at', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
+      supabase.from('assets').select('id, name').order('name'),
     ]);
     setRisks(risksRes.data || []);
     setEntities(entRes.data || []);
+    setAssets(assetsRes.data || []);
     setLoading(false);
   }, []);
 
@@ -93,6 +97,7 @@ export default function RiskRegister() {
       status:      r.status      || 'Open',
       notes:       r.notes       || '',
       entity_id:   r.entity_id   || '',
+      asset_id:    r.asset_id    || '',
     });
     setError('');
     setShowModal(true);
@@ -114,6 +119,7 @@ export default function RiskRegister() {
       status:      form.status,
       notes:       form.notes.trim() || null,
       entity_id:   form.entity_id || null,
+      asset_id:    form.asset_id || null,
     };
 
     if (editRisk) {
@@ -204,6 +210,7 @@ export default function RiskRegister() {
                 const rp = RATING_PILL[r.risk_rating] || RATING_PILL.Low;
                 const sp = STATUS_PILL[r.status]      || STATUS_PILL['Open'];
                 const entityName = r.entity_id ? entities.find(e => e.id === r.entity_id)?.name : null;
+                const assetName = r.asset_id ? assets.find(a => a.id === r.asset_id)?.name : null;
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
                     <td style={{ padding: '12px 14px', maxWidth: 260 }}>
@@ -213,6 +220,7 @@ export default function RiskRegister() {
                       </div>
                       {r.controls && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 3 }}>Controls: {r.controls}</div>}
                       {entityName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
+                      {assetName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>🔧 {assetName}</span></div>}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{r.category}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.likelihood}</td>
@@ -285,6 +293,16 @@ export default function RiskRegister() {
                 <select className="form-input" value={form.entity_id} onChange={e => field('entity_id', e.target.value)}>
                   <option value="">— Shared (all entities) —</option>
                   {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {assets.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Link to Asset (optional)</label>
+                <select className="form-input" value={form.asset_id} onChange={e => field('asset_id', e.target.value)}>
+                  <option value="">— No linked asset —</option>
+                  {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
             )}
