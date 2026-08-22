@@ -22,6 +22,27 @@ const SKILL_LISTS = [
 const SPECIALISED_SKILLS_FIXED = ['Doctor', 'Nurse', 'Engineer', 'Heavy vehicle driving licence'];
 
 const EMPTY_HAZARD_FORM = { likely_impact: '', what_to_do: '' };
+
+// Auto-links plain https:// URLs at render time without rendering raw HTML --
+// this field is editable by any trustee via a plain textarea, so switching to
+// dangerouslySetInnerHTML would be a real stored-XSS risk. Restricted to
+// https?:// specifically (not any scheme) so javascript: URIs can never match.
+function linkify(text) {
+  if (!text) return text;
+  const parts = text.split(/(https?:\/\/\S+)/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 0) return part;
+    const match = part.match(/^(.*?)([.,;:)\]]*)$/);
+    const url = match[1];
+    const trailing = match[2];
+    return (
+      <React.Fragment key={i}>
+        <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
+        {trailing}
+      </React.Fragment>
+    );
+  });
+}
 const EMPTY_PERSON_FORM = { role_category: 'marae_contact', full_name: '', phone: '', entity_id: '', skill_type: '' };
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
@@ -301,10 +322,10 @@ export default function EmergencyPlanManager() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', marginBottom: 6 }}>{hazard.hazard_type}</div>
                   <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 3 }}>
-                    <strong>Likely Impact:</strong> {hazard.likely_impact || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Not yet set</span>}
+                    <strong>Likely Impact:</strong> {hazard.likely_impact ? linkify(hazard.likely_impact) : <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Not yet set</span>}
                   </div>
                   <div style={{ fontSize: 14, color: 'var(--text2)' }}>
-                    <strong>What to do:</strong> {hazard.what_to_do || <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Not yet set</span>}
+                    <strong>What to do:</strong> {hazard.what_to_do ? linkify(hazard.what_to_do) : <span style={{ color: 'var(--text3)', fontStyle: 'italic' }}>Not yet set</span>}
                   </div>
                 </div>
                 <button
