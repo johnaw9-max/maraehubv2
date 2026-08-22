@@ -311,6 +311,94 @@ serve(async () => {
     await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
   }
 
+  // ── Overdue compliance item reminders (immediate, weekly resend) ───────────
+  // Task 4 (ClickUp 86d42yxhx). Unlike the meeting-actions block above (7-day
+  // catch-up range), this fires the day an item first becomes overdue --
+  // compliance obligations (insurance, building, health & safety) carry more
+  // real-world risk than a generic meeting action, so immediate alerting was
+  // the deliberate choice. Dedup via last_reminded_at, same weekly-window
+  // mechanism as meeting actions -- at most once per 7-day window while an
+  // item stays unresolved.
+  const complianceReminderCutoff = new Date();
+  complianceReminderCutoff.setDate(complianceReminderCutoff.getDate() - 7);
+  const complianceReminderCutoffISO = complianceReminderCutoff.toISOString();
+
+  const { data: overdueCompliance } = await db
+    .from('compliance_items')
+    .select('id, name, category, due_date, responsible_name, last_reminded_at')
+    .lt('due_date', today)
+    .or(`last_reminded_at.is.null,last_reminded_at.lt.${complianceReminderCutoffISO}`);
+
+  const complianceReminderLog: string[] = [];
+  const complianceSkippedLog:  string[] = [];
+
+  for (const item of overdueCompliance ?? []) {
+    const categoryLabel = (item.category as string ?? 'other').replace(/_/g, ' ');
+
+    if (!item.responsible_name) {
+      complianceSkippedLog.push(`SKIP (no assignee) — "${item.name}"`);
+      await notify(
+        trusteeEmails,
+        `Compliance reminder could not be sent — check assignee`,
+        `Tēnā koutou,\n\n` +
+        `MaraeHub could not send an overdue-compliance reminder for the item below, ` +
+        `because it has no responsible person on file.\n\n` +
+        `Item: ${item.name}\n` +
+        `Category: ${categoryLabel}\n` +
+        `Assigned to: (none)\n` +
+        `Due: ${fmtDate(item.due_date)}\n\n` +
+        `Please assign this item to someone, or arrange renewal directly.` +
+        footer(),
+      );
+      await db.from('compliance_items').update({ last_reminded_at: new Date().toISOString() }).eq('id', item.id);
+      continue;
+    }
+
+    const name = item.responsible_name.trim();
+    const [profileRes, contactRes] = await Promise.all([
+      db.from('profiles').select('id, email, role').eq('full_name', name).maybeSingle(),
+      db.from('contacts').select('email').eq('full_name', name).maybeSingle(),
+    ]);
+    const email = profileRes.data?.email || contactRes.data?.email || null;
+
+    if (!email) {
+      complianceSkippedLog.push(`SKIP (no email found for "${name}") — "${item.name}"`);
+      await notify(
+        trusteeEmails,
+        `Compliance reminder could not be sent — check assignee`,
+        `Tēnā koutou,\n\n` +
+        `MaraeHub could not send an overdue-compliance reminder for the item below, ` +
+        `because no email address could be found for the responsible person on file.\n\n` +
+        `Item: ${item.name}\n` +
+        `Category: ${categoryLabel}\n` +
+        `Assigned to: "${name}"\n` +
+        `Due: ${fmtDate(item.due_date)}\n\n` +
+        `Please check that this name matches a trustee or contact's full name exactly, ` +
+        `or reassign the item to someone with an email on file.` +
+        footer(),
+      );
+      await db.from('compliance_items').update({ last_reminded_at: new Date().toISOString() }).eq('id', item.id);
+      continue;
+    }
+
+    const daysOverdue = Math.round(
+      (new Date(today + 'T12:00:00').getTime() - new Date(item.due_date + 'T12:00:00').getTime()) / 86400000
+    );
+
+    const body =
+      `Tēnā koe ${name},\n\n` +
+      `This is a reminder that a compliance item assigned to you is now ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue.\n\n` +
+      `Item: ${item.name}\n` +
+      `Category: ${categoryLabel}\n` +
+      `Due: ${fmtDate(item.due_date)}\n\n` +
+      `Please log in to MaraeHub to arrange renewal or update this item.` +
+      footer();
+
+    await notify([email], `Overdue compliance reminder — ${item.name}`, body);
+    complianceReminderLog.push(`SENT — "${item.name}" to ${name} (${email})`);
+    await db.from('compliance_items').update({ last_reminded_at: new Date().toISOString() }).eq('id', item.id);
+  }
+
   // ── Auto-trigger workflows ──────────────────────────────────────────────────
   // Window: overdue up to 30 days back through 14 days ahead.
   // The "already has active workflow" check prevents duplicate creation on
@@ -1178,6 +1266,9 @@ serve(async () => {
       meeting_action_reminders_sent:    actionReminderLog.length,
       meeting_action_reminders_log:     actionReminderLog,
       meeting_action_reminders_skipped: actionSkippedLog,
+      compliance_reminders_sent:    complianceReminderLog.length,
+      compliance_reminders_log:     complianceReminderLog,
+      compliance_reminders_skipped: complianceSkippedLog,
       trustees:          trusteeEmails.length,
       workflows_created: workflowLog.length,
       workflows_log:     workflowLog,
