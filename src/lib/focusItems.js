@@ -70,7 +70,7 @@ function reminderCandidate(overdueReminders, assets, today) {
     source: 'service_reminder',
     tier: worst.days > 7 ? 'urgent' : 'worth-a-look',
     text: `Arrange service for ${assetName} — ${worst.days} day${worst.days !== 1 ? 's' : ''} overdue`,
-    owner: null, // service_reminders has no owner/responsible column — always true, not a placeholder
+    owner: worst.reminder.owner || null,
     navTo: 'assets',
   };
 }
