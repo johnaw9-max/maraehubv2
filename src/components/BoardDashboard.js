@@ -705,7 +705,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
 
   // ─── HEALTH SCORE ──────────────────────────────────────────────────────────
   const scorableTasks  = d.tasks.filter(t => !t.title?.startsWith('UPCOMING: '));
-  const finRecordCount = (d.finIncome || []).length + (d.finExpenses || []).length;
+  // Only rows with a genuine nonzero amount count as real financial
+  // activity -- a raw row count let zero-amount rows silently pass the
+  // gate and score a perfect 20/20 off no real data (flagged 2026-08-23).
+  const hsRealFinRecords = [...(d.finIncome || []), ...(d.finExpenses || [])].filter(r => parseFloat(r.amount || 0) !== 0);
 
   const hsCategories = [];
 
@@ -741,7 +744,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     });
   }
 
-  if (finRecordCount >= 3) {
+  if (hsRealFinRecords.length >= 3) {
     let finScore = 0;
     if (finNet >= 0) finScore = 20;
     else if (finTotalIncome > 0 && Math.abs(finNet) < finTotalIncome * 0.1) finScore = 10;
@@ -753,13 +756,25 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     });
   }
 
-  if (activeGoals.length >= 1) {
-    const goalsBehindCount = activeGoals.length - goalsOnTrackOrComplete.length;
+  // Health-Score-scoped: a goal with no target_date and no real status
+  // (not 'completed'/'at_risk') falls through goalLight()'s default and
+  // silently scores as "on track" with zero real tracking behind it --
+  // excluded here the same way never-assessed compliance items are
+  // excluded from compliancePct's denominator (flagged 2026-08-23).
+  const hsTrackedGoals   = activeGoals.filter(g => g.target_date || ['completed', 'at_risk'].includes(g.status));
+  const hsGoalsOnTrack   = hsTrackedGoals.filter(g => goalLight(g) === 'green' || g.status === 'completed');
+  const hsUntrackedGoals = activeGoals.length - hsTrackedGoals.length;
+
+  if (hsTrackedGoals.length >= 1) {
+    const goalsBehindCount = hsTrackedGoals.length - hsGoalsOnTrack.length;
     hsCategories.push({
       name: 'Goals',
-      score: Math.round(15 * (goalsOnTrackOrComplete.length / activeGoals.length)),
+      score: Math.round(15 * (hsGoalsOnTrack.length / hsTrackedGoals.length)),
       max: 15,
-      detail: goalsBehindCount > 0 ? `${goalsBehindCount} goal${goalsBehindCount !== 1 ? 's' : ''} not on track` : 'All goals on track',
+      detail: [
+        goalsBehindCount > 0 && `${goalsBehindCount} goal${goalsBehindCount !== 1 ? 's' : ''} not on track`,
+        hsUntrackedGoals > 0 && `${hsUntrackedGoals} without a target date`,
+      ].filter(Boolean).join(', ') || 'All goals on track',
     });
   }
 
