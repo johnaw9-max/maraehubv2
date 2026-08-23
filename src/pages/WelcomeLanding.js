@@ -19,7 +19,7 @@ const PROBLEMS = [
   'Nobody knows who is responsible for an action',
 ];
 
-const FOUNDING_EMAIL = 'mailto:maraehub@gmail.com?subject=Founding%20Marae%20Enquiry';
+const FOUNDING_PAYMENT_LINK = 'https://buy.stripe.com/4gM6oHeAD6sPcAd9OZgrS00';
 const DEMO_EMAIL = 'mailto:maraehub@gmail.com?subject=Demo%20Request';
 
 const EDUCATION_TOPICS = [
@@ -130,7 +130,7 @@ export default function WelcomeLanding() {
             Limited to the first 10 marae
           </div>
 
-          <a href={FOUNDING_EMAIL} style={{ display: 'inline-block', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
+          <a href={FOUNDING_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
             BECOME A FOUNDING MARAE
           </a>
         </div>
