@@ -712,7 +712,12 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
 
   const hsCategories = [];
 
-  if (d.compliance.length >= 3) {
+  // Gate on assessed items, not raw row count -- a register that's 100%
+  // never-assessed has no real basis for a Compliance score, same
+  // discipline as the Finance/Goals fix above (flagged 2026-08-23).
+  const hsAssessedCompliance = d.compliance.length - neverAssessedCompliance.length;
+
+  if (hsAssessedCompliance >= 3) {
     hsCategories.push({
       name: 'Compliance',
       score: Math.round(25 * compliancePct / 100),
@@ -1223,7 +1228,7 @@ ${financeSection}
   <div class="tile"><div class="n">${complianceStatus.dueSoon.length}</div><div class="l">Due Soon</div></div>
   <div class="tile"><div class="n">${complianceStatus.neverAssessed.length}</div><div class="l">Never Assessed</div></div>
   <div class="tile"><div class="n">${complianceStatus.compliant.length}</div><div class="l">Compliant</div></div>
-  <div class="tile"><div class="n">${complianceStatus.compliancePct}%</div><div class="l">% Compliant</div></div>
+  <div class="tile"><div class="n">${complianceStatus.compliancePct === null ? '—' : complianceStatus.compliancePct + '%'}</div><div class="l">% Compliant</div></div>
 </div>
 ${reportCompliance.length === 0 ? '<p style="font-size:13px;color:#666">No compliance items for this entity.</p>' : `<table><tr><th>Item</th><th>Category</th><th>Due Date</th><th>Status</th></tr>${complianceRows}</table>`}
 
@@ -1584,7 +1589,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 { label: 'Due Soon',  count: panelDueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
                 { label: 'Never Assessed', count: panelNeverAssessedCompliance.length, dot: '#7a7268', bg: '#f5f0e8', color: 'var(--text3)' },
                 { label: 'Compliant', count: panelCompliantComplianceArr.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
-                { label: '% Compliant', count: `${panelCompliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
+                { label: '% Compliant', count: panelCompliancePct === null ? '—' : `${panelCompliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>

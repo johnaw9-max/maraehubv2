@@ -31,13 +31,17 @@ export function getComplianceStatus(items) {
   // never set up").
   const assessedTotal = total - neverAssessed.length;
 
+  // null (not 100) when nothing has ever been assessed -- a fully
+  // never-assessed register has no real basis for a percentage at all,
+  // and 100 previously read as "fully compliant" instead of "no data
+  // yet" (flagged 2026-08-23, same failure shape as the fix above).
   return {
     total,
     overdue,
     dueSoon,
     neverAssessed,
     compliant,
-    compliancePct: assessedTotal ? Math.round((compliant.length / assessedTotal) * 100) : 100,
+    compliancePct: assessedTotal ? Math.round((compliant.length / assessedTotal) * 100) : null,
     isFullyCompliant: overdue.length === 0 && neverAssessed.length === 0,
   };
 }
