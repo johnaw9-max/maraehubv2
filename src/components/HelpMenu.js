@@ -604,6 +604,37 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Building Compliance / BWOF Readiness',
+      icon: '🏛️',
+      items: [
+        { q: 'What does Building Compliance / BWOF Readiness track?', a: [
+          { text: 'This one is simpler than Fire, Water, and Flood readiness — it lives in a single module, Compliance, not spread across Emergency Plan or Workflows. A Building Warrant of Fitness is an ongoing building-code administrative obligation, not an emergency hazard, so it does not have an Emergency Plan hazard entry the way Fire or Flood do.' },
+          { items: [
+            'Compliance — a real Building category item covering your Building Warrant of Fitness',
+          ]},
+        ] },
+        { q: 'What is the Building Warrant of Fitness compliance item?', a: [
+          { items: [
+            'Building Warrant of Fitness — annual renewal, only if your building has a compliance schedule (12-monthly)',
+          ]},
+          { text: 'Go to Compliance and filter by the 🏛️ Building category to see its current status and mark it done once you have confirmed your real position with your council.' },
+        ] },
+        { q: 'Why does it say "only if your building has a compliance schedule"?', a: [
+          { text: 'Because that is what the law actually says, and stating it as an unconditional annual obligation for every marae would be wrong. Under the Building Act 2004 (sections 100–108), a council only issues a compliance schedule — and therefore only requires an annual BWOF — for a building that contains one or more "specified systems": things like a sprinkler system, a fire alarm, emergency lighting, a lift, or mechanical ventilation.' },
+          { text: 'A single-storey building built only of timber framing, which describes most wharenui, typically has none of these systems and so has no compliance schedule and no BWOF requirement at all. MaraeHub cannot determine which is true for your building — only your council can. Confirm directly with them, and record what they tell you here.' },
+        ] },
+        { q: 'Will trustees actually be reminded when this is due?', a: 'Yes, if it actually applies to your building — this is an ordinary compliance item, so it uses the exact same email reminder mechanism as everything else in Compliance. Once it has a real due date set, MaraeHub emails the responsible trustee automatically starting 30 days before it\'s due (see Email Notifications). If your building has no compliance schedule, there is nothing to set a due date for, and that is the correct outcome, not a gap.' },
+        { q: 'What do I still need to do myself?', a: [
+          { text: 'Honestly, the most important thing MaraeHub cannot do for you — it is a real council determination, not something the system can work out.' },
+          { items: [
+            'Whether your building actually has a compliance schedule at all — confirm this directly with your local council, who issue it (if one exists) alongside your building consent.',
+          ]},
+          { text: 'MaraeHub gives you a structured place to record what your council tells you, track the real renewal date and responsible trustee, store the evidence, and get reminded — a record-keeping and reminder aid, not a compliance decision-maker. Using this system does not, on its own, tell you whether your marae\'s building needs a BWOF.' },
+          { text: 'Everything else — the compliance item and its reminder — is already set up and genuinely working.' },
+        ] },
+      ]
+    },
+    {
       category: 'Getting Started',
       icon: '🚀',
       items: [
