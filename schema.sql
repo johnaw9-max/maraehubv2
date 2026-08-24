@@ -2,22 +2,20 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-18 (previously 2026-08-17).
+-- pg_catalog introspection, most recently 2026-08-25 (previously 2026-08-18).
 -- This re-sync exists specifically to close the schema_drift check's own
 -- known, previously-observed-live limitation (ClickUp 86d3u7790): nothing
 -- enforces this file getting regenerated when new migrations land.
 -- Real diff this time, computed directly against live Opeke before
--- editing anything, not assumed: profiles and contacts both gained
--- is_fire_warden boolean (migration 20260817120000, Fire Warden
--- Contacts checkbox/filter work). compliance_items' earlier
--- classification/legal_basis/legal_basis_detail/workflow_template_id
--- catch-up (20260817000000) is also now genuinely classified for real
--- rows, not just column-added -- 5 of Opeke's real items were
--- reclassified to workflow with real linked templates same session
--- (20260817010000, 20260817020000), the other 10 correctly stay task.
--- goals.focus_area/related_module (86d410evh) were already captured
--- here from an earlier session, confirmed still accurate.
--- 45 real base tables (the pre-existing xero_connection_status VIEW is
+-- editing anything, not assumed: 2 new real tables --
+-- check_alert_state (20260821000000, dead-field-detection alert
+-- throttle) and stripe_webhook_events (20260823010000, Stripe webhook
+-- idempotency -- RLS enabled with zero policies, intentionally
+-- service_role-only) -- plus compliance_items gained last_reminded_at
+-- (20260823000000, mirrors meeting_actions.last_reminded_at exactly).
+-- All three confirmed live on Opeke by direct query before writing
+-- anything here, not assumed from the migration files alone.
+-- 47 real base tables (the pre-existing xero_connection_status VIEW is
 -- correctly excluded).
 -- Tables are listed alphabetically (not dependency order — accuracy over
 -- runnable ordering; foreign keys mean this file is not guaranteed to run
@@ -227,6 +225,23 @@ create policy "Trustees within entity or own bookings"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)) OR (user_id = auth.uid())));
 
 
+-- ── CHECK_ALERT_STATE ─────────────────────────────────────────────────────
+create table if not exists check_alert_state (
+  check_name text not null,
+  last_alerted_at timestamp with time zone
+);
+
+alter table check_alert_state add constraint check_alert_state_pkey PRIMARY KEY (check_name);
+
+alter table check_alert_state enable row level security;
+
+create policy "check_alert_state: authenticated full access"
+  on check_alert_state for all
+  to authenticated
+  using (true)
+  with check (true);
+
+
 -- ── CHECKLIST_TEMPLATES ───────────────────────────────────────────────────
 create table if not exists checklist_templates (
   id uuid not null default gen_random_uuid(),
@@ -267,7 +282,8 @@ create table if not exists compliance_items (
   classification text not null default 'task',
   legal_basis text,
   legal_basis_detail text,
-  workflow_template_id uuid
+  workflow_template_id uuid,
+  last_reminded_at timestamp with time zone
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
@@ -1179,6 +1195,23 @@ create policy "allow_authenticated"
   to authenticated
   using (true)
   with check (true);
+
+
+-- ── STRIPE_WEBHOOK_EVENTS ─────────────────────────────────────────────────
+create table if not exists stripe_webhook_events (
+  event_id text not null,
+  event_type text not null,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table stripe_webhook_events add constraint stripe_webhook_events_pkey PRIMARY KEY (event_id);
+
+alter table stripe_webhook_events enable row level security;
+
+-- No policies -- RLS enabled with zero grants intentionally locks this
+-- table to service_role only (the stripe-webhook Edge Function), which
+-- bypasses RLS. No legitimate reason for anon/authenticated access to
+-- real Stripe event/customer identifiers.
 
 
 -- ── SYSTEM_CHECK_LOG ──────────────────────────────────────────────────────
