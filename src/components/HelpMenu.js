@@ -574,6 +574,36 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Flood / Emergency Preparedness Readiness',
+      icon: '🌊',
+      items: [
+        { q: 'What does Flood Readiness track?', a: [
+          { text: 'Unlike Fire and Water Safety, flood readiness is tracked across two modules, not three — Compliance and Emergency Plan. There is no dedicated workflow, and that is a deliberate choice, not a gap (see below).' },
+          { items: [
+            'Compliance — a real LIM-report review item under the Emergency Preparedness category',
+            'Emergency Plan — a Flood hazard entry with likely impact and what to do',
+          ]},
+        ] },
+        { q: 'What is the flood compliance item?', a: [
+          { items: [
+            'LIM report reviewed for known flood-hazard information (24-monthly)',
+          ]},
+          { text: 'Go to Compliance and filter by the Emergency Preparedness category to see its current status and mark it done once you\'ve requested and reviewed your marae\'s current LIM report.' },
+        ] },
+        { q: 'Will trustees actually be reminded when this is due?', a: 'Yes — this is an ordinary compliance item, so it uses the exact same email reminder mechanism as everything else in Compliance. Once it has a real due date set, MaraeHub emails the responsible trustee automatically starting 30 days before it\'s due (see Email Notifications).' },
+        { q: 'What does the Emergency Plan show for Flood?', a: 'Go to Assets & Compliance → Emergency Plan → Hazards, and open "Flood". It has real Likely Impact and What To Do content, based on Get Ready / National Emergency Management Agency guidance — including the real before/during/after guidance: check your marae\'s real flood risk via your local council\'s flood viewer (https://www.naturalhazardsportal.govt.nz links to every regional council\'s own hazard maps) and know your evacuation route to higher ground before anything happens, head for higher ground immediately and never walk, swim or drive through floodwater during an event, and only return once Civil Defence confirms it\'s safe afterwards.' },
+        { q: 'Why is there no Flood Response workflow, unlike Fire and Water?', a: 'A step-by-step workflow fits water contamination well — it\'s an orderly, sequential response you work through (stop use, notify, retest, resume). It doesn\'t fit a flood the same way. A flood is fast-moving and chaotic — the real guidance is "get to higher ground immediately," not "work through steps 1 through 6." That real guidance is already fully captured in the Emergency Plan\'s Flood hazard entry, so a separate workflow would just repeat it in a second place.' },
+        { q: 'What do I still need to do myself?', a: [
+          { text: 'Honestly, the most important thing MaraeHub cannot do for you — it is a real council/Civil Defence determination, not something the system can work out.' },
+          { items: [
+            'Your marae\'s actual flood-risk exposure — request a current LIM report from your local council and record what it shows. The absence of flood information on a LIM does not mean no risk exists, only that none has been identified in the council\'s current data.',
+          ]},
+          { text: 'MaraeHub gives you a structured place to record the real guidance, track the review date and responsible trustee, and get reminded — a record-keeping and reminder aid, not a compliance decision-maker. Using this system does not, on its own, tell you whether your marae is in a flood-risk area.' },
+          { text: 'Everything else — the compliance item and the Emergency Plan entry — is already set up and genuinely working.' },
+        ] },
+      ]
+    },
+    {
       category: 'Getting Started',
       icon: '🚀',
       items: [

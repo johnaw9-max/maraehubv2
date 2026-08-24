@@ -136,7 +136,7 @@ serve(async (req) => {
 
   const eventDescription =
     `**Real, automatic signup — created by the Stripe webhook.**\n\n` +
-    `A real payment succeeded for the Founding Marae offer. Start the provisioning checklist: ${PROVISIONING_CHECKLIST_URL}\n\n` +
+    `A real payment succeeded for the Founding Marae offer. Work through the provisioning checklist — a real, step-by-step checklist you can check off as you go: ${PROVISIONING_CHECKLIST_URL}\n\n` +
     `**Customer details, from Stripe checkout:**\n` +
     `- Name: ${details?.name ?? 'Not provided'}\n` +
     `- Business name: ${businessName}\n` +
@@ -180,7 +180,7 @@ serve(async (req) => {
           body:
             `A real Founding Marae payment succeeded, but MaraeHub could not create the ` +
             `ClickUp provisioning task automatically (ClickUp responded ${clickupRes.status}: ${errText}).\n\n` +
-            `Please start the provisioning checklist manually: ${PROVISIONING_CHECKLIST_URL}\n\n` +
+            `Please work through the provisioning checklist manually: ${PROVISIONING_CHECKLIST_URL}\n\n` +
             eventDescription,
         }),
       });
