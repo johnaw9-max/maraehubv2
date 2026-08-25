@@ -96,6 +96,10 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "contact_email",
     "entity_id"
   ],
+  "check_alert_state": [
+    "check_name",
+    "last_alerted_at"
+  ],
   "checklist_templates": [
     "id",
     "items",
@@ -122,7 +126,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "classification",
     "legal_basis",
     "legal_basis_detail",
-    "workflow_template_id"
+    "workflow_template_id",
+    "last_reminded_at"
   ],
   "contacts": [
     "id",
@@ -459,6 +464,11 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_at",
     "auto_workflow_enabled",
     "owner"
+  ],
+  "stripe_webhook_events": [
+    "event_id",
+    "event_type",
+    "created_at"
   ],
   "system_check_log": [
     "id",
