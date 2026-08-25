@@ -529,9 +529,8 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const { overdue: overdueCompliance, dueSoon: dueSoonCompliance, neverAssessed: neverAssessedCompliance, compliancePct } = getComplianceStatus(d.compliance);
 
   // Panel-scoped: only the Compliance Tracker panel itself respects complianceEntityFilter.
-  // Health Score, insight banners, and the Marae at a Glance tile above deliberately keep
-  // reading the unfiltered variables above - a panel-local dropdown shouldn't silently
-  // change numbers the user isn't looking at.
+  // Health Score and insight banners deliberately keep reading the unfiltered variables
+  // above - a panel-local dropdown shouldn't silently change numbers the user isn't looking at.
   const complianceForPanel = complianceEntityFilter === 'all'
     ? d.compliance
     : d.compliance.filter(c => c.entity_id === complianceEntityFilter || c.entity_id === null);
@@ -1369,68 +1368,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       )}
 
-
-      {/* ── MARAE AT A GLANCE ──────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
-        {[
-          {
-            label: 'Compliance',
-            value: overdueCompliance.length > 0 ? `${overdueCompliance.length} overdue` : dueSoonCompliance.length > 0 ? `${dueSoonCompliance.length} due soon` : neverAssessedCompliance.length > 0 ? `${neverAssessedCompliance.length} never assessed` : 'All current',
-            icon: overdueCompliance.length > 0 ? '⚠️' : neverAssessedCompliance.length > 0 ? '📋' : '✅',
-            bg: overdueCompliance.length > 0 ? '#faeae7' : dueSoonCompliance.length > 0 ? '#fdf0dc' : neverAssessedCompliance.length > 0 ? '#f5f0e8' : '#e8f4ef',
-            color: overdueCompliance.length > 0 ? 'var(--danger)' : dueSoonCompliance.length > 0 ? '#7a4f00' : neverAssessedCompliance.length > 0 ? 'var(--text3)' : 'var(--brand)',
-            tab: 'compliance',
-          },
-          {
-            label: 'Strategic Goals',
-            value: d.goals.length === 0 ? 'Not set' : goalsBehind.length > 0 ? `${goalsBehind.length} behind` : goalsAtRisk.length > 0 ? `${goalsAtRisk.length} at risk` : 'On track',
-            icon: goalsBehind.length > 0 ? '🔴' : goalsAtRisk.length > 0 ? '🟡' : '🎯',
-            bg: goalsBehind.length > 0 ? '#faeae7' : goalsAtRisk.length > 0 ? '#fdf0dc' : '#e8f4ef',
-            color: goalsBehind.length > 0 ? 'var(--danger)' : goalsAtRisk.length > 0 ? '#7a4f00' : 'var(--brand)',
-            tab: 'goals',
-          },
-          {
-            label: `Finance (FY ${fyLabelStr})`,
-            value: (finTotalIncome === 0 && finTotalExpenses === 0) ? 'No data yet' : finNet >= 0 ? `+${fmtMoney(finNet)} net` : `-${fmtMoney(Math.abs(finNet))} deficit`,
-            icon: (finTotalIncome === 0 && finTotalExpenses === 0) ? '📊' : finNet >= 0 ? '💵' : '⚠️',
-            bg: (finTotalIncome === 0 && finTotalExpenses === 0) ? '#f5f0e8' : finNet >= 0 ? '#e8f4ef' : '#faeae7',
-            color: (finTotalIncome === 0 && finTotalExpenses === 0) ? 'var(--text3)' : finNet >= 0 ? 'var(--brand)' : 'var(--danger)',
-            tab: 'finance',
-          },
-          {
-            label: 'Risk Register',
-            value: (d.risks || []).length === 0 ? 'Not set up' : highOpenRisks.length > 0 ? `${highOpenRisks.length} high-rated open` : 'No high risks',
-            icon: (d.risks || []).length === 0 ? '📋' : highOpenRisks.length > 0 ? '🛡️' : '✅',
-            bg: (d.risks || []).length === 0 ? '#f5f0e8' : highOpenRisks.length > 0 ? '#faeae7' : '#e8f4ef',
-            color: (d.risks || []).length === 0 ? 'var(--text3)' : highOpenRisks.length > 0 ? 'var(--danger)' : 'var(--brand)',
-            tab: 'risks',
-          },
-        ].map((tile, i) => (
-          <div
-            key={i}
-            onClick={() => onNavigate && onNavigate(tile.tab)}
-            style={{
-              textAlign: 'center',
-              padding: '12px 8px',
-              background: tile.bg,
-              borderRadius: 10,
-              cursor: onNavigate ? 'pointer' : 'default',
-              border: '1px solid rgba(0,0,0,0.05)',
-            }}
-          >
-            <div style={{ fontSize: 20, marginBottom: 4 }}>{tile.icon}</div>
-            <div style={{
-              fontFamily: 'Playfair Display, serif',
-              fontSize: 14,
-              fontWeight: 700,
-              color: tile.color,
-              lineHeight: 1.3,
-              marginBottom: 3,
-            }}>{tile.value}</div>
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontWeight: 500 }}>{tile.label}</div>
-          </div>
-        ))}
-      </div>
 
       {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
