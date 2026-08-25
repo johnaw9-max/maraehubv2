@@ -893,28 +893,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     }
   }
 const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date + 'T12:00:00') < today);
-  if (overdueActions.length > 0) {
-    if (overdueActions.length <= 3) {
-      const text = overdueActions.length === 1
-        ? `'${truncate(overdueActions[0].description)}' overdue${overdueActions[0].assigned_to ? ` — ${overdueActions[0].assigned_to}` : ''}`
-        : `${overdueActions.map(a => `'${truncate(a.description)}'`).join(', ')} overdue — follow up before next hui`;
-      redInsights.push({ text, navTo: 'minutes' });
-    } else {
-      redInsights.push({ text: `${overdueActions.length} meeting actions are overdue — follow up before next hui (see Minutes)`, navTo: 'minutes' });
-    }
-  }
+  // overdueActions is surfaced in Decisions Required — not duplicated into Top Priorities
   const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
-  if (grantsUrgent.length > 0) {
-    const minDays = Math.min(...grantsUrgent.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
-    if (grantsUrgent.length <= 3) {
-      const text = grantsUrgent.length === 1
-        ? `${grantsUrgent[0].name} grant deadline in ${minDays} day${minDays !== 1 ? 's' : ''} — action required today`
-        : `${grantsUrgent.map(g => g.name).join(', ')} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today`;
-      redInsights.push({ text, navTo: 'grants' });
-    } else {
-      redInsights.push({ text: `${grantsUrgent.length} grant deadlines within ${minDays} day${minDays !== 1 ? 's' : ''} — action required today (see Grants panel)`, navTo: 'grants' });
-    }
-  }
+  // grantsUrgent is surfaced in Decisions Required — not duplicated into Top Priorities
 
   if (overdueReminders.length > 0) {
     const assetById = Object.fromEntries(d.assets.map(a => [a.id, a]));
@@ -954,8 +935,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   if (zeroStockItems.length > 0)
     amberInsights.push({ text: `📦 ${zeroStockItems.length} inventory item${zeroStockItems.length !== 1 ? 's are' : ' is'} out of stock — ${zeroStockItems.map(a => a.name).join(', ')} — restock before next booking`, navTo: 'assets' });
 
-  if (pendingBookings.length > 0)
-    amberInsights.push({ text: `${pendingBookings.length} booking${pendingBookings.length !== 1 ? 's' : ''} awaiting your approval — review in Bookings`, navTo: 'bookings' });
+  // pendingBookings is surfaced in Decisions Required — not duplicated into Top Priorities
   if (pendingBookingIncomeCount > 0)
     amberInsights.push({ text: `${pendingBookingIncomeCount} booking income record${pendingBookingIncomeCount !== 1 ? 's need' : ' needs'} the hire fee entered — update in Finance`, navTo: 'finance' });
 
