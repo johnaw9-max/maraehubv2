@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import useEntities from '../lib/useEntities';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
-import { ensureTask } from '../lib/taskSync';
+import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -399,6 +399,13 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       ? await supabase.from('meeting_actions').update(payload).eq('id', editActId)
       : await supabase.from('meeting_actions').insert(payload);
     if (error) { setActError(error.message); setSaving(false); return; }
+
+    // Close the linked overdue task if this action was marked Completed from
+    // its own screen -- matches the same real behavior already proven when
+    // completing the task from the Task Board (ClickUp 86d44k63x).
+    if (editActId && payload.status === 'Completed') {
+      await closeLinkedTask(editActId);
+    }
 
     // Notify the assignee — fire and forget (new actions only, not edits)
     if (!editActId && form.assigned_to.trim()) {

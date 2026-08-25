@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
-import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
+import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync';
 import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
@@ -207,7 +207,10 @@ export default function ComplianceTracker({ onStartWorkflow }) {
       updates.due_date = nextDueDate(item.renewal_months);
     }
     const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
-    if (!error) setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
+    if (!error) {
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
+      await closeLinkedTask(item.id);
+    }
   }
 
   async function createOverdueTasks(currentItems) {

@@ -198,6 +198,25 @@ export async function onTaskCompleted(task) {
   }
 }
 
+// Reverse of onTaskCompleted -- closes any open/in-progress task linked to
+// sourceId (via [source_id:] in its description) when the source item is
+// marked done from its own screen instead of from the Task Board. Matches
+// the same real behavior already proven in the other direction (ClickUp
+// 86d44k63x).
+export async function closeLinkedTask(sourceId) {
+  if (!sourceId) return;
+  const { data: openTasks } = await supabase
+    .from('tasks')
+    .select('id')
+    .like('description', `%[source_id:${sourceId}]%`)
+    .in('status', ['open', 'in-progress']);
+  if (!openTasks || openTasks.length === 0) return;
+  await supabase
+    .from('tasks')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .in('id', openTasks.map(t => t.id));
+}
+
 // Map a task title prefix to a source label and icon for Board View grouping.
 // UPCOMING must be listed before OVERDUE so its prefix is matched first.
 export const TASK_SOURCES = [
