@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'; // updated
 import { supabase } from '../lib/supabase';
 import CharterGenerator from './CharterGenerator';
 import HSPolicyGenerator from './HSPolicyGenerator';
+import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
  
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
  
@@ -32,6 +33,7 @@ export default function DocumentsManager() {
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [showCharterGenerator, setShowCharterGenerator] = useState(false);
+  const [editingCharterDoc, setEditingCharterDoc] = useState(null);
   const [showHSPolicyGenerator, setShowHSPolicyGenerator] = useState(false);
   const fileRef = useRef();
  
@@ -237,6 +239,11 @@ export default function DocumentsManager() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {doc.title === CHARTER_DOCUMENT_TITLE && (
+                    <button onClick={() => setEditingCharterDoc(doc)}
+                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--brand)' }}
+                      title="Edit">✏️</button>
+                  )}
                   {doc.file_url && (
                     <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
                       style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 15, color: 'var(--brand)' }}
@@ -324,7 +331,13 @@ export default function DocumentsManager() {
         </div>
       )}
 
-      {showCharterGenerator && <CharterGenerator onClose={() => setShowCharterGenerator(false)} />}
+      {showCharterGenerator && <CharterGenerator onClose={() => { setShowCharterGenerator(false); fetchDocs(); }} />}
+      {editingCharterDoc && (
+        <CharterGenerator
+          initialValues={editingCharterDoc.charter_fields}
+          onClose={() => { setEditingCharterDoc(null); fetchDocs(); }}
+        />
+      )}
       {showHSPolicyGenerator && <HSPolicyGenerator onClose={() => setShowHSPolicyGenerator(false)} />}
     </div>
   );

@@ -93,6 +93,12 @@ const HELP_TOPICS = {
         ] },
         { q: 'What if our marae already has a real, signed Charter?', a: 'Use "+ Upload Document" instead. Fill Out is for marae starting from scratch who want a real, credible template to work from — it is not a replacement for an existing signed document.' },
         { q: 'Can we customise the governance rules?', a: 'The 5 governance settings are genuine points of legitimate variation between marae. Disqualification criteria and the Charter\'s core legal structure stay fixed, to protect the document\'s legal soundness.' },
+        { q: 'How do I edit our Charter after generating it?', a: [
+          { text: 'Go to Documents, find your "Marae Charter" row (Governance filter), and click the ✏️ Edit button on that row.' },
+          { text: 'The form reopens pre-filled with everything you entered last time — nothing to retype from scratch.' },
+          { text: 'Change whatever needs updating and click Generate again. This saves your changes and reopens the print-ready version, ready to save as a PDF.' },
+        ] },
+        { q: 'Does editing create a duplicate Charter document?', a: 'No. There is only ever one "Marae Charter" row in Documents — editing updates that same row\'s saved details rather than creating a new one, so your Documents list stays clean.' },
       ]
     },
     {

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import FormError from './FormError';
+import { supabase } from '../lib/supabase';
+import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
 
 // Master template sourced directly from Marae-Charter.docx (Marae Kete /
 // Western Bay of Plenty District Council), read and converted 14 August
@@ -185,26 +187,60 @@ ${sigLines}
 </body></html>`;
 }
 
-export default function CharterGenerator({ onClose }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+export default function CharterGenerator({ onClose, initialValues }) {
+  const [form, setForm] = useState(() => initialValues ? { ...EMPTY_FORM, ...initialValues } : EMPTY_FORM);
   const [error, setError] = useState('');
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  // Fire-and-forget: records that a Charter was generated so the Getting Started
+  // checklist item becomes real, and saves the field values into charter_fields
+  // so the row can be reopened pre-filled and edited (Stage 6). Dedupes on title
+  // so re-generating/reprinting updates the one tracking row instead of cluttering
+  // Documents with repeats -- but unlike the original insert-or-skip, the fields
+  // are now always written on an existing row too, since editing depends on them
+  // staying current. Deliberately not awaited before window.print() — an async
+  // gap there risks popup blockers treating the print window as no longer a
+  // direct response to the click. Failure here doesn't block the user's actual
+  // goal (a printable Charter), but is checked and logged — not silently
+  // swallowed like the known bug in OnboardingFlow's compliance-item insert.
+  async function recordCharterGenerated() {
+    const { data: existing, error: fetchError } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('title', CHARTER_DOCUMENT_TITLE)
+      .limit(1);
+    if (fetchError) { console.error('Charter checklist record check failed:', fetchError); return; }
+    if (existing && existing.length > 0) {
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({ charter_fields: form })
+        .eq('id', existing[0].id);
+      if (updateError) console.error('Failed to save Charter fields:', updateError);
+      return;
+    }
+    const { error: insertError } = await supabase
+      .from('documents')
+      .insert({ title: CHARTER_DOCUMENT_TITLE, category: 'Governance', entity_id: null, charter_fields: form });
+    if (insertError) console.error('Failed to record Charter generation:', insertError);
+  }
 
   function handleGenerate() {
     const missing = ALL_FIELDS.filter(f => !form[f.key].trim());
     if (missing.length > 0) { setError(`Please fill in: ${missing.map(f => f.label).join(', ')}.`); return; }
     setError('');
     const win = window.open('', '_blank');
+    if (!win) { setError('Your browser blocked the print window. Please allow pop-ups for this site and click Generate again.'); return; }
     win.document.write(buildCharterHtml(form));
     win.document.close();
     win.print();
+    recordCharterGenerated();
   }
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 520 }}>
-        <div className="modal-title">Fill Out Charter Template</div>
+        <div className="modal-title">{initialValues ? 'Edit Charter' : 'Fill Out Charter Template'}</div>
         <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: -8, marginBottom: 16 }}>
           Sourced from the official Marae Charter template (Marae Kete / Western Bay of Plenty District Council). Fill in the details below, then Generate to open a print-ready version — use your browser's Print dialog to save it as a PDF.
         </p>
