@@ -25,6 +25,7 @@ import HelpMenu from '../components/HelpMenu';
 import WorkflowEngine from '../components/WorkflowEngine';
 import WhatsNew from '../components/WhatsNew';
 import OnboardingFlow from '../components/OnboardingFlow';
+import GettingStartedChecklist from '../components/GettingStartedChecklist';
 
 const NAV_GROUPS = [
   {
@@ -505,6 +506,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'board' && (
           <>
             {isAdmin && <OnboardingFlow onComplete={() => setBoardKey(k => k + 1)} />}
+            {isAdmin && <GettingStartedChecklist onNavigate={setActiveTab} />}
             <BoardDashboard key={boardKey} onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} isAdmin={isAdmin} />
           </>
         )}
