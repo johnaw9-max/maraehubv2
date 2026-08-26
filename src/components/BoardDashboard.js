@@ -862,10 +862,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       const names = overdueCompliance.map(c => c.name);
       const text = overdueCompliance.length === 1
         ? `${names[0]} overdue ${Math.floor((today - new Date(overdueCompliance[0].due_date + 'T12:00:00')) / 86400000)} days`
-        : `${names.join(', ')} overdue — arrange renewals immediately`;
+        : `${overdueCompliance.length} overdue: ${names.join(', ')}`;
       redInsights.push({ text, navTo: 'compliance' });
     } else {
-      redInsights.push({ text: `${overdueCompliance.length} compliance obligations are overdue — arrange renewals immediately (see Compliance panel)`, navTo: 'compliance' });
+      redInsights.push({ text: `${overdueCompliance.length} compliance obligations are overdue — arrange renewals immediately`, navTo: 'compliance' });
     }
   }
 
@@ -874,10 +874,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       const names = goalsBehind.map(g => g.name);
       const text = goalsBehind.length === 1
         ? `${names[0]} is behind schedule`
-        : `${names.join(', ')} are behind schedule — review and update plans`;
+        : `${goalsBehind.length} behind schedule: ${names.join(', ')}`;
       redInsights.push({ text, navTo: 'goals' });
     } else {
-      redInsights.push({ text: `${goalsBehind.length} strategic goals are behind schedule — review and update plans (see Strategic Goals panel)`, navTo: 'goals' });
+      redInsights.push({ text: `${goalsBehind.length} strategic goals are behind schedule — review and update plans`, navTo: 'goals' });
     }
   }
 
@@ -885,10 +885,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     if (overdueTasks.length <= 3) {
       const text = overdueTasks.length === 1
         ? `'${overdueTasks[0].title}' overdue${overdueTasks[0].assigned_to ? ` — ${overdueTasks[0].assigned_to}` : ''}`
-        : `${overdueTasks.map(t => `'${t.title}'`).join(', ')} overdue — follow up with assignees immediately`;
+        : `${overdueTasks.length} overdue: ${overdueTasks.map(t => `'${t.title}'`).join(', ')}`;
       redInsights.push({ text, navTo: 'tasks' });
     } else {
-      redInsights.push({ text: `${overdueTasks.length} overdue tasks — follow up with assignees immediately (see Tasks panel)`, navTo: 'tasks' });
+      redInsights.push({ text: `${overdueTasks.length} overdue tasks — follow up with assignees immediately`, navTo: 'tasks' });
     }
   }
 const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date + 'T12:00:00') < today);
@@ -902,7 +902,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       const names = overdueReminders.map(r => assetById[r.asset_id]?.name || 'an asset');
       const text = overdueReminders.length === 1
         ? `${names[0]} — service overdue ${Math.floor((today - new Date(overdueReminders[0].due_date + 'T12:00:00')) / 86400000)} days`
-        : `${names.join(', ')} — services overdue, arrange maintenance now`;
+        : `${overdueReminders.length} services overdue: ${names.join(', ')}`;
       redInsights.push({ text, navTo: 'assets' });
     } else {
       redInsights.push({ text: `${overdueReminders.length} asset services are overdue — arrange maintenance now`, navTo: 'assets' });
@@ -932,7 +932,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
  // AMBER
   if (zeroStockItems.length > 0)
-    amberInsights.push({ text: `📦 ${zeroStockItems.length} inventory item${zeroStockItems.length !== 1 ? 's are' : ' is'} out of stock — ${zeroStockItems.map(a => a.name).join(', ')} — restock before next booking`, navTo: 'assets' });
+    amberInsights.push({ text: `📦 ${zeroStockItems.length} out of stock: ${zeroStockItems.map(a => a.name).join(', ')}`, navTo: 'assets' });
 
   // pendingBookings is surfaced in Decisions Required — not duplicated into Top Priorities
   if (pendingBookingIncomeCount > 0)
@@ -947,7 +947,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   const grantsSoon = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') > in7 && new Date(g.deadline + 'T12:00:00') <= in14);
   if (grantsSoon.length > 0) {
     const minDays = Math.min(...grantsSoon.map(g => Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24))));
-    amberInsights.push({ text: `${grantsSoon.length} grant deadline${grantsSoon.length !== 1 ? 's' : ''} within ${minDays}–14 days — begin preparation (see Grants panel)`, navTo: 'grants' });
+    amberInsights.push({ text: `${grantsSoon.length} grant deadline${grantsSoon.length !== 1 ? 's' : ''} within ${minDays}–14 days — begin preparation`, navTo: 'grants' });
   }
 
   const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
@@ -958,7 +958,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     amberInsights.push({ text: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`, navTo: 'compliance' });
 
   if (goalsAtRisk.length > 0)
-    amberInsights.push({ text: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers (see Strategic Goals panel)`, navTo: 'goals' });
+    amberInsights.push({ text: `${goalsAtRisk.length} strategic goal${goalsAtRisk.length !== 1 ? 's are' : ' is'} at risk — review progress and remove blockers`, navTo: 'goals' });
 
   if (d.actions.length > 3)
     amberInsights.push({ text: `${d.actions.length} open meeting actions outstanding — consider scheduling a follow-up session`, navTo: 'minutes' });
