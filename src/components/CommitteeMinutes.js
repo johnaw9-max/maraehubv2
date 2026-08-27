@@ -395,9 +395,13 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       due_date: form.due_date || null,
       status: form.status,
     };
-    const { error } = editActId
-      ? await supabase.from('meeting_actions').update(payload).eq('id', editActId)
-      : await supabase.from('meeting_actions').insert(payload);
+    let savedAction = null;
+    let error;
+    if (editActId) {
+      ({ error } = await supabase.from('meeting_actions').update(payload).eq('id', editActId));
+    } else {
+      ({ data: savedAction, error } = await supabase.from('meeting_actions').insert(payload).select().single());
+    }
     if (error) { setActError(error.message); setSaving(false); return; }
 
     // Close the linked overdue task if this action was marked Completed from
@@ -415,22 +419,19 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       });
     }
 
-    // Sync new actions to the Task Board
-    if (!editActId) {
-      const taskPayload = {
-        title: form.description.trim(),
-        assigned_to: form.assigned_to ? form.assigned_to.trim() || null : null,
-        due_date: form.due_date || null,
-        status: 'open',
+    // Sync new actions to the Task Board via the same ensureTask + [source_id:]
+    // convention createOverdueTasks() already uses -- so if this action later
+    // goes overdue, ensureTask's title-dedup finds this same task instead of
+    // creating a second, differently-tagged row (ClickUp 86d45fub4, F.1).
+    if (!editActId && savedAction) {
+      const shortDesc = payload.description.slice(0, 80);
+      await ensureTask({
+        title: `ACTION: ${shortDesc}`,
+        description: `Meeting action assigned. Due: ${payload.due_date || 'no due date'}. [source_id:${savedAction.id}]`,
+        assigned_to: payload.assigned_to,
+        due_date: payload.due_date,
         priority: 'Medium',
-      };
-      console.log('[CommitteeMinutes] syncing action to tasks table:', taskPayload);
-      const { data: taskData, error: taskError } = await supabase.from('tasks').insert(taskPayload).select();
-      if (taskError) {
-        console.error('[CommitteeMinutes] task insert failed:', taskError);
-      } else {
-        console.log('[CommitteeMinutes] task created successfully:', taskData);
-      }
+      });
     }
 
     setShowActForm(false); setEditActId(null); setActForm(null); setSaving(false);
