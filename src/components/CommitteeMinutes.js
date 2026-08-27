@@ -340,6 +340,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
   const [saving, setSaving] = useState(false);
   const [resError, setResError] = useState('');
   const [actError, setActError] = useState('');
+  const actionsSectionRef = useRef(null);
 
   const fetchDetail = useCallback(async () => {
     setLoadingDetail(true);
@@ -394,6 +395,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       assigned_to: form.assigned_to.trim() || null,
       due_date: form.due_date || null,
       status: form.status,
+      resolution_id: form.resolution_id || null,
     };
     let savedAction = null;
     let error;
@@ -456,6 +458,16 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
     setEditActId(a.id);
     setActError('');
     setShowActForm(true);
+  }
+
+  function openActionFromResolution(r) {
+    setActForm({ resolution_id: r.id });
+    setEditActId(null);
+    setActError('');
+    setShowActForm(true);
+    requestAnimationFrame(() => {
+      actionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   const mtc = MEETING_TYPE_COLORS[meeting.meeting_type] || { bg: '#f5f5f5', color: '#333' };
@@ -582,6 +594,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                       <StatusBadge status={r.status} colors={RESOLUTION_STATUS_COLORS} />
+                      <button onClick={() => openActionFromResolution(r)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>+ Add Action from this decision</button>
                       <button onClick={() => openEditRes(r)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Edit</button>
                       <button onClick={() => deleteResolution(r.id)} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer' }}>Remove</button>
                     </div>
@@ -592,7 +605,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
           </div>
 
           {/* ── SECTION 3: ACTIONS ── */}
-          <div style={{ marginBottom: 16 }}>
+          <div ref={actionsSectionRef} style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--border)' }}>
               <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600 }}>
                 Actions{actions.length > 0 ? ` (${actions.length})` : ''}

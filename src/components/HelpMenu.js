@@ -1041,7 +1041,7 @@ const HELP_TOPICS = {
         { q: 'Do actions and resolutions connect to other modules automatically?', a: [
           { text: 'Yes — both connect automatically.' },
           { header: 'Actions', text: 'Any action item you add to a meeting appears straight away on the Task Board, assigned to the person you nominated and showing the due date you set. You do not need to create a separate task.' },
-          { header: 'Resolutions', text: 'Any resolution you record in a meeting appears straight away in the Decision Register, where it can be searched and filtered across all meetings.' },
+          { header: 'Resolutions', text: 'Any resolution you record in a meeting appears straight away in the Decision Register, where it can be searched and filtered across all meetings. You can also click "+ Add Action from this decision" on any resolution to create an action already linked back to it, so you do not have to re-type the decision into a separate action.' },
           { text: 'Neither connection requires any extra steps — it happens as soon as you save the action or resolution.' },
         ] },
       ]
