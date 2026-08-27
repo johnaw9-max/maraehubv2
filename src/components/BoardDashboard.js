@@ -1022,7 +1022,6 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
-  // eslint-disable-next-line no-unused-vars
   async function generateReport() {
     setAiLoading(true);
     setAiError('');
@@ -1082,36 +1081,17 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
         : '- No comments this period',
     ].join('\n');
 
-    try {
-      const res = await fetch('/api/ai-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1500,
-          system: `You are a governance advisor for a Māori community marae in Aotearoa New Zealand. Write clear, warm, and professional governance reports for marae trustees. Begin every report with "Tēnā koutou" on its own line. Use inclusive, community-focused language. Keep your tone respectful and solution-oriented. Structure the report with clear sections: an opening summary, what is performing well, what needs attention, and 3-5 specific recommendations in priority order. Use plain English — no jargon.`,
-          messages: [{
-            role: 'user',
-            content: `Write a governance report for ${d.maraeName} based on the following board data. Cover what is performing well, what needs attention, and provide 3-5 specific recommendations in priority order.\n\n${context}`,
-          }],
-        }),
-      });
+    const { data, error } = await supabase.functions.invoke('generate-report', {
+      body: { maraeName: d.maraeName, context },
+    });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setAiError(err.error || `Request failed (${res.status}). Check your API key in Vercel environment variables.`);
-        setAiLoading(false);
-        return;
-      }
-
-      const data = await res.json();
-      const text = data.content?.[0]?.text || '';
-      setAiReport(text);
-      setShowReport(true);
-    } catch (err) {
-      setAiError('Could not reach AI service: ' + err.message);
-    }
     setAiLoading(false);
+
+    if (error) { setAiError(error.message || 'Could not reach AI service'); return; }
+    if (data?.error) { setAiError(data.error); return; }
+
+    setAiReport(data?.report || '');
+    setShowReport(true);
   }
 
   function copyReport() {
@@ -1270,7 +1250,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
         <div className="no-print" style={{ display: 'flex', gap: 10 }}>
-          {/* AI Report button — hidden for now, re-enable when ready
           <button
             onClick={generateReport}
             disabled={aiLoading}
@@ -1278,7 +1257,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           >
             {aiLoading ? '⏳ Generating…' : '✨ AI Report'}
           </button>
-          */}
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"
