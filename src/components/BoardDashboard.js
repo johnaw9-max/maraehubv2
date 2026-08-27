@@ -365,10 +365,11 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
+    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
+      supabase.from('resolutions').select('id, resolution_number, description, date_passed, status').order('date_passed'),
       supabase.from('grants').select('id, name, funder, amount, status, deadline, owner').order('deadline'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id, owner').order('due_date'),
       supabase.from('assets').select('*'),
@@ -394,6 +395,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       bookings:          bookRes.data   || [],
       projects:          projRes.data   || [],
       actions:           actRes.data    || [],
+      resolutions:       resRes.data    || [],
       grants:            grantRes.data  || [],
       reminders:         remRes.data    || [],
       assets:            assetRes.data  || [],
@@ -895,6 +897,8 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   // overdueActions is surfaced in Decisions Required — not duplicated into Top Priorities
   const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
   // grantsUrgent is surfaced in Decisions Required — not duplicated into Top Priorities
+  const openResolutions = d.resolutions.filter(r => !['Completed', 'Cancelled'].includes(r.status));
+  // openResolutions is surfaced in Decisions Required — not duplicated into Top Priorities
 
   if (overdueReminders.length > 0) {
     const assetById = Object.fromEntries(d.assets.map(a => [a.id, a]));
@@ -1686,12 +1690,12 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ══════════════════════════ DECISIONS REQUIRED ══════════════════════════ */}
       <GroupHeading title="Decisions Required" />
 
-      {(pendingBookings.length > 0 || overdueActions.length > 0 || grantsUrgent.length > 0) && (
+      {(pendingBookings.length > 0 || overdueActions.length > 0 || grantsUrgent.length > 0 || openResolutions.length > 0) && (
         <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--danger)' }}>
           <SectionTitle
             icon="🔔"
             title="Decisions Required"
-            count={pendingBookings.length + overdueActions.length + grantsUrgent.length}
+            count={pendingBookings.length + overdueActions.length + grantsUrgent.length + openResolutions.length}
             rightContent={overdueActions.length > 0 && (
               <span
                 onClick={() => setShowFullActions(v => !v)}
@@ -1836,6 +1840,49 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 </div>
               );
             })}
+            {openResolutions.map(r => (
+              <div key={r.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: '#fdf0dc',
+                border: '1px solid #e8c880',
+                borderLeft: '4px solid var(--warning)',
+                borderRadius: 7,
+                gap: 12,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: 'var(--text1)',
+                  }}>
+                    Resolution awaiting action — {r.description}
+                  </div>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>
+                    {r.resolution_number ? `${r.resolution_number} · ` : ''}Passed {fmt(r.date_passed)} · {r.status}
+                  </div>
+                </div>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate('minutes')}
+                    style={{
+                      fontSize: 14,
+                      background: '#fff',
+                      color: '#7a4f00',
+                      border: '1px solid #e8c880',
+                      borderRadius: 6,
+                      padding: '5px 12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >Review →</button>
+                )}
+              </div>
+            ))}
             {d.actions.length > overdueActions.length && onNavigate && (
               <div
                 onClick={() => onNavigate('minutes')}
