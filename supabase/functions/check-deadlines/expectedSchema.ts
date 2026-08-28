@@ -163,7 +163,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "file_type",
     "file_url",
     "created_at",
-    "entity_id"
+    "entity_id",
+    "charter_fields"
   ],
   "emergency_plan_hazards": [
     "id",
@@ -357,7 +358,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "due_date",
     "status",
     "created_at",
-    "last_reminded_at"
+    "last_reminded_at",
+    "resolution_id"
   ],
   "meetings": [
     "id",

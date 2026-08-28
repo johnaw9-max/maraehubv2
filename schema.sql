@@ -2,19 +2,21 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-25 (previously 2026-08-18).
--- This re-sync exists specifically to close the schema_drift check's own
--- known, previously-observed-live limitation (ClickUp 86d3u7790): nothing
--- enforces this file getting regenerated when new migrations land.
--- Real diff this time, computed directly against live Opeke before
--- editing anything, not assumed: 2 new real tables --
--- check_alert_state (20260821000000, dead-field-detection alert
--- throttle) and stripe_webhook_events (20260823010000, Stripe webhook
--- idempotency -- RLS enabled with zero policies, intentionally
--- service_role-only) -- plus compliance_items gained last_reminded_at
--- (20260823000000, mirrors meeting_actions.last_reminded_at exactly).
--- All three confirmed live on Opeke by direct query before writing
--- anything here, not assumed from the migration files alone.
+-- pg_catalog introspection, most recently 2026-08-28 (previously 2026-08-25,
+-- 2026-08-18). This re-sync exists specifically to close the schema_drift
+-- check's own known, previously-observed-live limitation (ClickUp
+-- 86d3u7790): nothing enforces this file getting regenerated when new
+-- migrations land.
+-- Real diff this time, computed directly against live Opeke via the exact
+-- same get_public_schema_columns() RPC the schema_drift check itself uses
+-- (not assumed from migration files alone): documents gained charter_fields
+-- jsonb (20260826000000, Charter generator save/reload) and meeting_actions
+-- gained resolution_id uuid, FK to resolutions(id) ON DELETE SET NULL
+-- (20260827010000, Resolution-to-Action linking). No table-level diffs —
+-- stripe_webhook_events (added in the previous re-sync) was confirmed
+-- missing from Tineka's live DB by this same check and backfilled there
+-- 2026-08-28; already correctly present in this file, no schema.sql change
+-- needed for that one.
 -- 47 real base tables (the pre-existing xero_connection_status VIEW is
 -- correctly excluded).
 -- Tables are listed alphabetically (not dependency order — accuracy over
@@ -366,7 +368,8 @@ create table if not exists documents (
   file_type text,
   file_url text,
   created_at timestamp without time zone default now(),
-  entity_id uuid
+  entity_id uuid,
+  charter_fields jsonb
 );
 
 alter table documents add constraint documents_pkey PRIMARY KEY (id);
@@ -869,11 +872,13 @@ create table if not exists meeting_actions (
   due_date date,
   status text default 'Open'::text,
   created_at timestamp without time zone default now(),
-  last_reminded_at timestamp with time zone
+  last_reminded_at timestamp with time zone,
+  resolution_id uuid
 );
 
 alter table meeting_actions add constraint meeting_actions_pkey PRIMARY KEY (id);
 alter table meeting_actions add constraint meeting_actions_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE;
+alter table meeting_actions add constraint meeting_actions_resolution_id_fkey FOREIGN KEY (resolution_id) REFERENCES resolutions(id) ON DELETE SET NULL;
 
 alter table meeting_actions enable row level security;
 
