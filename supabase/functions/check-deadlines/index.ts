@@ -1039,6 +1039,8 @@ serve(async () => {
       reason: 'Stage 4 process/config safety check\'s own RPC - locked to service_role from creation, 14 Aug 2026. Caught flagging itself in this same allowlist during Stage 4\'s own manual verification, same self-referential gap Check-A/Check-B hit during Stage 3\'s build.' },
     { function: 'check_column_generated', grantees: ['postgres', 'service_role'],
       reason: 'Dead-field check\'s own RPC (86d438jjv check #2) - shipped 20 Aug 2026 with an incorrectly-reasoned default PUBLIC grant (its own migration comment wrongly claimed check_cron_job_last_success was left PUBLIC as precedent - it was not, see that entry above). Locked to service_role same night, caught by this exact check flagging itself as security_definer_not_allowlisted.' },
+    { function: 'close_linked_task', grantees: ['postgres', 'service_role'],
+      reason: 'Automation Engine audit (86d45fub4 F.1/F.2) - SQL equivalent of taskSync.js closeLinkedTask() for the redeem_action_reminder_token path, locked to service_role from creation, 27 Aug 2026.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
