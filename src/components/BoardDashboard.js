@@ -342,6 +342,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [aiReport, setAiReport]   = useState('');
   const [aiError, setAiError]     = useState('');
   const [showReport, setShowReport] = useState(false);
+  const [finAiLoading, setFinAiLoading] = useState(false);
+  const [finAiReport, setFinAiReport]   = useState('');
+  const [finAiError, setFinAiError]     = useState('');
+  const [showFinReport, setShowFinReport] = useState(false);
   const [showKpiHistory, setShowKpiHistory] = useState(false);
   const [financeEntityFilter, setFinanceEntityFilter] = useState('all');
   const [complianceEntityFilter, setComplianceEntityFilter] = useState('all');
@@ -365,7 +369,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
+    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, finBalRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -378,9 +382,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('marae_settings').select('marae_name').single(),
       supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
-      supabase.from('finance_income').select('amount, entity_id').gte('date', fyFrom).lte('date', fyTo),
-      supabase.from('finance_expenses').select('amount, category, entity_id').gte('date', fyFrom).lte('date', fyTo),
+      supabase.from('finance_income').select('date, description, amount, category, status, source_type, entity_id').gte('date', fyFrom).lte('date', fyTo),
+      supabase.from('finance_expenses').select('date, description, amount, category, status, payee, entity_id').gte('date', fyFrom).lte('date', fyTo),
       supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
+      supabase.from('finance_balance_sheet').select('cash_balance, loans, other_assets, outstanding_payments').maybeSingle(),
       supabase.from('workflow_templates').select('id, name').order('name'),
       supabase.from('workflow_instances').select('id, name, status, started_at, completed_at, entity_name, trigger_type').order('started_at', { ascending: false }),
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
@@ -409,6 +414,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       finIncome:         finIncRes.data  || [],
       finExpenses:       finExpRes.data  || [],
       finBudgets:        finBudRes.data  || [],
+      finBalanceSheet:   finBalRes.data  || null,
       xero:              xeroRes, // { status: 'connected'|'not_connected'|'error', totalIncome?, totalExpenses?, netProfit?, lastSyncedAt? }
       templates:         tplRes.data    || [],
       workflowInstances: wfInstRes.data  || [],
@@ -1101,6 +1107,133 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     });
   }
 
+  // ─── AI FINANCIAL REPORT (14yhc7knp9n, Report #3) ───────────────────────────
+  // Same shape as generateReport() above. Scoped totals mirror
+  // printFinancialReport's own financeSection reduce exactly, not the
+  // page-wide finTotalIncome/finTotalExpenses -- the report has to be
+  // gated on, and describe, the same numbers (respecting reportEntityFilter
+  // and the xeroConnected override), or a trustee viewing one specific
+  // empty entity could see a report built from a different entity's data
+  // while being told "no data."
+
+  async function generateFinancialReport() {
+    setFinAiLoading(true);
+    setFinAiError('');
+    setFinAiReport('');
+
+    const scopedIncome   = xeroConnected ? finTotalIncome   : reportFinance.income.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const scopedExpenses = xeroConnected ? finTotalExpenses : reportFinance.expenses.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+
+    if (scopedIncome === 0 && scopedExpenses === 0) {
+      setFinAiLoading(false);
+      setFinAiReport(`Tēnā koutou\n\nNo financial data has been recorded yet — once income, expenses, or a budget are entered in the Finance module, this report will show a real analysis of ${d.maraeName}'s financial health.`);
+      setShowFinReport(true);
+      return;
+    }
+
+    const entityName = reportEntityName(reportEntityFilter);
+
+    // $0.00 auto-generated booking stubs are real rows but not real income
+    // yet -- same distinction Board View's own pendingBookingIncomeCount
+    // insight already draws elsewhere in this file. Listed separately so
+    // the report doesn't read them as zero-value transactions.
+    const realIncomeRows = xeroConnected ? [] : reportFinance.income.filter(r => !(r.source_type === 'booking' && parseFloat(r.amount || 0) === 0 && r.status === 'Pending'));
+    const pendingIncomeRows = xeroConnected ? [] : reportFinance.income.filter(r => r.source_type === 'booking' && parseFloat(r.amount || 0) === 0 && r.status === 'Pending');
+
+    const incomeByCategory = {};
+    realIncomeRows.forEach(r => { incomeByCategory[r.category] = (incomeByCategory[r.category] || 0) + parseFloat(r.amount || 0); });
+    const expensesByCategory = {};
+    (xeroConnected ? [] : reportFinance.expenses).forEach(r => { expensesByCategory[r.category] = (expensesByCategory[r.category] || 0) + parseFloat(r.amount || 0); });
+
+    const bs = d.finBalanceSheet;
+
+    const context = [
+      `MARAE: ${d.maraeName}`,
+      `DATE: ${new Date().toLocaleDateString('en-NZ')}`,
+      `PERIOD: FY${d.fyYear} (1 Apr ${d.fyYear} – 31 Mar ${d.fyYear + 1})`,
+      `ENTITY SCOPE: ${entityName}`,
+      ``,
+      `DATA SOURCE: ${xeroConnected ? `Xero (connected, last synced ${d.xero.lastSyncedAt || 'unknown'})` : 'Manual entry (Finance module)'}`,
+      ``,
+      `INCOME (Total: ${fmtMoney(scopedIncome)}):`,
+      xeroConnected
+        ? '- Category-level breakdown not available — Xero sync provides only the total.'
+        : (Object.keys(incomeByCategory).length
+            ? Object.entries(incomeByCategory).map(([c, amt]) => `- ${c}: ${fmtMoney(amt)}`).join('\n')
+            : '- No categorised income recorded'),
+      ...(xeroConnected ? [] : [
+        `Individual entries (${realIncomeRows.length}):`,
+        realIncomeRows.length
+          ? realIncomeRows.map(r => `- ${fmt(r.date)} — ${r.description} (${fmtMoney(r.amount)}, ${r.category}, status: ${r.status})`).join('\n')
+          : '- None',
+      ]),
+      ``,
+      `PENDING BOOKING INCOME NOT YET ENTERED (${pendingIncomeRows.length}):`,
+      pendingIncomeRows.length
+        ? pendingIncomeRows.map(r => `- ${r.description} — hire fee not yet entered`).join('\n')
+        : '- None',
+      ``,
+      `EXPENSES (Total: ${fmtMoney(scopedExpenses)}):`,
+      xeroConnected
+        ? '- Category-level breakdown not available — Xero sync provides only the total.'
+        : (Object.keys(expensesByCategory).length
+            ? Object.entries(expensesByCategory).map(([c, amt]) => `- ${c}: ${fmtMoney(amt)}`).join('\n')
+            : '- No categorised expenses recorded'),
+      ...(xeroConnected ? [] : [
+        `Individual entries (${reportFinance.expenses.length}):`,
+        reportFinance.expenses.length
+          ? reportFinance.expenses.map(r => `- ${fmt(r.date)} — ${r.description} (${fmtMoney(r.amount)}, ${r.category}, payee: ${r.payee || 'unspecified'}, status: ${r.status})`).join('\n')
+          : '- None',
+      ]),
+      ``,
+      `NET POSITION: ${scopedIncome - scopedExpenses >= 0 ? 'Surplus' : 'Deficit'} of ${fmtMoney(Math.abs(scopedIncome - scopedExpenses))}`,
+      ``,
+      `BUDGET VARIANCE (FY${d.fyYear}):`,
+      Object.keys(finBudgetMap).length
+        ? Object.entries(finBudgetMap).map(([cat, budget]) => {
+            const spent = finSpentMap[cat] || 0;
+            const pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+            return `- ${cat}: budget ${fmtMoney(budget)}, spent ${fmtMoney(spent)} (${pct}%)${budget > 0 && spent > budget ? ' [OVER BUDGET]' : ''}`;
+          }).join('\n')
+        : '- No budget has been set for this financial year',
+      ``,
+      `BALANCE SHEET:`,
+      bs
+        ? [
+            `- Cash Balance: ${fmtMoney(bs.cash_balance)}`,
+            `- Loans: ${fmtMoney(bs.loans)}`,
+            `- Other Assets: ${fmtMoney(bs.other_assets)}`,
+            `- Outstanding Payments: ${fmtMoney(bs.outstanding_payments)}`,
+          ].join('\n')
+        : '- No balance sheet has been recorded yet',
+      ``,
+      `FINANCIAL TREND (monthly net assets, ${new Date().getFullYear()}):`,
+      (d.kpiSnapshots || []).some(s => s.net_assets !== null)
+        ? d.kpiSnapshots.filter(s => s.net_assets !== null).map(s => `- ${s.snapshot_month}: Net Assets ${fmtMoney(s.net_assets)}, Total Assets ${fmtMoney(s.total_assets)}, Total Liabilities ${fmtMoney(s.total_liabilities)}`).join('\n')
+        : '- Not enough monthly history recorded yet to show a trend',
+      ...(reportEntityFilter !== 'all' ? ['', `Note: Budget and Balance Sheet figures above are whole-marae totals and cannot be broken down by entity — only Income/Expenses are scoped to ${entityName}.`] : []),
+    ].join('\n');
+
+    const { data, error } = await supabase.functions.invoke('generate-financial-report', {
+      body: { maraeName: d.maraeName, context },
+    });
+
+    setFinAiLoading(false);
+
+    if (error) { setFinAiError(error.message || 'Could not reach AI service'); return; }
+    if (data?.error) { setFinAiError(data.error); return; }
+
+    setFinAiReport(data?.report || '');
+    setShowFinReport(true);
+  }
+
+  function copyFinReport() {
+    navigator.clipboard.writeText(finAiReport).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   function reportEntityName(entityId) {
     if (entityId === 'all') return 'All Entities';
     return (d.entities || []).find(e => e.id === entityId)?.name || 'Unknown Entity';
@@ -1255,7 +1388,14 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             disabled={aiLoading}
             style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            {aiLoading ? '⏳ Generating…' : '✨ AI Report'}
+            {aiLoading ? '⏳ Generating…' : '✨ AI Governance Report'}
+          </button>
+          <button
+            onClick={generateFinancialReport}
+            disabled={finAiLoading}
+            style={{ background: finAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: finAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
           </button>
           {(d.entities || []).length > 0 && (
             <select
@@ -1318,7 +1458,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ── FOCUS THIS WEEK (ClickUp 86d3vc4yp) ──────────────────────────── */}
       <FocusThisWeekCard items={focusItems} total={focusItemsTotal} allItems={focusItemsAll} onNavigate={onNavigate} />
 
-      {/* ── AI REPORT MODAL ────────────────────────────────────────────── */}
+      {/* ── AI GOVERNANCE REPORT MODAL ─────────────────────────────────── */}
       {(showReport || aiError) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
           <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
@@ -1345,6 +1485,38 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{aiError}</div>
             ) : (
               <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{aiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI FINANCIAL REPORT MODAL ──────────────────────────────────── */}
+      {(showFinReport || finAiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Financial Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {finAiReport && (
+                  <button
+                    onClick={copyFinReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowFinReport(false); setFinAiError(''); setFinAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {finAiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{finAiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{finAiReport}</div>
             )}
           </div>
         </div>
