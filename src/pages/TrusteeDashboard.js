@@ -135,7 +135,14 @@ function KpiBar({ tiles, loading, count }) {
 
 export default function TrusteeDashboard({ profile, onLogout }) {
   const isAdmin = profile?.trustee_role === 'admin';
-  const visibleNavGroups = NAV_GROUPS;
+  // Finance hidden from standard trustees (86d3uy01x) -- matches the
+  // RLS/fetchAll restriction in BoardDashboard.js. The render guard below is
+  // the real defense-in-depth boundary (a non-admin's activeTab could still
+  // technically reach 'finance', e.g. via the ?tab= deep-link, which this
+  // filter alone doesn't block); this filter just keeps the nav itself honest.
+  const visibleNavGroups = isAdmin
+    ? NAV_GROUPS
+    : NAV_GROUPS.map(g => ({ ...g, tabs: g.tabs.filter(t => t.key !== 'finance') })).filter(g => g.tabs.length > 0);
   const [activeTab, setActiveTab] = useState('board');
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
   const [boardKey, setBoardKey] = useState(0);

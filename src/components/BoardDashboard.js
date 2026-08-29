@@ -369,7 +369,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, finBalRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
+    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, finBalRes, finHealthRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -382,10 +382,16 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('marae_settings').select('marae_name').single(),
       supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
-      supabase.from('finance_income').select('date, description, amount, category, status, source_type, entity_id').gte('date', fyFrom).lte('date', fyTo),
-      supabase.from('finance_expenses').select('date, description, amount, category, status, payee, entity_id').gte('date', fyFrom).lte('date', fyTo),
-      supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear),
-      supabase.from('finance_balance_sheet').select('cash_balance, loans, other_assets, outstanding_payments').maybeSingle(),
+      // Finance queries are admin-only (86d3uy01x) -- a standard trustee's
+      // browser never even requests these tables, not just doesn't render
+      // them; get_finance_health_score() below is the admin-independent
+      // substitute that keeps the overall Health Score consistent across
+      // roles without shipping any raw transaction data.
+      isAdmin ? supabase.from('finance_income').select('date, description, amount, category, status, source_type, entity_id').gte('date', fyFrom).lte('date', fyTo) : Promise.resolve({ data: [] }),
+      isAdmin ? supabase.from('finance_expenses').select('date, description, amount, category, status, payee, entity_id').gte('date', fyFrom).lte('date', fyTo) : Promise.resolve({ data: [] }),
+      isAdmin ? supabase.from('finance_budgets').select('category, amount').eq('financial_year', fyYear) : Promise.resolve({ data: [] }),
+      isAdmin ? supabase.from('finance_balance_sheet').select('cash_balance, loans, other_assets, outstanding_payments').maybeSingle() : Promise.resolve({ data: null }),
+      isAdmin ? Promise.resolve({ data: null }) : supabase.rpc('get_finance_health_score').maybeSingle(),
       supabase.from('workflow_templates').select('id, name').order('name'),
       supabase.from('workflow_instances').select('id, name, status, started_at, completed_at, entity_name, trigger_type').order('started_at', { ascending: false }),
       supabase.from('tasks').select('id, workflow_instance_id, status').not('workflow_instance_id', 'is', null),
@@ -415,6 +421,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       finExpenses:       finExpRes.data  || [],
       finBudgets:        finBudRes.data  || [],
       finBalanceSheet:   finBalRes.data  || null,
+      finHealthScore:    finHealthRes.data || null,
       xero:              xeroRes, // { status: 'connected'|'not_connected'|'error', totalIncome?, totalExpenses?, netProfit?, lastSyncedAt? }
       templates:         tplRes.data    || [],
       workflowInstances: wfInstRes.data  || [],
@@ -756,15 +763,35 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     });
   }
 
-  if (hsRealFinRecords.length >= 3) {
-    let finScore = 0;
-    if (finNet >= 0) finScore = 20;
-    else if (finTotalIncome > 0 && Math.abs(finNet) < finTotalIncome * 0.1) finScore = 10;
+  // Admin trustees compute this from real fetched rows (exact dollar detail).
+  // Standard trustees never fetch those rows at all (86d3uy01x) -- their
+  // score comes from get_finance_health_score() instead, same 0/10/20 scale
+  // so the overall Health Score stays consistent across roles, but the
+  // detail text stays dollar-free -- exposing the real deficit amount here
+  // would just reopen the same leak the RLS restriction closes.
+  if (isAdmin) {
+    if (hsRealFinRecords.length >= 3) {
+      let finScore = 0;
+      if (finNet >= 0) finScore = 20;
+      else if (finTotalIncome > 0 && Math.abs(finNet) < finTotalIncome * 0.1) finScore = 10;
+      hsCategories.push({
+        name: 'Finance',
+        score: finScore,
+        max: 20,
+        detail: finNet >= 0 ? 'Finances in surplus' : `Running a deficit of $${Math.abs(Math.round(finNet)).toLocaleString()}`,
+      });
+    }
+  } else if (d.finHealthScore?.has_enough_data) {
+    const finDetail = {
+      surplus: 'Finances in surplus',
+      near_breakeven_deficit: 'Running a small deficit',
+      deficit: 'Running a deficit',
+    }[d.finHealthScore.status] || 'Finances in surplus';
     hsCategories.push({
       name: 'Finance',
-      score: finScore,
+      score: d.finHealthScore.score,
       max: 20,
-      detail: finNet >= 0 ? 'Finances in surplus' : `Running a deficit of $${Math.abs(Math.round(finNet)).toLocaleString()}`,
+      detail: finDetail,
     });
   }
 
@@ -1390,6 +1417,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           >
             {aiLoading ? '⏳ Generating…' : '✨ AI Governance Report'}
           </button>
+          {isAdmin && (
           <button
             onClick={generateFinancialReport}
             disabled={finAiLoading}
@@ -1397,6 +1425,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           >
             {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
           </button>
+          )}
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"

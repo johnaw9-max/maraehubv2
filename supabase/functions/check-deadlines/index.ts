@@ -1041,6 +1041,8 @@ serve(async () => {
       reason: 'Dead-field check\'s own RPC (86d438jjv check #2) - shipped 20 Aug 2026 with an incorrectly-reasoned default PUBLIC grant (its own migration comment wrongly claimed check_cron_job_last_success was left PUBLIC as precedent - it was not, see that entry above). Locked to service_role same night, caught by this exact check flagging itself as security_definer_not_allowlisted.' },
     { function: 'close_linked_task', grantees: ['postgres', 'service_role'],
       reason: 'Automation Engine audit (86d45fub4 F.1/F.2) - SQL equivalent of taskSync.js closeLinkedTask() for the redeem_action_reminder_token path, locked to service_role from creation, 27 Aug 2026.' },
+    { function: 'get_finance_health_score', grantees: ['postgres', 'service_role', 'authenticated'],
+      reason: '86d3uy01x - Board View Finance restriction. authenticated needed so standard trustees can call it directly for an admin-independent Health Score input; the function\'s own internal role=trustee check is the real auth boundary here, not a wrapping Edge Function, since this is the first SECURITY DEFINER RPC meant to be called directly by any authenticated browser client rather than only from service_role Edge Functions.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
