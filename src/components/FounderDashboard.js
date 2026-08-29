@@ -91,17 +91,17 @@ async function fetchEnvKPIs(client, label = '') {
     client.from('assets').select('id', { count: 'exact', head: true }),
   ]);
 
-  let trustees = trusteesRes.data?.trustees || [];
-  if (trusteesRes.error || !trustees.length) {
-    const { data: profiles } = await client
-      .from('profiles')
-      .select('id, full_name, email')
-      .order('full_name');
-    trustees = profiles || [];
-  }
+  // Fail visibly, not silently (86d40pp1u) -- the old fallback queried
+  // profiles directly with the same anon-key client, which is also
+  // RLS-blocked and would itself silently return empty, making a broken
+  // fetch look identical to "genuinely zero trustees." A real error must
+  // never render the same as a real empty state.
+  const trusteesError = trusteesRes.error?.message || trusteesRes.data?.error || null;
+  const trustees = trusteesRes.data?.trustees || [];
 
   return {
     trustees,
+    trusteesError,
     compliance: compRes.count || 0,
     bookings:   bookRes.count || 0,
     assets:     assetsRes.count || 0,
@@ -662,7 +662,9 @@ export default function FounderDashboard({ profile }) {
                       </div>
                     ))}
                   </div>
-                  {kpi.trustees.length === 0 ? (
+                  {kpi.trusteesError ? (
+                    <div style={{ fontSize: 13, color: RED, marginBottom: 16 }}>⚠️ Could not load trustee login activity: {kpi.trusteesError}</div>
+                  ) : kpi.trustees.length === 0 ? (
                     <div style={{ fontSize: 13, color: TEXT3, marginBottom: 16 }}>No trustees found.</div>
                   ) : (
                     <div style={{ marginBottom: 4 }}>
