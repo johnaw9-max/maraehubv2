@@ -1049,6 +1049,8 @@ serve(async () => {
       reason: 'Automation Engine audit (86d45fub4 F.1/F.2) - SQL equivalent of taskSync.js closeLinkedTask() for the redeem_action_reminder_token path, locked to service_role from creation, 27 Aug 2026.' },
     { function: 'get_finance_health_score', grantees: ['postgres', 'service_role', 'authenticated'],
       reason: '86d3uy01x - Board View Finance restriction. authenticated needed so standard trustees can call it directly for an admin-independent Health Score input; the function\'s own internal role=trustee check is the real auth boundary here, not a wrapping Edge Function, since this is the first SECURITY DEFINER RPC meant to be called directly by any authenticated browser client rather than only from service_role Edge Functions.' },
+    { function: 'find_never_logged_in_trustees', grantees: ['postgres', 'service_role'],
+      reason: '86d3u7790 Stage 5 item 2 - returns real trustee full_name/email, comparable sensitivity to find_orphaned_auth_users. Locked to service_role from creation, 29 Aug 2026.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
@@ -1347,6 +1349,95 @@ serve(async () => {
     details: loginHealthFindings,
   });
 
+  // ── Silent adoption gap check (ClickUp 86d3u7790, Stage 5 item 2) ───────
+  // Flags a real, invited trustee who has genuinely never logged in even
+  // once -- a structurally different problem from "gone quiet recently"
+  // (that recency signal already exists elsewhere, e.g. the Top Priorities
+  // insight arrays, and is deliberately untouched by this check).
+  //
+  // Uses auth.users.last_sign_in_at via find_never_logged_in_trustees()
+  // (migration 20260829020000), not profiles.last_sign_in_at -- confirmed
+  // live that column only exists on the test project, not Opeke, so it
+  // cannot be the source for a check that has to run identically on both.
+  //
+  // 14-day grace period, grounded in a real data audit of this session:
+  // on Opeke, every one of the 7 real trustees had logged in within 10
+  // days of being invited (the slowest case). 14 days gives slack beyond
+  // the slowest real onboarding seen so far without letting a genuinely
+  // stalled invite go unnoticed for long.
+  //
+  // Deliberately runs identically on both projects, no per-project
+  // special-casing -- a real, session-scoped decision (86d3u7790 comment,
+  // 29 Aug 2026): the test project's trustee list is known to mix real
+  // usage with leftover dev/QA seed rows, and may produce a low-cost,
+  // easily-dismissed admin-only finding against one of those seed rows.
+  // Accepted as-is rather than adding project-identity branching to this
+  // shared function, or silently cleaning up data this check was not
+  // asked to touch.
+  //
+  // Same weekly-throttle pattern as dead_field_detection (86d43fnk3): an
+  // ongoing, not-yet-resolved gap should not re-alert daily while it
+  // remains open, matching this whole stage's own stated principle --
+  // "silent unless there's genuinely something worth Waj's attention."
+  const NEVER_LOGGED_IN_GRACE_DAYS = 14;
+
+  const { data: neverLoggedInRows, error: neverLoggedInErr } = await db.rpc('find_never_logged_in_trustees');
+
+  const adoptionGapFindings: {
+    id?: string; full_name?: string; email?: string;
+    created_at?: string; days_since_invite?: number; error?: string;
+  }[] = [];
+
+  if (neverLoggedInErr) {
+    adoptionGapFindings.push({ error: 'query failed' });
+  } else {
+    for (const row of neverLoggedInRows ?? []) {
+      const daysSinceInvite = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 86400000);
+      if (daysSinceInvite >= NEVER_LOGGED_IN_GRACE_DAYS) {
+        adoptionGapFindings.push({
+          id: row.id,
+          full_name: row.full_name,
+          email: row.email,
+          created_at: row.created_at,
+          days_since_invite: daysSinceInvite,
+        });
+      }
+    }
+  }
+
+  if (adoptionGapFindings.length > 0) {
+    const ALERT_INTERVAL_DAYS = 7;
+    const { data: alertState } = await db
+      .from('check_alert_state')
+      .select('last_alerted_at')
+      .eq('check_name', 'silent_adoption_gap')
+      .maybeSingle();
+    const daysSinceLastAlert = alertState?.last_alerted_at
+      ? (Date.now() - new Date(alertState.last_alerted_at).getTime()) / (1000 * 60 * 60 * 24)
+      : Infinity;
+
+    if (daysSinceLastAlert >= ALERT_INTERVAL_DAYS) {
+      const body =
+        `Tēnā koutou,\n\n` +
+        `MaraeHub's daily check found ${adoptionGapFindings.length} invited trustee${adoptionGapFindings.length !== 1 ? 's' : ''} who ${adoptionGapFindings.length !== 1 ? 'have' : 'has'} never logged in, more than ${NEVER_LOGGED_IN_GRACE_DAYS} days after being invited. This check runs daily, but this alert only repeats at most once a week while the gap remains.\n\n` +
+        adoptionGapFindings.map(f => f.error
+          ? `- check could not run (${f.error})`
+          : `- ${f.full_name || '(no name set)'} — ${f.email}, invited ${f.days_since_invite} days ago, never logged in`
+        ).join('\n') +
+        `\n\nWorth a direct follow-up with them, or checking whether the invite itself reached them.` +
+        footer();
+
+      await notifyAdmin(`Silent adoption gap check — ${adoptionGapFindings.length} trustee${adoptionGapFindings.length !== 1 ? 's' : ''} never logged in`, body);
+      await db.from('check_alert_state').upsert({ check_name: 'silent_adoption_gap', last_alerted_at: new Date().toISOString() });
+    }
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'silent_adoption_gap',
+    findings_count: adoptionGapFindings.length,
+    details: adoptionGapFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -1361,6 +1452,7 @@ serve(async () => {
       process_config_safety_findings: processConfigFindings.length,
       dead_field_detection_findings: deadFieldFindings.length,
       login_health_findings: loginHealthFindings.length,
+      silent_adoption_gap_findings: adoptionGapFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
