@@ -12,8 +12,11 @@
  *    Creates: workflow_instance → parent task → subtasks from template steps.
  *
  * Environment variables required:
- *   SUPABASE_URL             set automatically by Supabase
+ *   SUPABASE_URL              set automatically by Supabase
  *   SUPABASE_SERVICE_ROLE_KEY set automatically by Supabase
+ *   SUPABASE_ANON_KEY         set automatically by Supabase
+ *   LOGIN_CHECK_EMAIL         synthetic login-health check account (86d3u7790, Stage 5 item 1)
+ *   LOGIN_CHECK_PASSWORD      synthetic login-health check account password
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -22,7 +25,10 @@ import { EXPECTED_SCHEMA } from './expectedSchema.ts';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const ANON_KEY          = Deno.env.get('SUPABASE_ANON_KEY');
 const ADMIN_ALERT_EMAIL = Deno.env.get('ADMIN_ALERT_EMAIL');
+const LOGIN_CHECK_EMAIL    = Deno.env.get('LOGIN_CHECK_EMAIL');
+const LOGIN_CHECK_PASSWORD = Deno.env.get('LOGIN_CHECK_PASSWORD');
 const NOTIFY_URL       = `${SUPABASE_URL}/functions/v1/send-notification`;
 const adminEmails      = ADMIN_ALERT_EMAIL ? [ADMIN_ALERT_EMAIL] : [];
 
@@ -1252,6 +1258,95 @@ serve(async () => {
     details: deadFieldFindings,
   });
 
+  // ── Login health check (ClickUp 86d3u7790, Stage 5 item 1) ──────────────
+  // A real, synthetic daily login against a dedicated system account,
+  // catching authentication breakage before a real trustee hits it.
+  // Grounded in real history: "Database error granting user" (86d3tj42j),
+  // orphaned auth accounts, and password mismatches have each happened
+  // separately across this project's real history -- none of them are
+  // visible to a static SQL audit the way orphaned_auth_users is, since
+  // they only surface by actually going through GoTrue's own auth flow.
+  //
+  // Deliberately uses a second, UNPRIVILEGED client built from the
+  // session this check itself just signed in with -- not the `db`
+  // service-role client used everywhere else in this file. Reading the
+  // profile back through the service-role client would bypass RLS
+  // entirely and silently miss a real RLS misconfiguration, which is
+  // exactly the class of risk this check exists to catch (same reasoning
+  // as the real trustee-login-activity RLS exposure this session's other
+  // work already found and fixed on Opeke).
+  //
+  // The account itself is role='community' with is_system_account=true
+  // (migration 20260829010000) -- deliberately NOT role='trustee'. A
+  // trustee-role test account would be pulled into every real
+  // trustee-facing list this file and the app already query by
+  // role='trustee' (notify(), notify-trustees, entity-isolation admin
+  // checks, every trustee dropdown across the app) -- silently CC'ing a
+  // fake account on real reminders, or absorbing one meant for a real
+  // person. community role is invisible to all of those by construction.
+  //
+  // Signs out unconditionally (success or failure) so 365 sessions/year
+  // don't accumulate in auth.sessions -- hygiene only, a signOut failure
+  // itself is not treated as a finding.
+  const loginHealthFindings: { step: string; error: string }[] = [];
+
+  if (!LOGIN_CHECK_EMAIL || !LOGIN_CHECK_PASSWORD || !ANON_KEY) {
+    loginHealthFindings.push({
+      step: 'config',
+      error: 'LOGIN_CHECK_EMAIL, LOGIN_CHECK_PASSWORD, or SUPABASE_ANON_KEY not set',
+    });
+  } else {
+    const loginClient = createClient(SUPABASE_URL, ANON_KEY);
+    const { data: signInData, error: signInError } = await loginClient.auth.signInWithPassword({
+      email: LOGIN_CHECK_EMAIL,
+      password: LOGIN_CHECK_PASSWORD,
+    });
+
+    if (signInError || !signInData?.session) {
+      loginHealthFindings.push({ step: 'sign_in', error: signInError?.message ?? 'no session returned' });
+    } else {
+      // Real trustee-facing failure mode (86d3tj42j class): fetch the
+      // account's own profile row using ITS session, not the service
+      // client -- same query shape as App.js's fetchProfile().
+      const { data: profileRow, error: profileError } = await loginClient
+        .from('profiles')
+        .select('id, role, is_system_account')
+        .eq('id', signInData.user.id)
+        .single();
+
+      if (profileError || !profileRow) {
+        loginHealthFindings.push({ step: 'profile_fetch', error: profileError?.message ?? 'no profile row found' });
+      } else if (profileRow.role !== 'community' || !profileRow.is_system_account) {
+        loginHealthFindings.push({
+          step: 'profile_sanity',
+          error: `unexpected profile state — role: ${profileRow.role}, is_system_account: ${profileRow.is_system_account}`,
+        });
+      }
+
+      const { error: signOutError } = await loginClient.auth.signOut();
+      if (signOutError) {
+        console.warn(`login_health: sign-out failed (not treated as a finding): ${signOutError.message}`);
+      }
+    }
+  }
+
+  if (loginHealthFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily synthetic login check failed. This means a real trustee or community member could be hitting the same failure right now.\n\n` +
+      loginHealthFindings.map(f => `- ${f.step} — ${f.error}`).join('\n') +
+      `\n\nPlease check Supabase Auth and the login-check account directly.` +
+      footer();
+
+    await notifyAdmin(`Login health check — ${loginHealthFindings.length} issue${loginHealthFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'login_health',
+    findings_count: loginHealthFindings.length,
+    details: loginHealthFindings,
+  });
+
   return new Response(
     JSON.stringify({
       checked:           dueDate,
@@ -1265,6 +1360,7 @@ serve(async () => {
       security_access_control_findings: securityFindings.length,
       process_config_safety_findings: processConfigFindings.length,
       dead_field_detection_findings: deadFieldFindings.length,
+      login_health_findings: loginHealthFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
