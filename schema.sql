@@ -2,21 +2,18 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-28 (previously 2026-08-25,
--- 2026-08-18). This re-sync exists specifically to close the schema_drift
--- check's own known, previously-observed-live limitation (ClickUp
--- 86d3u7790): nothing enforces this file getting regenerated when new
--- migrations land.
--- Real diff this time, computed directly against live Opeke via the exact
--- same get_public_schema_columns() RPC the schema_drift check itself uses
--- (not assumed from migration files alone): documents gained charter_fields
--- jsonb (20260826000000, Charter generator save/reload) and meeting_actions
--- gained resolution_id uuid, FK to resolutions(id) ON DELETE SET NULL
--- (20260827010000, Resolution-to-Action linking). No table-level diffs —
--- stripe_webhook_events (added in the previous re-sync) was confirmed
--- missing from Tineka's live DB by this same check and backfilled there
--- 2026-08-28; already correctly present in this file, no schema.sql change
--- needed for that one.
+-- pg_catalog introspection, most recently 2026-08-30 (previously 2026-08-28,
+-- 2026-08-25, 2026-08-18). This re-sync exists specifically to close the
+-- schema_drift check's own known, previously-observed-live limitation
+-- (ClickUp 86d3u7790): nothing enforces this file getting regenerated when
+-- new migrations land.
+-- Real diff this time, computed directly against live Opeke via raw
+-- information_schema.columns introspection (full column list per public
+-- base table, cross-checked column-by-column against this file): profiles
+-- gained is_system_account boolean not null default false (20260829020000,
+-- the is_system_account exclusion added for find_never_logged_in_trustees).
+-- Confirmed present with identical definition on the test project too. No
+-- other column or table diffs found on either project.
 -- 47 real base tables (the pre-existing xero_connection_status VIEW is
 -- correctly excluded).
 -- Tables are listed alphabetically (not dependency order — accuracy over
@@ -1052,7 +1049,8 @@ create table if not exists profiles (
   notes text,
   notification_prefs jsonb not null default '{"goals": true, "grants": true, "actions": true, "bookings": true, "compliance": true}'::jsonb,
   trustee_role text default 'standard'::text,
-  is_fire_warden boolean not null default false
+  is_fire_warden boolean not null default false,
+  is_system_account boolean not null default false
 );
 
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);
