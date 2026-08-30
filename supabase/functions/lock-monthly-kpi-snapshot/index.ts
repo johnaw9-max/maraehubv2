@@ -227,16 +227,23 @@ serve(async (_req) => {
     const compliantCompliance = compliance.filter(c =>
       (c.due_date && new Date(c.due_date + 'T12:00:00') > in30) || (!c.due_date && c.last_checked_date)
     );
+    // null (not 100) when nothing has ever been assessed -- matches the
+    // compliancePct fix already live in src/lib/complianceStatus.js
+    // (2026-08-23). A fully never-assessed register has no real basis for
+    // a percentage; 100 previously read as "fully compliant" instead of
+    // "no data yet".
     const assessedTotal = compliance.length - neverAssessedCompliance.length;
-    const compliancePct = assessedTotal ? Math.round((compliantCompliance.length / assessedTotal) * 100) : 100;
+    const compliancePct = assessedTotal ? Math.round((compliantCompliance.length / assessedTotal) * 100) : null;
 
     // ── Risk Register % ───────────────────────────────────────────────────
     // Matches src/lib/riskStatus.js's getRiskStatus() exactly - "% clear of
     // high-rated risk" across ALL risk items (open and closed), not the
     // previous "% of open risks with controls set", a different question
     // this column no longer tracks at all.
+    // null (not 100) when the register is empty -- same reasoning as
+    // compliancePct above (fixed alongside it, 2026-08-30).
     const highOpenRisks = risks.filter(r => r.risk_rating === 'High' && r.status !== 'Closed');
-    const riskPct = risks.length ? Math.round(((risks.length - highOpenRisks.length) / risks.length) * 100) : 100;
+    const riskPct = risks.length ? Math.round(((risks.length - highOpenRisks.length) / risks.length) * 100) : null;
 
     // ── Assets % ──────────────────────────────────────────────────────────
     const overdueReminders  = reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);

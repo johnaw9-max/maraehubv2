@@ -970,8 +970,8 @@ create policy "meetings_update"
 create table if not exists module_kpi_snapshots (
   id uuid not null default gen_random_uuid(),
   snapshot_month date not null,
-  compliance_pct integer not null,
-  risk_pct integer not null,
+  compliance_pct integer,
+  risk_pct integer,
   assets_pct integer not null,
   goals_pct integer not null,
   locked_at timestamp with time zone not null default now(),

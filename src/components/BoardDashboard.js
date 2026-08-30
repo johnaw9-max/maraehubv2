@@ -181,6 +181,11 @@ const TREND_CFG = {
 function getTrend(pair, key) {
   if (!pair) return null;
   const [prev, latest] = pair;
+  // Either side can now be null (compliance_pct/risk_pct, since the
+  // 2026-08-30 nullable-columns fix) -- no real basis for a direction
+  // when one endpoint has no data, same reasoning as the null percentage
+  // itself rather than treating it as 0 and showing a false trend.
+  if (latest[key] == null || prev[key] == null) return null;
   const diff = latest[key] - prev[key];
   return { dir: diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat', diff };
 }
@@ -2479,8 +2484,12 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <td style={{ padding: '8px', fontWeight: 600 }}>
                     {new Date(s.snapshot_month + 'T12:00:00').toLocaleDateString('en-NZ', { month: 'short', year: 'numeric' })}
                   </td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.compliance_pct}%</td>
-                  <td style={{ textAlign: 'center', padding: '8px' }}>{s.risk_pct}%</td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>
+                    {s.compliance_pct == null ? <span style={{ color: 'var(--text3)' }}>—</span> : `${s.compliance_pct}%`}
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '8px' }}>
+                    {s.risk_pct == null ? <span style={{ color: 'var(--text3)' }}>—</span> : `${s.risk_pct}%`}
+                  </td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.assets_pct}%</td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>{s.goals_pct}%</td>
                   <td style={{ textAlign: 'center', padding: '8px' }}>
