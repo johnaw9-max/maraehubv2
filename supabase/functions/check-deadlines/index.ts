@@ -17,6 +17,7 @@
  *   SUPABASE_ANON_KEY         set automatically by Supabase
  *   LOGIN_CHECK_EMAIL         synthetic login-health check account (86d3u7790, Stage 5 item 1)
  *   LOGIN_CHECK_PASSWORD      synthetic login-health check account password
+ *   CRONITOR_PING_URL         self-liveness ping, optional (86d3u7790, self-liveness monitor)
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -29,6 +30,7 @@ const ANON_KEY          = Deno.env.get('SUPABASE_ANON_KEY');
 const ADMIN_ALERT_EMAIL = Deno.env.get('ADMIN_ALERT_EMAIL');
 const LOGIN_CHECK_EMAIL    = Deno.env.get('LOGIN_CHECK_EMAIL');
 const LOGIN_CHECK_PASSWORD = Deno.env.get('LOGIN_CHECK_PASSWORD');
+const CRONITOR_PING_URL    = Deno.env.get('CRONITOR_PING_URL');
 const NOTIFY_URL       = `${SUPABASE_URL}/functions/v1/send-notification`;
 const adminEmails      = ADMIN_ALERT_EMAIL ? [ADMIN_ALERT_EMAIL] : [];
 
@@ -1437,6 +1439,27 @@ serve(async () => {
     findings_count: adoptionGapFindings.length,
     details: adoptionGapFindings,
   });
+
+  // ── Self-liveness ping (ClickUp 86d3u7790, self-liveness monitor) ───────
+  // Every check above depends on check-deadlines itself actually firing --
+  // if pg_cron stops invoking this function, or it throws before reaching
+  // here, none of the checks above run, and nothing in this file can
+  // notice its own absence. Cronitor is an external dead-man's-switch: it
+  // alerts if this ping doesn't arrive on schedule, catching exactly that
+  // blind spot.
+  //
+  // Awaited, not truly detached, so the request is guaranteed to leave the
+  // isolate before Supabase can suspend it post-response -- but a Cronitor
+  // outage must never fail this function's own response, so any error is
+  // caught and logged, never thrown. Optional: absent CRONITOR_PING_URL
+  // silently skips the ping.
+  if (CRONITOR_PING_URL) {
+    try {
+      await fetch(CRONITOR_PING_URL);
+    } catch (err) {
+      console.warn(`Cronitor ping failed: ${(err as Error).message}`);
+    }
+  }
 
   return new Response(
     JSON.stringify({
