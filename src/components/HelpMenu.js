@@ -31,7 +31,7 @@ const HELP_TOPICS = {
       icon: '🏗️',
       items: [
         { q: 'How do I add a service reminder?', a: 'Go to the Assets tab, find the asset you want to set a reminder for, and click the "🔔 Reminders" button. Click "+ Add Reminder", enter the service type, due date, and how often it repeats (monthly, annually, etc).' },
-        { q: 'What does "Mark as Serviced" do?', a: 'When a reminder is overdue, you can click "Mark as Serviced" to confirm the service was done. If the reminder is recurring (e.g. annual), it will automatically set the next due date forward by the correct interval.' },
+        { q: 'What does "Mark as Serviced" do?', a: 'When a reminder is overdue, you can click "Mark as Serviced" to confirm the service was done. If the reminder is recurring (e.g. annual), it will automatically set the next due date forward by the correct interval. If a Compliance item has been linked to this reminder, marking it serviced also updates that compliance item — recording it as checked and advancing its own due date, using its own renewal schedule.' },
       ]
     },
     {
@@ -149,6 +149,8 @@ const HELP_TOPICS = {
         { q: 'What is the Incident Archive?', a: 'Once you have more than 50 resolved incidents, older ones are automatically moved to a collapsible archive below the incident list. Active (unresolved) incidents and the 50 most recent resolved incidents are always shown in the main view. Click "📦 Resolved Incident Archive" to expand and view older records — you can still open any archived incident to view its full details.' },
         { q: 'Does it connect to the Board View?', a: 'Yes. Overdue and due-soon compliance items automatically appear as red alerts in the Board View Smart Insights panel. Trustees see a summary at the start of every meeting without needing to open the Compliance tab separately.' },
         { q: 'What is the "Create Risk" suggestion I sometimes see on an overdue item?', a: 'If an Emergency Preparedness item is overdue, MaraeHub may show a prompt suggesting you log it as a risk in the Risk Register, so the same information does not need entering twice. Click "Create Risk" to open the Risk Register with a new risk already started from that item, or "Not now" to dismiss it. Once dismissed, it will not reappear on that item for at least 7 days, and it will not reappear at all once a risk has actually been created from it.' },
+        { q: 'What is "Link to Asset Service Reminder"?', a: 'If a compliance item is really the same real-world obligation as one of your asset service reminders — for example, an annual fire extinguisher service tracked as both an Asset reminder and a Compliance item — you can link them together instead of tracking the same task twice. Once linked, marking either one done (Mark Done here, or Mark as Serviced on the Assets tab) automatically updates the other, each using its own renewal schedule.' },
+        { q: 'What is "Link to Existing Document"?', a: 'Instead of uploading a fresh copy of a supporting document every time, you can link a compliance item to a document already saved in your Document Library — useful when one document (like a full Emergency Preparedness Plan) is genuinely evidence for more than one compliance item. This is separate from the regular "Document" upload field above it — you can use either, or both, depending on whether the evidence already exists in your Document Library.' },
         { q: 'Who can access the Compliance Tracker?', a: 'Trustees only. The community role cannot access this module. This is intentional — marae are PCBUs under the Health and Safety at Work Act 2015 and trustees have personal legal liability for compliance. The tracker protects trustees by keeping a digital record of all obligations and actions taken.' },
       ]
     },
@@ -228,6 +230,7 @@ const HELP_TOPICS = {
           ]},
         ] },
         { q: 'What file types can I upload?', a: 'You can upload PDFs, Word documents, Excel spreadsheets, and images. All important marae documents like the charter, trust deed, and policies can be stored here.' },
+        { q: 'What does the "Evidence for N compliance items" badge mean?', a: 'A document can be linked as evidence for a compliance item from the Compliance tab\'s "Link to Existing Document" option — for example, one Emergency Preparedness Plan document can genuinely be evidence for several compliance items at once. When a document has one or more compliance items linked to it, this badge appears on the document showing how many, and hovering over it shows which ones.' },
       ]
     },
     {
@@ -996,6 +999,7 @@ const HELP_TOPICS = {
             'Cancelled',
           ]},
         ] },
+        { q: 'Can I link a resolution to a supporting document?', a: 'Yes. When adding or editing a resolution, use the "Link to Existing Document" option to connect it to a document already in your Document Library — genuinely useful for real audits, since it records exactly what was decided against exactly what evidence, without needing to search Minutes and Documents separately to find the connection. The linked document shows as an "Evidence" note on the resolution, both here and in the Decision Register.' },
         { q: 'How do I assign an action?', a: [
           { text: 'Open a meeting and go to the "Actions" section, then click "+ Add Action".' },
           { items: [
@@ -1082,6 +1086,7 @@ const HELP_TOPICS = {
           { text: 'If you link a risk to an asset, it shows a 🔧 tag with the asset\'s name in the Risk Register list, so you can see at a glance which risks are tied to a specific asset.' },
         ] },
         { q: 'Can a risk be created automatically from a Compliance item?', a: 'Yes. If Compliance suggests creating a risk for an overdue Emergency Preparedness item and you click "Create Risk", the Risk Register opens with a new risk already started — the description and entity carried across, with a note showing which compliance item it came from. You still choose the category, likelihood, and consequence yourself before saving, the same as adding any other risk.' },
+        { q: 'What is the "Start Plan" suggestion I sometimes see on a risk?', a: 'If a risk is High-rated, still Open, and is either a Health & Safety risk or linked to a specific asset, MaraeHub may suggest starting a Risk Remediation Plan — a 5-step workflow (Inspect and assess, Get quotes, Decide, Schedule the work, Record the outcome) covering the whole response process. Click "Start Plan" to begin it in the Workflows tab, or "Not now" to dismiss the suggestion for at least 7 days. It reappears if the risk is still open and no plan has been completed for it.' },
         { q: 'How is the risk rating calculated?', a: [
           { text: 'MaraeHub calculates the rating automatically from the likelihood and consequence you select — you do not need to work it out yourself.' },
           { items: [
