@@ -1106,11 +1106,13 @@ create table if not exists resolutions (
   date_passed date,
   status text default 'Open'::text,
   notes text,
-  created_at timestamp without time zone default now()
+  created_at timestamp without time zone default now(),
+  linked_document_id uuid
 );
 
 alter table resolutions add constraint resolutions_pkey PRIMARY KEY (id);
 alter table resolutions add constraint resolutions_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE;
+alter table resolutions add constraint resolutions_linked_document_id_fkey FOREIGN KEY (linked_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 
 alter table resolutions enable row level security;
 

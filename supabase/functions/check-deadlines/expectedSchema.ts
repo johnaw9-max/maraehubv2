@@ -442,7 +442,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "date_passed",
     "status",
     "notes",
-    "created_at"
+    "created_at",
+    "linked_document_id"
   ],
   "risk_register": [
     "id",

@@ -51,6 +51,7 @@ const EMPTY_MEETING = {
 const EMPTY_RESOLUTION = {
   resolution_number: '', description: '', date_passed: '',
   status: 'Open', notes: '',
+  linked_document_id: '',
 };
 
 const EMPTY_ACTION = {
@@ -216,7 +217,7 @@ function MeetingForm({ initial, onSave, onCancel, saving, error }) {
 
 // ─── RESOLUTION INLINE FORM ───────────────────────────────────────────────────
 
-function ResolutionForm({ initial, onSave, onCancel, saving, error }) {
+function ResolutionForm({ initial, onSave, onCancel, saving, error, documents }) {
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -225,6 +226,7 @@ function ResolutionForm({ initial, onSave, onCancel, saving, error }) {
           resolution_number: initial.resolution_number || '',
           description:       initial.description || '',
           notes:             initial.notes || '',
+          linked_document_id: initial.linked_document_id || '',
         }
       : EMPTY_RESOLUTION
   );
@@ -259,6 +261,15 @@ function ResolutionForm({ initial, onSave, onCancel, saving, error }) {
           <input className="form-input" value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any additional notes" />
         </div>
       </div>
+      {documents && documents.length > 0 && (
+        <div className="form-group">
+          <label className="form-label">Link to Existing Document (optional)</label>
+          <select className="form-input" value={form.linked_document_id} onChange={e => setField('linked_document_id', e.target.value)}>
+            <option value="">— No linked document —</option>
+            {documents.map(d => <option key={d.id} value={d.id}>{d.title} ({d.category})</option>)}
+          </select>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button className="btn-secondary" onClick={onCancel} style={{ fontSize: 12 }}>Cancel</button>
         <button className="btn-primary" onClick={() => onSave(form)} disabled={saving} style={{ fontSize: 12 }}>
@@ -327,7 +338,7 @@ function ActionForm({ initial, onSave, onCancel, saving, error }) {
 
 // ─── MEETING DETAIL VIEW ──────────────────────────────────────────────────────
 
-function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
+function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
   const [resolutions, setResolutions] = useState([]);
   const [actions, setActions] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
@@ -371,6 +382,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
       date_passed: form.date_passed || null,
       status: form.status,
       notes: form.notes.trim() || null,
+      linked_document_id: form.linked_document_id || null,
     };
     const { error } = editResId
       ? await supabase.from('resolutions').update(payload).eq('id', editResId)
@@ -571,6 +583,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
                 onCancel={() => { setShowResForm(false); setEditResId(null); setResForm(null); }}
                 saving={saving}
                 error={resError}
+                documents={documents}
               />
             )}
 
@@ -591,6 +604,16 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete }) {
                         {r.date_passed && <span>Passed {fmt(r.date_passed)}</span>}
                         {r.notes && <span>{r.date_passed ? ' · ' : ''}{r.notes}</span>}
                       </div>
+                      {r.linked_document_id && documents && (() => {
+                        const linkedDoc = documents.find(d => d.id === r.linked_document_id);
+                        return linkedDoc ? (
+                          <div style={{ fontSize: 12, marginTop: 4 }}>
+                            <span style={{ background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                              📄 Evidence: {linkedDoc.title}
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                       <StatusBadge status={r.status} colors={RESOLUTION_STATUS_COLORS} />
@@ -764,21 +787,24 @@ export default function CommitteeMinutes() {
   const [editInterest, setEditInterest] = useState(null);
   const [interestSaving, setInterestSaving] = useState(false);
   const [interestError, setInterestError] = useState('');
+  const [documents, setDocuments] = useState([]);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);
-    const [meetRes, resRes, actRes, intRes] = await Promise.all([
+    const [meetRes, resRes, actRes, intRes, docsRes] = await Promise.all([
       supabase.from('meetings').select('*').order('meeting_date', { ascending: false }),
       supabase.from('resolutions').select('*, meetings(id, title, meeting_date, meeting_type)').order('date_passed', { ascending: false }),
       supabase.from('meeting_actions').select('id, status'),
       supabase.from('interest_register').select('*').order('created_at', { ascending: false }),
+      supabase.from('documents').select('id, title, category').order('title'),
     ]);
     setMeetings(meetRes.data || []);
     setAllResolutions(resRes.data || []);
     setAllActions(actRes.data || []);
     setInterests(intRes.data || []);
+    setDocuments(docsRes.data || []);
     setLoading(false);
     createOverdueTasks();
   }
@@ -954,6 +980,7 @@ export default function CommitteeMinutes() {
         onBack={() => { setSelectedMeeting(null); setView('list'); }}
         onEdit={() => { setEditMeeting(selectedMeeting); setError(''); setView('form'); }}
         onDelete={() => handleDeleteMeeting(selectedMeeting)}
+        documents={documents}
       />
     );
   }
@@ -1279,6 +1306,12 @@ export default function CommitteeMinutes() {
                         {mtg && (
                           <div><span style={{ color: 'var(--text3)', fontWeight: 500 }}>Meeting: </span>{mtg.title}</div>
                         )}
+                        {r.linked_document_id && (() => {
+                          const linkedDoc = documents.find(d => d.id === r.linked_document_id);
+                          return linkedDoc ? (
+                            <div><span style={{ color: 'var(--text3)', fontWeight: 500 }}>Evidence: </span>📄 {linkedDoc.title}</div>
+                          ) : null;
+                        })()}
                       </div>
                       <div style={{ fontSize: 13, marginBottom: 12 }}>
                         <div style={{ color: 'var(--text3)', fontWeight: 500, marginBottom: 4 }}>Description</div>
