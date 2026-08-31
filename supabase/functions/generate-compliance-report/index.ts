@@ -108,16 +108,19 @@ serve(async (req) => {
     const anthropic = new Anthropic({ apiKey: anthropicKey });
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-5',
-      // 2500, not 1500 like Reports #1/#3: confirmed via a real live
-      // invocation (Opeke, 2026-08-31) that 1500 truncates this report
-      // mid-sentence. Unlike the other two reports' single-flow structure,
-      // this one repeats an explicit FACT/RISK/RECOMMENDATION block per
-      // section (3 sections) plus a closing priority list -- markdown
-      // headers/bold labels/rules cost more tokens per visible character,
-      // so a comparable char count to Report #3's successful runs still
-      // exhausted the smaller budget before the model reached its natural
-      // ending.
-      max_tokens: 2500,
+      // 4000. First bumped 1500 -> 2500 after a real Opeke invocation
+      // (2026-08-31) truncated mid-sentence -- Report #2's per-section
+      // FACT/RISK/RECOMMENDATION structure costs more tokens per visible
+      // character than Reports #1/#3's single-flow prose. Then a second
+      // real truncation, same day, on the test project: its genuinely
+      // denser real data (26 compliance items across all 8 categories, 5
+      // individually-listed risk register entries, vs. Opeke's 18 items in
+      // 2 categories and 0 risks) still exhausted 2500 before finishing.
+      // Unlike Reports #1/#3, this report's required length scales with how
+      // much a marae has actually recorded, not just its structure -- so
+      // the budget needs real headroom above the largest real dataset seen
+      // so far, not just enough for today's numbers on either project.
+      max_tokens: 4000,
       thinking: { type: 'disabled' },
       system: SYSTEM_PROMPT,
       messages: [{
