@@ -8,6 +8,11 @@ import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
+// Same local copy already used in AssetsManager.js/taskSync.js -- not
+// exported/shared elsewhere in this codebase, so matching that existing
+// precedent rather than introducing a new shared module for one map.
+const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
+
 // Compliance -> Risk suggestion prompt (86d44k66b). Scoped to
 // emergency_preparedness only -- the one category this file already
 // treats as elevated (see the dedicated red alert banner below) --
@@ -73,6 +78,7 @@ const STATUS_ORDER = { overdue: 0, due_soon: 1, compliant: 2, not_set: 3 };
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '', last_checked_date: '',
   renewal_months: 12, responsible_name: '', notes: '', entity_id: '',
+  linked_service_reminder_id: '',
 };
 
 const EMPTY_INCIDENT = {
@@ -129,6 +135,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
   const [linkedComplianceItemIds, setLinkedComplianceItemIds] = useState(new Set());
+  const [serviceReminders, setServiceReminders] = useState([]);
 
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -185,17 +192,19 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [itemsRes, incRes, entRes, riskLinksRes] = await Promise.all([
+    const [itemsRes, incRes, entRes, riskLinksRes, remindersRes] = await Promise.all([
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('risk_register').select('compliance_item_id').not('compliance_item_id', 'is', null),
+      supabase.from('service_reminders').select('id, type, due_date, assets(name)').order('type'),
     ]);
     const allItems = itemsRes.data || [];
     setItems(allItems);
     setIncidents(incRes.data || []);
     setEntities(entRes.data || []);
     setLinkedComplianceItemIds(new Set((riskLinksRes.data || []).map(r => r.compliance_item_id)));
+    setServiceReminders(remindersRes.data || []);
     setLoading(false);
     return allItems;
   }
@@ -228,7 +237,31 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
       await closeLinkedTask(item.id);
+      if (item.linked_service_reminder_id) {
+        await syncLinkedServiceReminder(item.linked_service_reminder_id);
+      }
     }
+  }
+
+  // Assets -> Maintenance -> Compliance link (86d44k695). Advances the
+  // linked reminder using ITS OWN recurring cadence, not this item's
+  // renewal_months -- the two are independently configured, and cross-
+  // applying one to the other would silently drift them further apart
+  // rather than keep them in sync. Mirrors AssetsManager.js's own
+  // handleMarkServiced() exactly, including deleting a one-time
+  // (recurring: 'none') reminder outright once serviced.
+  async function syncLinkedServiceReminder(reminderId) {
+    const { data: reminder } = await supabase
+      .from('service_reminders').select('id, due_date, recurring').eq('id', reminderId).maybeSingle();
+    if (!reminder) return;
+    if (reminder.recurring === 'none') {
+      await supabase.from('service_reminders').delete().eq('id', reminder.id);
+      return;
+    }
+    const months = RECURRING_MONTHS[reminder.recurring] || 12;
+    const next = new Date(reminder.due_date + 'T12:00:00');
+    next.setMonth(next.getMonth() + months);
+    await supabase.from('service_reminders').update({ due_date: next.toISOString().split('T')[0] }).eq('id', reminder.id);
   }
 
   async function handleDismissRiskPrompt(item) {
@@ -308,6 +341,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       responsible_name: item.responsible_name || '',
       notes: item.notes || '',
       entity_id: item.entity_id || '',
+      linked_service_reminder_id: item.linked_service_reminder_id || '',
     });
     setItemFile(null); setItemError(''); setShowItemModal(true);
   }
@@ -332,6 +366,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       responsible_name: itemForm.responsible_name || null,
       notes: itemForm.notes.trim() || null,
       entity_id: itemForm.entity_id || null,
+      linked_service_reminder_id: itemForm.linked_service_reminder_id || null,
       document_url, document_name,
       updated_at: new Date().toISOString(),
     };
@@ -473,6 +508,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     const cls = CLASSIFICATIONS[item.classification] || CLASSIFICATIONS.task;
     const dl = daysLabel(item.due_date);
     const entityName = item.entity_id ? entities.find(e => e.id === item.entity_id)?.name : null;
+    const linkedReminder = item.linked_service_reminder_id
+      ? serviceReminders.find(r => r.id === item.linked_service_reminder_id)
+      : null;
     return (
       <div
         key={item.id}
@@ -499,6 +537,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 </button>
               )}
               {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
+              {linkedReminder && (
+                <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                  🔧 Linked: {linkedReminder.assets?.name || 'Asset'} — {linkedReminder.type}
+                </span>
+              )}
               {dl && (
                 <span style={{ fontSize: 14, color: scfg.color, fontWeight: status !== 'compliant' && status !== 'not_set' ? 700 : 400 }}>
                   {dl}
@@ -973,6 +1016,18 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 <label className="form-label">Notes</label>
                 <textarea className="form-input" rows={2} value={itemForm.notes} onChange={e => setItemForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional notes..." style={{ resize: 'vertical' }} />
               </div>
+
+              {serviceReminders.length > 0 && (
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Link to Asset Service Reminder (optional)</label>
+                  <select className="form-input" value={itemForm.linked_service_reminder_id} onChange={e => setItemForm(f => ({ ...f, linked_service_reminder_id: e.target.value }))}>
+                    <option value="">— No linked reminder —</option>
+                    {serviceReminders.map(r => (
+                      <option key={r.id} value={r.id}>{(r.assets?.name || 'Asset')} — {r.type}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Document</label>

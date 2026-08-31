@@ -235,6 +235,12 @@ export default function AssetsManager({ onStartWorkflow }) {
   }
 
   async function handleMarkServiced(r) {
+    // Sync BEFORE the delete/update below -- specifically, if
+    // r.recurring === 'none', the reminder row is about to be deleted,
+    // and this table's ON DELETE SET NULL would clear
+    // compliance_items.linked_service_reminder_id as part of that same
+    // delete. Looking the link up after the delete would find nothing.
+    await syncLinkedComplianceItem(r.id);
     if (r.recurring === 'none') {
       await supabase.from('service_reminders').delete().eq('id', r.id);
     } else {
@@ -245,6 +251,25 @@ export default function AssetsManager({ onStartWorkflow }) {
       await supabase.from('service_reminders').update({ due_date: nextDate }).eq('id', r.id);
     }
     fetchAll();
+  }
+
+  // Assets -> Maintenance -> Compliance link (86d44k695). Reverse
+  // direction of ComplianceTracker.js's syncLinkedServiceReminder() --
+  // if a compliance item was linked to this reminder, advance IT using
+  // its own renewal_months, not this reminder's recurring cadence, same
+  // "each side keeps its own configured cadence" reasoning.
+  async function syncLinkedComplianceItem(reminderId) {
+    const { data: item } = await supabase
+      .from('compliance_items').select('id, renewal_months').eq('linked_service_reminder_id', reminderId).maybeSingle();
+    if (!item) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const updates = { last_checked_date: todayStr, updated_at: new Date().toISOString() };
+    if (item.renewal_months) {
+      const next = new Date();
+      next.setMonth(next.getMonth() + item.renewal_months);
+      updates.due_date = next.toISOString().split('T')[0];
+    }
+    await supabase.from('compliance_items').update(updates).eq('id', item.id);
   }
 
   async function handleDeleteReminder(id) {
