@@ -10,6 +10,8 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
   const [workflowName, setWorkflowName] = useState('');
   const [sourceName, setSourceName] = useState('');
   const [triggerType, setTriggerType] = useState('');
+  const [pendingEntityType, setPendingEntityType] = useState(null);
+  const [pendingEntityId, setPendingEntityId] = useState(null);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,8 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
     setWorkflowName(pendingWorkflow.workflowName || '');
     setSourceName(pendingWorkflow.sourceName || '');
     setTriggerType(pendingWorkflow.triggerType || 'service_reminder');
+    setPendingEntityType(pendingWorkflow.entityType || null);
+    setPendingEntityId(pendingWorkflow.entityId || null);
     if (onPendingConsumed) onPendingConsumed();
   }, [pendingWorkflow]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -64,10 +68,14 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
         name: workflowName.trim(),
         entity_name: sourceName.trim() || null,
         trigger_type: triggerType || null,
+        entity_type: pendingEntityType,
+        entity_id: pendingEntityId,
       });
       setWorkflowName('');
       setSourceName('');
       setTriggerType('');
+      setPendingEntityType(null);
+      setPendingEntityId(null);
       await load();
     } catch (err) {
       setStartError(err.message || 'Could not start workflow');

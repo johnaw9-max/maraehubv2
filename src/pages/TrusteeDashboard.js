@@ -605,7 +605,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'risks' && (
           <>
             <KpiBar tiles={kpis.risks || []} loading={kpiLoading.risks} count={4} />
-            <RiskRegister pendingRisk={pendingRisk} onPendingConsumed={() => setPendingRisk(null)} />
+            <RiskRegister pendingRisk={pendingRisk} onPendingConsumed={() => setPendingRisk(null)} onStartWorkflow={handleStartWorkflow} />
           </>
         )}
 

@@ -26,6 +26,13 @@ const STATUS_PILL = {
   'Closed':        { bg: '#e8f4ef', color: '#1a4a3a' },
 };
 
+const WORKFLOW_PROMPT_COOLDOWN_DAYS = 7;
+
+function daysSince(dateStr) {
+  if (!dateStr) return Infinity;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
 function fmt(d) {
   if (!d) return '—';
   return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -46,7 +53,7 @@ const EMPTY = {
   compliance_item_id: '',
 };
 
-export default function RiskRegister({ pendingRisk, onPendingConsumed }) {
+export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWorkflow }) {
   const [risks, setRisks]         = useState([]);
   const [entities, setEntities]   = useState([]);
   const [assets, setAssets]       = useState([]);
@@ -60,20 +67,26 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
   const [linkedItemName, setLinkedItemName] = useState('');
+  const [remediationTemplate, setRemediationTemplate] = useState(null);
+  const [activeWorkflowRiskIds, setActiveWorkflowRiskIds] = useState(new Set());
 
   const allProfiles = useProfiles();
   const trustees = allProfiles.filter(p => p.role === 'trustee');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [risksRes, entRes, assetsRes] = await Promise.all([
+    const [risksRes, entRes, assetsRes, tplRes, wfRes] = await Promise.all([
       supabase.from('risk_register').select('*').order('created_at', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('assets').select('id, name').order('name'),
+      supabase.from('workflow_templates').select('id, name').eq('name', 'Risk Remediation Plan').maybeSingle(),
+      supabase.from('workflow_instances').select('entity_id').eq('entity_type', 'risk').eq('status', 'active'),
     ]);
     setRisks(risksRes.data || []);
     setEntities(entRes.data || []);
     setAssets(assetsRes.data || []);
+    setRemediationTemplate(tplRes.data || null);
+    setActiveWorkflowRiskIds(new Set((wfRes.data || []).map(w => w.entity_id)));
     setLoading(false);
   }, []);
 
@@ -169,6 +182,30 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed }) {
     setRisks(prev => prev.filter(r => r.id !== id));
   }
 
+  // Risk -> Task -> Workflow automation (86d44k67n). Unlike the
+  // Compliance -> Risk link, suppression here checks status === 'active'
+  // on the linked workflow_instances row, not "any workflow ever
+  // linked" -- if a plan was already completed and the risk is still
+  // High/Open, that's real evidence it didn't resolve the risk, so it's
+  // honest to allow suggesting a fresh one again after the cooldown.
+  function handleStartRemediation(risk) {
+    if (!remediationTemplate || !onStartWorkflow) return;
+    onStartWorkflow({
+      templateId: remediationTemplate.id,
+      workflowName: `Risk Remediation Plan — ${risk.risk_description}`,
+      sourceName: risk.risk_description,
+      triggerType: 'risk',
+      entityType: 'risk',
+      entityId: risk.id,
+    });
+  }
+
+  async function handleDismissWorkflowPrompt(risk) {
+    const updates = { workflow_prompt_dismissed_at: new Date().toISOString() };
+    const { error: err } = await supabase.from('risk_register').update(updates).eq('id', risk.id);
+    if (!err) setRisks(prev => prev.map(r => r.id === risk.id ? { ...r, ...updates } : r));
+  }
+
   function field(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
   const filtered = risks.filter(r =>
@@ -249,6 +286,18 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed }) {
                       {r.controls && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 3 }}>Controls: {r.controls}</div>}
                       {entityName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                       {assetName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>🔧 {assetName}</span></div>}
+                      {r.risk_rating === 'High' &&
+                        r.status === 'Open' &&
+                        (r.category === 'Health & Safety' || r.asset_id) &&
+                        !activeWorkflowRiskIds.has(r.id) &&
+                        daysSince(r.workflow_prompt_dismissed_at) >= WORKFLOW_PROMPT_COOLDOWN_DAYS &&
+                        remediationTemplate && onStartWorkflow && (
+                        <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 12, color: '#8b0000', fontWeight: 600 }}>⚠️ No response plan started</span>
+                          <button onClick={() => handleStartRemediation(r)} style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#8b0000', border: 'none', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>Start Plan</button>
+                          <button onClick={() => handleDismissWorkflowPrompt(r)} style={{ fontSize: 12, color: '#a63020', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>Not now</button>
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{r.category}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.likelihood}</td>
