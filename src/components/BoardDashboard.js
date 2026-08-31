@@ -50,6 +50,12 @@ const PERIODS = [
 
 const PERIOD_LABEL = { month: 'This Month', quarter: 'This Quarter', year: 'This Year', all: 'All Time' };
 
+// Mirrors emergency_plan_hazards' hazard_type check constraint (schema.sql)
+// and EmergencyPlanManager.js's HAZARD_ORDER — used only to compute AI
+// Compliance Report's (14yhc7knp9n, Report #2) hazard-guidance coverage
+// count, so kept local rather than exported/shared across files.
+const TOTAL_HAZARD_TYPES = 10;
+
 const NAV_LABELS = {
   minutes:    'View Minutes →',
   compliance: 'View Compliance →',
@@ -351,6 +357,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [finAiReport, setFinAiReport]   = useState('');
   const [finAiError, setFinAiError]     = useState('');
   const [showFinReport, setShowFinReport] = useState(false);
+  const [compAiLoading, setCompAiLoading] = useState(false);
+  const [compAiReport, setCompAiReport]   = useState('');
+  const [compAiError, setCompAiError]     = useState('');
+  const [showCompReport, setShowCompReport] = useState(false);
   const [showKpiHistory, setShowKpiHistory] = useState(false);
   const [financeEntityFilter, setFinanceEntityFilter] = useState('all');
   const [complianceEntityFilter, setComplianceEntityFilter] = useState('all');
@@ -374,7 +384,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     const fyFrom = `${fyYear}-04-01`;
     const fyTo   = `${fyYear + 1}-03-31`;
 
-    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, finBalRes, finHealthRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes] = await Promise.all([
+    const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, finBalRes, finHealthRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes, hazRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
       supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
@@ -406,6 +416,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct, net_assets, total_assets, total_liabilities').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
       supabase.from('entities').select('id, name').order('name'),
       fetchXeroFinancials(),
+      // Not fetched anywhere in Board View before Report #2 (14yhc7knp9n) --
+      // only EmergencyPlanManager.js queried this table previously.
+      supabase.from('emergency_plan_hazards').select('id, hazard_type, likely_impact, what_to_do, entity_id'),
     ]);
     setD({
       bookings:          bookRes.data   || [],
@@ -434,6 +447,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       pendingIncome:        pendIncRes.data  || [],
       activeInterestCount:  (irRes.data || []).length,
       risks:                riskRes.data || [],
+      emergencyHazards:     hazRes.data || [],
       fyYear,
     });
     setLoading(false);
@@ -707,6 +721,9 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const reportRisks = reportEntityFilter === 'all'
     ? (d.risks || [])
     : (d.risks || []).filter(r => r.entity_id === reportEntityFilter || r.entity_id === null);
+  const reportHazards = reportEntityFilter === 'all'
+    ? (d.emergencyHazards || [])
+    : (d.emergencyHazards || []).filter(h => h.entity_id === reportEntityFilter || h.entity_id === null);
   const reportFinance = xeroConnected
     ? null
     : (reportEntityFilter === 'all'
@@ -1266,6 +1283,86 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     });
   }
 
+  // ─── AI COMPLIANCE & SAFETY REPORT (14yhc7knp9n, Report #2) ─────────────────
+  // Same shape as generateReport()/generateFinancialReport() above. Unlike
+  // Report #3, deliberately NO zero-data gate -- "0 items outside the
+  // onboarding checklist, 0 risks registered" is itself the safety-relevant
+  // fact this report exists to surface, not a null case to hide behind a
+  // static message (design decision, 86d3u7790 investigation 2026-08-30).
+  //
+  // Hazard-guidance coverage is sent to Claude as a count + type names only
+  // -- never the actual likely_impact/what_to_do text. This is enforced
+  // here, not just via the system prompt's instruction not to quote it: if
+  // the boilerplate text is never in the context at all, there's nothing
+  // for the model to paraphrase as a marae-specific assessment by mistake.
+
+  async function generateComplianceReport() {
+    setCompAiLoading(true);
+    setCompAiError('');
+    setCompAiReport('');
+
+    const entityName = reportEntityName(reportEntityFilter);
+
+    const COMPLIANCE_CATEGORIES = ['emergency_preparedness', 'water', 'building', 'insurance', 'trustee', 'health_safety', 'civil_defence', 'other'];
+    const categoryLabel = c => c.replace(/_/g, ' ');
+
+    const overallCompliance = getComplianceStatus(reportCompliance);
+    const categoryBreakdown = COMPLIANCE_CATEGORIES.map(cat => {
+      const items = reportCompliance.filter(c => c.category === cat);
+      if (items.length === 0) return `- ${categoryLabel(cat)}: 0 items recorded`;
+      const status = getComplianceStatus(items);
+      return `- ${categoryLabel(cat)}: ${items.length} item${items.length !== 1 ? 's' : ''} — ${status.overdue.length} overdue, ${status.dueSoon.length} due soon, ${status.neverAssessed.length} never assessed, ${status.compliant.length} compliant`;
+    }).join('\n');
+
+    const { highOpen: reportHighOpenRisks, riskPct } = getRiskStatus(reportRisks);
+
+    const documentedHazardTypes = [...new Set(
+      reportHazards
+        .filter(h => (h.likely_impact || '').trim() || (h.what_to_do || '').trim())
+        .map(h => h.hazard_type)
+    )];
+    const allSeenHazardTypes = [...new Set(reportHazards.map(h => h.hazard_type))];
+    const undocumentedHazardTypes = allSeenHazardTypes.filter(t => !documentedHazardTypes.includes(t));
+
+    const context = [
+      `MARAE: ${d.maraeName}`,
+      `DATE: ${new Date().toLocaleDateString('en-NZ')}`,
+      `ENTITY SCOPE: ${entityName}`,
+      ``,
+      `COMPLIANCE ITEMS (${reportCompliance.length} total, ${overallCompliance.compliancePct === null ? 'no items ever assessed' : `${overallCompliance.compliancePct}% of assessed items compliant`}):`,
+      categoryBreakdown,
+      ``,
+      `RISK REGISTER (${reportRisks.length} total${reportRisks.length ? `, ${riskPct}% clear of high-rated risk` : ''}):`,
+      reportRisks.length
+        ? [`High-rated and open: ${reportHighOpenRisks.length}`, `Individual entries:`, ...reportRisks.map(r => `- ${r.risk_description} (category: ${r.category}, rating: ${r.risk_rating}, status: ${r.status}${r.review_date ? `, review due: ${r.review_date}` : ''})`)].join('\n')
+        : '- No risks have ever been recorded in the risk register.',
+      ``,
+      `EMERGENCY HAZARD GUIDANCE COVERAGE (${documentedHazardTypes.length} of ${TOTAL_HAZARD_TYPES} defined hazard types have any guidance recorded):`,
+      `- Documented: ${documentedHazardTypes.length ? documentedHazardTypes.join(', ') : 'None'}`,
+      `- Not yet documented: ${(TOTAL_HAZARD_TYPES - documentedHazardTypes.length)} type${(TOTAL_HAZARD_TYPES - documentedHazardTypes.length) !== 1 ? 's' : ''}${undocumentedHazardTypes.length ? ` (of those with no row yet or empty guidance, seen: ${undocumentedHazardTypes.join(', ')})` : ''}`,
+      `Note: where guidance exists, its content is a shared regional civil-defence template, not written specifically for this marae — this report deliberately does not include that text, only whether it exists.`,
+    ].join('\n');
+
+    const { data, error } = await supabase.functions.invoke('generate-compliance-report', {
+      body: { maraeName: d.maraeName, context },
+    });
+
+    setCompAiLoading(false);
+
+    if (error) { setCompAiError(error.message || 'Could not reach AI service'); return; }
+    if (data?.error) { setCompAiError(data.error); return; }
+
+    setCompAiReport(data?.report || '');
+    setShowCompReport(true);
+  }
+
+  function copyComplianceReport() {
+    navigator.clipboard.writeText(compAiReport).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   function reportEntityName(entityId) {
     if (entityId === 'all') return 'All Entities';
     return (d.entities || []).find(e => e.id === entityId)?.name || 'Unknown Entity';
@@ -1431,6 +1528,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
           </button>
           )}
+          <button
+            onClick={generateComplianceReport}
+            disabled={compAiLoading}
+            style={{ background: compAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: compAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {compAiLoading ? '⏳ Generating…' : '✨ AI Compliance Report'}
+          </button>
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"
@@ -1551,6 +1655,38 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{finAiError}</div>
             ) : (
               <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{finAiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI COMPLIANCE REPORT MODAL ─────────────────────────────────── */}
+      {(showCompReport || compAiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Compliance Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {compAiReport && (
+                  <button
+                    onClick={copyComplianceReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowCompReport(false); setCompAiError(''); setCompAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {compAiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{compAiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{compAiReport}</div>
             )}
           </div>
         </div>
