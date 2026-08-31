@@ -148,6 +148,7 @@ const HELP_TOPICS = {
         ] },
         { q: 'What is the Incident Archive?', a: 'Once you have more than 50 resolved incidents, older ones are automatically moved to a collapsible archive below the incident list. Active (unresolved) incidents and the 50 most recent resolved incidents are always shown in the main view. Click "📦 Resolved Incident Archive" to expand and view older records — you can still open any archived incident to view its full details.' },
         { q: 'Does it connect to the Board View?', a: 'Yes. Overdue and due-soon compliance items automatically appear as red alerts in the Board View Smart Insights panel. Trustees see a summary at the start of every meeting without needing to open the Compliance tab separately.' },
+        { q: 'What is the "Create Risk" suggestion I sometimes see on an overdue item?', a: 'If an Emergency Preparedness item is overdue, MaraeHub may show a prompt suggesting you log it as a risk in the Risk Register, so the same information does not need entering twice. Click "Create Risk" to open the Risk Register with a new risk already started from that item, or "Not now" to dismiss it. Once dismissed, it will not reappear on that item for at least 7 days, and it will not reappear at all once a risk has actually been created from it.' },
         { q: 'Who can access the Compliance Tracker?', a: 'Trustees only. The community role cannot access this module. This is intentional — marae are PCBUs under the Health and Safety at Work Act 2015 and trustees have personal legal liability for compliance. The tracker protects trustees by keeping a digital record of all obligations and actions taken.' },
       ]
     },
@@ -1080,6 +1081,7 @@ const HELP_TOPICS = {
           ]},
           { text: 'If you link a risk to an asset, it shows a 🔧 tag with the asset\'s name in the Risk Register list, so you can see at a glance which risks are tied to a specific asset.' },
         ] },
+        { q: 'Can a risk be created automatically from a Compliance item?', a: 'Yes. If Compliance suggests creating a risk for an overdue Emergency Preparedness item and you click "Create Risk", the Risk Register opens with a new risk already started — the description and entity carried across, with a note showing which compliance item it came from. You still choose the category, likelihood, and consequence yourself before saving, the same as adding any other risk.' },
         { q: 'How is the risk rating calculated?', a: [
           { text: 'MaraeHub calculates the rating automatically from the likelihood and consequence you select — you do not need to work it out yourself.' },
           { items: [
