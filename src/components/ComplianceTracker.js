@@ -8,6 +8,16 @@ import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
+// Compliance -> Risk suggestion prompt (86d44k66b). Scoped to
+// emergency_preparedness only -- the one category this file already
+// treats as elevated (see the dedicated red alert banner below) --
+// deliberately not every overdue item, to avoid a second nudge on top of
+// the OVERDUE task createOverdueTasks() already creates for every
+// category. 7-day cooldown matches last_reminded_at's proven shape
+// elsewhere in this codebase.
+const RISK_PROMPT_CATEGORY = 'emergency_preparedness';
+const RISK_PROMPT_COOLDOWN_DAYS = 7;
+
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 const CATEGORIES = {
@@ -96,9 +106,14 @@ function nextDueDate(months) {
   return d.toISOString().split('T')[0];
 }
 
+function daysSince(dateStr) {
+  if (!dateStr) return Infinity;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function ComplianceTracker({ onStartWorkflow }) {
+export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const profiles = useProfiles();
   const trustees = profiles.filter(p => p.role === 'trustee');
 
@@ -113,6 +128,7 @@ export default function ComplianceTracker({ onStartWorkflow }) {
   const [entityFilter, setEntityFilter] = useState('all');
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
+  const [linkedComplianceItemIds, setLinkedComplianceItemIds] = useState(new Set());
 
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -169,15 +185,17 @@ export default function ComplianceTracker({ onStartWorkflow }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [itemsRes, incRes, entRes] = await Promise.all([
+    const [itemsRes, incRes, entRes, riskLinksRes] = await Promise.all([
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
+      supabase.from('risk_register').select('compliance_item_id').not('compliance_item_id', 'is', null),
     ]);
     const allItems = itemsRes.data || [];
     setItems(allItems);
     setIncidents(incRes.data || []);
     setEntities(entRes.data || []);
+    setLinkedComplianceItemIds(new Set((riskLinksRes.data || []).map(r => r.compliance_item_id)));
     setLoading(false);
     return allItems;
   }
@@ -210,6 +228,14 @@ export default function ComplianceTracker({ onStartWorkflow }) {
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
       await closeLinkedTask(item.id);
+    }
+  }
+
+  async function handleDismissRiskPrompt(item) {
+    const updates = { risk_prompt_dismissed_at: new Date().toISOString() };
+    const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
+    if (!error) {
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
     }
   }
 
@@ -497,6 +523,32 @@ export default function ComplianceTracker({ onStartWorkflow }) {
                 </span>
               )}
             </div>
+            {status === 'overdue' &&
+              item.category === RISK_PROMPT_CATEGORY &&
+              !linkedComplianceItemIds.has(item.id) &&
+              daysSince(item.risk_prompt_dismissed_at) >= RISK_PROMPT_COOLDOWN_DAYS &&
+              onCreateRisk && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, padding: '6px 10px', background: '#fce8e8', border: '1px solid #f5b8b8', borderRadius: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 14, color: '#8b0000' }}>⚠️ This is overdue and hasn't been logged as a risk.</span>
+                <button
+                  onClick={() => onCreateRisk({
+                    riskDescription: item.name,
+                    entityId: item.entity_id,
+                    complianceItemId: item.id,
+                    complianceItemName: item.name,
+                  })}
+                  style={{ fontSize: 14, fontWeight: 700, color: '#fff', background: '#8b0000', border: 'none', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+                >
+                  Create Risk
+                </button>
+                <button
+                  onClick={() => handleDismissRiskPrompt(item)}
+                  style={{ fontSize: 14, color: '#a63020', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}
+                >
+                  Not now
+                </button>
+              </div>
+            )}
             {expandedWhy === item.id && (item.notes || item.legal_basis) && (
               <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
                 {item.notes && <div style={{ fontStyle: 'italic', color: 'var(--text3)' }}>{item.notes}</div>}

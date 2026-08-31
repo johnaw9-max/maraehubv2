@@ -43,9 +43,10 @@ const EMPTY = {
   notes:       '',
   entity_id:   '',
   asset_id:    '',
+  compliance_item_id: '',
 };
 
-export default function RiskRegister() {
+export default function RiskRegister({ pendingRisk, onPendingConsumed }) {
   const [risks, setRisks]         = useState([]);
   const [entities, setEntities]   = useState([]);
   const [assets, setAssets]       = useState([]);
@@ -58,6 +59,7 @@ export default function RiskRegister() {
   const [catFilter, setCatFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
+  const [linkedItemName, setLinkedItemName] = useState('');
 
   const allProfiles = useProfiles();
   const trustees = allProfiles.filter(p => p.role === 'trustee');
@@ -77,9 +79,32 @@ export default function RiskRegister() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Compliance -> Risk suggestion prompt (86d44k66b). Same shape as
+  // WorkflowEngine's pendingWorkflow effect (TrusteeDashboard.js) --
+  // prefill from a sibling-tab handoff, then tell the parent it's been
+  // consumed so it doesn't re-fire on the next render. Category is
+  // deliberately left at EMPTY's own default, not mapped from the
+  // compliance item's category -- no clean mapping exists between the
+  // two taxonomies (confirmed during design), so the trustee chooses it.
+  useEffect(() => {
+    if (!pendingRisk) return;
+    setEditRisk(null);
+    setForm({
+      ...EMPTY,
+      risk_description: pendingRisk.riskDescription || '',
+      entity_id: pendingRisk.entityId || '',
+      compliance_item_id: pendingRisk.complianceItemId || '',
+    });
+    setLinkedItemName(pendingRisk.complianceItemName || '');
+    setError('');
+    setShowModal(true);
+    if (onPendingConsumed) onPendingConsumed();
+  }, [pendingRisk]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function openAdd() {
     setEditRisk(null);
     setForm(EMPTY);
+    setLinkedItemName('');
     setError('');
     setShowModal(true);
   }
@@ -98,7 +123,9 @@ export default function RiskRegister() {
       notes:       r.notes       || '',
       entity_id:   r.entity_id   || '',
       asset_id:    r.asset_id    || '',
+      compliance_item_id: r.compliance_item_id || '',
     });
+    setLinkedItemName('');
     setError('');
     setShowModal(true);
   }
@@ -120,6 +147,7 @@ export default function RiskRegister() {
       notes:       form.notes.trim() || null,
       entity_id:   form.entity_id || null,
       asset_id:    form.asset_id || null,
+      compliance_item_id: form.compliance_item_id || null,
     };
 
     if (editRisk) {
@@ -264,6 +292,12 @@ export default function RiskRegister() {
             </div>
 
             {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+            {linkedItemName && (
+              <div style={{ marginBottom: 16, padding: '8px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text2)' }}>
+                🔗 Created from compliance item: <strong>{linkedItemName}</strong>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Risk Description *</label>

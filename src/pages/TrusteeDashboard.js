@@ -145,11 +145,17 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     : NAV_GROUPS.map(g => ({ ...g, tabs: g.tabs.filter(t => t.key !== 'finance') })).filter(g => g.tabs.length > 0);
   const [activeTab, setActiveTab] = useState('board');
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
+  const [pendingRisk, setPendingRisk] = useState(null);
   const [boardKey, setBoardKey] = useState(0);
 
   function handleStartWorkflow(suggestion) {
     setPendingWorkflow(suggestion);
     setActiveTab('workflows');
+  }
+
+  function handleCreateRisk(suggestion) {
+    setPendingRisk(suggestion);
+    setActiveTab('risks');
   }
 
   // Per-tab KPI state
@@ -591,7 +597,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'compliance' && (
           <>
             <KpiBar tiles={kpis.compliance || []} loading={kpiLoading.compliance} count={4} />
-            <ComplianceTracker onStartWorkflow={handleStartWorkflow} />
+            <ComplianceTracker onStartWorkflow={handleStartWorkflow} onCreateRisk={handleCreateRisk} />
           </>
         )}
 
@@ -599,7 +605,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'risks' && (
           <>
             <KpiBar tiles={kpis.risks || []} loading={kpiLoading.risks} count={4} />
-            <RiskRegister />
+            <RiskRegister pendingRisk={pendingRisk} onPendingConsumed={() => setPendingRisk(null)} />
           </>
         )}
 

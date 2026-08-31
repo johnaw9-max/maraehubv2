@@ -282,7 +282,8 @@ create table if not exists compliance_items (
   legal_basis text,
   legal_basis_detail text,
   workflow_template_id uuid,
-  last_reminded_at timestamp with time zone
+  last_reminded_at timestamp with time zone,
+  risk_prompt_dismissed_at timestamp with time zone
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
@@ -1156,12 +1157,14 @@ create table if not exists risk_register (
   status text default 'Open'::text,
   notes text,
   entity_id uuid,
-  trustee_id uuid
+  trustee_id uuid,
+  compliance_item_id uuid
 );
 
 alter table risk_register add constraint risk_register_pkey PRIMARY KEY (id);
 alter table risk_register add constraint risk_register_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES auth.users(id);
 alter table risk_register add constraint risk_register_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table risk_register add constraint risk_register_compliance_item_id_fkey FOREIGN KEY (compliance_item_id) REFERENCES compliance_items(id) ON DELETE RESTRICT;
 
 alter table risk_register enable row level security;
 
