@@ -129,7 +129,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "workflow_template_id",
     "last_reminded_at",
     "risk_prompt_dismissed_at",
-    "linked_service_reminder_id"
+    "linked_service_reminder_id",
+    "linked_document_id"
   ],
   "contacts": [
     "id",

@@ -78,7 +78,7 @@ const STATUS_ORDER = { overdue: 0, due_soon: 1, compliant: 2, not_set: 3 };
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '', last_checked_date: '',
   renewal_months: 12, responsible_name: '', notes: '', entity_id: '',
-  linked_service_reminder_id: '',
+  linked_service_reminder_id: '', linked_document_id: '',
 };
 
 const EMPTY_INCIDENT = {
@@ -136,6 +136,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
   const [linkedComplianceItemIds, setLinkedComplianceItemIds] = useState(new Set());
   const [serviceReminders, setServiceReminders] = useState([]);
+  const [documents, setDocuments] = useState([]);
 
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -192,12 +193,13 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [itemsRes, incRes, entRes, riskLinksRes, remindersRes] = await Promise.all([
+    const [itemsRes, incRes, entRes, riskLinksRes, remindersRes, docsRes] = await Promise.all([
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('risk_register').select('compliance_item_id').not('compliance_item_id', 'is', null),
       supabase.from('service_reminders').select('id, type, due_date, assets(name)').order('type'),
+      supabase.from('documents').select('id, title, category').order('title'),
     ]);
     const allItems = itemsRes.data || [];
     setItems(allItems);
@@ -205,6 +207,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     setEntities(entRes.data || []);
     setLinkedComplianceItemIds(new Set((riskLinksRes.data || []).map(r => r.compliance_item_id)));
     setServiceReminders(remindersRes.data || []);
+    setDocuments(docsRes.data || []);
     setLoading(false);
     return allItems;
   }
@@ -342,6 +345,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       notes: item.notes || '',
       entity_id: item.entity_id || '',
       linked_service_reminder_id: item.linked_service_reminder_id || '',
+      linked_document_id: item.linked_document_id || '',
     });
     setItemFile(null); setItemError(''); setShowItemModal(true);
   }
@@ -367,6 +371,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       notes: itemForm.notes.trim() || null,
       entity_id: itemForm.entity_id || null,
       linked_service_reminder_id: itemForm.linked_service_reminder_id || null,
+      linked_document_id: itemForm.linked_document_id || null,
       document_url, document_name,
       updated_at: new Date().toISOString(),
     };
@@ -511,6 +516,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     const linkedReminder = item.linked_service_reminder_id
       ? serviceReminders.find(r => r.id === item.linked_service_reminder_id)
       : null;
+    const linkedDocument = item.linked_document_id
+      ? documents.find(d => d.id === item.linked_document_id)
+      : null;
     return (
       <div
         key={item.id}
@@ -540,6 +548,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               {linkedReminder && (
                 <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
                   🔧 Linked: {linkedReminder.assets?.name || 'Asset'} — {linkedReminder.type}
+                </span>
+              )}
+              {linkedDocument && (
+                <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                  📄 Evidence: {linkedDocument.title}
                 </span>
               )}
               {dl && (
@@ -1043,6 +1056,16 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                   {itemFile ? `📎 ${itemFile.name}` : '📎 Choose file'}
                 </button>
               </div>
+
+              {documents.length > 0 && (
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Link to Existing Document (optional)</label>
+                  <select className="form-input" value={itemForm.linked_document_id} onChange={e => setItemForm(f => ({ ...f, linked_document_id: e.target.value }))}>
+                    <option value="">— No linked document —</option>
+                    {documents.map(d => <option key={d.id} value={d.id}>{d.title} ({d.category})</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>

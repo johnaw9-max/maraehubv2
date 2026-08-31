@@ -284,7 +284,8 @@ create table if not exists compliance_items (
   workflow_template_id uuid,
   last_reminded_at timestamp with time zone,
   risk_prompt_dismissed_at timestamp with time zone,
-  linked_service_reminder_id uuid
+  linked_service_reminder_id uuid,
+  linked_document_id uuid
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
@@ -293,6 +294,7 @@ alter table compliance_items add constraint compliance_items_category_check CHEC
 alter table compliance_items add constraint compliance_items_classification_check CHECK ((classification = ANY (ARRAY['task'::text, 'template'::text, 'workflow'::text])));
 alter table compliance_items add constraint compliance_items_workflow_template_id_fkey FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id);
 alter table compliance_items add constraint compliance_items_linked_service_reminder_id_fkey FOREIGN KEY (linked_service_reminder_id) REFERENCES service_reminders(id) ON DELETE SET NULL;
+alter table compliance_items add constraint compliance_items_linked_document_id_fkey FOREIGN KEY (linked_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 
 alter table compliance_items enable row level security;
 

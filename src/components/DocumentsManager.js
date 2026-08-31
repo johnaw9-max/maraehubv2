@@ -35,18 +35,25 @@ export default function DocumentsManager() {
   const [showCharterGenerator, setShowCharterGenerator] = useState(false);
   const [editingCharterDoc, setEditingCharterDoc] = useState(null);
   const [showHSPolicyGenerator, setShowHSPolicyGenerator] = useState(false);
+  const [linkedCompliance, setLinkedCompliance] = useState({});
   const fileRef = useRef();
  
   useEffect(() => { fetchDocs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
  
   async function fetchDocs() {
     setLoading(true);
-    const [docRes, entRes] = await Promise.all([
+    const [docRes, entRes, complianceRes] = await Promise.all([
       supabase.from('documents').select('*').order('created_at', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
+      supabase.from('compliance_items').select('id, name, linked_document_id').not('linked_document_id', 'is', null),
     ]);
     setDocs(docRes.data || []);
     setEntities(entRes.data || []);
+    const grouped = {};
+    (complianceRes.data || []).forEach(c => {
+      (grouped[c.linked_document_id] ||= []).push(c);
+    });
+    setLinkedCompliance(grouped);
     setLoading(false);
   }
  
@@ -214,6 +221,7 @@ export default function DocumentsManager() {
             const ext = doc.file_type || getExt(doc.file_name || '');
             const catStyle = CAT_COLORS[doc.category] || CAT_COLORS['Other'];
             const entityName = doc.entity_id ? entities.find(e => e.id === doc.entity_id)?.name : null;
+            const linkedItems = linkedCompliance[doc.id] || [];
             return (
               <div key={doc.id} className="panel" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
@@ -228,6 +236,14 @@ export default function DocumentsManager() {
                     {entityName && (
                       <span style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)' }}>
                         {entityName}
+                      </span>
+                    )}
+                    {linkedItems.length > 0 && (
+                      <span
+                        title={linkedItems.map(c => c.name).join(', ')}
+                        style={{ fontSize: 10, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: '#e8f4ef', color: '#1a4a3a', border: '1px solid #a8d8c0' }}
+                      >
+                        🔗 Evidence for {linkedItems.length} compliance item{linkedItems.length !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
