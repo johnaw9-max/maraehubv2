@@ -353,6 +353,20 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
   const [actError, setActError] = useState('');
   const actionsSectionRef = useRef(null);
 
+  const [maraeName, setMaraeName] = useState('');
+  const [localMinutes, setLocalMinutes] = useState(meeting.minutes || '');
+  const [minutesSaving, setMinutesSaving] = useState(false);
+  const [showDraftPanel, setShowDraftPanel] = useState(false);
+  const [roughNotes, setRoughNotes] = useState('');
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState('');
+  const [aiDraft, setAiDraft] = useState(null); // { minutes, resolutions, actions } | null
+
+  useEffect(() => {
+    supabase.from('marae_settings').select('marae_name').single()
+      .then(({ data }) => setMaraeName(data?.marae_name || 'Our Marae'));
+  }, []);
+
   const fetchDetail = useCallback(async () => {
     setLoadingDetail(true);
     const [resRes, actRes] = await Promise.all([
@@ -458,6 +472,42 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
     fetchDetail();
   }
 
+  async function generateDraft() {
+    if (!roughNotes.trim()) return;
+    setDraftLoading(true);
+    setDraftError('');
+    setAiDraft(null);
+    const { data, error } = await supabase.functions.invoke('draft-minutes', {
+      body: { maraeName, roughNotes },
+    });
+    setDraftLoading(false);
+    if (error) { setDraftError(error.message || 'Could not reach AI service'); return; }
+    if (data?.error) { setDraftError(data.error); return; }
+    setAiDraft(data.draft);
+    setLocalMinutes(data.draft.minutes);
+  }
+
+  async function saveDraftMinutes() {
+    setMinutesSaving(true);
+    const { error } = await supabase.from('meetings').update({ minutes: localMinutes }).eq('id', meeting.id);
+    setMinutesSaving(false);
+    if (!error) meeting.minutes = localMinutes; // keep in sync if the trustee navigates away and back within this session
+  }
+
+  function addSuggestedResolution(r) {
+    setResForm({ ...EMPTY_RESOLUTION, description: r.description });
+    setEditResId(null);
+    setResError('');
+    setShowResForm(true);
+  }
+
+  function addSuggestedAction(a) {
+    setActForm({ ...EMPTY_ACTION, description: a.description, assigned_to: a.assigned_to || '', due_date: a.due_date || '' });
+    setEditActId(null);
+    setActError('');
+    setShowActForm(true);
+  }
+
   function openEditRes(r) {
     setResForm({ ...r, date_passed: r.date_passed || '', notes: r.notes || '' });
     setEditResId(r.id);
@@ -553,17 +603,87 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
 
       {loadingDetail ? <div className="loading">Loading...</div> : (
         <>
+          {/* ── DRAFT FROM HUI NOTES (AI) ── */}
+          <div style={{ marginBottom: 24 }}>
+            <button
+              onClick={() => setShowDraftPanel(s => !s)}
+              style={{ fontSize: 13, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+            >
+              🪄 {showDraftPanel ? 'Hide' : 'Draft from Hui Notes'}
+            </button>
+
+            {showDraftPanel && (
+              <div className="panel" style={{ marginTop: 12 }}>
+                <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>
+                  Paste or type your rough notes from the hui below. MaraeHub will draft a minutes summary and suggest any resolutions and actions it clearly finds in your notes — you review and confirm everything before it's saved. Nothing here is saved automatically.
+                </p>
+                <textarea
+                  className="form-input"
+                  rows={5}
+                  value={roughNotes}
+                  onChange={e => setRoughNotes(e.target.value)}
+                  placeholder="e.g. Discussed the roof leak, agreed to get 2 quotes. Jane to follow up with the plumber by next Friday..."
+                  style={{ resize: 'vertical', marginBottom: 10 }}
+                />
+                {draftError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{draftError}</div>}
+                <button className="btn-primary" onClick={generateDraft} disabled={draftLoading || !roughNotes.trim()} style={{ fontSize: 13 }}>
+                  {draftLoading ? '⏳ Drafting…' : '✨ Draft with AI'}
+                </button>
+
+                {aiDraft && (
+                  <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Draft minutes (edit freely, then save)</div>
+                    <textarea
+                      className="form-input"
+                      rows={6}
+                      value={localMinutes}
+                      onChange={e => setLocalMinutes(e.target.value)}
+                      style={{ resize: 'vertical', marginBottom: 8 }}
+                    />
+                    <button className="btn-secondary" onClick={saveDraftMinutes} disabled={minutesSaving} style={{ fontSize: 12, marginBottom: 18 }}>
+                      {minutesSaving ? 'Saving…' : 'Save as Minutes'}
+                    </button>
+
+                    {aiDraft.resolutions.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Suggested resolutions</div>
+                        {aiDraft.resolutions.map((r, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 13 }}>{r.description}</span>
+                            <button className="btn-secondary" onClick={() => addSuggestedResolution(r)} style={{ fontSize: 12, flexShrink: 0 }}>+ Add as Resolution</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {aiDraft.actions.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Suggested actions</div>
+                        {aiDraft.actions.map((a, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 12px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 13 }}>{a.description}{a.assigned_to ? ` — ${a.assigned_to}` : ''}{a.due_date ? ` (due ${a.due_date})` : ''}</span>
+                            <button className="btn-secondary" onClick={() => addSuggestedAction(a)} style={{ fontSize: 12, flexShrink: 0 }}>+ Add as Action</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* ── SECTION 1: MEETING MINUTES ── */}
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 17, fontWeight: 600, marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--border)' }}>
               Meeting Minutes
             </div>
-            {meeting.minutes ? (
+            {localMinutes ? (
               <div className="panel">
-                <div style={{ fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--text2)' }}>{meeting.minutes}</div>
+                <div style={{ fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--text2)' }}>{localMinutes}</div>
               </div>
             ) : (
-              <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic', padding: '12px 0' }}>No minutes recorded. Use the Edit button above to add minutes.</div>
+              <div style={{ fontSize: 13, color: 'var(--text3)', fontStyle: 'italic', padding: '12px 0' }}>No minutes recorded. Use the Edit button above, or "Draft from Hui Notes" below, to add minutes.</div>
             )}
           </div>
 
