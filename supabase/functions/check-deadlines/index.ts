@@ -1440,6 +1440,63 @@ serve(async () => {
     details: adoptionGapFindings,
   });
 
+  // ── Founder capacity check (ClickUp 86d3u7790 Stage 5 item 3) ───────────
+  // Real, deliberate difference from every other check in this file:
+  // there is no DB anomaly to detect here. This is a pure calendar-based
+  // nudge toward Waj's own existing, real, human-judgment monthly review
+  // -- the Business Survival Checkpoint (ClickUp 86d426vgx), paired with
+  // the Marae News Check (86d410gj1). Both source tasks explicitly and
+  // independently say this must NOT be automated -- the actual
+  // assessment (is there real traction? what's pipeline status?)
+  // requires real human judgment this check does not attempt to
+  // replace. It only restates the real questions and links back to
+  // both source tasks so Waj can record the real outcome there himself.
+  //
+  // FOUNDER_CHECK_INTERVAL_DAYS reuses the same check_alert_state
+  // throttle idiom already proven by dead_field_detection and
+  // silent_adoption_gap, just at a longer, monthly interval. The
+  // check_alert_state row for this check is deliberately pre-seeded
+  // (migration 20260901030000) with last_alerted_at = 2026-08-17, the
+  // date the Business Survival Checkpoint was first raised -- so the
+  // first real nudge lands naturally around 16 September 2026, matching
+  // both source tasks' own stated real timing, not immediately on
+  // deploy before anything has had a chance to genuinely change.
+  const FOUNDER_CHECK_INTERVAL_DAYS = 30;
+  const { data: founderAlertState } = await db
+    .from('check_alert_state')
+    .select('last_alerted_at')
+    .eq('check_name', 'founder_capacity_check')
+    .maybeSingle();
+  const daysSinceFounderAlert = founderAlertState?.last_alerted_at
+    ? (Date.now() - new Date(founderAlertState.last_alerted_at).getTime()) / (1000 * 60 * 60 * 24)
+    : Infinity;
+
+  let founderCheckDue = false;
+  if (daysSinceFounderAlert >= FOUNDER_CHECK_INTERVAL_DAYS) {
+    founderCheckDue = true;
+    const body =
+      `Tēnā koe,\n\n` +
+      `It's time for your monthly Business Survival Checkpoint and Marae News Check.\n\n` +
+      `BUSINESS SURVIVAL CHECKPOINT (https://app.clickup.com/t/86d426vgx):\n` +
+      `- Real paying customer count — has it changed?\n` +
+      `- Real active engagement (logins) on the one real, signed account\n` +
+      `- Real pipeline status (Lorraine, Waiaua Marae, others) — genuinely progressing or genuinely stalled?\n` +
+      `- The honest question: has at least ONE real, genuine sign of traction emerged since last time?\n\n` +
+      `MARAE NEWS CHECK (https://app.clickup.com/t/86d410gj1):\n` +
+      `- 15-20 min focused search for new official templates, funding news relevant to current conversations, or anything updating the existing national context research.\n\n` +
+      `This is a real, honest, manual review — not something MaraeHub can assess for you. Record the outcome directly on the two tasks above.` +
+      footer();
+
+    await notifyAdmin(`Monthly Business Survival Checkpoint — due`, body);
+    await db.from('check_alert_state').upsert({ check_name: 'founder_capacity_check', last_alerted_at: new Date().toISOString() });
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'founder_capacity_check',
+    findings_count: founderCheckDue ? 1 : 0,
+    details: founderCheckDue ? [{ note: 'Monthly checkpoint nudge sent' }] : [],
+  });
+
   // ── Self-liveness ping (ClickUp 86d3u7790, self-liveness monitor) ───────
   // Every check above depends on check-deadlines itself actually firing --
   // if pg_cron stops invoking this function, or it throws before reaching
@@ -1476,6 +1533,7 @@ serve(async () => {
       dead_field_detection_findings: deadFieldFindings.length,
       login_health_findings: loginHealthFindings.length,
       silent_adoption_gap_findings: adoptionGapFindings.length,
+      founder_capacity_check_findings: founderCheckDue ? 1 : 0,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
