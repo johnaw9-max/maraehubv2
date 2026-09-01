@@ -64,6 +64,11 @@ const HELP_TOPICS = {
           ]},
           { text: 'Both alerts clear automatically once the issue is resolved.' },
         ] },
+        { q: 'What is the Workload by Trustee section?', a: [
+          { text: 'It shows how many open items each trustee currently carries, pulled together from Compliance, Tasks, Risk Register, Service Reminders, Minutes (meeting actions), and Goals — the modules that record who is responsible for something. Trustees are ranked by open item count, highest first, with an overdue count shown alongside where relevant.' },
+          { text: 'It exists to make silent overload visible — so if one trustee is quietly carrying most of the compliance calendar, the board can see that and rebalance before it leads to burnout or someone stepping down.' },
+          { text: 'It matches names by comparing each item\'s recorded responsible person against trustees\' full names, so it depends on names being entered consistently. Items with no one assigned are not counted here — those already show as "No owner assigned" in their own module.' },
+        ] },
       ]
     },
     {
@@ -1276,13 +1281,31 @@ const HELP_TOPICS = {
           { text: 'The change takes effect the next time they navigate to a new page or refresh.' },
         ] },
         { q: 'What does the "Ban" button do?', a: [
-          { text: 'The "Ban" button immediately blocks that trustee from logging in to MaraeHub.' },
+          { text: 'The "Ban" button opens an offboarding step, then blocks that trustee from logging in to MaraeHub once you confirm.' },
           { items: [
             'Only Admin Trustees can use this — Standard Trustees do not see the button.',
+            'Before the ban is confirmed, MaraeHub first shows every open item currently assigned to that trustee across Compliance, Tasks, Risk Register, Service Reminders, Minutes, and Goals — if there are none, this step is skipped automatically.',
             'It is reversible, not a permanent delete — the account is suspended, not removed.',
             'The banned trustee remains listed on any historical records — minutes, resolutions, feedback, and anything else they created stays exactly as it was.',
           ]},
           { text: 'Use this if a trustee has left the marae or should no longer have access, but the name needs to stay on past records for accountability.' },
+        ] },
+        { q: 'What happens to a departing trustee\'s open items?', a: [
+          { text: 'Click "Ban" next to their name in Settings → Trustee Permissions. If they have any open items, MaraeHub lists all of them before the ban goes ahead.' },
+          { items: [
+            'Choose another trustee from the "Reassign these items to" dropdown and click "Reassign" — every listed item is updated to the new person in one action.',
+            'Or leave it blank and confirm the ban anyway — reassignment is optional, not required, in case those items are already being handled another way.',
+          ]},
+          { text: 'This closes the gap where a departing trustee\'s open items used to just sit there, still assigned to someone who can no longer act on them.' },
+        ] },
+        { q: 'What is the Handover Pack?', a: [
+          { text: 'A printable summary for a trustee who is stepping down — whether or not they are being banned. Click "Handover pack" next to any trustee\'s name in Settings → Trustee Permissions to generate it.' },
+          { items: [
+            'Every open item currently assigned to them, across the same six modules as the reassignment list.',
+            'Every resolution they are linked to through a meeting action, most recent first — real decisions they were involved in, not just currently open items.',
+            'A free-text notes field for anything the incoming trustee needs to know that MaraeHub cannot pull from the data itself.',
+          ]},
+          { text: 'Click "🖨️ Print / Save as PDF" to produce the document. Notes are not saved anywhere — the pack is generated fresh each time from current data, so print or save it before closing the window if you want to keep a copy.' },
         ] },
         { q: 'Can an Admin Trustee demote themselves?', a: 'Only if there is at least one other Admin Trustee on the platform. If you are the only Admin, MaraeHub will block the demotion and show a message asking you to promote another trustee first. This prevents the platform from being left with no Admin Trustee.' },
         { q: 'What happens when a new trustee accepts an invite?', a: 'When an invited trustee clicks the magic link in their email, they are taken directly to the MaraeHub Trustee Dashboard. Their account is pre-set as a Standard Trustee. An Admin Trustee can then go to Settings → Trustee Permissions to upgrade them to Admin if needed.' },
