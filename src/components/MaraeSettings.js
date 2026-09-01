@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials } from '../lib/xero';
 import PrivacyPolicy from './PrivacyPolicy';
+import { fetchAssignableItems, fetchTrusteeDecisions, reassignItems } from '../lib/trusteeWorkload';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
@@ -80,6 +81,20 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [editingEntityName, setEditingEntityName] = useState('');
   const [renamingEntity, setRenamingEntity] = useState(false);
   const [banningId, setBanningId] = useState(null);
+
+  // Offboarding / handover (86d44q123, Steps 2-4)
+  const [offboardTarget, setOffboardTarget] = useState(null);
+  const [offboardItems, setOffboardItems] = useState([]);
+  const [offboardLoading, setOffboardLoading] = useState(false);
+  const [offboardReassignTo, setOffboardReassignTo] = useState('');
+  const [offboardReassigning, setOffboardReassigning] = useState(false);
+  const [offboardError, setOffboardError] = useState('');
+
+  const [handoverTarget, setHandoverTarget] = useState(null);
+  const [handoverItems, setHandoverItems] = useState([]);
+  const [handoverDecisions, setHandoverDecisions] = useState([]);
+  const [handoverLoading, setHandoverLoading] = useState(false);
+  const [handoverNotes, setHandoverNotes] = useState('');
   const entityLimitReached = entities.length >= 3;
 
   // Invite trustee state
@@ -412,19 +427,51 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchTrustees();
   }
 
-  async function banTrustee(trusteeId, name) {
-    setTrusteePermsError('');
-    setTrusteePermsSuccess('');
-    if (!window.confirm(`Ban ${name}? They will no longer be able to log in. This can be reversed later if needed.`)) return;
-    setBanningId(trusteeId);
+  async function openOffboard(trustee) {
+    setOffboardError('');
+    setOffboardReassignTo('');
+    setOffboardTarget(trustee);
+    setOffboardLoading(true);
+    const items = await fetchAssignableItems(trustee.full_name || '');
+    setOffboardItems(items);
+    setOffboardLoading(false);
+  }
+
+  async function confirmReassign() {
+    if (!offboardReassignTo || offboardItems.length === 0) return;
+    setOffboardReassigning(true);
+    await reassignItems(offboardItems, offboardReassignTo);
+    setOffboardReassigning(false);
+    setOffboardItems([]);
+  }
+
+  async function confirmBan() {
+    const trustee = offboardTarget;
+    if (!trustee) return;
+    setOffboardError('');
+    setBanningId(trustee.id);
     const { data, error } = await supabase.functions.invoke('ban-trustee', {
-      body: { trusteeId },
+      body: { trusteeId: trustee.id },
     });
     setBanningId(null);
-    if (error) { setTrusteePermsError(error.message || 'Failed to ban trustee'); return; }
-    if (data?.error) { setTrusteePermsError(data.error); return; }
-    setTrusteePermsSuccess(`${name} has been banned and can no longer log in.`);
+    if (error) { setOffboardError(error.message || 'Failed to ban trustee'); return; }
+    if (data?.error) { setOffboardError(data.error); return; }
+    setTrusteePermsSuccess(`${trustee.full_name || trustee.email} has been banned and can no longer log in.`);
+    setOffboardTarget(null);
     fetchTrustees();
+  }
+
+  async function openHandover(trustee) {
+    setHandoverNotes('');
+    setHandoverTarget(trustee);
+    setHandoverLoading(true);
+    const [items, decisions] = await Promise.all([
+      fetchAssignableItems(trustee.full_name || ''),
+      fetchTrusteeDecisions(trustee.full_name || ''),
+    ]);
+    setHandoverItems(items);
+    setHandoverDecisions(decisions);
+    setHandoverLoading(false);
   }
 
   async function handleChangePassword(e) {
@@ -1257,9 +1304,19 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     >
                       Admin
                     </button>
+                    <button
+                      onClick={() => openHandover(t)}
+                      style={{
+                        fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                        cursor: 'pointer', border: '1px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text2)', fontWeight: 400,
+                      }}
+                    >
+                      Handover pack
+                    </button>
                     {!isYou && (
                       <button
-                        onClick={() => banTrustee(t.id, t.full_name || t.email)}
+                        onClick={() => openOffboard(t)}
                         disabled={banningId === t.id}
                         style={{
                           fontSize: 12, padding: '5px 12px', borderRadius: 6,
@@ -1359,6 +1416,146 @@ export default function MaraeSettings({ profile, isAdmin }) {
         </div>
       </div>
       </>}
+
+      {offboardTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 560, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, margin: 0, color: 'var(--brand)' }}>
+                Offboard {offboardTarget.full_name || offboardTarget.email}
+              </h2>
+              <button onClick={() => setOffboardTarget(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {offboardError && <div className="alert alert-error" style={{ marginBottom: 14 }}>{offboardError}</div>}
+
+            {offboardLoading ? (
+              <div className="loading">Checking assigned items…</div>
+            ) : offboardItems.length === 0 ? (
+              <p style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 18 }}>
+                No open items are currently assigned to {offboardTarget.full_name || offboardTarget.email}.
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 10 }}>
+                  {offboardItems.length} open item{offboardItems.length !== 1 ? 's' : ''} currently assigned to {offboardTarget.full_name || offboardTarget.email}:
+                </p>
+                <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 16 }}>
+                  {offboardItems.map(item => (
+                    <div key={`${item.module}-${item.id}`} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+                      <span style={{ color: 'var(--text3)', fontSize: 13 }}>{item.module}</span> — {item.label}
+                      {item.overdue && <span style={{ color: 'var(--danger, #c0392b)', fontWeight: 600, marginLeft: 6 }}>overdue</span>}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Reassign these items to</label>
+                  <select className="form-input" value={offboardReassignTo} onChange={e => setOffboardReassignTo(e.target.value)}>
+                    <option value="">— Leave unassigned / skip reassignment —</option>
+                    {trustees.filter(t => t.id !== offboardTarget.id).map(t => (
+                      <option key={t.id} value={t.full_name}>{t.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className="btn-secondary"
+                  onClick={confirmReassign}
+                  disabled={!offboardReassignTo || offboardReassigning}
+                  style={{ fontSize: 14, marginBottom: 18 }}
+                >
+                  {offboardReassigning ? 'Reassigning…' : `Reassign ${offboardItems.length} item${offboardItems.length !== 1 ? 's' : ''}`}
+                </button>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              <button className="btn-secondary" onClick={() => openHandover(offboardTarget)} style={{ fontSize: 14 }}>
+                🖨️ Generate handover pack
+              </button>
+              <button
+                onClick={confirmBan}
+                disabled={banningId === offboardTarget.id}
+                style={{ marginLeft: 'auto', background: 'var(--danger, #c0392b)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: banningId === offboardTarget.id ? 'default' : 'pointer' }}
+              >
+                {banningId === offboardTarget.id ? 'Banning…' : 'Confirm Ban'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {handoverTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1001, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <style>{`
+            @media print {
+              body * { visibility: hidden; }
+              #handover-print-area, #handover-print-area * { visibility: visible; }
+              #handover-print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 40px; }
+              .no-print { display: none !important; }
+            }
+          `}</style>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, margin: 0, color: 'var(--brand)' }}>Handover Pack</h2>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => window.print()} className="btn-primary" style={{ fontSize: 14 }}>🖨️ Print / Save as PDF</button>
+                <button onClick={() => setHandoverTarget(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
+              </div>
+            </div>
+
+            {handoverLoading ? (
+              <div className="loading">Gathering handover context…</div>
+            ) : (
+              <div id="handover-print-area">
+                <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, marginBottom: 4 }}>
+                  Handover Pack — {handoverTarget.full_name || handoverTarget.email}
+                </h1>
+                <p style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 20 }}>
+                  Prepared {new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+
+                <h3 style={{ fontSize: 16, marginBottom: 8 }}>Open items ({handoverItems.length})</h3>
+                {handoverItems.length === 0 ? (
+                  <p style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 20 }}>No open items currently assigned.</p>
+                ) : (
+                  <div style={{ marginBottom: 20 }}>
+                    {handoverItems.map(item => (
+                      <div key={`${item.module}-${item.id}`} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+                        <span style={{ color: 'var(--text3)', fontSize: 13 }}>{item.module}</span> — {item.label}
+                        {item.dueDate && <span style={{ color: 'var(--text3)' }}> · due {new Date(item.dueDate + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                        {item.overdue && <span style={{ color: 'var(--danger, #c0392b)', fontWeight: 600, marginLeft: 6 }}>overdue</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <h3 style={{ fontSize: 16, marginBottom: 8 }}>Decisions involved in ({handoverDecisions.length})</h3>
+                {handoverDecisions.length === 0 ? (
+                  <p style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 20 }}>No resolutions linked to this trustee.</p>
+                ) : (
+                  <div style={{ marginBottom: 20 }}>
+                    {handoverDecisions.map(r => (
+                      <div key={r.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: 14 }}>
+                        {r.resolution_number ? `${r.resolution_number} · ` : ''}{r.description} — passed {new Date(r.date_passed + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })} ({r.status})
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <h3 style={{ fontSize: 16, marginBottom: 8 }}>Notes for the incoming trustee</h3>
+                <textarea
+                  className="form-input"
+                  value={handoverNotes}
+                  onChange={e => setHandoverNotes(e.target.value)}
+                  placeholder="Context, contacts, anything the next person should know that isn't captured above…"
+                  style={{ width: '100%', minHeight: 100, fontSize: 14 }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

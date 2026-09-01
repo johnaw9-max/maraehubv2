@@ -5,6 +5,7 @@ import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import { getComplianceStatus } from '../lib/complianceStatus';
 import { getRiskStatus } from '../lib/riskStatus';
 import { buildFocusItems } from '../lib/focusItems';
+import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -369,6 +370,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [showNeverAssessedDetail, setShowNeverAssessedDetail] = useState(false);
   const [showMorePriorities, setShowMorePriorities] = useState(false);
   const [showMoreWorkflows, setShowMoreWorkflows] = useState(false);
+  const [showAllWorkload, setShowAllWorkload] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [expandedComments, setExpandedComments] = useState(new Set());
   const [showAllFull, setShowAllFull] = useState(false);
@@ -883,6 +885,14 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const monthStart       = new Date(today.getFullYear(), today.getMonth(), 1);
   const fourteenDaysAgo  = new Date(today); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
+  const workloadRollup = aggregateByAssignee(normalizeItems({
+    compliance_items:  d.compliance,
+    tasks:              d.tasks,
+    risk_register:       d.risks,
+    service_reminders:  d.reminders,
+    meeting_actions:     d.actions,
+    goals:               d.goals,
+  }));
   const activeWorkflows             = (d.workflowInstances || []).filter(w => w.status === 'active');
   const completedWorkflowsThisMonth = (d.workflowInstances || []).filter(w =>
     w.status === 'complete' && w.completed_at && new Date(w.completed_at) >= monthStart
@@ -1792,6 +1802,40 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 )}
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════ WORKLOAD ══════════════════════════ */}
+      {workloadRollup.length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="⚖️" title="Workload by Trustee" note="open items across Compliance, Tasks, Risk, Service Reminders, Minutes, Goals" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(showAllWorkload ? workloadRollup : workloadRollup.slice(0, 5)).map(w => (
+              <div key={w.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{w.name}</div>
+                <div style={{ fontSize: 14, color: 'var(--text2)' }}>{w.total} open</div>
+                {w.overdue > 0 && (
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger, #c0392b)' }}>{w.overdue} overdue</div>
+                )}
+              </div>
+            ))}
+          </div>
+          {workloadRollup.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllWorkload(s => !s)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                background: 'var(--surface2)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                fontFamily: 'DM Sans, sans-serif', marginTop: 8,
+              }}
+            >
+              <span>{showAllWorkload ? '▲' : '▼'}</span>
+              <span>{showAllWorkload ? 'Show less' : `+${workloadRollup.length - 5} more`}</span>
+            </button>
           )}
         </div>
       )}
