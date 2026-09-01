@@ -800,8 +800,11 @@ export default function MaraeSettings({ profile, isAdmin }) {
           <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
             Automation Level
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
             Choose how much MaraeHub does automatically. You can change this at any time.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20, fontStyle: 'italic' }}>
+            Honest note: this preference does not change any behaviour yet. Every marae currently gets the same real automation (see "Live" below) no matter which option is selected — this is a preview of what each level will mean once that work is built.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
             {[
@@ -851,11 +854,11 @@ export default function MaraeSettings({ profile, isAdmin }) {
                 value: 'automatic',
                 icon: '🟢',
                 title: 'Handle it for me',
-                desc: 'Run in the background and let me know what happened. Best for experienced trustees who trust the platform.',
+                desc: 'Run reminders and notifications in the background. Best for experienced trustees who trust the platform.',
                 info: {
-                  summary: 'MaraeHub runs in the background and handles reminders, workflows and tasks automatically. You receive a notification after it acts. Best for experienced trustees who trust the platform.',
+                  summary: 'MaraeHub runs reminder emails and notifications in the background automatically. Workflow suggestions still show a one-click "Start Workflow" button rather than starting on their own — no automation level changes that today. Best for experienced trustees who trust the platform\'s suggestions.',
                   examples: [
-                    'Service reminder due → workflow starts automatically → tasks assigned → you get notified',
+                    'Service reminder due → "Start Workflow" suggestion appears → one click creates the workflow and its tasks',
                     'Booking approved → finance record created automatically',
                     'Compliance due → reminder email sent automatically to all trustees',
                   ],
@@ -863,11 +866,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     'Booking confirmation email → sent to hirer automatically on approval',
                     'Compliance daily check → emails fire at 8am automatically',
                     'Grant escalating reminders → fire automatically at 30/14/7 days',
-                    'Service reminder → workflow trigger → fires automatically',
+                    'Service reminder matches a workflow template → suggestion button appears, one click starts it',
                     'Finance income → auto-created on booking approval',
                     'Board View insights → update automatically on every page load',
                   ],
-                  coming: [],
+                  coming: [
+                    'Service reminder due → workflow starts with no click needed at all — not yet built',
+                  ],
                   morePill: true,
                 },
               },
