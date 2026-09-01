@@ -1293,7 +1293,7 @@ const HELP_TOPICS = {
         { q: 'What happens to a departing trustee\'s open items?', a: [
           { text: 'Click "Ban" next to their name in Settings → Trustee Permissions. If they have any open items, MaraeHub lists all of them before the ban goes ahead.' },
           { items: [
-            'Choose another trustee from the "Reassign these items to" dropdown and click "Reassign" — every listed item is updated to the new person in one action.',
+            'Choose another trustee from the "Reassign these items to" dropdown, then click the "Reassign" button below it (it shows how many items will move) — every listed item is updated to the new person in one action.',
             'Or leave it blank and confirm the ban anyway — reassignment is optional, not required, in case those items are already being handled another way.',
           ]},
           { text: 'This closes the gap where a departing trustee\'s open items used to just sit there, still assigned to someone who can no longer act on them.' },
