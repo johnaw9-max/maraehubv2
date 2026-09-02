@@ -109,8 +109,17 @@ serve(async (req) => {
   const stateSecret    = serviceRoleKey; // doubles as HMAC key — never exposed to clients
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  // This app has no real path-based routing -- /settings in the URL means
+  // nothing (confirmed: window.location.pathname is never read anywhere in
+  // the frontend). The real navigation mechanism is a ?tab= query param,
+  // read once on mount by TrusteeDashboard.js and matched against its own
+  // valid tab keys. Without tab=settings here, the browser would land on
+  // whatever tab the app defaults to, MaraeSettings.js would never mount,
+  // and this whole banner/status flow below would silently never run --
+  // real bug caught while building this, xero-callback's redirect has the
+  // same gap (not fixed here, out of this function's scope, but real).
   const settingsRedirect = (params: Record<string, string>) =>
-    `${frontendUrl}/settings?${new URLSearchParams(params).toString()}`;
+    `${frontendUrl}/?${new URLSearchParams({ tab: 'settings', ...params }).toString()}`;
 
   async function authenticateCaller(): Promise<{ user: { id: string } } | { error: Response }> {
     const authHeader = req.headers.get('Authorization') ?? '';

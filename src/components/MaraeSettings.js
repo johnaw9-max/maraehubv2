@@ -24,6 +24,16 @@ const XERO_ERROR_MESSAGES = {
   unexpected: 'Something unexpected went wrong — please try again.',
 };
 
+const GOOGLE_ERROR_MESSAGES = {
+  denied: 'You declined the Google connection request.',
+  missing_params: 'The connection attempt was incomplete — please try again.',
+  invalid_state: 'The connection link expired or was invalid — please try connecting again.',
+  token_exchange: 'Google could not verify the connection — please try again.',
+  save_failed: 'The connection succeeded with Google, but saving it failed — please try again.',
+  needs_confirmation: 'A Google Calendar connection already exists — reconnecting requires confirmation.',
+  unexpected: 'Something unexpected went wrong — please try again.',
+};
+
 const NOTIF_LABELS = [
   { key: 'bookings',   icon: '📅', label: 'Booking Reminders',    desc: '48 hours before a confirmed booking' },
   { key: 'compliance', icon: '✅', label: 'Compliance Alerts',     desc: 'Items due within 30 days' },
@@ -53,6 +63,14 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [xeroActionError, setXeroActionError] = useState('');
+
+  // Google Calendar connection state (14yhc7knp50)
+  const [googleStatus, setGoogleStatus] = useState(null); // null = loading
+  const [googleBanner, setGoogleBanner] = useState(null); // null | 'connected' | 'error' | 'needs_confirmation'
+  const [googleBannerReason, setGoogleBannerReason] = useState('');
+  const [googleConnecting, setGoogleConnecting] = useState(false);
+  const [googleDisconnecting, setGoogleDisconnecting] = useState(false);
+  const [googleActionError, setGoogleActionError] = useState('');
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState({ bookings: true, compliance: true, grants: true, actions: true, goals: true });
@@ -134,6 +152,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
     if (isAdmin) { fetchTrustees(); fetchAssignments(); }
     fetchEntities();
     fetchXeroStatus();
+    fetchGoogleStatus();
 
     const params = new URLSearchParams(window.location.search);
     const xeroParam = params.get('xero');
@@ -141,6 +160,14 @@ export default function MaraeSettings({ profile, isAdmin }) {
       setXeroBanner(xeroParam);
       setXeroBannerReason(params.get('reason') || '');
       window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    const googleParam = params.get('google');
+    if (googleParam === 'connected' || googleParam === 'error' || googleParam === 'needs_confirmation') {
+      setGoogleBanner(googleParam);
+      setGoogleBannerReason(params.get('reason') || '');
+      window.history.replaceState(null, '', window.location.pathname);
+      if (googleParam === 'connected') fetchGoogleStatus();
     }
 
     // Deep-link scroll target, e.g. #email-notifications from the "Manage
@@ -181,6 +208,37 @@ export default function MaraeSettings({ profile, isAdmin }) {
       return;
     }
     setXeroStatus({ status: 'not_connected' });
+  }
+
+  async function fetchGoogleStatus() {
+    const { data, error } = await supabase.functions.invoke('google-calendar-callback?action=status', { method: 'GET' });
+    if (error) { setGoogleStatus({ status: 'error' }); return; }
+    setGoogleStatus(data?.connected ? { status: 'connected', googleEmail: data.googleEmail } : { status: 'not_connected' });
+  }
+
+  async function handleConnectGoogle() {
+    setGoogleConnecting(true);
+    setGoogleActionError('');
+    const { data, error } = await supabase.functions.invoke('google-calendar-callback?action=authorize', { method: 'GET' });
+    if (error || !data?.authorizeUrl) {
+      setGoogleActionError('Could not start the Google Calendar connection — please try again.');
+      setGoogleConnecting(false);
+      return;
+    }
+    window.location.href = data.authorizeUrl;
+  }
+
+  async function handleDisconnectGoogle() {
+    if (!window.confirm('Disconnect Google Calendar? Hui dates you have already synced will stay on your calendar, but future syncs will stop until you reconnect.')) return;
+    setGoogleDisconnecting(true);
+    setGoogleActionError('');
+    const { error } = await supabase.functions.invoke('google-calendar-callback?action=disconnect', { method: 'POST' });
+    setGoogleDisconnecting(false);
+    if (error) {
+      setGoogleActionError('Could not disconnect — please try again.');
+      return;
+    }
+    setGoogleStatus({ status: 'not_connected' });
   }
 
   async function fetchNotifPrefs(userId) {
@@ -1419,6 +1477,67 @@ export default function MaraeSettings({ profile, isAdmin }) {
             {saving ? 'Saving…' : 'Save Settings'}
           </button>
         </div>
+      </div>
+
+      {/* ── GOOGLE CALENDAR (14yhc7knp50) — personal, any trustee, not admin-gated ── */}
+      <div className="panel" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          Google Calendar
+        </div>
+        {googleBanner === 'connected' && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#e8f4ef', border: '1px solid #b8ddc8', borderRadius: 8, fontSize: 13, color: '#1a4a3a', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>✅</span>
+            <span>Successfully connected to Google Calendar.</span>
+          </div>
+        )}
+        {(googleBanner === 'error' || googleBanner === 'needs_confirmation') && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, fontSize: 13, color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <span>{GOOGLE_ERROR_MESSAGES[googleBanner === 'needs_confirmation' ? 'needs_confirmation' : googleBannerReason] || 'Could not connect to Google Calendar — please try again.'}</span>
+          </div>
+        )}
+        {googleActionError && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, fontSize: 13, color: 'var(--danger)' }}>
+            {googleActionError}
+          </div>
+        )}
+
+        {googleStatus === null ? (
+          <p style={{ fontSize: 13, color: 'var(--text3)' }}>Checking Google Calendar connection status…</p>
+
+        ) : googleStatus.status === 'connected' ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 22 }}>✅</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>Connected to Google Calendar</div>
+                {googleStatus.googleEmail && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{googleStatus.googleEmail}</div>}
+              </div>
+            </div>
+            <button onClick={handleDisconnectGoogle} disabled={googleDisconnecting} className="btn-secondary" style={{ fontSize: 13, padding: '9px 18px' }}>
+              {googleDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+            </button>
+          </div>
+
+        ) : googleStatus.status === 'error' ? (
+          <div style={{ padding: '14px 16px', background: 'var(--surface2)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: 'var(--text3)' }}>⚠️ Unable to check Google Calendar connection status.</span>
+            <button onClick={fetchGoogleStatus} className="btn-secondary" style={{ fontSize: 12, padding: '7px 14px' }}>
+              Retry
+            </button>
+          </div>
+
+        ) : (
+          <div style={{ padding: '16px 18px', background: '#e8eef8', border: '1px solid #b8cce8', borderRadius: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 4 }}>🔗 Connect Google Calendar</div>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.6 }}>
+              Connect your own Google account to add hui dates to your personal calendar with one click, from any meeting in the Minutes tab. This connects only your own calendar — every trustee connects individually, and nothing is shared between accounts.
+            </p>
+            <button onClick={handleConnectGoogle} disabled={googleConnecting} className="btn-primary" style={{ fontSize: 14, padding: '10px 22px' }}>
+              {googleConnecting ? 'Connecting…' : 'Connect Google Calendar'}
+            </button>
+          </div>
+        )}
       </div>
       </>}
 
