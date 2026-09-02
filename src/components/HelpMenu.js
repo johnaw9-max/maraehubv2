@@ -192,7 +192,7 @@ const HELP_TOPICS = {
             "Supabase — securely stores your marae's data (built on PostgreSQL, a widely-used, proven database system)",
             'Vercel — hosts and delivers the MaraeHub application itself',
             'Xero (optional) — if you choose to connect it, syncs your real accounting data directly into Finance',
-            'Anthropic (Claude) — powers the AI Governance Report, AI Financial Report, and AI Compliance Report, using only the same data already visible on your Board View screen',
+            'Anthropic (Claude) — powers the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report, using only the same data already visible on your Board View screen',
           ]},
           { text: "Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed." },
         ] },
@@ -461,13 +461,23 @@ const HELP_TOPICS = {
       category: 'AI Reports',
       icon: '✨',
       items: [
-        { q: 'What are the AI Governance Report, AI Financial Report, and AI Compliance Report?', a: 'Three buttons at the top of Board View that use AI to write a plain-English narrative report — an opening summary, what needs attention, and specific recommendations, not just a formatted document of your numbers.' },
-        { q: 'How is this different from the Financial Report and Governance Report buttons?', a: 'Financial Report and Governance Report produce a formatted document with your real numbers, ready to print or hand out as-is. The three AI reports use that same real data to write a narrative analysis in plain English, with recommendations — a different kind of document for a different purpose.' },
+        { q: 'What are the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report?', a: 'Four buttons at the top of Board View that use AI to write a plain-English narrative report — an opening summary, what needs attention, and specific recommendations, not just a formatted document of your numbers.' },
+        { q: 'How is this different from the Financial Report and Governance Report buttons?', a: 'Financial Report and Governance Report produce a formatted document with your real numbers, ready to print or hand out as-is. The four AI reports use that same real data to write a narrative analysis in plain English, with recommendations — a different kind of document for a different purpose.' },
         { q: 'What does the AI Financial Report cover?', a: 'Income, expenses, budget variance, deficit or surplus, and any unusual spending worth flagging, followed by 3-5 recommendations in priority order. If your marae has not recorded any income or expenses yet, it says so honestly rather than generating an empty analysis.' },
         { q: 'What does the AI Governance Report cover?', a: 'Compliance, risk, tasks, projects, bookings, and goals across the marae, followed by 3-5 recommendations in priority order.' },
         { q: 'What does the AI Compliance Report cover?', a: [
           { text: 'Compliance items by category, your risk register, and how much emergency hazard guidance you have documented — each written up as a Fact, then a Risk, then a Recommendation, so it is clear what the data actually shows versus what MaraeHub thinks it might mean.' },
           { text: 'If a category or your risk register has nothing recorded yet, the report says so plainly as its own finding rather than skipping it or assuming everything is fine. It is not legal advice — it never states that your marae is or is not legally compliant, only what has or has not been recorded.' },
+        ] },
+        { q: 'What does the AI Actions & Tasks Report cover?', a: [
+          { text: 'Four things, covering your whole marae — tasks and meeting actions are not scoped by entity, so this report is not entity-aware the way the others are:' },
+          { items: [
+            'Overdue tasks and meeting actions, listed by name and who they are assigned to',
+            'Unassigned tasks and actions — open work nobody has been given ownership of',
+            'Workload concentration — who is currently carrying the most open items, and how much of it is overdue',
+            'Stalled workflows — any active workflow that has had no tasks completed in 14 or more days, the same definition used in the Workflow Activity panel',
+          ]},
+          { text: 'It also checks whether your marae has ever marked a task completed or cancelled at all, and says so plainly if not — that pattern is a real, notable fact worth surfacing on its own, separate from what is currently overdue.' },
         ] },
       ]
     },
