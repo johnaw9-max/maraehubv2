@@ -1455,6 +1455,27 @@ CREATE UNIQUE INDEX xero_connections_whole_marae_unique ON public.xero_connectio
 
 alter table xero_connections enable row level security;
 
+create table if not exists google_calendar_connections (
+  id uuid not null default gen_random_uuid(),
+  trustee_id uuid not null,
+  google_email text,
+  access_token text,
+  refresh_token text,
+  access_token_expires_at timestamp with time zone not null,
+  scope text,
+  status text not null default 'active'::text,
+  connected_at timestamp with time zone not null default now(),
+  last_refreshed_at timestamp with time zone,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now()
+);
+
+alter table google_calendar_connections add constraint google_calendar_connections_pkey PRIMARY KEY (id);
+alter table google_calendar_connections add constraint google_calendar_connections_trustee_id_key UNIQUE (trustee_id);
+alter table google_calendar_connections add constraint google_calendar_connections_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+alter table google_calendar_connections enable row level security;
+
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- FUNCTIONS

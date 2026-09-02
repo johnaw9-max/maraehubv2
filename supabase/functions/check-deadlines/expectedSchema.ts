@@ -564,5 +564,19 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "last_refreshed_at",
     "created_at",
     "updated_at"
+  ],
+  "google_calendar_connections": [
+    "id",
+    "trustee_id",
+    "google_email",
+    "access_token",
+    "refresh_token",
+    "access_token_expires_at",
+    "scope",
+    "status",
+    "connected_at",
+    "last_refreshed_at",
+    "created_at",
+    "updated_at"
   ]
 };
