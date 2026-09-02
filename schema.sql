@@ -1164,12 +1164,15 @@ create table if not exists risk_register (
   notes text,
   entity_id uuid,
   trustee_id uuid,
-  compliance_item_id uuid
+  compliance_item_id uuid,
+  asset_id uuid,
+  workflow_prompt_dismissed_at timestamp with time zone
 );
 
 alter table risk_register add constraint risk_register_pkey PRIMARY KEY (id);
 alter table risk_register add constraint risk_register_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES auth.users(id);
 alter table risk_register add constraint risk_register_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table risk_register add constraint risk_register_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE RESTRICT;
 alter table risk_register add constraint risk_register_compliance_item_id_fkey FOREIGN KEY (compliance_item_id) REFERENCES compliance_items(id) ON DELETE RESTRICT;
 
 alter table risk_register enable row level security;

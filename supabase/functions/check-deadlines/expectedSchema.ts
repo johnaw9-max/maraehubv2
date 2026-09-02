@@ -460,7 +460,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "notes",
     "entity_id",
     "trustee_id",
-    "compliance_item_id"
+    "compliance_item_id",
+    "asset_id",
+    "workflow_prompt_dismissed_at"
   ],
   "service_reminders": [
     "id",
