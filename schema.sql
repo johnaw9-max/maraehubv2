@@ -1476,6 +1476,23 @@ alter table google_calendar_connections add constraint google_calendar_connectio
 
 alter table google_calendar_connections enable row level security;
 
+create table if not exists meeting_calendar_syncs (
+  id uuid not null default gen_random_uuid(),
+  meeting_id uuid not null,
+  trustee_id uuid not null,
+  google_event_id text not null,
+  synced_at timestamp with time zone not null default now(),
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now()
+);
+
+alter table meeting_calendar_syncs add constraint meeting_calendar_syncs_pkey PRIMARY KEY (id);
+alter table meeting_calendar_syncs add constraint meeting_calendar_syncs_meeting_trustee_key UNIQUE (meeting_id, trustee_id);
+alter table meeting_calendar_syncs add constraint meeting_calendar_syncs_meeting_id_fkey FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE;
+alter table meeting_calendar_syncs add constraint meeting_calendar_syncs_trustee_id_fkey FOREIGN KEY (trustee_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+alter table meeting_calendar_syncs enable row level security;
+
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- FUNCTIONS

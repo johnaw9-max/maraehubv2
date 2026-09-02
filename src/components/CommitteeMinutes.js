@@ -362,10 +362,32 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
   const [draftError, setDraftError] = useState('');
   const [aiDraft, setAiDraft] = useState(null); // { minutes, resolutions, actions } | null
 
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarSyncing, setCalendarSyncing] = useState(false);
+  const [calendarSyncError, setCalendarSyncError] = useState('');
+  const [calendarSynced, setCalendarSynced] = useState(false);
+
   useEffect(() => {
     supabase.from('marae_settings').select('marae_name').single()
       .then(({ data }) => setMaraeName(data?.marae_name || 'Our Marae'));
   }, []);
+
+  useEffect(() => {
+    supabase.functions.invoke('google-calendar-callback?action=status', { method: 'GET' })
+      .then(({ data }) => setCalendarConnected(!!data?.connected));
+  }, []);
+
+  async function syncToCalendar() {
+    setCalendarSyncing(true);
+    setCalendarSyncError('');
+    const { data, error } = await supabase.functions.invoke('sync-hui-to-calendar', {
+      body: { meetingId: meeting.id },
+    });
+    setCalendarSyncing(false);
+    if (error) { setCalendarSyncError(error.message || 'Could not reach the calendar service'); return; }
+    if (data?.error) { setCalendarSyncError(data.message || data.error); return; }
+    setCalendarSynced(true);
+  }
 
   const fetchDetail = useCallback(async () => {
     setLoadingDetail(true);
@@ -556,9 +578,21 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
             {meeting.chairperson && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Chair: {meeting.chairperson}</span>}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onEdit} style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Edit</button>
-          <button onClick={onDelete} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Delete</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {calendarConnected && (
+              <button
+                onClick={syncToCalendar}
+                disabled={calendarSyncing}
+                style={{ fontSize: 12, color: calendarSynced ? 'var(--brand)' : 'var(--text2)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: calendarSyncing ? 'default' : 'pointer' }}
+              >
+                {calendarSyncing ? 'Syncing…' : calendarSynced ? '✅ Synced — Update' : '📅 Add to my Google Calendar'}
+              </button>
+            )}
+            <button onClick={onEdit} style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Edit</button>
+            <button onClick={onDelete} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Delete</button>
+          </div>
+          {calendarSyncError && <div style={{ fontSize: 11, color: 'var(--danger)', maxWidth: 260, textAlign: 'right' }}>{calendarSyncError}</div>}
         </div>
       </div>
 

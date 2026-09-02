@@ -578,5 +578,14 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "last_refreshed_at",
     "created_at",
     "updated_at"
+  ],
+  "meeting_calendar_syncs": [
+    "id",
+    "meeting_id",
+    "trustee_id",
+    "google_event_id",
+    "synced_at",
+    "created_at",
+    "updated_at"
   ]
 };
