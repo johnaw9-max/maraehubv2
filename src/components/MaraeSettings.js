@@ -1533,6 +1533,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
             <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.6 }}>
               Connect your own Google account to add hui dates to your personal calendar with one click, from any meeting in the Minutes tab. This connects only your own calendar — every trustee connects individually, and nothing is shared between accounts.
             </p>
+            <p style={{ fontSize: 12, color: '#7a4f00', background: '#fdf0dc', border: '1px solid #f0d9a0', borderRadius: 6, padding: '10px 12px', marginBottom: 12, lineHeight: 1.5 }}>
+              ⚠️ This feature is still in early access with Google while we complete their app review. It currently only works for specific accounts approved in advance — if you click Connect and see a Google page saying access is blocked, that's expected for now, not an error on your part. Contact your admin trustee if you'd like to be added.
+            </p>
             <button onClick={handleConnectGoogle} disabled={googleConnecting} className="btn-primary" style={{ fontSize: 14, padding: '10px 22px' }}>
               {googleConnecting ? 'Connecting…' : 'Connect Google Calendar'}
             </button>
