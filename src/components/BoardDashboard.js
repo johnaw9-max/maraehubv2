@@ -362,6 +362,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [compAiReport, setCompAiReport]   = useState('');
   const [compAiError, setCompAiError]     = useState('');
   const [showCompReport, setShowCompReport] = useState(false);
+  const [tasksAiLoading, setTasksAiLoading] = useState(false);
+  const [tasksAiReport, setTasksAiReport]   = useState('');
+  const [tasksAiError, setTasksAiError]     = useState('');
+  const [showTasksReport, setShowTasksReport] = useState(false);
   const [showKpiHistory, setShowKpiHistory] = useState(false);
   const [financeEntityFilter, setFinanceEntityFilter] = useState('all');
   const [complianceEntityFilter, setComplianceEntityFilter] = useState('all');
@@ -1373,6 +1377,77 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     });
   }
 
+  async function generateTasksReport() {
+    setTasksAiLoading(true);
+    setTasksAiError('');
+    setTasksAiReport('');
+
+    const openItems = normalizeItems({ tasks: d.tasks, meeting_actions: d.actions });
+    const overdueItems = openItems.filter(i => i.overdue);
+    const concentration = aggregateByAssignee(openItems);
+
+    const unassignedTasks = (d.tasks || []).filter(t => !t.assigned_to || !t.assigned_to.trim());
+    const unassignedActions = (d.actions || []).filter(a => !a.assigned_to || !a.assigned_to.trim());
+
+    // d.tasks is pre-filtered by BoardDashboard's own fetch to exclude
+    // completed/cancelled tasks, so it structurally cannot answer "has this
+    // marae ever completed a task" -- a small, targeted count-only query is
+    // the only honest way to check this real fact, not a guess from data
+    // that can't see it.
+    const [{ count: totalTaskCount }, { count: doneTaskCount }] = await Promise.all([
+      supabase.from('tasks').select('id', { count: 'exact', head: true }),
+      supabase.from('tasks').select('id', { count: 'exact', head: true }).in('status', ['completed', 'cancelled']),
+    ]);
+    const neverCompleted = (totalTaskCount || 0) > 0 && (doneTaskCount || 0) === 0;
+
+    const context = [
+      `MARAE: ${d.maraeName}`,
+      `DATE: ${new Date().toLocaleDateString('en-NZ')}`,
+      `Note: Tasks and Meeting Actions are not scoped by entity in this system, so all figures below are whole-marae totals.`,
+      ``,
+      `TASKS (${totalTaskCount || 0} ever created, ${(d.tasks || []).length} currently open, ${doneTaskCount || 0} completed or cancelled):`,
+      neverCompleted ? `- Not one task has ever been marked completed or cancelled here — every task that has ever existed is still open.` : null,
+      `- ${unassignedTasks.length} open task${unassignedTasks.length !== 1 ? 's' : ''} with no one assigned.`,
+      ``,
+      `MEETING ACTIONS (${(d.actions || []).length} open total):`,
+      `- ${unassignedActions.length} open action${unassignedActions.length !== 1 ? 's' : ''} with no one assigned.`,
+      ``,
+      `OVERDUE (${overdueItems.length} total, tasks + meeting actions combined):`,
+      overdueItems.length
+        ? overdueItems.slice(0, 15).map(i => `- [${i.module}] ${i.label} — ${i.assignee} (due ${i.dueDate})`).join('\n')
+        : '- Nothing is currently overdue.',
+      ``,
+      `WORKLOAD CONCENTRATION (open tasks + meeting actions by person, most loaded first):`,
+      concentration.length
+        ? concentration.slice(0, 10).map(c => `- ${c.name}: ${c.total} open${c.overdue > 0 ? `, ${c.overdue} overdue` : ''}`).join('\n')
+        : '- No open items are currently assigned to anyone.',
+      ``,
+      `STALLED WORKFLOWS (active, started 14+ days ago, zero tasks completed since):`,
+      stalledWorkflows.length
+        ? stalledWorkflows.map(w => `- ${w.name}${w.entity_name ? ` (${w.entity_name})` : ''}, started ${w.started_at ? new Date(w.started_at).toLocaleDateString('en-NZ') : 'unknown date'}`).join('\n')
+        : '- No workflows are currently stalled.',
+    ].filter(line => line !== null).join('\n');
+
+    const { data, error } = await supabase.functions.invoke('generate-tasks-report', {
+      body: { maraeName: d.maraeName, context },
+    });
+
+    setTasksAiLoading(false);
+
+    if (error) { setTasksAiError(error.message || 'Could not reach AI service'); return; }
+    if (data?.error) { setTasksAiError(data.error); return; }
+
+    setTasksAiReport(data?.report || '');
+    setShowTasksReport(true);
+  }
+
+  function copyTasksReport() {
+    navigator.clipboard.writeText(tasksAiReport).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   function reportEntityName(entityId) {
     if (entityId === 'all') return 'All Entities';
     return (d.entities || []).find(e => e.id === entityId)?.name || 'Unknown Entity';
@@ -1545,6 +1620,13 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           >
             {compAiLoading ? '⏳ Generating…' : '✨ AI Compliance Report'}
           </button>
+          <button
+            onClick={generateTasksReport}
+            disabled={tasksAiLoading}
+            style={{ background: tasksAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: tasksAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {tasksAiLoading ? '⏳ Generating…' : '✨ AI Actions & Tasks Report'}
+          </button>
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"
@@ -1697,6 +1779,38 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{compAiError}</div>
             ) : (
               <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{compAiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI ACTIONS & TASKS REPORT MODAL ────────────────────────────── */}
+      {(showTasksReport || tasksAiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Actions & Tasks Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {tasksAiReport && (
+                  <button
+                    onClick={copyTasksReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowTasksReport(false); setTasksAiError(''); setTasksAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {tasksAiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{tasksAiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{tasksAiReport}</div>
             )}
           </div>
         </div>
