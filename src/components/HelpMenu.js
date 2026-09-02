@@ -192,6 +192,7 @@ const HELP_TOPICS = {
             "Supabase — securely stores your marae's data (built on PostgreSQL, a widely-used, proven database system)",
             'Vercel — hosts and delivers the MaraeHub application itself',
             'Xero (optional) — if you choose to connect it, syncs your real accounting data directly into Finance',
+            'Google Calendar (optional, personal) — if you choose to connect your own Google account, lets you add individual hui dates to your own calendar. This is a personal connection per trustee, not marae-wide, and nothing is shared between trustees\' calendars',
             'Anthropic (Claude) — powers the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report, using only the same data already visible on your Board View screen',
           ]},
           { text: "Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed." },
@@ -1114,6 +1115,17 @@ const HELP_TOPICS = {
       items: [
         { q: 'How do I change the marae name?', a: 'Go to the Settings tab. You can update the marae name, location, iwi, hapū, and contact details. Click "Save Settings" and the name will update across the whole platform immediately.' },
         { q: 'Can I add multiple checklist items at once?', a: 'Yes — go to Settings and open the Exit Checklist Template section. If you paste text containing more than one line into the "Add an item, or paste multiple lines at once" field, MaraeHub automatically splits it into separate checklist items instead of adding it as one long item. Pasting or typing a single line still works as before.' },
+      ]
+    },
+    {
+      category: 'Google Calendar',
+      icon: '📅',
+      items: [
+        { q: 'What does connecting Google Calendar do?', a: 'It lets you add a specific hui date to your own personal Google Calendar with one click, from the meeting detail page in Minutes. This is a personal connection — every trustee connects their own Google account individually, and nothing is shared between trustees\' calendars.' },
+        { q: 'How do I connect my Google Calendar?', a: 'Go to Settings and find the Google Calendar section. Click "Connect Google Calendar" and sign in with your Google account when prompted. Once connected, your Google email address is shown in Settings.' },
+        { q: 'How do I add a hui to my calendar?', a: 'Open the meeting in the Minutes tab and click "📅 Add to my Google Calendar" near the top of the page. This button only appears once you have connected your Google account. Clicking it again after the meeting date changes updates the same calendar event rather than creating a duplicate.' },
+        { q: 'Does this sync automatically, or do I have to do it myself?', a: 'You choose, meeting by meeting. MaraeHub does not automatically push every meeting to every connected trustee\'s calendar — nothing appears on your personal calendar without you clicking the button yourself.' },
+        { q: 'How do I disconnect?', a: 'Go to Settings → Google Calendar and click "Disconnect". Hui dates already added to your calendar stay there — disconnecting only stops future syncing until you reconnect.' },
       ]
     },
     {
