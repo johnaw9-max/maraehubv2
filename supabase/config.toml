@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.iwi-pull-snapshot]
+verify_jwt = false
