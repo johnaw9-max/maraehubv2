@@ -289,6 +289,32 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "active",
     "created_at"
   ],
+  "gl_category_account_map": [
+    "id",
+    "category",
+    "module",
+    "account_id",
+    "created_at"
+  ],
+  "gl_journal_entries": [
+    "id",
+    "entry_date",
+    "description",
+    "source_table",
+    "source_id",
+    "entry_type",
+    "voids_entry_id",
+    "created_by",
+    "created_at"
+  ],
+  "gl_journal_lines": [
+    "id",
+    "journal_entry_id",
+    "account_id",
+    "debit",
+    "credit",
+    "created_at"
+  ],
   "goal_links": [
     "id",
     "goal_id",

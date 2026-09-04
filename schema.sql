@@ -713,6 +713,106 @@ create policy "Admin trustees can manage gl_accounts"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))));
 
 
+-- ── GL_CATEGORY_ACCOUNT_MAP ──────────────────────────────────────────────
+create table if not exists gl_category_account_map (
+  id uuid not null default gen_random_uuid(),
+  category text not null,
+  module text not null,
+  account_id uuid not null,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table gl_category_account_map add constraint gl_category_account_map_pkey PRIMARY KEY (id);
+alter table gl_category_account_map add constraint gl_category_account_map_account_id_fkey FOREIGN KEY (account_id) REFERENCES gl_accounts(id) ON DELETE RESTRICT;
+alter table gl_category_account_map add constraint gl_category_account_map_module_check CHECK ((module = ANY (ARRAY['income'::text, 'expense'::text])));
+alter table gl_category_account_map add constraint gl_category_account_map_category_module_key UNIQUE (category, module);
+
+alter table gl_category_account_map enable row level security;
+
+create policy "Admin trustees can manage gl_category_account_map"
+  on gl_category_account_map for all
+  to authenticated
+  using (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))))
+  with check (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))));
+
+
+-- ── GL_JOURNAL_ENTRIES ────────────────────────────────────────────────────
+create table if not exists gl_journal_entries (
+  id uuid not null default gen_random_uuid(),
+  entry_date date not null,
+  description text not null,
+  source_table text,
+  source_id uuid,
+  entry_type text not null,
+  voids_entry_id uuid,
+  created_by text,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table gl_journal_entries add constraint gl_journal_entries_pkey PRIMARY KEY (id);
+alter table gl_journal_entries add constraint gl_journal_entries_voids_entry_id_fkey FOREIGN KEY (voids_entry_id) REFERENCES gl_journal_entries(id) ON DELETE SET NULL;
+alter table gl_journal_entries add constraint gl_journal_entries_entry_type_check CHECK ((entry_type = ANY (ARRAY['recognition'::text, 'clearing'::text, 'void'::text, 'manual'::text])));
+alter table gl_journal_entries add constraint gl_journal_entries_source_table_check CHECK (((source_table IS NULL) OR (source_table = ANY (ARRAY['finance_income'::text, 'finance_expenses'::text]))));
+
+CREATE INDEX idx_gl_journal_entries_source ON public.gl_journal_entries USING btree (source_table, source_id);
+CREATE INDEX idx_gl_journal_entries_date ON public.gl_journal_entries USING btree (entry_date);
+
+alter table gl_journal_entries enable row level security;
+
+create policy "Admin trustees can manage gl_journal_entries"
+  on gl_journal_entries for all
+  to authenticated
+  using (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))))
+  with check (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))));
+
+
+-- ── GL_JOURNAL_LINES ──────────────────────────────────────────────────────
+-- Real integrity enforced at the schema level via
+-- trg_check_journal_lines_balance (a statement-level AFTER INSERT trigger
+-- using a transition table): every journal entry's lines must balance
+-- (debit = credit) and number at least 2, checked per INSERT statement --
+-- deliberately requiring all of an entry's lines to be inserted together
+-- in one multi-row INSERT, which is exactly what
+-- src/lib/glPosting.js's insertJournalEntry() does. See the migration
+-- (20260904020000_gl_journal_schema.sql) for the trigger function itself.
+create table if not exists gl_journal_lines (
+  id uuid not null default gen_random_uuid(),
+  journal_entry_id uuid not null,
+  account_id uuid not null,
+  debit numeric not null default 0,
+  credit numeric not null default 0,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table gl_journal_lines add constraint gl_journal_lines_pkey PRIMARY KEY (id);
+alter table gl_journal_lines add constraint gl_journal_lines_journal_entry_id_fkey FOREIGN KEY (journal_entry_id) REFERENCES gl_journal_entries(id) ON DELETE CASCADE;
+alter table gl_journal_lines add constraint gl_journal_lines_account_id_fkey FOREIGN KEY (account_id) REFERENCES gl_accounts(id) ON DELETE RESTRICT;
+alter table gl_journal_lines add constraint gl_journal_lines_debit_credit_check CHECK (((debit >= (0)::numeric) AND (credit >= (0)::numeric) AND (((debit > (0)::numeric) AND (credit = (0)::numeric)) OR ((credit > (0)::numeric) AND (debit = (0)::numeric)))));
+
+CREATE INDEX idx_gl_journal_lines_entry ON public.gl_journal_lines USING btree (journal_entry_id);
+CREATE INDEX idx_gl_journal_lines_account ON public.gl_journal_lines USING btree (account_id);
+
+alter table gl_journal_lines enable row level security;
+
+create policy "Admin trustees can manage gl_journal_lines"
+  on gl_journal_lines for all
+  to authenticated
+  using (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))))
+  with check (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))));
+
+
 -- ── GOAL_LINKS ────────────────────────────────────────────────────────────
 create table if not exists goal_links (
   id uuid not null default gen_random_uuid(),
