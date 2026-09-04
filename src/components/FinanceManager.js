@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
@@ -86,7 +87,7 @@ const BUDGET_STATUS_CFG = {
 const EMPTY_INCOME = {
   date: new Date().toISOString().split('T')[0],
   description: '', amount: '', category: 'Other',
-  reference: '', notes: '', status: 'Confirmed', entity_id: '', gst_amount: '',
+  reference: '', notes: '', status: 'Confirmed', entity_id: '', gst_amount: '', payer: '',
 };
 const EMPTY_EXPENSE = {
   date: new Date().toISOString().split('T')[0],
@@ -127,6 +128,7 @@ export default function FinanceManager() {
   const [loading, setLoading]   = useState(true);
   const [xero, setXero] = useState(null); // null = still resolving
   const [gstRegistered, setGstRegistered] = useState(false);
+  const [maraeName, setMaraeName] = useState('MaraeHub');
 
   // Modals
   const [showIncomeModal, setShowIncomeModal]   = useState(false);
@@ -210,13 +212,14 @@ export default function FinanceManager() {
       supabase.from('assets').select('value'),
       supabase.from('contacts').select('full_name').order('full_name'),
       supabase.from('entities').select('id, name').order('name'),
-      supabase.from('marae_settings').select('gst_registered').limit(1).single(),
+      supabase.from('marae_settings').select('gst_registered, marae_name').limit(1).single(),
     ]);
     setIncome(incRes.data || []);
     setExpenses(expRes.data || []);
     setBudgets(budRes.data || []);
     setEntities(entRes.data || []);
     setGstRegistered(settRes.data?.gst_registered === true);
+    setMaraeName(settRes.data?.marae_name || 'MaraeHub');
     const bs = bsRes.data;
     if (bs) {
       setBsId(bs.id);
@@ -354,6 +357,7 @@ export default function FinanceManager() {
       reference: row.reference || '', notes: row.notes || '',
       status: row.status || 'Confirmed', entity_id: row.entity_id || '',
       gst_amount: row.gst_amount != null ? String(row.gst_amount) : '',
+      payer: row.payer || '',
     });
     setEditId(row.id); setFormError(''); setShowIncomeModal(true);
   }
@@ -373,6 +377,7 @@ export default function FinanceManager() {
       status: incomeForm.status,
       entity_id: incomeForm.entity_id || null,
       gst_amount: incomeForm.gst_amount === '' ? null : parseFloat(incomeForm.gst_amount),
+      payer: incomeForm.payer.trim() || null,
     };
     const { error } = editId
       ? await supabase.from('finance_income').update(payload).eq('id', editId)
@@ -824,6 +829,59 @@ ${gstSummaryHtml}
 </body></html>`);
     win.document.close();
     win.print();
+  }
+
+  // ── ACCOUNTANT EXPORT (CSV, Reports tab only) ──────────────────────────────
+  // Deliberately a different shape to the two print reports above: pure
+  // transaction rows, no summary cards, no running balance -- a summary row
+  // mixed into transaction data would break a clean import into Xero/MYOB/
+  // Excel. Reuses the same period-filtered, entity-filtered dataset
+  // printGeneralLedger() already uses (reportIncome/reportExpenses), not
+  // printAGMReport()'s always-current-FY one (logged separately as a real,
+  // pre-existing bug -- deliberately not fixed here).
+
+  function exportAccountantCSV() {
+    const matchEntity = row => entityFilter === 'all' || row.entity_id === entityFilter || row.entity_id === null;
+    const eInc = (reportIncome  !== null ? reportIncome  : income).filter(matchEntity);
+    const eExp = (reportExpenses !== null ? reportExpenses : expenses).filter(matchEntity);
+    const entityName = id => id ? (entities.find(e => e.id === id)?.name || 'Unknown') : 'Shared';
+
+    const rows = [
+      ...eInc.map(r => ({
+        Date: r.date, Type: 'Income', Category: r.category, Group: 'Revenue',
+        Description: r.description || '', 'Payee/Payer': r.payer || '', Reference: r.reference || '',
+        Status: r.status || '', ...(entities.length > 0 ? { Entity: entityName(r.entity_id) } : {}),
+        Notes: r.notes || '', 'Amount (NZD)': parseFloat(r.amount || 0).toFixed(2),
+        ...(gstRegistered ? {
+          'GST Amount (NZD)': r.gst_amount != null ? parseFloat(r.gst_amount).toFixed(2) : '',
+          'GST-Exclusive Amount (NZD)': r.gst_amount != null ? (parseFloat(r.amount || 0) - parseFloat(r.gst_amount)).toFixed(2) : '',
+          'GST Status': r.gst_amount != null ? 'Recorded' : 'Missing',
+        } : {}),
+      })),
+      ...eExp.map(r => ({
+        Date: r.date, Type: 'Expense', Category: r.category, Group: expenseCategoryGroup(r.category),
+        Description: r.description || '', 'Payee/Payer': r.payee || '', Reference: r.reference || '',
+        Status: r.status || '', ...(entities.length > 0 ? { Entity: entityName(r.entity_id) } : {}),
+        Notes: r.notes || '', 'Amount (NZD)': parseFloat(r.amount || 0).toFixed(2),
+        ...(gstRegistered ? {
+          'GST Amount (NZD)': r.gst_amount != null ? parseFloat(r.gst_amount).toFixed(2) : '',
+          'GST-Exclusive Amount (NZD)': r.gst_amount != null ? (parseFloat(r.amount || 0) - parseFloat(r.gst_amount)).toFixed(2) : '',
+          'GST Status': r.gst_amount != null ? 'Recorded' : 'Missing',
+        } : {}),
+      })),
+    ].sort((a, b) => (a.Date < b.Date ? -1 : a.Date > b.Date ? 1 : 0));
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    a.href = url;
+    a.download = `${slug(maraeName)}_finance-export_${slug(periodLabel)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   if (loading) return <div className="loading">Loading finance data...</div>;
@@ -1381,6 +1439,9 @@ ${gstSummaryHtml}
                 <button className="btn-secondary" onClick={printGeneralLedger} style={{ fontSize: 13 }}>
                   📒 General Ledger
                 </button>
+                <button className="btn-secondary" onClick={exportAccountantCSV} style={{ fontSize: 13 }}>
+                  ⬇️ Export for Accountant (CSV)
+                </button>
                 <button className="btn-primary" onClick={printAGMReport} style={{ fontSize: 13 }}>
                   🖨️ Generate AGM Report
                 </button>
@@ -1586,9 +1647,25 @@ ${gstSummaryHtml}
                 </select>
               </div>
             )}
-            <div className="form-group">
-              <label className="form-label">Reference Number</label>
-              <input className="form-input" value={incomeForm.reference} onChange={e => setIncomeForm(f => ({ ...f, reference: e.target.value }))} placeholder="e.g. INV-001" />
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Payer</label>
+                <input
+                  list="finance-payer-list"
+                  className="form-input"
+                  value={incomeForm.payer}
+                  onChange={e => setIncomeForm(f => ({ ...f, payer: e.target.value }))}
+                  placeholder="Search contacts or type a name"
+                  autoComplete="off"
+                />
+                <datalist id="finance-payer-list">
+                  {contactNames.map(name => <option key={name} value={name} />)}
+                </datalist>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reference Number</label>
+                <input className="form-input" value={incomeForm.reference} onChange={e => setIncomeForm(f => ({ ...f, reference: e.target.value }))} placeholder="e.g. INV-001" />
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Notes</label>
