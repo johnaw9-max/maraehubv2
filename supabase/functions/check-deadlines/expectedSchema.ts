@@ -279,6 +279,16 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "updated_at",
     "data"
   ],
+  "gl_accounts": [
+    "id",
+    "code",
+    "name",
+    "account_type",
+    "normal_balance",
+    "description",
+    "active",
+    "created_at"
+  ],
   "goal_links": [
     "id",
     "goal_id",

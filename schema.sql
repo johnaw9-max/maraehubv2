@@ -680,6 +680,39 @@ create policy "founder_notes: authenticated access"
   with check (true);
 
 
+-- ── GL_ACCOUNTS ───────────────────────────────────────────────────────────
+create table if not exists gl_accounts (
+  id uuid not null default gen_random_uuid(),
+  code integer not null,
+  name text not null,
+  account_type text not null,
+  normal_balance text not null,
+  description text,
+  active boolean not null default true,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table gl_accounts add constraint gl_accounts_pkey PRIMARY KEY (id);
+alter table gl_accounts add constraint gl_accounts_code_key UNIQUE (code);
+alter table gl_accounts add constraint gl_accounts_account_type_check CHECK ((account_type = ANY (ARRAY['Revenue'::text, 'Expense'::text, 'Asset'::text, 'Liability'::text, 'Equity'::text])));
+alter table gl_accounts add constraint gl_accounts_normal_balance_check CHECK ((normal_balance = (CASE WHEN (account_type = ANY (ARRAY['Asset'::text, 'Expense'::text])) THEN 'Debit'::text ELSE 'Credit'::text END)));
+alter table gl_accounts add constraint gl_accounts_code_range_check CHECK ((((account_type = 'Revenue'::text) AND (code BETWEEN 200 AND 299)) OR ((account_type = 'Expense'::text) AND (code BETWEEN 300 AND 499)) OR ((account_type = 'Asset'::text) AND (code BETWEEN 600 AND 799)) OR ((account_type = 'Liability'::text) AND (code BETWEEN 800 AND 899)) OR ((account_type = 'Equity'::text) AND (code BETWEEN 900 AND 999))));
+
+CREATE INDEX idx_gl_accounts_account_type ON public.gl_accounts USING btree (account_type);
+
+alter table gl_accounts enable row level security;
+
+create policy "Admin trustees can manage gl_accounts"
+  on gl_accounts for all
+  to authenticated
+  using (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))))
+  with check (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))));
+
+
 -- ── GOAL_LINKS ────────────────────────────────────────────────────────────
 create table if not exists goal_links (
   id uuid not null default gen_random_uuid(),
