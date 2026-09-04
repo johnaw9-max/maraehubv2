@@ -561,7 +561,8 @@ create table if not exists finance_expenses (
   notes text,
   status text not null default 'Paid'::text,
   created_at timestamp with time zone not null default now(),
-  entity_id uuid
+  entity_id uuid,
+  gst_amount numeric
 );
 
 alter table finance_expenses add constraint finance_expenses_pkey PRIMARY KEY (id);
@@ -569,6 +570,7 @@ alter table finance_expenses add constraint finance_expenses_entity_id_fkey FORE
 alter table finance_expenses add constraint finance_expenses_category_check CHECK ((category = ANY (ARRAY['Maintenance and Repairs'::text, 'Utilities'::text, 'Insurance'::text, 'Events'::text, 'Administration'::text, 'Wages'::text, 'Equipment'::text, 'Cleaning'::text, 'Other'::text])));
 alter table finance_expenses add constraint finance_expenses_amount_check CHECK ((amount >= (0)::numeric));
 alter table finance_expenses add constraint finance_expenses_status_check CHECK ((status = ANY (ARRAY['Paid'::text, 'Pending'::text])));
+alter table finance_expenses add constraint finance_expenses_gst_amount_check CHECK ((gst_amount IS NULL OR (gst_amount >= (0)::numeric AND gst_amount <= amount)));
 
 CREATE INDEX idx_finance_expenses_category ON public.finance_expenses USING btree (category);
 CREATE INDEX idx_finance_expenses_date ON public.finance_expenses USING btree (date);
@@ -601,7 +603,11 @@ create table if not exists finance_income (
   created_at timestamp with time zone not null default now(),
   invoice_sent_at timestamp with time zone,
   invoice_paid_at timestamp with time zone,
-  entity_id uuid
+  entity_id uuid,
+  gst_amount numeric,
+  payer text,
+  receipt_url text,
+  receipt_name text
 );
 
 alter table finance_income add constraint finance_income_pkey PRIMARY KEY (id);
@@ -609,6 +615,7 @@ alter table finance_income add constraint finance_income_entity_id_fkey FOREIGN 
 alter table finance_income add constraint finance_income_amount_check CHECK ((amount >= (0)::numeric));
 alter table finance_income add constraint finance_income_category_check CHECK ((category = ANY (ARRAY['Booking Income'::text, 'Grant Income'::text, 'Koha'::text, 'Hire Equipment'::text, 'Fundraiser'::text, 'Other'::text])));
 alter table finance_income add constraint finance_income_status_check CHECK ((status = ANY (ARRAY['Confirmed'::text, 'Pending'::text])));
+alter table finance_income add constraint finance_income_gst_amount_check CHECK ((gst_amount IS NULL OR (gst_amount >= (0)::numeric AND gst_amount <= amount)));
 
 CREATE INDEX idx_finance_income_category ON public.finance_income USING btree (category);
 CREATE INDEX idx_finance_income_date ON public.finance_income USING btree (date);
@@ -625,6 +632,32 @@ create policy "Trustees can manage finance_income within their entities"
   with check (((EXISTS ( SELECT 1
    FROM profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
+-- ── FINANCE_OPENING_BALANCES ──────────────────────────────────────────────
+create table if not exists finance_opening_balances (
+  id uuid not null default gen_random_uuid(),
+  financial_year integer not null,
+  opening_balance numeric not null default 0,
+  notes text,
+  set_by text,
+  set_at timestamp with time zone not null default now()
+);
+
+alter table finance_opening_balances add constraint finance_opening_balances_pkey PRIMARY KEY (id);
+alter table finance_opening_balances add constraint finance_opening_balances_financial_year_key UNIQUE (financial_year);
+
+alter table finance_opening_balances enable row level security;
+
+create policy "Admin trustees can manage finance_opening_balances"
+  on finance_opening_balances for all
+  to authenticated
+  using (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))))
+  with check (EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text) AND (profiles.trustee_role = 'admin'::text))));
 
 
 -- ── FOUNDER_NOTES ─────────────────────────────────────────────────────────
@@ -850,7 +883,8 @@ create table if not exists marae_settings (
   bank_csv_mapping jsonb,
   emergency_plan_supported_by text,
   emergency_plan_history text,
-  reminders_paused boolean not null default false
+  reminders_paused boolean not null default false,
+  gst_registered boolean not null default false
 );
 
 alter table marae_settings add constraint marae_settings_pkey PRIMARY KEY (id);

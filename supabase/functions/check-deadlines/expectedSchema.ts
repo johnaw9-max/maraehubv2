@@ -241,7 +241,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "notes",
     "status",
     "created_at",
-    "entity_id"
+    "entity_id",
+    "gst_amount"
   ],
   "finance_income": [
     "id",
@@ -257,7 +258,19 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_at",
     "invoice_sent_at",
     "invoice_paid_at",
-    "entity_id"
+    "entity_id",
+    "gst_amount",
+    "payer",
+    "receipt_url",
+    "receipt_name"
+  ],
+  "finance_opening_balances": [
+    "id",
+    "financial_year",
+    "opening_balance",
+    "notes",
+    "set_by",
+    "set_at"
   ],
   "founder_notes": [
     "marae_name",
@@ -351,7 +364,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "bank_csv_mapping",
     "emergency_plan_supported_by",
     "emergency_plan_history",
-    "reminders_paused"
+    "reminders_paused",
+    "gst_registered"
   ],
   "meeting_actions": [
     "id",
