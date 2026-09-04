@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import useProfiles from '../lib/useProfiles';
+import { syncEntryForAmountChange } from '../lib/glPosting';
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -164,7 +165,7 @@ export default function GrantsTracker() {
           .eq('source_id', id)
           .maybeSingle();
         if (!existing) {
-          await supabase.from('finance_income').insert({
+          const payload = {
             date: grant.decision_date || new Date().toISOString().split('T')[0],
             description: `Grant income — ${grant.name} (${grant.funder || 'unknown funder'})`,
             amount: parseFloat(grant.amount || 0),
@@ -172,7 +173,9 @@ export default function GrantsTracker() {
             status: 'Confirmed',
             source_type: 'grant',
             source_id: id,
-          });
+          };
+          const { data } = await supabase.from('finance_income').insert(payload).select('id').single();
+          if (data?.id) await syncEntryForAmountChange({ ...payload, id: data.id }, 'income');
         }
       }
     }

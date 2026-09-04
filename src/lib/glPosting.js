@@ -208,3 +208,99 @@ export async function voidJournalEntry(entryId, reason) {
     entryType: 'void', voidsEntryId: entryId, lines: voidLines,
   });
 }
+
+// ─── STEP 2B: HIGHER-LEVEL SYNC FUNCTIONS ──────────────────────────────
+// Every real write path (15 call sites across FinanceManager.js,
+// BookingsManager.js, BookingInvoice.js, GrantsTracker.js,
+// BankReconciliation.js) calls one of these after its own write already
+// succeeded, rather than each site containing bespoke GL decision logic.
+// These deliberately catch and log rather than throw -- a GL posting
+// failure must never block or roll back a trustee's save; it becomes a
+// visible, fixable gap (logged to console), not a blocked action.
+
+function activeEntries(entries) {
+  const voidedIds = new Set(entries.filter(e => e.entry_type === 'void').map(e => e.voids_entry_id));
+  return entries.filter(e => e.entry_type !== 'void' && !voidedIds.has(e.id));
+}
+
+// Call after any insert/update that changes amount, category, gst_amount,
+// or date. Handles the real booking-placeholder case (rows created at
+// amount 0, filled in later) -- nothing posts for a zero amount, and an
+// existing entry gets voided if a correction brings it back to zero.
+export async function syncEntryForAmountChange(row, module) {
+  try {
+    const sourceTable = module === 'income' ? 'finance_income' : 'finance_expenses';
+    const amount = parseFloat(row.amount || 0);
+    const entries = await getJournalEntriesForRow(sourceTable, row.id);
+    const active = activeEntries(entries);
+    const recognition = active.find(e => e.entry_type === 'recognition');
+    const clearing = active.find(e => e.entry_type === 'clearing');
+
+    if (amount === 0) {
+      if (clearing) await voidJournalEntry(clearing.id, 'Amount corrected to zero');
+      if (recognition) await voidJournalEntry(recognition.id, 'Amount corrected to zero');
+      return null;
+    }
+
+    if (!recognition) {
+      return await (module === 'income' ? postIncomeEntry(row) : postExpenseEntry(row));
+    }
+
+    // Recognition already exists -- void it (and any clearing, which was
+    // calculated against the old amount) and repost fresh from current
+    // values. If the row is already Confirmed/Paid, the fresh recognition
+    // posts straight to Bank -- a corrected, already-cleared transaction
+    // doesn't need to simulate going through AR/AP again.
+    if (clearing) await voidJournalEntry(clearing.id, 'Amount changed, reposting');
+    await voidJournalEntry(recognition.id, 'Amount changed, reposting');
+    return await (module === 'income' ? postIncomeEntry(row) : postExpenseEntry(row));
+  } catch (err) {
+    console.error('[glPosting] syncEntryForAmountChange failed:', err.message);
+    return null;
+  }
+}
+
+// Call only for a pure status toggle (Pending <-> Confirmed/Paid) where
+// amount/category/gst_amount/date are unchanged. Never touches the
+// recognition entry -- only posts or voids the separate clearing entry.
+export async function syncEntryForStatusChange(row, module) {
+  try {
+    const sourceTable = module === 'income' ? 'finance_income' : 'finance_expenses';
+    const amount = parseFloat(row.amount || 0);
+    if (amount === 0) return null; // nothing was ever posted for a zero-amount row
+
+    const entries = await getJournalEntriesForRow(sourceTable, row.id);
+    const active = activeEntries(entries);
+    const recognition = active.find(e => e.entry_type === 'recognition');
+    const clearing = active.find(e => e.entry_type === 'clearing');
+    const clearedStatus = module === 'income' ? 'Confirmed' : 'Paid';
+
+    if (!recognition) return null; // nothing recognised yet, nothing to clear
+
+    if (row.status === clearedStatus && !clearing) {
+      return await postClearingEntry(row, module);
+    }
+    if (row.status !== clearedStatus && clearing) {
+      return await voidJournalEntry(clearing.id, 'Reverted to Pending');
+    }
+    return null;
+  } catch (err) {
+    console.error('[glPosting] syncEntryForStatusChange failed:', err.message);
+    return null;
+  }
+}
+
+// Call before/after deleting a finance_income or finance_expenses row --
+// voids whatever's active (recognition and/or clearing) rather than
+// assuming a fixed shape.
+export async function voidAllEntriesForRow(sourceTable, sourceId, reason) {
+  try {
+    const entries = await getJournalEntriesForRow(sourceTable, sourceId);
+    const active = activeEntries(entries);
+    for (const e of active) {
+      await voidJournalEntry(e.id, reason);
+    }
+  } catch (err) {
+    console.error('[glPosting] voidAllEntriesForRow failed:', err.message);
+  }
+}

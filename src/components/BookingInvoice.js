@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { sendNotification, invoiceBody } from '../lib/notify';
+import { syncEntryForAmountChange, syncEntryForStatusChange } from '../lib/glPosting';
 
 function fmt(d) {
   if (!d) return '—';
@@ -45,10 +46,12 @@ export default function BookingInvoice({ booking, onClose }) {
   async function handleSaveAmount() {
     if (!income) return;
     setSaving(true); setError(''); setSuccess('');
-    const { error: err } = await supabase.from('finance_income').update({ amount: parseFloat(amount) || 0 }).eq('id', income.id);
+    const newAmount = parseFloat(amount) || 0;
+    const { error: err } = await supabase.from('finance_income').update({ amount: newAmount }).eq('id', income.id);
+    if (err) { setSaving(false); setError(err.message); return; }
+    await syncEntryForAmountChange({ ...income, amount: newAmount }, 'income');
     setSaving(false);
-    if (err) { setError(err.message); return; }
-    setIncome(prev => ({ ...prev, amount: parseFloat(amount) || 0 }));
+    setIncome(prev => ({ ...prev, amount: newAmount }));
     setSuccess('Hire fee saved.');
     setTimeout(() => setSuccess(''), 3000);
   }
@@ -68,8 +71,9 @@ export default function BookingInvoice({ booking, onClose }) {
     setSaving(true); setError('');
     const now = new Date().toISOString();
     const { error: err } = await supabase.from('finance_income').update({ invoice_paid_at: now, status: 'Confirmed' }).eq('id', income.id);
+    if (err) { setSaving(false); setError(err.message); return; }
+    await syncEntryForStatusChange({ ...income, status: 'Confirmed' }, 'income');
     setSaving(false);
-    if (err) { setError(err.message); return; }
     setIncome(prev => ({ ...prev, invoice_paid_at: now, status: 'Confirmed' }));
   }
 

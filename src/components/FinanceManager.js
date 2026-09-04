@@ -5,6 +5,7 @@ import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import BankReconciliation from './BankReconciliation';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, expenseCategoryGroup } from '../lib/financeCategories';
+import { syncEntryForAmountChange, syncEntryForStatusChange, voidAllEntriesForRow } from '../lib/glPosting';
 import { fetchXeroFinancials } from '../lib/xero';
 import XeroFinanceSummary from './XeroFinanceSummary';
 
@@ -390,10 +391,16 @@ export default function FinanceManager() {
       gst_amount: incomeForm.gst_amount === '' ? null : parseFloat(incomeForm.gst_amount),
       payer: incomeForm.payer.trim() || null,
     };
-    const { error } = editId
-      ? await supabase.from('finance_income').update(payload).eq('id', editId)
-      : await supabase.from('finance_income').insert(payload);
+    let rowId = editId;
+    let error;
+    if (editId) {
+      ({ error } = await supabase.from('finance_income').update(payload).eq('id', editId));
+    } else {
+      const res = await supabase.from('finance_income').insert(payload).select('id').single();
+      error = res.error; rowId = res.data?.id;
+    }
     if (error) { setFormError(error.message); setSaving(false); return; }
+    if (rowId) await syncEntryForAmountChange({ ...payload, id: rowId }, 'income');
     setSaving(false); setShowIncomeModal(false); fetchAll();
   }
 
@@ -447,16 +454,24 @@ export default function FinanceManager() {
       receipt_url, receipt_name,
       gst_amount: expenseForm.gst_amount === '' ? null : parseFloat(expenseForm.gst_amount),
     };
-    const { error } = editId
-      ? await supabase.from('finance_expenses').update(payload).eq('id', editId)
-      : await supabase.from('finance_expenses').insert(payload);
+    let rowId = editId;
+    let error;
+    if (editId) {
+      ({ error } = await supabase.from('finance_expenses').update(payload).eq('id', editId));
+    } else {
+      const res = await supabase.from('finance_expenses').insert(payload).select('id').single();
+      error = res.error; rowId = res.data?.id;
+    }
     if (error) { setFormError(error.message); setSaving(false); return; }
+    if (rowId) await syncEntryForAmountChange({ ...payload, id: rowId }, 'expense');
     setSaving(false); setShowExpenseModal(false); fetchAll();
   }
 
   async function handleDelete() {
     if (!confirmDeleteId || !deleteType) return;
-    await supabase.from(deleteType === 'income' ? 'finance_income' : 'finance_expenses').delete().eq('id', confirmDeleteId);
+    const sourceTable = deleteType === 'income' ? 'finance_income' : 'finance_expenses';
+    await voidAllEntriesForRow(sourceTable, confirmDeleteId, 'Deleted by trustee');
+    await supabase.from(sourceTable).delete().eq('id', confirmDeleteId);
     setConfirmDeleteId(null); setDeleteType('');
     fetchAll();
   }
@@ -480,7 +495,7 @@ export default function FinanceManager() {
 
   async function handleSyncGrant(grant) {
     const today = new Date().toISOString().split('T')[0];
-    await supabase.from('finance_income').insert({
+    const payload = {
       date: today,
       description: `Grant income — ${grant.name} (${grant.funder || 'unknown funder'})`,
       amount: parseFloat(grant.amount || 0),
@@ -488,7 +503,9 @@ export default function FinanceManager() {
       status: 'Confirmed',
       source_type: 'grant',
       source_id: grant.id,
-    });
+    };
+    const { data } = await supabase.from('finance_income').insert(payload).select('id').single();
+    if (data?.id) await syncEntryForAmountChange({ ...payload, id: data.id }, 'income');
     setSyncGrants(g => g.filter(x => x.id !== grant.id));
     fetchAll();
   }
@@ -496,7 +513,7 @@ export default function FinanceManager() {
   async function handleSyncBooking(booking) {
     const amount = parseFloat(syncAmounts[booking.id] || 0);
     if (!amount) return;
-    await supabase.from('finance_income').insert({
+    const payload = {
       date: booking.start_date,
       description: `Booking income — ${booking.occasion}`,
       amount,
@@ -504,7 +521,9 @@ export default function FinanceManager() {
       status: 'Confirmed',
       source_type: 'booking',
       source_id: booking.id,
-    });
+    };
+    const { data } = await supabase.from('finance_income').insert(payload).select('id').single();
+    if (data?.id) await syncEntryForAmountChange({ ...payload, id: data.id }, 'income');
     setSyncBookings(b => b.filter(x => x.id !== booking.id));
     fetchAll();
   }
@@ -593,11 +612,13 @@ export default function FinanceManager() {
 
   async function handleIncomeStatus(row, s) {
     await supabase.from('finance_income').update({ status: s }).eq('id', row.id);
+    await syncEntryForStatusChange({ ...row, status: s }, 'income');
     setIncome(prev => prev.map(i => i.id === row.id ? { ...i, status: s } : i));
   }
 
   async function handleExpenseStatus(row, s) {
     await supabase.from('finance_expenses').update({ status: s }).eq('id', row.id);
+    await syncEntryForStatusChange({ ...row, status: s }, 'expense');
     setExpenses(prev => prev.map(e => e.id === row.id ? { ...e, status: e.id === row.id ? s : e.status } : e));
   }
 

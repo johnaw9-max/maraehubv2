@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../lib/financeCategories';
+import { syncEntryForAmountChange } from '../lib/glPosting';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -304,7 +305,10 @@ export default function BankReconciliation() {
       setRowAddErrors(prev => ({ ...prev, [i]: error.message }));
       return;
     }
-    if (data) setAddedRefs(prev => ({ ...prev, [i]: { table, id: data.id } }));
+    if (data) {
+      await syncEntryForAmountChange({ ...payload, id: data.id }, draft.kind === 'income' ? 'income' : 'expense');
+      setAddedRefs(prev => ({ ...prev, [i]: { table, id: data.id } }));
+    }
     setJustAddedKeys(prev => new Set(prev).add(i));
     setTimeout(() => {
       setRemovedKeys(prev => new Set(prev).add(i));
