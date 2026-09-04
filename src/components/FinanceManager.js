@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import BankReconciliation from './BankReconciliation';
-import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../lib/financeCategories';
+import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, expenseCategoryGroup } from '../lib/financeCategories';
 import { fetchXeroFinancials } from '../lib/xero';
 import XeroFinanceSummary from './XeroFinanceSummary';
 
@@ -86,12 +86,12 @@ const BUDGET_STATUS_CFG = {
 const EMPTY_INCOME = {
   date: new Date().toISOString().split('T')[0],
   description: '', amount: '', category: 'Other',
-  reference: '', notes: '', status: 'Confirmed', entity_id: '',
+  reference: '', notes: '', status: 'Confirmed', entity_id: '', gst_amount: '',
 };
 const EMPTY_EXPENSE = {
   date: new Date().toISOString().split('T')[0],
   description: '', amount: '', category: 'Other',
-  payee: '', reference: '', notes: '', status: 'Paid', entity_id: '',
+  payee: '', reference: '', notes: '', status: 'Paid', entity_id: '', gst_amount: '',
 };
 
 // ─── SECTION HEADER ──────────────────────────────────────────────────────────
@@ -126,6 +126,7 @@ export default function FinanceManager() {
   const [entities, setEntities] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [xero, setXero] = useState(null); // null = still resolving
+  const [gstRegistered, setGstRegistered] = useState(false);
 
   // Modals
   const [showIncomeModal, setShowIncomeModal]   = useState(false);
@@ -201,7 +202,7 @@ export default function FinanceManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes] = await Promise.all([
+    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes, settRes] = await Promise.all([
       supabase.from('finance_income').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_expenses').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_budgets').select('*').eq('financial_year', fy),
@@ -209,11 +210,13 @@ export default function FinanceManager() {
       supabase.from('assets').select('value'),
       supabase.from('contacts').select('full_name').order('full_name'),
       supabase.from('entities').select('id, name').order('name'),
+      supabase.from('marae_settings').select('gst_registered').limit(1).single(),
     ]);
     setIncome(incRes.data || []);
     setExpenses(expRes.data || []);
     setBudgets(budRes.data || []);
     setEntities(entRes.data || []);
+    setGstRegistered(settRes.data?.gst_registered === true);
     const bs = bsRes.data;
     if (bs) {
       setBsId(bs.id);
@@ -350,6 +353,7 @@ export default function FinanceManager() {
       category: row.category || 'Other',
       reference: row.reference || '', notes: row.notes || '',
       status: row.status || 'Confirmed', entity_id: row.entity_id || '',
+      gst_amount: row.gst_amount != null ? String(row.gst_amount) : '',
     });
     setEditId(row.id); setFormError(''); setShowIncomeModal(true);
   }
@@ -368,6 +372,7 @@ export default function FinanceManager() {
       notes: incomeForm.notes.trim() || null,
       status: incomeForm.status,
       entity_id: incomeForm.entity_id || null,
+      gst_amount: incomeForm.gst_amount === '' ? null : parseFloat(incomeForm.gst_amount),
     };
     const { error } = editId
       ? await supabase.from('finance_income').update(payload).eq('id', editId)
@@ -390,6 +395,7 @@ export default function FinanceManager() {
       category: row.category || 'Other', payee: row.payee || '',
       reference: row.reference || '', notes: row.notes || '',
       status: row.status || 'Paid', entity_id: row.entity_id || '',
+      gst_amount: row.gst_amount != null ? String(row.gst_amount) : '',
     });
     setEditId(row.id); setReceiptFile(null); setFormError(''); setShowExpenseModal(true);
   }
@@ -423,6 +429,7 @@ export default function FinanceManager() {
       notes: expenseForm.notes.trim() || null, status: expenseForm.status,
       entity_id: expenseForm.entity_id || null,
       receipt_url, receipt_name,
+      gst_amount: expenseForm.gst_amount === '' ? null : parseFloat(expenseForm.gst_amount),
     };
     const { error } = editId
       ? await supabase.from('finance_expenses').update(payload).eq('id', editId)
@@ -608,6 +615,37 @@ export default function FinanceManager() {
       ? `<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Expenses</td><td style="text-align:right">${fmtMoney(agmTotalExpenses)}</td></tr>`
       : `<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Expenses</td><td style="text-align:right">${fmtMoney(agmTotalExpenses)}</td><td></td><td></td></tr>`;
 
+    // ── Capital vs Operating (category-level, not per-transaction — see
+    // expenseCategoryGroup's own comment for why) ──
+    const capitalTotal = agmExpenses.filter(e => expenseCategoryGroup(e.category) === 'Capital').reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const uncategorisedTotal = agmExpenses.filter(e => expenseCategoryGroup(e.category) === 'Uncategorised').reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const operatingTotal = agmTotalExpenses - capitalTotal - uncategorisedTotal;
+    const expenseTypeHtml = `
+<h2>Expenditure by Type</h2>
+<p style="font-size:11px;color:#888;font-style:italic;margin:4px 0 8px">Grouped by category, not by individual transaction — e.g. any Equipment purchase counts as Capital regardless of size.</p>
+<table style="max-width:380px">
+  <tr><td>Operating</td><td style="text-align:right">${fmtMoney(operatingTotal)}</td></tr>
+  <tr><td>Capital</td><td style="text-align:right">${fmtMoney(capitalTotal)}</td></tr>
+  ${uncategorisedTotal > 0 ? `<tr><td>Uncategorised</td><td style="text-align:right">${fmtMoney(uncategorisedTotal)}</td></tr>` : ''}
+</table>`;
+
+    // ── GST summary (only rendered when this marae is GST-registered) ──
+    const gstHtml = (() => {
+      if (!gstRegistered) return '';
+      const gstCollected = agmIncome.reduce((s, i) => s + (i.gst_amount != null ? parseFloat(i.gst_amount) : 0), 0);
+      const gstPaid = agmExpenses.reduce((s, e) => s + (e.gst_amount != null ? parseFloat(e.gst_amount) : 0), 0);
+      const missing = [...agmIncome, ...agmExpenses].filter(t => t.gst_amount == null).length;
+      const total = agmIncome.length + agmExpenses.length;
+      return `
+<h2>GST Summary</h2>
+<table style="max-width:380px">
+  <tr><td>GST Collected (Income)</td><td style="text-align:right">${fmtMoney(gstCollected)}</td></tr>
+  <tr><td>GST Paid (Expenses)</td><td style="text-align:right">${fmtMoney(gstPaid)}</td></tr>
+  <tr style="font-weight:bold;border-top:1px solid #ccc"><td>Net GST</td><td style="text-align:right">${fmtMoney(gstCollected - gstPaid)}</td></tr>
+</table>
+${missing > 0 ? `<p style="font-size:12px;color:#a63020;font-style:italic;margin:4px 0 12px">${missing} of ${total} transactions this period have no GST amount recorded — not included above as zero, genuinely missing. Review before using this for a GST return.</p>` : ''}`;
+    })();
+
     const balanceSheetNote = scoped
       ? `<p style="font-size:12px;color:#a63020;font-style:italic;margin:4px 0 12px">Balance sheet reflects the whole organisation (all entities combined) — not tracked per entity.</p>`
       : '';
@@ -620,7 +658,9 @@ export default function FinanceManager() {
 <p style="color:#666;font-size:13px">Entity: ${entityName}</p>
 <h2>Income</h2><table><tr><th>Category</th><th style="text-align:right">Amount</th></tr>${incomeRows}<tr style="font-weight:bold;border-top:2px solid #ccc"><td>Total Income</td><td style="text-align:right">${fmtMoney(agmTotalIncome)}</td></tr></table>
 <h2>${expenseHeading}</h2><table>${expenseHeaderRow}${expenseRows}${expenseFooterRow}</table>
+${expenseTypeHtml}
 <div class="net ${agmNet >= 0 ? 'surplus' : 'deficit'}">${agmNet >= 0 ? 'Net Surplus' : 'Net Deficit'}: ${fmtMoney(Math.abs(agmNet))}</div>
+${gstHtml}
 <h2>Balance Sheet Snapshot</h2>${balanceSheetNote}<table>
 <tr><th>Assets</th><th style="text-align:right">Value</th></tr>
 <tr><td>Cash &amp; Bank Balance</td><td style="text-align:right">${fmtMoney(bs?.cash_balance || 0)}</td></tr>
@@ -649,8 +689,8 @@ ${loanHtml}
     const rExp = (reportExpenses !== null ? reportExpenses : expenses).filter(matchEntity);
 
     const txns = [
-      ...rInc.map(r => ({ date: r.date, description: r.description, category: r.category, inc: parseFloat(r.amount || 0), exp: 0 })),
-      ...rExp.map(r => ({ date: r.date, description: r.description, category: r.category, inc: 0, exp: parseFloat(r.amount || 0) })),
+      ...rInc.map(r => ({ date: r.date, description: r.description, category: r.category, inc: parseFloat(r.amount || 0), exp: 0, gst: r.gst_amount })),
+      ...rExp.map(r => ({ date: r.date, description: r.description, category: r.category, inc: 0, exp: parseFloat(r.amount || 0), gst: r.gst_amount })),
     ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
     const openingBalance = 0;
@@ -665,21 +705,49 @@ ${loanHtml}
     const rTotExp = rExp.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
     const rNet    = rTotInc - rTotExp;
 
+    const capitalTotal = rExp.filter(e => expenseCategoryGroup(e.category) === 'Capital').reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const uncategorisedTotal = rExp.filter(e => expenseCategoryGroup(e.category) === 'Uncategorised').reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+    const operatingTotal = rTotExp - capitalTotal - uncategorisedTotal;
+
+    const gstSummaryHtml = (() => {
+      if (!gstRegistered) return '';
+      const gstCollected = rInc.reduce((s, i) => s + (i.gst_amount != null ? parseFloat(i.gst_amount) : 0), 0);
+      const gstPaid = rExp.reduce((s, e) => s + (e.gst_amount != null ? parseFloat(e.gst_amount) : 0), 0);
+      const missing = [...rInc, ...rExp].filter(t => t.gst_amount == null).length;
+      const total = rInc.length + rExp.length;
+      return `
+<h2>GST Summary</h2>
+<table style="max-width:380px">
+  <tr><td>GST Collected (Income)</td><td style="text-align:right">${fmtMoney(gstCollected)}</td></tr>
+  <tr><td>GST Paid (Expenses)</td><td style="text-align:right">${fmtMoney(gstPaid)}</td></tr>
+  <tr style="font-weight:bold;border-top:1px solid #ccc"><td>Net GST</td><td style="text-align:right">${fmtMoney(gstCollected - gstPaid)}</td></tr>
+</table>
+${missing > 0 ? `<p style="font-size:12px;color:#a63020;font-style:italic;margin:4px 0 12px">${missing} of ${total} transactions this period have no GST amount recorded — not included above as zero, genuinely missing. Review before using this for a GST return.</p>` : ''}`;
+    })();
+
     const glLabel = reportPeriod === 'this_fy'
       ? `FY ${fyLabel(fy)}`
       : reportPeriod === 'prev_fy'
       ? `FY ${fyLabel(fy - 1)}`
       : (customFrom && customTo ? `${fmt(customFrom)} to ${fmt(customTo)}` : 'Custom Range');
 
+    const gstColHtml = r => gstRegistered
+      ? `<td style="text-align:right;color:${r.gst == null ? '#bbb' : '#666'}">${r.gst == null ? '—' : fmtMoney(parseFloat(r.gst))}</td>`
+      : '';
+
     const rowsHtml = ledgerRows.map(r => `
       <tr>
         <td style="white-space:nowrap">${fmt(r.date)}</td>
         <td>${r.description || '—'}</td>
         <td>${r.category}</td>
+        ${gstColHtml(r)}
         <td style="text-align:right;color:#1a4a3a">${r.inc > 0 ? fmtMoney(r.inc) : ''}</td>
         <td style="text-align:right;color:#a63020">${r.exp > 0 ? fmtMoney(r.exp) : ''}</td>
         <td style="text-align:right;font-weight:600;color:${r.balance >= 0 ? '#1a4a3a' : '#a63020'}">${fmtMoney(r.balance)}</td>
       </tr>`).join('');
+
+    const balanceRowColspan = gstRegistered ? 6 : 5;
+    const gstHeaderCol = gstRegistered ? '<th style="text-align:right;width:90px">GST</th>' : '';
 
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head><title>General Ledger — ${glLabel}</title>
@@ -726,15 +794,16 @@ ${loanHtml}
       <th style="width:105px">Date</th>
       <th>Description</th>
       <th style="width:155px">Category</th>
+      ${gstHeaderCol}
       <th style="text-align:right;width:100px">Income</th>
       <th style="text-align:right;width:100px">Expense</th>
       <th style="text-align:right;width:120px">Running Balance</th>
     </tr>
   </thead>
   <tbody>
-    <tr class="balance-row"><td colspan="5">Opening Balance</td><td style="text-align:right">${fmtMoney(openingBalance)}</td></tr>
+    <tr class="balance-row"><td colspan="${balanceRowColspan}">Opening Balance</td><td style="text-align:right">${fmtMoney(openingBalance)}</td></tr>
     ${rowsHtml}
-    <tr class="balance-row"><td colspan="5">Closing Balance</td><td style="text-align:right;color:${closingBalance >= 0 ? '#1a4a3a' : '#a63020'}">${fmtMoney(closingBalance)}</td></tr>
+    <tr class="balance-row"><td colspan="${balanceRowColspan}">Closing Balance</td><td style="text-align:right;color:${closingBalance >= 0 ? '#1a4a3a' : '#a63020'}">${fmtMoney(closingBalance)}</td></tr>
   </tbody>
 </table>
 <h2>Period Summary</h2>
@@ -743,6 +812,14 @@ ${loanHtml}
   <tr><td>Total Expenses</td><td style="text-align:right;color:#a63020;font-weight:600">${fmtMoney(rTotExp)}</td></tr>
   <tr style="font-weight:bold;border-top:2px solid #ccc"><td>${rNet >= 0 ? 'Net Surplus' : 'Net Deficit'}</td><td style="text-align:right;color:${rNet >= 0 ? '#1a4a3a' : '#a63020'}">${fmtMoney(Math.abs(rNet))}</td></tr>
 </table>
+<h2>Expenditure by Type</h2>
+<p style="font-size:11px;color:#888;font-style:italic;margin:4px 0 8px">Grouped by category, not by individual transaction — e.g. any Equipment purchase counts as Capital regardless of size.</p>
+<table style="max-width:380px">
+  <tr><td>Operating</td><td style="text-align:right">${fmtMoney(operatingTotal)}</td></tr>
+  <tr><td>Capital</td><td style="text-align:right">${fmtMoney(capitalTotal)}</td></tr>
+  ${uncategorisedTotal > 0 ? `<tr><td>Uncategorised</td><td style="text-align:right">${fmtMoney(uncategorisedTotal)}</td></tr>` : ''}
+</table>
+${gstSummaryHtml}
 <p style="font-size:11px;color:#999;margin-top:32px">Generated by MaraeHub · maraehub.com</p>
 </body></html>`);
     win.document.close();
@@ -1476,6 +1553,12 @@ ${loanHtml}
                 <input type="number" min="0" step="0.01" className="form-input" value={incomeForm.amount} onChange={e => setIncomeForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
               </div>
             </div>
+            {gstRegistered && (
+              <div className="form-group">
+                <label className="form-label">GST Amount (NZD)</label>
+                <input type="number" min="0" step="0.01" max={incomeForm.amount || undefined} className="form-input" value={incomeForm.gst_amount} onChange={e => setIncomeForm(f => ({ ...f, gst_amount: e.target.value }))} placeholder="Included in the amount above" />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Description *</label>
               <input className="form-input" value={incomeForm.description} onChange={e => setIncomeForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Hall hire — Smith family" />
@@ -1537,6 +1620,12 @@ ${loanHtml}
                 <input type="number" min="0" step="0.01" className="form-input" value={expenseForm.amount} onChange={e => setExpenseForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
               </div>
             </div>
+            {gstRegistered && (
+              <div className="form-group">
+                <label className="form-label">GST Amount (NZD)</label>
+                <input type="number" min="0" step="0.01" max={expenseForm.amount || undefined} className="form-input" value={expenseForm.gst_amount} onChange={e => setExpenseForm(f => ({ ...f, gst_amount: e.target.value }))} placeholder="Included in the amount above" />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Description *</label>
               <input className="form-input" value={expenseForm.description} onChange={e => setExpenseForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Roof repair — Te Hekenga Roofing" />
