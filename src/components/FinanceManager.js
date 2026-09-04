@@ -49,6 +49,10 @@ function currentFY() {
   const now = new Date();
   return now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
 }
+function fyForDate(d) {
+  const dt = new Date(d);
+  return dt.getMonth() >= 3 ? dt.getFullYear() : dt.getFullYear() - 1;
+}
 function fyLabel(fy) { return `${fy}/${String(fy + 1).slice(2)}`; }
 function fyFrom(fy)  { return `${fy}-04-01`; }
 function fyTo(fy)    { return `${fy + 1}-03-31`; }
@@ -163,6 +167,11 @@ export default function FinanceManager() {
   const [bsSaving, setBsSaving] = useState(false);
   const [bsSuccess, setBsSuccess] = useState(false);
 
+  // Balance sheet reconciliation (Step 4) — opening balance for the current FY
+  const [openingBalanceRow, setOpeningBalanceRow] = useState(null); // null = not set
+  const [openingBalanceInput, setOpeningBalanceInput] = useState('');
+  const [openingBalanceSaving, setOpeningBalanceSaving] = useState(false);
+
   // Receipt upload
   const receiptRef = useRef();
   const [receiptFile, setReceiptFile] = useState(null);
@@ -204,7 +213,7 @@ export default function FinanceManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes, settRes] = await Promise.all([
+    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes, settRes, obRes] = await Promise.all([
       supabase.from('finance_income').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_expenses').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_budgets').select('*').eq('financial_year', fy),
@@ -213,6 +222,7 @@ export default function FinanceManager() {
       supabase.from('contacts').select('full_name').order('full_name'),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('marae_settings').select('gst_registered, marae_name').limit(1).single(),
+      supabase.from('finance_opening_balances').select('*').eq('financial_year', fy).maybeSingle(),
     ]);
     setIncome(incRes.data || []);
     setExpenses(expRes.data || []);
@@ -220,6 +230,7 @@ export default function FinanceManager() {
     setEntities(entRes.data || []);
     setGstRegistered(settRes.data?.gst_registered === true);
     setMaraeName(settRes.data?.marae_name || 'MaraeHub');
+    setOpeningBalanceRow(obRes.data || null);
     const bs = bsRes.data;
     if (bs) {
       setBsId(bs.id);
@@ -544,6 +555,28 @@ export default function FinanceManager() {
     setBsSaving(false);
     setBsSuccess(true);
     setTimeout(() => setBsSuccess(false), 3000);
+    fetchAll();
+  }
+
+  // ── OPENING BALANCE (Step 4 — balance sheet reconciliation) ────────────────
+
+  async function handleSaveOpeningBalance() {
+    if (openingBalanceInput === '' || isNaN(parseFloat(openingBalanceInput))) return;
+    setOpeningBalanceSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    let setBy = 'Unknown';
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+      setBy = profile?.full_name || user.email || 'Unknown';
+    }
+    await supabase.from('finance_opening_balances').upsert({
+      financial_year: fy,
+      opening_balance: parseFloat(openingBalanceInput),
+      set_by: setBy,
+      set_at: new Date().toISOString(),
+    }, { onConflict: 'financial_year' });
+    setOpeningBalanceSaving(false);
+    setOpeningBalanceInput('');
     fetchAll();
   }
 
@@ -907,6 +940,37 @@ ${gstSummaryHtml}
   const liveTotalLiabilities = loansTotal + parseFloat(bsForm.outstanding_payments || 0);
   const liveNetWorth         = liveTotalAssets - liveTotalLiabilities;
 
+  // ── BALANCE SHEET RECONCILIATION (Step 4) ───────────────────────────────────
+  // Cash-only: equipment/investments/loans/other assets have no matching
+  // transaction ledger to reconcile against. Checked as of the balance
+  // sheet's own updated_at date, not "today live" -- comparing a snapshot
+  // saved weeks ago against today's running total would flag a false
+  // "discrepancy" every day from ordinary new transactions since. Only
+  // Confirmed income / Paid expenses count -- Pending hasn't hit the bank.
+  let reconciliation = null;
+  if (balanceSheet?.updated_at) {
+    const bsUpdatedAt = new Date(balanceSheet.updated_at);
+    const asOfFY = fyForDate(bsUpdatedAt);
+    if (asOfFY !== fy) {
+      reconciliation = { state: 'stale', asOfFY };
+    } else if (!openingBalanceRow) {
+      reconciliation = { state: 'cannot_verify' };
+    } else {
+      const asOfDateStr = bsUpdatedAt.toISOString().split('T')[0];
+      const incomeToDate = income
+        .filter(i => i.status === 'Confirmed' && i.date <= asOfDateStr)
+        .reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+      const expensesToDate = expenses
+        .filter(e => e.status === 'Paid' && e.date <= asOfDateStr)
+        .reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+      const expected = parseFloat(openingBalanceRow.opening_balance || 0) + incomeToDate - expensesToDate;
+      const diff = bsCash - expected;
+      reconciliation = Math.abs(diff) < 0.01
+        ? { state: 'match', expected, actual: bsCash, asOfDateStr }
+        : { state: 'mismatch', expected, actual: bsCash, diff, asOfDateStr };
+    }
+  }
+
   // ── KPI TILES ─────────────────────────────────────────────────────────────
 
   const KPI_TILES = [
@@ -1247,6 +1311,34 @@ ${gstSummaryHtml}
           <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20, marginTop: -8 }}>
             Update cash balance and liabilities manually. Equipment value is pulled automatically from the Assets Register.
           </p>
+
+          {reconciliation?.state === 'match' && (
+            <div style={{ padding: '12px 14px', background: '#e8f4ef', border: '1px solid #a8d8c0', borderRadius: 8, marginBottom: 20, fontSize: 13, color: '#1a4a3a' }}>
+              ✅ Cash balance ties out — verified as of {fmt(reconciliation.asOfDateStr)}. Opening balance + confirmed income − paid expenses = {fmtMoney(reconciliation.expected)}.
+            </div>
+          )}
+          {reconciliation?.state === 'mismatch' && (
+            <div style={{ padding: '12px 14px', background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, marginBottom: 20, fontSize: 13, color: '#a63020' }}>
+              ⚠️ Cash balance does not tie out as of {fmt(reconciliation.asOfDateStr)} — off by {fmtMoney(Math.abs(reconciliation.diff))}. Expected {fmtMoney(reconciliation.expected)} (opening balance + confirmed income − paid expenses), balance sheet shows {fmtMoney(reconciliation.actual)}.
+            </div>
+          )}
+          {reconciliation?.state === 'stale' && (
+            <div style={{ padding: '12px 14px', background: '#fdf0dc', border: '1px solid #e8c880', borderRadius: 8, marginBottom: 20, fontSize: 13, color: '#7a4f00' }}>
+              ℹ️ This balance sheet was last updated in FY {fyLabel(reconciliation.asOfFY)} — reconciliation only checks the current financial year (FY {fyLabel(fy)}). Consider updating it.
+            </div>
+          )}
+          {reconciliation?.state === 'cannot_verify' && (
+            <div style={{ padding: '12px 14px', background: '#fdf0dc', border: '1px solid #e8c880', borderRadius: 8, marginBottom: 20, fontSize: 13, color: '#7a4f00' }}>
+              <div style={{ marginBottom: 10 }}>ℹ️ Cannot verify — no opening balance set for FY {fyLabel(fy)}, so cash balance can't be checked against income and expenses.</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="number" step="0.01" className="form-input" style={{ maxWidth: 160 }} value={openingBalanceInput}
+                  onChange={e => setOpeningBalanceInput(e.target.value)} placeholder="Opening balance ($)" />
+                <button className="btn-secondary" style={{ fontSize: 12 }} onClick={handleSaveOpeningBalance} disabled={openingBalanceSaving || openingBalanceInput === ''}>
+                  {openingBalanceSaving ? 'Saving…' : 'Set Opening Balance'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
             {/* ASSETS */}
