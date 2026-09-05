@@ -1408,6 +1408,8 @@ create table if not exists service_reminders (
 
 alter table service_reminders add constraint service_reminders_pkey PRIMARY KEY (id);
 
+alter table service_reminders add constraint service_reminders_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE;
+
 alter table service_reminders enable row level security;
 
 create policy "allow_authenticated"
