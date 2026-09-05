@@ -607,6 +607,33 @@ const HELP_TOPICS = {
       ]
     },
     {
+      category: 'Drought / Water Shortage Readiness',
+      icon: '☀️',
+      items: [
+        { q: 'What does Drought / Water Shortage Readiness track, and how is it different from Water Safety Readiness?', a: [
+          { text: 'Water Safety Readiness (above) is entirely about your water becoming unsafe to drink — contamination, testing, treatment. This is genuinely different: it\'s about your water supply running short or being restricted, whether from drought, dry weather, or council water restrictions. It\'s tracked across two modules — Emergency Plan and a standalone Workflow — deliberately without a new Compliance category (see below).' },
+          { items: [
+            'Emergency Plan — a Drought / Water Shortage hazard entry with likely impact and what to do',
+            'Workflows — a real, staged step-by-step drought response process',
+          ]},
+        ] },
+        { q: 'Why no new Compliance category for this, unlike Water Safety?', a: 'The Water compliance items exist because there\'s a real, recurring regulatory obligation behind them — Taumata Arowai testing and registration requirements with genuine renewal dates. Drought preparedness doesn\'t have an equivalent individual regulatory requirement to track, so adding a Compliance item for it would have been a fake obligation, not a real one. Instead, the existing "Water supply — 10,000L tank or alternative checked" item under Emergency Preparedness now also mentions confirming your tank represents a real reserve above everyday use.' },
+        { q: 'What does the Emergency Plan show for Drought / Water Shortage?', a: 'Go to Assets & Compliance → Emergency Plan → Hazards, and open "Drought / Water Shortage". It has real Likely Impact and What To Do content sourced from Civil Defence/Get Ready, NIWA/Earth Sciences New Zealand, Taumata Arowai\'s dry-weather guidance, and MPI — including the real Civil Defence emergency water minimum (3 litres per person per day, for 3 or more days), and why this matters now: Earth Sciences New Zealand declared a "Very Strong" El Niño on 2 July 2026, with the greatest drought risk over the northern and eastern North Island and eastern South Island this spring and summer.' },
+        { q: 'What is the Drought / Water Shortage Response workflow?', a: [
+          { text: 'A real, 9-step staged response — check your district\'s real drought status (NZ Drought Index), confirm your real tank or bore capacity, cut non-essential use early (before restrictions become mandatory), confirm any water carrier is on Taumata Arowai\'s real Public Register (Hinekōrako) before booking, follow supplier or council restrictions exactly, protect your emergency reserve from everyday use, treat any untreated water before drinking, log the event, and restock afterwards.' },
+          { text: 'Like Water Contamination Response, this is not linked to a specific compliance item — drought is a developing situation you respond to as it unfolds, not a scheduled annual review. Go to the Workflows tab and start "Drought / Water Shortage Response" directly from the template list whenever it is actually needed.' },
+        ] },
+        { q: 'What do I still need to do myself?', a: [
+          { text: 'Honestly, the most important thing MaraeHub cannot do for you — it is a real, ongoing judgement call for your trustees, not something the system can determine.' },
+          { items: [
+            'Your real tank/bore capacity and how many days of normal use it represents — MaraeHub doesn\'t measure your water supply, it gives you a structured place to record what you know.',
+            'Whether your water carrier is genuinely on Taumata Arowai\'s Public Register (Hinekōrako) — check directly, don\'t assume.',
+          ]},
+          { text: 'MaraeHub gives you the real, sourced guidance, a place to record it, and a staged workflow to follow — a preparedness and reminder aid, not a substitute for monitoring your actual supply.' },
+        ] },
+      ]
+    },
+    {
       category: 'Flood / Emergency Preparedness Readiness',
       icon: '🌊',
       items: [
@@ -625,7 +652,7 @@ const HELP_TOPICS = {
         ] },
         { q: 'Will trustees actually be reminded when this is due?', a: 'Yes — this is an ordinary compliance item, so it uses the exact same email reminder mechanism as everything else in Compliance. Once it has a real due date set, MaraeHub emails the responsible trustee automatically starting 30 days before it\'s due (see Email Notifications).' },
         { q: 'What does the Emergency Plan show for Flood?', a: 'Go to Assets & Compliance → Emergency Plan → Hazards, and open "Flood". It has real Likely Impact and What To Do content, based on Get Ready / National Emergency Management Agency guidance — including the real before/during/after guidance: check your marae\'s real flood risk via your local council\'s flood viewer (https://www.naturalhazardsportal.govt.nz links to every regional council\'s own hazard maps) and know your evacuation route to higher ground before anything happens, head for higher ground immediately and never walk, swim or drive through floodwater during an event, and only return once Civil Defence confirms it\'s safe afterwards.' },
-        { q: 'Why is there no Flood Response workflow, unlike Fire and Water?', a: 'A step-by-step workflow fits water contamination well — it\'s an orderly, sequential response you work through (stop use, notify, retest, resume). It doesn\'t fit a flood the same way. A flood is fast-moving and chaotic — the real guidance is "get to higher ground immediately," not "work through steps 1 through 6." That real guidance is already fully captured in the Emergency Plan\'s Flood hazard entry, so a separate workflow would just repeat it in a second place.' },
+        { q: 'Why is there no Flood Response workflow, unlike Fire, Water, and Drought?', a: 'A step-by-step workflow fits an orderly, sequential response you work through — water contamination (stop use, notify, retest, resume) and drought (monitor, conserve, follow restrictions, restock) are both genuinely staged like that. It doesn\'t fit a flood the same way. A flood is fast-moving and chaotic — the real guidance is "get to higher ground immediately," not "work through steps 1 through 6." That real guidance is already fully captured in the Emergency Plan\'s Flood hazard entry, so a separate workflow would just repeat it in a second place.' },
         { q: 'What do I still need to do myself?', a: [
           { text: 'Honestly, the most important thing MaraeHub cannot do for you — it is a real council/Civil Defence determination, not something the system can work out.' },
           { items: [

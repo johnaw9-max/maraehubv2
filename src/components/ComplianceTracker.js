@@ -51,7 +51,7 @@ const CLASSIFICATIONS = {
 // would silently recreate the same duplicate pairs on any fresh marae.
 const EP_SEED_ITEMS = [
   { name: 'Generator — tested, fuelled, serviced',                                     renewal_months: 3,  notes: 'Test under load monthly. Fuel stabiliser if stored long-term. Log every test run.' },
-  { name: 'Water supply — 10,000L tank or alternative checked',                        renewal_months: 6,  notes: 'Inspect tank for leaks, contamination, and pump operation. Confirm potability.' },
+  { name: 'Water supply — 10,000L tank or alternative checked',                        renewal_months: 6,  notes: 'Inspect tank for leaks, contamination, and pump operation. Confirm potability. Also confirm the tank represents a real reserve above everyday use — see the Drought / Water Shortage hazard in Emergency Plan for the recommended minimum (3L/person/day, 3+ days).' },
   { name: 'Emergency food and supply kit — stocked and checked',                       renewal_months: 6,  notes: 'Check expiry dates on food and medications. Minimum 72-hour supply for likely occupancy.' },
   { name: 'Community welfare register — vulnerable whānau who need checking on',       renewal_months: 12, notes: 'List of kaumātua, disabled whānau, and others who may need welfare checks. Keep private and current.' },
   { name: 'Evacuation routes — identified and communicated to committee',              renewal_months: 12, notes: 'Post maps in the marae. Brief all trustees and key volunteers. Include accessibility routes.' },
