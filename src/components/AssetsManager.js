@@ -17,7 +17,7 @@ const CONDITION_STYLE = {
 const RECURRING_LABELS = { none: 'One-time', monthly: 'Monthly', quarterly: 'Quarterly', biannual: '6-monthly', annual: 'Annual', '2years': '2-yearly' };
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
 const ICONS = { Building: '🏛️', Equipment: '🔧', Vehicle: '🚐', Technology: '💻', Grounds: '🌿', Inventory: '📦', Other: '📁' };
-const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '', inventory_category: 'Linen', quantity: '', last_stocktake: '', entity_id: '' };
+const EMPTY_FORM = { name: '', category: 'Building', location: '', condition: 'good', value: '', notes: '', purchase_date: '', purchase_cost: '', lifespan_years: '', replacement_cost: '', inventory_category: 'Linen', quantity: '', last_stocktake: '', entity_id: '', linked_document_id: '' };
 const EMPTY_REMINDER = { type: '', due_date: '', recurring: 'annual', owner: '', notes: '' };
 
 export default function AssetsManager({ onStartWorkflow }) {
@@ -27,6 +27,7 @@ export default function AssetsManager({ onStartWorkflow }) {
   const [reminders, setReminders] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [entities, setEntities] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -45,11 +46,12 @@ export default function AssetsManager({ onStartWorkflow }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [assetRes, reminderRes, tplRes, entRes] = await Promise.all([
+    const [assetRes, reminderRes, tplRes, entRes, docsRes] = await Promise.all([
       supabase.from('assets').select('*').order('created_at', { ascending: false }),
       supabase.from('service_reminders').select('*').order('due_date', { ascending: true }),
       supabase.from('workflow_templates').select('id, name').order('name'),
       supabase.from('entities').select('id, name').order('name'),
+      supabase.from('documents').select('id, title, category').order('title'),
     ]);
     const assetData = assetRes.data || [];
     const reminderData = reminderRes.data || [];
@@ -58,6 +60,7 @@ export default function AssetsManager({ onStartWorkflow }) {
     setReminders(reminderData);
     setTemplates(tplData);
     setEntities(entRes.data || []);
+    setDocuments(docsRes.data || []);
     setLoading(false);
     createOverdueTasks(assetData, reminderData, tplData);
     createUpcomingTasks(assetData, reminderData, tplData);
@@ -163,6 +166,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       quantity: a.quantity != null ? String(a.quantity) : '',
       last_stocktake: a.last_stocktake || '',
       entity_id: a.entity_id || '',
+      linked_document_id: a.linked_document_id || '',
     });
     setEditId(a.id); setError(''); setShowModal(true);
   }
@@ -183,6 +187,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       quantity:           isInventory && form.quantity !== '' ? parseInt(form.quantity) : null,
       last_stocktake:     isInventory && form.last_stocktake  ? form.last_stocktake  : null,
       entity_id: form.entity_id || null,
+      linked_document_id: form.linked_document_id || null,
     };
     const { error } = editId
       ? await supabase.from('assets').update(payload).eq('id', editId)
@@ -698,6 +703,16 @@ export default function AssetsManager({ onStartWorkflow }) {
                         </div>
                       )}
                       {a.notes && <div style={{ fontSize: 14, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
+                      {a.linked_document_id && (() => {
+                        const linkedDoc = documents.find(d => d.id === a.linked_document_id);
+                        return linkedDoc ? (
+                          <div style={{ marginBottom: 12 }}>
+                            <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                              📄 Evidence: {linkedDoc.title}
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
 
                       <div style={{ display: 'flex', gap: 8 }}>
                         {!isInv && <button onClick={() => openReminders(a)} style={{ fontSize: 14, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>🔔 Reminders</button>}
@@ -741,6 +756,15 @@ export default function AssetsManager({ onStartWorkflow }) {
                 <select className="form-input" value={form.entity_id} onChange={e => setField('entity_id', e.target.value)}>
                   <option value="">— Shared (all entities) —</option>
                   {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
+            {documents.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Link to Existing Document (optional)</label>
+                <select className="form-input" value={form.linked_document_id} onChange={e => setField('linked_document_id', e.target.value)}>
+                  <option value="">— No linked document —</option>
+                  {documents.map(d => <option key={d.id} value={d.id}>{d.title} ({d.category})</option>)}
                 </select>
               </div>
             )}

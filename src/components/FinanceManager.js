@@ -135,6 +135,7 @@ export default function FinanceManager() {
   const [xero, setXero] = useState(null); // null = still resolving
   const [gstRegistered, setGstRegistered] = useState(false);
   const [maraeName, setMaraeName] = useState('MaraeHub');
+  const [complianceLinksByExpense, setComplianceLinksByExpense] = useState({});
 
   // Modals
   const [showIncomeModal, setShowIncomeModal]   = useState(false);
@@ -215,7 +216,7 @@ export default function FinanceManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes, settRes, obRes] = await Promise.all([
+    const [incRes, expRes, budRes, bsRes, assetRes, ctRes, entRes, settRes, obRes, compLinkRes] = await Promise.all([
       supabase.from('finance_income').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_expenses').select('*').gte('date', fyFrom(fy)).lte('date', fyTo(fy)).order('date', { ascending: false }),
       supabase.from('finance_budgets').select('*').eq('financial_year', fy),
@@ -225,6 +226,7 @@ export default function FinanceManager() {
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('marae_settings').select('gst_registered, marae_name').limit(1).single(),
       supabase.from('finance_opening_balances').select('*').eq('financial_year', fy).maybeSingle(),
+      supabase.from('compliance_items').select('id, name, linked_expense_id').not('linked_expense_id', 'is', null),
     ]);
     setIncome(incRes.data || []);
     setExpenses(expRes.data || []);
@@ -233,6 +235,9 @@ export default function FinanceManager() {
     setGstRegistered(settRes.data?.gst_registered === true);
     setMaraeName(settRes.data?.marae_name || 'MaraeHub');
     setOpeningBalanceRow(obRes.data || null);
+    const compLinkMap = {};
+    (compLinkRes.data || []).forEach(c => { compLinkMap[c.linked_expense_id] = c.name; });
+    setComplianceLinksByExpense(compLinkMap);
     const bs = bsRes.data;
     if (bs) {
       setBsId(bs.id);
@@ -1297,6 +1302,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text1)', maxWidth: 200 }}>
                           <div style={{ fontWeight: 500 }}>{row.description}</div>
                           {row.receipt_url && <a href={row.receipt_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: 'var(--brand)' }}>📎 Receipt</a>}
+                          {complianceLinksByExpense[row.id] && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>🆘 Linked: {complianceLinksByExpense[row.id]}</span></div>}
                           {entityName && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                         </td>
                         <td style={{ padding: '10px 14px' }}>
