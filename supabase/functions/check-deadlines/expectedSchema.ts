@@ -34,7 +34,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "inventory_category",
     "quantity",
     "last_stocktake",
-    "entity_id"
+    "entity_id",
+    "linked_document_id"
   ],
   "bank_reconciliations": [
     "id",
@@ -130,7 +131,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "last_reminded_at",
     "risk_prompt_dismissed_at",
     "linked_service_reminder_id",
-    "linked_document_id"
+    "linked_document_id",
+    "linked_expense_id"
   ],
   "contacts": [
     "id",
@@ -184,6 +186,18 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "phone",
     "skill_type",
     "entity_id",
+    "created_at"
+  ],
+  "emergency_response_events": [
+    "id",
+    "entity_id",
+    "event_date",
+    "event_name",
+    "description",
+    "people_served",
+    "duration_days",
+    "document_url",
+    "document_name",
     "created_at"
   ],
   "entities": [

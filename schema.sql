@@ -64,13 +64,15 @@ create table if not exists assets (
   inventory_category text,
   quantity integer,
   last_stocktake date,
-  entity_id uuid
+  entity_id uuid,
+  linked_document_id uuid
 );
 
 alter table assets add constraint assets_pkey PRIMARY KEY (id);
 alter table assets add constraint assets_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
 alter table assets add constraint assets_condition_check CHECK ((condition = ANY (ARRAY['excellent'::text, 'good'::text, 'fair'::text, 'poor'::text, 'critical'::text])));
 alter table assets add constraint assets_category_check CHECK ((category = ANY (ARRAY['Building'::text, 'Equipment'::text, 'Vehicle'::text, 'Technology'::text, 'Grounds'::text, 'Other'::text, 'Inventory'::text])));
+alter table assets add constraint assets_linked_document_id_fkey FOREIGN KEY (linked_document_id) REFERENCES documents(id) ON DELETE SET NULL;
 
 alter table assets enable row level security;
 
@@ -285,7 +287,8 @@ create table if not exists compliance_items (
   last_reminded_at timestamp with time zone,
   risk_prompt_dismissed_at timestamp with time zone,
   linked_service_reminder_id uuid,
-  linked_document_id uuid
+  linked_document_id uuid,
+  linked_expense_id uuid
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
@@ -295,6 +298,7 @@ alter table compliance_items add constraint compliance_items_classification_chec
 alter table compliance_items add constraint compliance_items_workflow_template_id_fkey FOREIGN KEY (workflow_template_id) REFERENCES workflow_templates(id);
 alter table compliance_items add constraint compliance_items_linked_service_reminder_id_fkey FOREIGN KEY (linked_service_reminder_id) REFERENCES service_reminders(id) ON DELETE SET NULL;
 alter table compliance_items add constraint compliance_items_linked_document_id_fkey FOREIGN KEY (linked_document_id) REFERENCES documents(id) ON DELETE SET NULL;
+alter table compliance_items add constraint compliance_items_linked_expense_id_fkey FOREIGN KEY (linked_expense_id) REFERENCES finance_expenses(id) ON DELETE SET NULL;
 
 alter table compliance_items enable row level security;
 
@@ -402,7 +406,7 @@ create table if not exists emergency_plan_hazards (
 
 alter table emergency_plan_hazards add constraint emergency_plan_hazards_pkey PRIMARY KEY (id);
 alter table emergency_plan_hazards add constraint emergency_plan_hazards_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
-alter table emergency_plan_hazards add constraint emergency_plan_hazards_hazard_type_check CHECK ((hazard_type = ANY (ARRAY['Landslide'::text, 'Flood'::text, 'Earthquake'::text, 'Fire'::text, 'Storm'::text, 'Tsunami'::text, 'Volcano'::text, 'Pandemic'::text, 'Man-Made Hazard'::text, 'Water Contamination'::text])));
+alter table emergency_plan_hazards add constraint emergency_plan_hazards_hazard_type_check CHECK ((hazard_type = ANY (ARRAY['Landslide'::text, 'Flood'::text, 'Earthquake'::text, 'Fire'::text, 'Storm'::text, 'Tsunami'::text, 'Volcano'::text, 'Pandemic'::text, 'Man-Made Hazard'::text, 'Water Contamination'::text, 'Drought / Water Shortage'::text])));
 
 alter table emergency_plan_hazards enable row level security;
 
@@ -436,6 +440,40 @@ alter table emergency_plan_people enable row level security;
 
 create policy "Trustees can manage emergency plan people within their entities"
   on emergency_plan_people for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
+-- ── EMERGENCY_RESPONSE_EVENTS ─────────────────────────────────────────────
+create table if not exists emergency_response_events (
+  id uuid not null default gen_random_uuid(),
+  entity_id uuid,
+  event_date date not null,
+  event_name text not null,
+  description text not null,
+  people_served integer,
+  duration_days integer,
+  document_url text,
+  document_name text,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table emergency_response_events add constraint emergency_response_events_pkey PRIMARY KEY (id);
+alter table emergency_response_events add constraint emergency_response_events_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table emergency_response_events add constraint emergency_response_events_people_served_check CHECK ((people_served IS NULL OR people_served >= 0));
+alter table emergency_response_events add constraint emergency_response_events_duration_days_check CHECK ((duration_days IS NULL OR duration_days >= 0));
+
+CREATE INDEX idx_emergency_response_events_date ON public.emergency_response_events USING btree (event_date);
+
+alter table emergency_response_events enable row level security;
+
+create policy "Trustees can manage emergency response events within their entities"
+  on emergency_response_events for all
   to authenticated
   using (((EXISTS ( SELECT 1
    FROM profiles
