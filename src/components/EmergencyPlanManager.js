@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import FormError from './FormError';
 
@@ -45,6 +45,13 @@ function linkify(text) {
 }
 const EMPTY_PERSON_FORM = { role_category: 'marae_contact', full_name: '', phone: '', entity_id: '', skill_type: '' };
 
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+const EMPTY_EVENT_FORM = { event_date: new Date().toISOString().split('T')[0], event_name: '', description: '', people_served: '', duration_days: '', entity_id: '' };
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function EmergencyPlanManager() {
@@ -54,6 +61,7 @@ export default function EmergencyPlanManager() {
 
   // History
   const [settingsId, setSettingsId] = useState(null);
+  const [maraeName, setMaraeName] = useState('');
   const [historyForm, setHistoryForm] = useState({ supported_by: '', history: '' });
   const [historySaving, setHistorySaving] = useState(false);
 
@@ -73,18 +81,31 @@ export default function EmergencyPlanManager() {
   const [personSaving, setPersonSaving] = useState(false);
   const [personError, setPersonError] = useState('');
 
+  // Response History (Post #13 -- real, dated proof of what the marae has
+  // actually done, not just what it's prepared for)
+  const [responseEvents, setResponseEvents] = useState([]);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editEvent, setEditEvent] = useState(null);
+  const [eventForm, setEventForm] = useState(EMPTY_EVENT_FORM);
+  const [eventFile, setEventFile] = useState(null);
+  const eventFileRef = useRef();
+  const [eventSaving, setEventSaving] = useState(false);
+  const [eventError, setEventError] = useState('');
+
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);
-    const [settingsRes, hazardsRes, peopleRes, entRes] = await Promise.all([
-      supabase.from('marae_settings').select('id, emergency_plan_history, emergency_plan_supported_by').limit(1).single(),
+    const [settingsRes, hazardsRes, peopleRes, entRes, eventsRes] = await Promise.all([
+      supabase.from('marae_settings').select('id, marae_name, emergency_plan_history, emergency_plan_supported_by').limit(1).single(),
       supabase.from('emergency_plan_hazards').select('*'),
       supabase.from('emergency_plan_people').select('*').order('full_name'),
       supabase.from('entities').select('id, name').order('name'),
+      supabase.from('emergency_response_events').select('*').order('event_date', { ascending: false }),
     ]);
     if (settingsRes.data) {
       setSettingsId(settingsRes.data.id);
+      setMaraeName(settingsRes.data.marae_name || 'This marae');
       setHistoryForm({
         supported_by: settingsRes.data.emergency_plan_supported_by || '',
         history: settingsRes.data.emergency_plan_history || '',
@@ -96,6 +117,7 @@ export default function EmergencyPlanManager() {
     setHazards(sortedHazards);
     setPeople(peopleRes.data || []);
     setEntities(entRes.data || []);
+    setResponseEvents(eventsRes.data || []);
     setLoading(false);
   }
 
@@ -186,6 +208,161 @@ export default function EmergencyPlanManager() {
     setPeople(prev => prev.filter(p => p.id !== id));
   }
 
+  // ── RESPONSE HISTORY ──────────────────────────────────────────────────────
+
+  function openAddEvent() {
+    setEditEvent(null);
+    setEventForm(EMPTY_EVENT_FORM);
+    setEventFile(null);
+    setEventError('');
+    setShowEventModal(true);
+  }
+
+  function openEditEvent(event) {
+    setEditEvent(event);
+    setEventForm({
+      event_date: event.event_date || '',
+      event_name: event.event_name || '',
+      description: event.description || '',
+      people_served: event.people_served != null ? String(event.people_served) : '',
+      duration_days: event.duration_days != null ? String(event.duration_days) : '',
+      entity_id: event.entity_id || '',
+    });
+    setEventFile(null);
+    setEventError('');
+    setShowEventModal(true);
+  }
+
+  async function handleSaveEvent() {
+    if (!eventForm.event_name.trim()) { setEventError('Event name is required.'); return; }
+    if (!eventForm.description.trim()) { setEventError('Description is required.'); return; }
+    if (!eventForm.event_date) { setEventError('Date is required.'); return; }
+    setEventSaving(true); setEventError('');
+
+    let document_url = null, document_name = null;
+    if (editEvent) {
+      document_url = editEvent.document_url || null;
+      document_name = editEvent.document_name || null;
+    }
+    if (eventFile) {
+      const path = `evidence/${Date.now()}-${eventFile.name.replace(/\s+/g, '_')}`;
+      const { error: upErr } = await supabase.storage.from('emergency-response-evidence').upload(path, eventFile);
+      if (!upErr) {
+        const { data } = supabase.storage.from('emergency-response-evidence').getPublicUrl(path);
+        document_url = data?.publicUrl || null;
+        document_name = eventFile.name;
+      }
+    }
+
+    const payload = {
+      event_date: eventForm.event_date,
+      event_name: eventForm.event_name.trim(),
+      description: eventForm.description.trim(),
+      people_served: eventForm.people_served === '' ? null : parseInt(eventForm.people_served, 10),
+      duration_days: eventForm.duration_days === '' ? null : parseInt(eventForm.duration_days, 10),
+      entity_id: eventForm.entity_id || null,
+      document_url, document_name,
+    };
+    const { error } = editEvent
+      ? await supabase.from('emergency_response_events').update(payload).eq('id', editEvent.id)
+      : await supabase.from('emergency_response_events').insert(payload);
+    if (error) { setEventError(error.message); setEventSaving(false); return; }
+    await fetchAll();
+    setShowEventModal(false);
+    setEventSaving(false);
+  }
+
+  async function deleteEvent(id) {
+    if (!window.confirm('Remove this response record? This is real evidence of what the marae has done — consider carefully before deleting.')) return;
+    await supabase.from('emergency_response_events').delete().eq('id', id);
+    setResponseEvents(prev => prev.filter(e => e.id !== id));
+  }
+
+  // ── EMERGENCY READINESS SUMMARY (Post #13) ──────────────────────────────
+  // Deliberately factual and non-AI-generated, matching the Finance
+  // module's AGM Report/Trial Balance pattern, not the AI Compliance
+  // Report pattern -- content meant to support a real external funding
+  // application needs to be verifiably factual, not AI-paraphrased.
+  // Assets are deliberately excluded: there's no real category or field to
+  // reliably filter "emergency-relevant" assets (generators/tanks are just
+  // free-text names inside the broad "Equipment" category), so an
+  // automated pull would be a fragile guess, not a real fact.
+
+  async function printEmergencyReadinessSummary() {
+    const { data: complianceItems } = await supabase
+      .from('compliance_items')
+      .select('name, due_date, last_checked_date, document_url')
+      .eq('category', 'emergency_preparedness');
+
+    const documentedHazards = hazards.filter(h => (h.likely_impact || '').trim() || (h.what_to_do || '').trim());
+    const skillCounts = SKILL_LISTS.map(l => ({ label: l.label, count: people.filter(p => p.role_category === l.key).length }));
+    const contactCounts = CONTACT_LISTS.map(l => ({ label: l.label, count: people.filter(p => p.role_category === l.key).length }));
+    const specialisedCount = people.filter(p => p.role_category === 'specialised_skill').length;
+
+    const compRows = (complianceItems || []).map(c => `
+      <tr>
+        <td>${c.name}</td>
+        <td>${c.last_checked_date ? fmtDate(c.last_checked_date) : '<span style="color:#a63020">Not yet checked</span>'}</td>
+        <td>${c.document_url ? 'Yes' : 'No'}</td>
+      </tr>`).join('');
+
+    const eventRows = responseEvents.map(e => `
+      <tr>
+        <td style="white-space:nowrap">${fmtDate(e.event_date)}</td>
+        <td>${e.event_name}</td>
+        <td>${e.description}</td>
+        <td style="text-align:right">${e.people_served != null ? e.people_served : '—'}</td>
+        <td style="text-align:right">${e.duration_days != null ? e.duration_days : '—'}</td>
+        <td>${e.document_url ? `<a href="${e.document_url}" target="_blank" rel="noopener noreferrer">Evidence</a>` : '—'}</td>
+      </tr>`).join('');
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Emergency Readiness Summary — ${maraeName}</title>
+<style>
+  body{font-family:Georgia,serif;max-width:900px;margin:40px auto;color:#222;line-height:1.6}
+  h1{font-size:24px;border-bottom:2px solid #1a4a3a;padding-bottom:8px}
+  h2{font-size:16px;margin-top:28px;color:#1a4a3a}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:12px}
+  td{padding:6px 8px;border-bottom:1px solid #eee}
+  .note{font-size:12px;color:#888;font-style:italic;margin:4px 0 12px}
+</style>
+</head><body>
+<h1>Emergency Readiness Summary — ${maraeName}</h1>
+<p style="color:#666;font-size:13px">Prepared ${new Date().toLocaleDateString('en-NZ',{day:'numeric',month:'long',year:'numeric'})} · a factual record of what is genuinely documented, not an assessment of overall readiness</p>
+
+<h2>History</h2>
+<p>${historyForm.history ? historyForm.history.replace(/\n/g, '<br>') : '<span style="color:#a63020">Not yet recorded.</span>'}</p>
+
+<h2>Hazards Considered (${documentedHazards.length} of ${hazards.length})</h2>
+<p class="note">This lists which hazard types have Likely Impact / What To Do content recorded. That content is shared regional civil-defence guidance, not written specifically for this marae — this summary reports only whether it has been reviewed and recorded, not the content itself.</p>
+<table><tr><th>Hazard Type</th></tr>${documentedHazards.map(h => `<tr><td>${h.hazard_type}</td></tr>`).join('')}</table>
+
+<h2>Skilled People &amp; Contacts</h2>
+<table>
+  <tr><th>Role</th><th style="text-align:right">Count</th></tr>
+  ${skillCounts.map(s => `<tr><td>${s.label}</td><td style="text-align:right">${s.count}</td></tr>`).join('')}
+  <tr><td>Specialised Skills</td><td style="text-align:right">${specialisedCount}</td></tr>
+  ${contactCounts.map(c => `<tr><td>${c.label}</td><td style="text-align:right">${c.count}</td></tr>`).join('')}
+</table>
+
+<h2>Emergency Preparedness Compliance (${(complianceItems || []).length} items)</h2>
+<table><tr><th>Item</th><th>Last Checked</th><th>Evidence on File</th></tr>${compRows || '<tr><td colspan="3">No items recorded</td></tr>'}</table>
+
+<h2>Response History (${responseEvents.length} recorded)</h2>
+<p class="note">Real, dated instances of this marae actually responding to or supporting the community during an emergency — not preparedness, actual service.</p>
+<table>
+  <tr><th>Date</th><th>Event</th><th>What we did</th><th style="text-align:right">People Served</th><th style="text-align:right">Duration (days)</th><th>Evidence</th></tr>
+  ${eventRows || '<tr><td colspan="6">No events recorded</td></tr>'}
+</table>
+
+<p class="note" style="margin-top:20px">This summary deliberately excludes the Assets Register — generator and water-tank capacity are recorded as free-text equipment entries, not a structured field, so an automated figure here would be a guess, not a fact. See the Assets Register directly for that information.</p>
+<p style="font-size:11px;color:#999;margin-top:24px">Generated by MaraeHub · maraehub.com</p>
+</body></html>`);
+    win.document.close();
+    win.print();
+  }
+
   function PersonRow({ person }) {
     const entityName = person.entity_id ? entities.find(e => e.id === person.entity_id)?.name : null;
     return (
@@ -257,29 +434,35 @@ export default function EmergencyPlanManager() {
   return (
     <div>
 
-      {/* ── SECTION TOGGLE ───────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 16, width: 'fit-content', flexWrap: 'wrap' }}>
-        {[
-          { key: 'history',        label: '📜 History' },
-          { key: 'hazards',        label: '⚠️ Hazards' },
-          { key: 'warnings',       label: '📡 How We\'ll Be Warned' },
-          { key: 'skilled_people', label: '👷 Skilled People' },
-          { key: 'contacts',       label: '📞 Contacts' },
-        ].map((s, i) => (
-          <button
-            key={s.key}
-            onClick={() => setSection(s.key)}
-            style={{
-              padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              background: section === s.key ? 'var(--brand)' : 'var(--surface)',
-              color: section === s.key ? '#fff' : 'var(--text2)',
-              border: 'none', borderRight: i < 4 ? '1px solid var(--border)' : 'none',
-              fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
-            }}
-          >
-            {s.label}
-          </button>
-        ))}
+      {/* ── SECTION TOGGLE + SUMMARY EXPORT ─────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', width: 'fit-content', flexWrap: 'wrap' }}>
+          {[
+            { key: 'history',        label: '📜 History' },
+            { key: 'hazards',        label: '⚠️ Hazards' },
+            { key: 'warnings',       label: '📡 How We\'ll Be Warned' },
+            { key: 'skilled_people', label: '👷 Skilled People' },
+            { key: 'contacts',       label: '📞 Contacts' },
+            { key: 'response_history', label: '📖 Response History' },
+          ].map((s, i) => (
+            <button
+              key={s.key}
+              onClick={() => setSection(s.key)}
+              style={{
+                padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                background: section === s.key ? 'var(--brand)' : 'var(--surface)',
+                color: section === s.key ? '#fff' : 'var(--text2)',
+                border: 'none', borderRight: i < 5 ? '1px solid var(--border)' : 'none',
+                fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <button className="btn-secondary" onClick={printEmergencyReadinessSummary} style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+          🖨️ Emergency Readiness Summary
+        </button>
       </div>
 
       {/* ── HISTORY ───────────────────────────────────────────────────────── */}
@@ -399,6 +582,54 @@ export default function EmergencyPlanManager() {
         </div>
       )}
 
+      {/* ── RESPONSE HISTORY (Post #13) ──────────────────────────────────────
+          Real, dated proof of what the marae has actually done -- kept
+          deliberately separate from Compliance's Incident Register, which
+          is framed entirely as an adverse-event/H&S log. */}
+      {section === 'response_history' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 12 }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 560 }}>
+              Real, dated instances of this marae actually responding to or supporting the community during an emergency — sheltering people, providing meals, welfare checks. This is proof of service, not preparedness, and belongs here rather than the Incident Register.
+            </div>
+            <button className="btn-primary" onClick={openAddEvent} style={{ fontSize: 14, flexShrink: 0 }}>
+              + Add Record
+            </button>
+          </div>
+          {responseEvents.length === 0 ? (
+            <div className="empty-state"><div className="emoji">📖</div><div>No response history recorded yet</div></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {responseEvents.map(event => (
+                <div key={event.id} className="panel" style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', marginBottom: 4 }}>
+                        {event.event_name} <span style={{ fontWeight: 400, color: 'var(--text3)' }}>· {fmtDate(event.event_date)}</span>
+                      </div>
+                      <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 6 }}>{event.description}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text3)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                        {event.people_served != null && <span>👥 ~{event.people_served} people served</span>}
+                        {event.duration_days != null && <span>📅 {event.duration_days} day{event.duration_days !== 1 ? 's' : ''}</span>}
+                        {event.document_url && <a href={event.document_url} target="_blank" rel="noopener noreferrer">📎 Evidence</a>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button onClick={() => openEditEvent(event)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                        Edit
+                      </button>
+                      <button onClick={() => deleteEvent(event.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── HAZARD MODAL ──────────────────────────────────────────────────── */}
       {showHazardModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
@@ -477,6 +708,70 @@ export default function EmergencyPlanManager() {
               <button onClick={() => setShowPersonModal(false)} className="btn-secondary">Cancel</button>
               <button onClick={handleSavePerson} className="btn-primary" disabled={personSaving}>
                 {personSaving ? 'Saving...' : editPerson ? 'Save Changes' : 'Add Contact'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── RESPONSE EVENT MODAL ──────────────────────────────────────────── */}
+      {showEventModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 560, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, margin: 0, color: 'var(--brand)' }}>
+                {editEvent ? 'Edit Response Record' : 'Add Response Record'}
+              </h2>
+              <button onClick={() => setShowEventModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <FormError message={eventError} />
+
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Date *</label>
+                <input type="date" className="form-input" value={eventForm.event_date} onChange={e => setEventForm(f => ({ ...f, event_date: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Event Name *</label>
+                <input className="form-input" value={eventForm.event_name} onChange={e => setEventForm(f => ({ ...f, event_name: e.target.value }))} placeholder="e.g. Cyclone Vaianu" />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">What did the marae do? *</label>
+              <textarea className="form-input" rows={3} value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Sheltered whānau overnight, provided meals, ran welfare checks" style={{ resize: 'vertical' }} />
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Approx. People Served</label>
+                <input type="number" min="0" className="form-input" value={eventForm.people_served} onChange={e => setEventForm(f => ({ ...f, people_served: e.target.value }))} placeholder="e.g. 40" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Duration (days)</label>
+                <input type="number" min="0" className="form-input" value={eventForm.duration_days} onChange={e => setEventForm(f => ({ ...f, duration_days: e.target.value }))} placeholder="e.g. 3" />
+              </div>
+            </div>
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={eventForm.entity_id} onChange={e => setEventForm(f => ({ ...f, entity_id: e.target.value }))}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label">Evidence</label>
+              <input type="file" ref={eventFileRef} style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png" onChange={e => setEventFile(e.target.files[0] || null)} />
+              <button type="button" onClick={() => eventFileRef.current?.click()} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 16px', fontSize: 13, cursor: 'pointer', color: 'var(--text2)' }}>
+                {eventFile ? `📎 ${eventFile.name}` : editEvent?.document_name ? `📎 ${editEvent.document_name} (replace)` : '📎 Choose evidence (photo, media coverage, letter)'}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowEventModal(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleSaveEvent} className="btn-primary" disabled={eventSaving}>
+                {eventSaving ? 'Saving...' : editEvent ? 'Save Changes' : 'Add Record'}
               </button>
             </div>
           </div>

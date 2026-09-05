@@ -266,17 +266,23 @@ const HELP_TOPICS = {
       items: [
         { q: 'What is the Emergency Plan module, and how is it different from "Emergency Preparedness" in Compliance?', a: 'Compliance Tracker\'s "Emergency Preparedness" category tracks 10 generic checklist items (renewal dates for your Civil Defence plan, generator, water supply, and so on). The separate Emergency Plan tab (Assets & Compliance group) is a full, guided digitisation of the real official Marae Emergency Preparedness Plan (Waikato District Council / Te Puni Kōkiri, Civil Defence Emergency Management) — a genuinely different, more complete document, built directly from the real template.' },
         { q: 'How do I use it?', a: [
-          { text: 'Go to Assets & Compliance → Emergency Plan. Five sections are currently live.' },
+          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus a sixth, MaraeHub-specific section not part of the original template (see Response History below).' },
           { items: [
             'History — the marae\'s own history, in your words.',
             'Hazards — 11 pre-seeded hazard types, each with a Likely Impact and What To Do.',
             'How We\'ll Be Warned — official CDEM reference information.',
             'Skilled People — Marae Operators, First Aiders, and Specialised Skills.',
             'Contacts — Marae Contacts and Emergency Contacts.',
+            'Response History — real, dated record of times the marae has actually supported the community during an emergency.',
           ]},
         ] },
-        { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not yet fully. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents in the meantime. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub — but it doesn\'t yet generate a printable document from what you\'ve entered (that\'s still being built).' },
-        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not yet — 5 of the real document\'s 14 sections are live. The rest (service providers, infrastructure, inventory, site plan, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
+        { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not exactly. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents too. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub, and — via the "Emergency Readiness Summary" print button — generating a real, factual document from what you\'ve entered, for your own records or for external use (e.g. supporting a funding application).' },
+        { q: 'What does the "Emergency Readiness Summary" actually show?', a: [
+          { text: 'A real, factual print-out — deliberately not AI-generated, since a document meant to support a real external funding application needs to be verifiably factual, not paraphrased. It pulls together your History, which hazard types have guidance recorded (clearly labelled as shared regional content, not marae-specific), your Skilled People and Contacts counts, your Emergency Preparedness compliance items and their real check dates, and your Response History.' },
+          { text: 'It deliberately does not include the Assets Register — a generator or water tank is just a free-text name inside the broad "Equipment" category, with no reliable field to filter on, so an automated figure there would be a guess, not a fact. Check the Assets Register directly for that.' },
+        ] },
+        { q: 'What is Response History, and why is it separate from the Incident Register in Compliance?', a: 'Response History records real, dated instances of the marae actually responding to or supporting the community during an emergency — sheltering people, providing meals, welfare checks — with an optional evidence upload (a photo, media coverage, a council acknowledgement letter). This is proof of service, not preparedness, and it\'s a genuinely different kind of record from the Incident Register, which is framed entirely as an adverse-event/health-and-safety log (severity levels, "steps taken to address the incident"). Mixing "we sheltered 40 people during a cyclone" into the same list as "someone slipped on wet flooring" would conflate two different things.' },
+        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History section above. The rest of the official template (service providers, infrastructure, inventory, site plan, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
       ]
     },
     {
