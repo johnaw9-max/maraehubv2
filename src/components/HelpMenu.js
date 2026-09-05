@@ -269,7 +269,7 @@ const HELP_TOPICS = {
           { text: 'Go to Assets & Compliance → Emergency Plan. Five sections are currently live.' },
           { items: [
             'History — the marae\'s own history, in your words.',
-            'Hazards — 9 pre-seeded hazard types, each with a Likely Impact and What To Do.',
+            'Hazards — 11 pre-seeded hazard types, each with a Likely Impact and What To Do.',
             'How We\'ll Be Warned — official CDEM reference information.',
             'Skilled People — Marae Operators, First Aiders, and Specialised Skills.',
             'Contacts — Marae Contacts and Emergency Contacts.',

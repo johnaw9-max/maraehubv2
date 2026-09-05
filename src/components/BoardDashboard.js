@@ -55,7 +55,7 @@ const PERIOD_LABEL = { month: 'This Month', quarter: 'This Quarter', year: 'This
 // and EmergencyPlanManager.js's HAZARD_ORDER — used only to compute AI
 // Compliance Report's (14yhc7knp9n, Report #2) hazard-guidance coverage
 // count, so kept local rather than exported/shared across files.
-const TOTAL_HAZARD_TYPES = 10;
+const TOTAL_HAZARD_TYPES = 11;
 
 const NAV_LABELS = {
   minutes:    'View Minutes →',
