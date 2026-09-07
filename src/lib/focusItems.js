@@ -1,4 +1,8 @@
-// "Focus this week" card — Step 2 (ClickUp 86d3vc4yp).
+// Originally the standalone "Focus this week" card (ClickUp 86d3vc4yp).
+// Merged into the Top Priorities panel in BoardDashboard.js as of
+// 14yhc7kp7xg Step 1 — risk and finance had no representation anywhere in
+// Top Priorities before that merge, so these 4 candidates are folded
+// directly into its ranked list rather than rendered as a separate card.
 // Pure data-gathering: takes the 4 signal sources already computed in
 // BoardDashboard.js, applies the Step 1 ranking rules (locked 2026-08-04),
 // and returns up to 3 ranked items. No React, no queries, no new tables.

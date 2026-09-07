@@ -141,7 +141,8 @@ function StatusCard({ icon, title, level, number, message, rightContent, trend, 
   );
 }
 
-// Owner line, reusing FocusThisWeekCard's exact proven pattern (line ~134).
+// Owner line — now shared by InsightRow (14yhc7kp7xg Step 1) for any Top
+// Priorities item carrying a real owner concept.
 function OwnerLine({ owner, color, navTo, onNavigate }) {
   return (
     <div style={{ fontSize: 14, color, marginTop: 2 }}>
@@ -159,9 +160,10 @@ function OwnerLine({ owner, color, navTo, onNavigate }) {
 }
 
 // Stage 4 (86d41pc93) -- cap+view-all for single-tab flagged-item lists.
-// Only for sections that map to exactly one real tab; cross-section
-// aggregators (Focus This Week, Top Priorities) use plain "+N more" text
-// instead, since there is no single destination to link to.
+// Only for sections that map to exactly one real tab; the cross-section
+// Top Priorities aggregator (14yhc7kp7xg Step 1: now also covers what was
+// "Focus This Week") uses plain "+N more" text instead, since there is no
+// single destination to link to.
 function ViewAllLink({ shown, total, navTo, onNavigate }) {
   if (total <= shown || !onNavigate) return null;
   return (
@@ -210,14 +212,6 @@ function TrendArrow({ trend }) {
   );
 }
 
-// "Focus this week" card (ClickUp 86d3vc4yp, Step 3). Renders items from
-// focusItems.js's buildFocusItems() — not yet wired into the page or given
-// an empty-case design; both are Step 4.
-const TIER_STYLES = {
-  urgent:         { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)', color: 'var(--danger)', badgeBg: 'var(--danger)', badgeLabel: 'Urgent' },
-  'worth-a-look': { background: '#fdf0dc', border: '1px solid #e8c880', borderLeft: '4px solid var(--warning)', color: '#7a4f00',        badgeBg: '#c8902a',      badgeLabel: 'Worth a look' },
-};
-
 function InsightRow({ ins, onNavigate }) {
   const s = {
     red:   { background: '#faeae7', border: '1px solid #f0b8b0', borderLeft: '4px solid var(--danger)',  color: 'var(--danger)' },
@@ -225,10 +219,18 @@ function InsightRow({ ins, onNavigate }) {
     green: { background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid var(--brand)',   color: '#1a4a3a' },
   }[ins.level];
   const icon = ins.level === 'red' ? '🔴' : ins.level === 'amber' ? '🟡' : '🟢';
+  // 14yhc7kp7xg Step 1: items merged in from buildFocusItems carry a real
+  // `owner` key (string, or null for genuinely unowned) — plain Top
+  // Priorities insights never set this key at all, so `!== undefined` is
+  // the right test, not a falsy check.
+  const hasOwner = ins.owner !== undefined;
   return (
-    <div style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8, ...s }}>
+    <div style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: hasOwner ? 'flex-start' : 'center', gap: 8, ...s }}>
       <span style={{ flexShrink: 0 }}>{icon}</span>
-      <span style={{ flex: 1 }}>{stripUrls(ins.text)}</span>
+      <div style={{ flex: 1 }}>
+        <span>{stripUrls(ins.text)}</span>
+        {hasOwner && <OwnerLine owner={ins.owner} color={s.color} navTo={ins.navTo} onNavigate={onNavigate} />}
+      </div>
       {ins.navTo && onNavigate && (
         <button
           onClick={() => onNavigate(ins.navTo)}
@@ -237,99 +239,6 @@ function InsightRow({ ins, onNavigate }) {
           {NAV_LABELS[ins.navTo] || 'View →'}
         </button>
       )}
-    </div>
-  );
-}
-
-function FocusThisWeekRow({ item, onNavigate }) {
-  const t = TIER_STYLES[item.tier];
-  return (
-    <div style={{ borderRadius: 8, padding: '12px 14px', ...t }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fff', background: t.badgeBg, borderRadius: 20, padding: '2px 9px', marginRight: 8 }}>
-            {t.badgeLabel}
-          </span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', lineHeight: 1.5 }}>{item.text}</span>
-          <div style={{ fontSize: 14, color: t.color, marginTop: 5 }}>
-            {item.owner ? (
-              `👤 ${item.owner}`
-            ) : (
-              <>
-                No owner assigned ·{' '}
-                {onNavigate && (
-                  <span
-                    onClick={() => onNavigate(item.navTo)}
-                    style={{ cursor: 'pointer', fontWeight: 700, textDecoration: 'underline' }}
-                  >
-                    Assign →
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-        {onNavigate && (
-          <button
-            onClick={() => onNavigate(item.navTo)}
-            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: t.color, border: `1px solid ${t.badgeBg}`, borderRadius: 6, padding: '4px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}
-          >
-            {NAV_LABELS[item.navTo] || 'View →'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FocusThisWeekCard({ items, total, allItems, onNavigate }) {
-  const [showMore, setShowMore] = useState(false);
-
-  if (!items || items.length === 0) {
-    return (
-      <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid #2e7d52', background: '#e8f4ef', textAlign: 'center', padding: '20px 16px' }}>
-        <div style={{ fontSize: 22, marginBottom: 6 }}>✅</div>
-        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 700, color: '#1a4a3a', marginBottom: 4 }}>
-          All clear this week
-        </div>
-        <div style={{ fontSize: 14, color: '#1a4a3a', opacity: 0.85 }}>
-          Nothing urgent needs your attention right now — great governance.
-        </div>
-      </div>
-    );
-  }
-
-  const extra = (allItems || []).slice(items.length);
-
-  return (
-    <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--brand)' }}>
-      <SectionTitle icon="🎯" title="Focus This Week" count={items.length} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {items.map((item, i) => <FocusThisWeekRow key={i} item={item} onNavigate={onNavigate} />)}
-        {total > items.length && (
-          <div style={{ marginTop: 2 }}>
-            <button
-              type="button"
-              onClick={() => setShowMore(s => !s)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
-                fontSize: 14, fontWeight: 600, color: 'var(--text2)',
-                fontFamily: 'DM Sans, sans-serif',
-              }}
-            >
-              <span>{showMore ? '▲' : '▼'}</span>
-              <span>+{total - items.length} more this week</span>
-            </button>
-            {showMore && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-                {extra.map((item, i) => <FocusThisWeekRow key={i} item={item} onNavigate={onNavigate} />)}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -963,24 +872,20 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     }
   }
 const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date + 'T12:00:00') < today);
-  // overdueActions is surfaced in Decisions Required — not duplicated into Top Priorities
+  // overdueActions is surfaced in Decisions Required in full, and separately
+  // as a single "worst item" via buildFocusItems (see INSIGHTS_ALL below) —
+  // a deliberate duplication kept from the 8/26 Top Priorities/Decisions
+  // Required dedup, not reintroduced by the 14yhc7kp7xg merge.
   const grantsUrgent = d.grants.filter(g => g.deadline && !['approved','declined'].includes(g.status) && new Date(g.deadline + 'T12:00:00') >= today && new Date(g.deadline + 'T12:00:00') <= in7);
   // grantsUrgent is surfaced in Decisions Required — not duplicated into Top Priorities
   const openResolutions = d.resolutions.filter(r => !['Completed', 'Cancelled'].includes(r.status));
   // openResolutions is surfaced in Decisions Required — not duplicated into Top Priorities
 
-  if (overdueReminders.length > 0) {
-    const assetById = Object.fromEntries(d.assets.map(a => [a.id, a]));
-    if (overdueReminders.length <= 3) {
-      const names = overdueReminders.map(r => assetById[r.asset_id]?.name || 'an asset');
-      const text = overdueReminders.length === 1
-        ? `${names[0]} — service overdue ${Math.floor((today - new Date(overdueReminders[0].due_date + 'T12:00:00')) / 86400000)} days`
-        : `${overdueReminders.length} services overdue: ${names.join(', ')}`;
-      redInsights.push({ text, navTo: 'assets' });
-    } else {
-      redInsights.push({ text: `${overdueReminders.length} asset services are overdue — arrange maintenance now`, navTo: 'assets' });
-    }
-  }
+  // overdueReminders' single-worst-item-with-owner insight now comes from
+  // buildFocusItems (see INSIGHTS_ALL below) instead of the aggregate-count
+  // text this block used to push — the two were the same underlying signal
+  // shown twice with no owner info in this version, so this block is removed
+  // rather than kept alongside it.
 
   const criticalAssets = d.assets.filter(a => a.condition === 'critical');
   criticalAssets.forEach(a => {
@@ -1074,18 +979,39 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   const normalizeInsight = (item, level) =>
     typeof item === 'string' ? { text: item, level } : { ...item, level };
 
+  // 14yhc7kp7xg Step 1: Focus This Week merged into Top Priorities rather
+  // than kept as a separate card. buildFocusItems() already ranks the one
+  // "worst" risk/action/reminder plus a finance-deficit line — risk and
+  // finance had no representation anywhere in Top Priorities before this,
+  // so folding them in is pure addition. overdueActions is deliberately
+  // kept here too even though Decisions Required already shows it in
+  // full — that duplication predates this merge and was a deliberate call
+  // during the 8/26 Top Priorities/Decisions Required dedup, left as-is.
+  // overdueReminders' old aggregate-text entry (further up, "N services
+  // overdue: ...") is removed in favour of this richer owner-aware
+  // version of the same signal, rather than showing it twice.
+  const { all: focusCandidates } = buildFocusItems({
+    overdueActions, overdueReminders, finNet, highOpenRisks,
+    assets: d.assets, today, truncate, fmtMoney,
+  });
+  const focusInsights = focusCandidates.map(c => ({ text: c.text, navTo: c.navTo, owner: c.owner }));
+  const focusRedInsights   = focusInsights.filter((c, i) => focusCandidates[i].tier === 'urgent');
+  const focusAmberInsights = focusInsights.filter((c, i) => focusCandidates[i].tier !== 'urgent');
+
   const INSIGHTS_ALL = [
     ...redInsights.map(item => normalizeInsight(item, 'red')),
+    ...focusRedInsights.map(item => normalizeInsight(item, 'red')),
     ...(d.activeInterestCount > 0 ? [{
       text: `${d.activeInterestCount} active conflict of interest declaration${d.activeInterestCount !== 1 ? 's' : ''} — review before next meeting`,
       level: 'amber',
       navTo: 'minutes',
     }] : []),
     ...amberInsights.map(item => normalizeInsight(item, 'amber')),
+    ...focusAmberInsights.map(item => normalizeInsight(item, 'amber')),
     ...greenInsights.slice(0, 1).map(item => normalizeInsight(item, 'green')),
   ];
   // Stage 4 (86d41pc93): real total preserved alongside the cap, dropped
-  // from 5 to 3 for consistency with Focus This Week and Workflow Activity.
+  // from 5 to 3 for consistency with Workflow Activity.
   const INSIGHTS_TOTAL = INSIGHTS_ALL.length;
   const INSIGHTS = INSIGHTS_ALL.slice(0, 3);
 
@@ -1565,11 +1491,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
 
   // ─── RENDER ────────────────────────────────────────────────────────────────
 
-  const { items: focusItems, total: focusItemsTotal, all: focusItemsAll } = buildFocusItems({
-    overdueActions, overdueReminders, finNet, highOpenRisks,
-    assets: d.assets, today, truncate, fmtMoney,
-  });
-
   // Stage 5 (86d41pc93) -- locked-month-over-month trend, null until 2+
   // months exist. d.kpiSnapshots is already sorted ascending by snapshot_month.
   const kpiTrendPair = d.kpiSnapshots.length >= 2
@@ -1685,8 +1606,50 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         ))}
       </div>
 
-      {/* ── FOCUS THIS WEEK (ClickUp 86d3vc4yp) ──────────────────────────── */}
-      <FocusThisWeekCard items={focusItems} total={focusItemsTotal} allItems={focusItemsAll} onNavigate={onNavigate} />
+      {/* ══════════════════════════ TOP PRIORITIES (14yhc7kp7xg Step 1 — merged with the former "Focus This Week" card) ══════════════════════════ */}
+      <GroupHeading title="Top Priorities" />
+
+      {INSIGHTS.length === 0 ? (
+        <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid #2e7d52', background: '#e8f4ef', textAlign: 'center', padding: '20px 16px' }}>
+          <div style={{ fontSize: 22, marginBottom: 6 }}>✅</div>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 700, color: '#1a4a3a', marginBottom: 4 }}>
+            All clear this week
+          </div>
+          <div style={{ fontSize: 14, color: '#1a4a3a', opacity: 0.85 }}>
+            Nothing urgent needs your attention right now — great governance.
+          </div>
+        </div>
+      ) : (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="💡" title="Top Priorities" count={INSIGHTS.length} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {INSIGHTS.map((ins, i) => <InsightRow key={i} ins={ins} onNavigate={onNavigate} />)}
+            {INSIGHTS_TOTAL > INSIGHTS.length && (
+              <div style={{ marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMorePriorities(s => !s)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    background: 'var(--surface2)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                    fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}
+                >
+                  <span>{showMorePriorities ? '▲' : '▼'}</span>
+                  <span>+{INSIGHTS_TOTAL - INSIGHTS.length} more priorities</span>
+                </button>
+                {showMorePriorities && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    {INSIGHTS_ALL.slice(INSIGHTS.length).map((ins, i) => <InsightRow key={i} ins={ins} onNavigate={onNavigate} />)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── AI GOVERNANCE REPORT MODAL ─────────────────────────────────── */}
       {(showReport || aiError) && (
@@ -1841,82 +1804,46 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       </div>
 
-      {/* ══════════════════════════ TOP PRIORITIES ══════════════════════════ */}
-      <GroupHeading title="Top Priorities" />
-
-      {/* ── SMART INSIGHTS ─────────────────────────────────────────────── */}
-      {(INSIGHTS.length > 0 || d.workflowInstances.length > 0) && (
+      {/* ── WORKFLOW ACTIVITY — split out of Top Priorities in the 14yhc7kp7xg merge; it's an activity summary, not a priority ── */}
+      {d.workflowInstances.length > 0 && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="💡" title="Top Priorities" count={INSIGHTS.length || undefined} />
-          {INSIGHTS.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {INSIGHTS.map((ins, i) => <InsightRow key={i} ins={ins} onNavigate={onNavigate} />)}
-              {INSIGHTS_TOTAL > INSIGHTS.length && (
-                <div style={{ marginTop: 2 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
+              <div style={{ fontSize: 14, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
+              <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
+            </div>
+            {activeWorkflows.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
+                {(showMoreWorkflows ? activeWorkflows : activeWorkflows.slice(0, 3)).map(w => (
+                  <div key={w.id} style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
+                    {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
+                  </div>
+                ))}
+                {activeWorkflows.length > 3 && (
                   <button
                     type="button"
-                    onClick={() => setShowMorePriorities(s => !s)}
+                    onClick={() => setShowMoreWorkflows(s => !s)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                      display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content',
                       background: 'var(--surface2)', border: '1px solid var(--border)',
-                      borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                      borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
                       fontSize: 14, fontWeight: 600, color: 'var(--text2)',
-                      fontFamily: 'DM Sans, sans-serif',
+                      fontFamily: 'DM Sans, sans-serif', marginTop: 2,
                     }}
                   >
-                    <span>{showMorePriorities ? '▲' : '▼'}</span>
-                    <span>+{INSIGHTS_TOTAL - INSIGHTS.length} more priorities</span>
+                    <span>{showMoreWorkflows ? '▲' : '▼'}</span>
+                    <span>{showMoreWorkflows ? 'Show less' : `+${activeWorkflows.length - 3} more active`}</span>
                   </button>
-                  {showMorePriorities && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                      {INSIGHTS_ALL.slice(INSIGHTS.length).map((ins, i) => <InsightRow key={i} ins={ins} onNavigate={onNavigate} />)}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          {d.workflowInstances.length > 0 && (
-            <div style={{ marginTop: INSIGHTS.length > 0 ? 14 : 0, paddingTop: INSIGHTS.length > 0 ? 12 : 0, borderTop: INSIGHTS.length > 0 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
-                  <div style={{ fontSize: 14, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
-                  <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
-                </div>
-                {activeWorkflows.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
-                    {(showMoreWorkflows ? activeWorkflows : activeWorkflows.slice(0, 3)).map(w => (
-                      <div key={w.id} style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
-                        {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
-                      </div>
-                    ))}
-                    {activeWorkflows.length > 3 && (
-                      <button
-                        type="button"
-                        onClick={() => setShowMoreWorkflows(s => !s)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content',
-                          background: 'var(--surface2)', border: '1px solid var(--border)',
-                          borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-                          fontSize: 14, fontWeight: 600, color: 'var(--text2)',
-                          fontFamily: 'DM Sans, sans-serif', marginTop: 2,
-                        }}
-                      >
-                        <span>{showMoreWorkflows ? '▲' : '▼'}</span>
-                        <span>{showMoreWorkflows ? 'Show less' : `+${activeWorkflows.length - 3} more active`}</span>
-                      </button>
-                    )}
-                  </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 

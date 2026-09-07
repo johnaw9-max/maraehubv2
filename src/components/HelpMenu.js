@@ -1404,23 +1404,31 @@ const HELP_TOPICS = {
       ]
     },
     {
-      category: 'Focus This Week',
-      icon: '🎯',
+      category: 'Top Priorities',
+      icon: '💡',
       items: [
-        { q: 'What is the Focus This Week card?', a: 'A rule-based summary at the top of Board View, directly above Compliance, showing up to 3 of the most important things needing attention right now — drawn from the Risk Register, Meeting Actions, Asset Service Reminders, and Finance.' },
-        { q: 'What do the "Urgent" and "Worth a look" badges mean?', a: [
-          { header: 'Urgent (red) means it needs immediate attention:', items: [
+        { q: 'What is the Top Priorities panel?', a: 'A rule-based summary at the top of Board View, above Compliance, showing up to 3 of the most important things needing attention right now — drawn from across the whole platform: Risk Register, Meeting Actions, Service Reminders, Finance, Compliance, Goals, Tasks, Assets, Workflows, Bookings, and more.' },
+        { q: 'What do the red, amber, and green markers mean?', a: [
+          { header: 'Red means it needs immediate attention, for example:', items: [
             'A meeting action or service reminder overdue by more than 7 days',
             'A high-rated risk whose review date has passed',
+            'Emergency preparedness items overdue or not scheduled',
+            'A critical-condition asset',
           ]},
-          { header: '"Worth a look" (amber) means it is flagged but less time-critical:', items: [
+          { header: 'Amber means it is flagged but less time-critical, for example:', items: [
             'A meeting action or service reminder overdue by 7 days or less',
-            'Finance running a deficit this year — Finance never escalates to Urgent',
+            'Finance running a deficit this year — Finance never escalates to red',
+            'Compliance items or grants due soon',
+          ]},
+          { header: 'Green (at most one shown) is good news, for example:', items: [
+            'All strategic goals on track',
+            'All compliance obligations up to date',
           ]},
         ] },
-        { q: 'How are the 3 items chosen?', a: 'MaraeHub picks at most one item from each of Risk, Meeting Actions, Service Reminders, and Finance, then ranks all Urgent items above all Worth a look items.' },
-        { q: 'What does "No owner assigned" mean?', a: 'It means the underlying record — a risk, action, or reminder — has no responsible person set. Click "Assign →" to jump straight to that record and set one.' },
-        { q: 'What happens when nothing needs attention?', a: 'The card shows "✅ All clear this week — Nothing urgent needs your attention right now — great governance" in place of the list.' },
+        { q: 'How are the 3 items chosen?', a: 'All red items are ranked above all amber items, with at most one green "good news" item at the end. Click "+N more priorities" to see everything else.' },
+        { q: 'What does "No owner assigned" mean?', a: 'On items drawn from Risk, Meeting Actions, Service Reminders, and Finance, it means the underlying record has no responsible person set. Click "Assign →" to jump straight to that record and set one. Other items do not carry an owner.' },
+        { q: 'What happened to the "Focus This Week" card?', a: 'It has been merged into Top Priorities — the same ranked risk, action, reminder, and finance items now appear here alongside everything else, instead of in a separate card.' },
+        { q: 'What happens when nothing needs attention?', a: 'The panel shows "✅ All clear this week — Nothing urgent needs your attention right now — great governance" in place of the list.' },
       ]
     },
     {
