@@ -1581,7 +1581,10 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
 
       {/* ── SUMMARY STRIP — reuses the 6 StatusCard levels/numbers/messages, computes nothing new ── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 16px', padding: '10px 14px', marginBottom: 18, background: 'var(--surface2)', borderRadius: 8 }}>
+      {/* 14yhc7kp7xg Step 2: more compact, not smaller text -- fontSize stays at
+          14, the established readability floor (86d3y4rzd), Waj-validated on
+          another module. Compactness comes entirely from tighter padding/gaps. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '3px 10px', padding: '6px 10px', marginBottom: 12, background: 'var(--surface2)', borderRadius: 8 }}>
         {[
           {
             icon: '📋', label: 'Compliance', level: complianceLevel, navTo: 'compliance',
@@ -1598,7 +1601,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           <span
             key={m.label}
             onClick={() => onNavigate && onNavigate(m.navTo)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default' }}
           >
             {m.icon} {m.label} {LEVEL_EMOJI[m.level]}
             <span style={{ fontWeight: 400, color: 'var(--text3)' }}>{m.detail}</span>
