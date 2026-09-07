@@ -1518,36 +1518,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
         <div className="no-print" style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={generateReport}
-            disabled={aiLoading}
-            style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {aiLoading ? '⏳ Generating…' : '✨ AI Governance Report'}
-          </button>
-          {isAdmin && (
-          <button
-            onClick={generateFinancialReport}
-            disabled={finAiLoading}
-            style={{ background: finAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: finAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
-          </button>
-          )}
-          <button
-            onClick={generateComplianceReport}
-            disabled={compAiLoading}
-            style={{ background: compAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: compAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {compAiLoading ? '⏳ Generating…' : '✨ AI Compliance Report'}
-          </button>
-          <button
-            onClick={generateTasksReport}
-            disabled={tasksAiLoading}
-            style={{ background: tasksAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: tasksAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {tasksAiLoading ? '⏳ Generating…' : '✨ AI Actions & Tasks Report'}
-          </button>
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"
@@ -1609,8 +1579,32 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         ))}
       </div>
 
-      {/* ══════════════════════════ TOP PRIORITIES (14yhc7kp7xg Step 1 — merged with the former "Focus This Week" card) ══════════════════════════ */}
-      <GroupHeading title="Top Priorities" />
+      {/* ── PERIOD TOGGLE — 14yhc7kp7xg Step 3: moved to page top since it filters content in more than one of the 5 sections below ── */}
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
+        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          {PERIODS.map((p, i) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => setPeriod(p.key)}
+              style={{
+                padding: '7px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                background: period === p.key ? 'var(--brand)' : 'var(--surface)',
+                color: period === p.key ? '#fff' : 'var(--text2)',
+                border: 'none',
+                borderRight: i < PERIODS.length - 1 ? '1px solid var(--border)' : 'none',
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════════════════════ WHAT NEEDS ATTENTION (14yhc7kp7xg Step 3 — Top Priorities + Decisions Required merged) ══════════════════════════ */}
+      <GroupHeading title="What Needs Attention" />
 
       {INSIGHTS.length === 0 ? (
         <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid #2e7d52', background: '#e8f4ef', textAlign: 'center', padding: '20px 16px' }}>
@@ -1654,450 +1648,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       )}
 
-      {/* ── AI GOVERNANCE REPORT MODAL ─────────────────────────────────── */}
-      {(showReport || aiError) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Governance Report</h2>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {aiReport && (
-                  <button
-                    onClick={copyReport}
-                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    {copied ? '✅ Copied' : '📋 Copy'}
-                  </button>
-                )}
-                <button
-                  onClick={() => { setShowReport(false); setAiError(''); setAiReport(''); }}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            {aiError ? (
-              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{aiError}</div>
-            ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{aiReport}</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── AI FINANCIAL REPORT MODAL ──────────────────────────────────── */}
-      {(showFinReport || finAiError) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Financial Report</h2>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {finAiReport && (
-                  <button
-                    onClick={copyFinReport}
-                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    {copied ? '✅ Copied' : '📋 Copy'}
-                  </button>
-                )}
-                <button
-                  onClick={() => { setShowFinReport(false); setFinAiError(''); setFinAiReport(''); }}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            {finAiError ? (
-              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{finAiError}</div>
-            ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{finAiReport}</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── AI COMPLIANCE REPORT MODAL ─────────────────────────────────── */}
-      {(showCompReport || compAiError) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Compliance Report</h2>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {compAiReport && (
-                  <button
-                    onClick={copyComplianceReport}
-                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    {copied ? '✅ Copied' : '📋 Copy'}
-                  </button>
-                )}
-                <button
-                  onClick={() => { setShowCompReport(false); setCompAiError(''); setCompAiReport(''); }}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            {compAiError ? (
-              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{compAiError}</div>
-            ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{compAiReport}</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── AI ACTIONS & TASKS REPORT MODAL ────────────────────────────── */}
-      {(showTasksReport || tasksAiError) && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Actions & Tasks Report</h2>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {tasksAiReport && (
-                  <button
-                    onClick={copyTasksReport}
-                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    {copied ? '✅ Copied' : '📋 Copy'}
-                  </button>
-                )}
-                <button
-                  onClick={() => { setShowTasksReport(false); setTasksAiError(''); setTasksAiReport(''); }}
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            {tasksAiError ? (
-              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{tasksAiError}</div>
-            ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{tasksAiReport}</div>
-            )}
-          </div>
-        </div>
-      )}
-
-
-      {/* ── PERIOD TOGGLE ──────────────────────────────────────────────── */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
-        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          {PERIODS.map((p, i) => (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => setPeriod(p.key)}
-              style={{
-                padding: '7px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                background: period === p.key ? 'var(--brand)' : 'var(--surface)',
-                color: period === p.key ? '#fff' : 'var(--text2)',
-                border: 'none',
-                borderRight: i < PERIODS.length - 1 ? '1px solid var(--border)' : 'none',
-                fontFamily: 'DM Sans, sans-serif',
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── WORKFLOW ACTIVITY — split out of Top Priorities in the 14yhc7kp7xg merge; it's an activity summary, not a priority ── */}
-      {d.workflowInstances.length > 0 && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
-              <div style={{ fontSize: 14, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
-            </div>
-            <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
-              <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
-            </div>
-            {activeWorkflows.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
-                {(showMoreWorkflows ? activeWorkflows : activeWorkflows.slice(0, 3)).map(w => (
-                  <div key={w.id} style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
-                    {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
-                  </div>
-                ))}
-                {activeWorkflows.length > 3 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowMoreWorkflows(s => !s)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content',
-                      background: 'var(--surface2)', border: '1px solid var(--border)',
-                      borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
-                      fontSize: 14, fontWeight: 600, color: 'var(--text2)',
-                      fontFamily: 'DM Sans, sans-serif', marginTop: 2,
-                    }}
-                  >
-                    <span>{showMoreWorkflows ? '▲' : '▼'}</span>
-                    <span>{showMoreWorkflows ? 'Show less' : `+${activeWorkflows.length - 3} more active`}</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════ WORKLOAD ══════════════════════════ */}
-      {workloadRollup.length > 0 && (
-        <div className="panel" style={{ marginBottom: 20 }}>
-          <SectionTitle icon="⚖️" title="Workload by Trustee" note="open items across Compliance, Tasks, Risk, Service Reminders, Minutes, Goals" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(showAllWorkload ? workloadRollup : workloadRollup.slice(0, 5)).map(w => (
-              <div key={w.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{w.name}</div>
-                <div style={{ fontSize: 14, color: 'var(--text2)' }}>{w.total} open</div>
-                {w.overdue > 0 && (
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger, #c0392b)' }}>{w.overdue} overdue</div>
-                )}
-              </div>
-            ))}
-          </div>
-          {workloadRollup.length > 5 && (
-            <button
-              type="button"
-              onClick={() => setShowAllWorkload(s => !s)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                background: 'var(--surface2)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
-                fontSize: 14, fontWeight: 600, color: 'var(--text2)',
-                fontFamily: 'DM Sans, sans-serif', marginTop: 8,
-              }}
-            >
-              <span>{showAllWorkload ? '▲' : '▼'}</span>
-              <span>{showAllWorkload ? 'Show less' : `+${workloadRollup.length - 5} more`}</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ══════════════════════════ COMPLIANCE ══════════════════════════ */}
-      <GroupHeading title="Compliance" />
-
-      {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
-      <StatusCard
-        icon="📋"
-        title="Compliance Tracker"
-        level={complianceLevel}
-        number={complianceNumber}
-        message={complianceMessage}
-        trend={complianceTrend}
-        rightContent={(d.entities || []).length > 0 && (
-          <select
-            className="no-print"
-            value={complianceEntityFilter}
-            onChange={e => setComplianceEntityFilter(e.target.value)}
-            style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
-          >
-            <option value="all">All Entities</option>
-            {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-          </select>
-        )}
-      >
-        {complianceForPanel.length === 0 ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add items in the Compliance tab</div>
-        ) : (
-          <>
-            {/* Secondary detail — existing 5-stat grid, kept as-is, always shown when items exist */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
-              {[
-                { label: 'Overdue',   count: panelOverdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
-                { label: 'Due Soon',  count: panelDueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
-                { label: 'Never Assessed', count: panelNeverAssessedCompliance.length, dot: '#7a7268', bg: '#f5f0e8', color: 'var(--text3)' },
-                { label: 'Compliant', count: panelCompliantComplianceArr.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
-                { label: '% Compliant', count: panelCompliancePct === null ? '—' : `${panelCompliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-                  <div style={{ fontSize: 14, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Flagged items — overdue + due soon, shown whenever either exists */}
-            {(panelOverdueCompliance.length > 0 || panelDueSoonCompliance.length > 0) && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: panelNeverAssessedCompliance.length > 0 ? 14 : 0 }}>
-                {[...panelOverdueCompliance, ...panelDueSoonCompliance].slice(0, 3).map(c => {
-                  const overdue = new Date(c.due_date + 'T12:00:00') < today;
-                  const dot   = overdue ? '#d9534f' : '#c8902a';
-                  const bg    = overdue ? '#faeae7' : '#fdf0dc';
-                  const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
-                  return (
-                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: overdue ? '9px 12px' : '7px 10px', background: bg, borderRadius: 7, borderLeft: `${overdue ? 4 : 3}px solid ${dot}`, gap: 8 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                        <div style={{ fontSize: 14, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
-                          {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
-                        </div>
-                        <OwnerLine owner={c.responsible_name} color={overdue ? dot : 'var(--text3)'} navTo="compliance" onNavigate={onNavigate} />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
-                          {overdue ? 'Overdue' : 'Due Soon'}
-                        </span>
-                        {onNavigate && (
-                          <button
-                            onClick={() => onNavigate('compliance')}
-                            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                          >
-                            {NAV_LABELS.compliance}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                <ViewAllLink shown={3} total={panelOverdueCompliance.length + panelDueSoonCompliance.length} navTo="compliance" onNavigate={onNavigate} />
-              </div>
-            )}
-
-            {/* Never-assessed — collapsible sub-section, unchanged behavior, shown whenever any exist */}
-            {panelNeverAssessedCompliance.length > 0 && (
-              !showNeverAssessedDetail ? (
-                <div
-                  onClick={() => setShowNeverAssessedDetail(true)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, cursor: 'pointer' }}
-                >
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
-                    📋 {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — click to see
-                  </span>
-                  <span style={{ fontSize: 14, color: 'var(--text3)' }}>▼</span>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
-                      📋 {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — no due date, never checked:
-                    </span>
-                    <span onClick={() => setShowNeverAssessedDetail(false)} style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer' }}>▲ Hide</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {panelNeverAssessedCompliance.map(c => (
-                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
-                          <OwnerLine owner={c.responsible_name} color="var(--text3)" navTo="compliance" onNavigate={onNavigate} />
-                        </div>
-                        {onNavigate && (
-                          <button
-                            onClick={() => onNavigate('compliance')}
-                            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                          >
-                            {NAV_LABELS.compliance}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )
-            )}
-
-            {complianceLevel === 'green' && (
-              <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 500 }}>
-                ✅ {panelCompliantComplianceArr.length} item{panelCompliantComplianceArr.length !== 1 ? 's' : ''} compliant, none overdue
-              </div>
-            )}
-          </>
-        )}
-      </StatusCard>
-
-      {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
-      <StatusCard
-        icon="🛡️"
-        title="Risk Register"
-        level={riskLevel}
-        number={riskNumber}
-        message={riskMessage}
-        trend={riskTrend}
-        rightContent={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {panelHighOpenRisks.length > 0 && (
-              <span
-                onClick={() => setShowFullRisks(v => !v)}
-                style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
-              >
-                {showFullRisks ? 'Show shorter risks' : 'Show full risks'}
-              </span>
-            )}
-            {(d.entities || []).length > 0 && (
-              <select
-                className="no-print"
-                value={riskEntityFilter}
-                onChange={e => setRiskEntityFilter(e.target.value)}
-                style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
-              >
-                <option value="all">All Entities</option>
-                {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-              </select>
-            )}
-          </div>
-        }
-      >
-        {risksForPanel.length === 0 ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add risks in the Risk Register tab</div>
-        ) : panelHighOpenRisks.length === 0 ? (
-          <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-            ✅ No high-rated open risks
-            {panelOpenRisks.length > 0 ? ` · ${panelRiskControlsPct}% of open risks have controls listed` : ''}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
-              {panelRiskControlsPct}% of open risks have controls listed
-            </div>
-            {panelHighOpenRisks.slice(0, 3).map(r => (
-              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
-                  </div>
-                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>
-                    {r.category} · {r.status}{r.review_date && ` · Review by ${fmt(r.review_date)}`}
-                  </div>
-                  <OwnerLine owner={r.owner} color="#a63020" navTo="risks" onNavigate={onNavigate} />
-                </div>
-                <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
-                {onNavigate && (
-                  <button
-                    onClick={() => onNavigate('risks')}
-                    style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
-                  >
-                    {NAV_LABELS.risks}
-                  </button>
-                )}
-              </div>
-            ))}
-            <ViewAllLink shown={3} total={panelHighOpenRisks.length} navTo="risks" onNavigate={onNavigate} />
-          </div>
-        )}
-        {onNavigate && risksForPanel.length > 0 && (
-          <button
-            onClick={() => onNavigate('risks')}
-            style={{ marginTop: 10, fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
-          >
-            View Risk Register →
-          </button>
-        )}
-      </StatusCard>
-
-      {/* ══════════════════════════ DECISIONS REQUIRED ══════════════════════════ */}
-      <GroupHeading title="Decisions Required" />
-
+      {/* ── DECISIONS REQUIRED — merged into What Needs Attention in the 14yhc7kp7xg Step 3 reorg ── */}
       {(pendingBookings.length > 0 || overdueActions.length > 0 || grantsUrgent.length > 0 || openResolutions.length > 0) && (
         <div className="panel" style={{ marginBottom: 20, borderTop: '3px solid var(--danger)' }}>
           <SectionTitle
@@ -2308,76 +1859,346 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           </div>
         </div>
       )}
-      {/* ══════════════════════════ OPERATIONS ══════════════════════════ */}
-      <GroupHeading title="Operations" />
 
-      {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-
-        {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
-          {periodUpcoming.length === 0 ? (
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
-          ) : periodUpcoming.map(b => (
-            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{b.occasion}</div>
-                <div style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
+      {/* ── AI GOVERNANCE REPORT MODAL ─────────────────────────────────── */}
+      {(showReport || aiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Governance Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {aiReport && (
+                  <button
+                    onClick={copyReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowReport(false); setAiError(''); setAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
               </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 14, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+            </div>
+            {aiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{aiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{aiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI FINANCIAL REPORT MODAL ──────────────────────────────────── */}
+      {(showFinReport || finAiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Financial Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {finAiReport && (
+                  <button
+                    onClick={copyFinReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowFinReport(false); setFinAiError(''); setFinAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {finAiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{finAiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{finAiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI COMPLIANCE REPORT MODAL ─────────────────────────────────── */}
+      {(showCompReport || compAiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Compliance Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {compAiReport && (
+                  <button
+                    onClick={copyComplianceReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowCompReport(false); setCompAiError(''); setCompAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {compAiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{compAiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{compAiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── AI ACTIONS & TASKS REPORT MODAL ────────────────────────────── */}
+      {(showTasksReport || tasksAiError) && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 720, padding: 32, position: 'relative', boxShadow: '0 8px 40px rgba(0,0,0,0.25)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, margin: 0, color: 'var(--brand)' }}>✨ AI Actions & Tasks Report</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {tasksAiReport && (
+                  <button
+                    onClick={copyTasksReport}
+                    style={{ background: copied ? '#e8f4ef' : 'var(--surface2)', color: copied ? 'var(--brand)' : 'var(--text2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {copied ? '✅ Copied' : '📋 Copy'}
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowTasksReport(false); setTasksAiError(''); setTasksAiReport(''); }}
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            {tasksAiError ? (
+              <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{tasksAiError}</div>
+            ) : (
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{tasksAiReport}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+      {/* ══════════════════════════ MARAE STATUS (14yhc7kp7xg Step 3 — Compliance + Governance + Resources + Workflow Activity + Workload + Community merged) ══════════════════════════ */}
+      <GroupHeading title="Marae Status" />
+
+      {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
+      <StatusCard
+        icon="📋"
+        title="Compliance Tracker"
+        level={complianceLevel}
+        number={complianceNumber}
+        message={complianceMessage}
+        trend={complianceTrend}
+        rightContent={(d.entities || []).length > 0 && (
+          <select
+            className="no-print"
+            value={complianceEntityFilter}
+            onChange={e => setComplianceEntityFilter(e.target.value)}
+            style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+          >
+            <option value="all">All Entities</option>
+            {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+          </select>
+        )}
+      >
+        {complianceForPanel.length === 0 ? (
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add items in the Compliance tab</div>
+        ) : (
+          <>
+            {/* Secondary detail — existing 5-stat grid, kept as-is, always shown when items exist */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
+              {[
+                { label: 'Overdue',   count: panelOverdueCompliance.length,  dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+                { label: 'Due Soon',  count: panelDueSoonCompliance.length,  dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                { label: 'Never Assessed', count: panelNeverAssessedCompliance.length, dot: '#7a7268', bg: '#f5f0e8', color: 'var(--text3)' },
+                { label: 'Compliant', count: panelCompliantComplianceArr.length, dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                { label: '% Compliant', count: panelCompliancePct === null ? '—' : `${panelCompliancePct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                  <div style={{ fontSize: 14, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Flagged items — overdue + due soon, shown whenever either exists */}
+            {(panelOverdueCompliance.length > 0 || panelDueSoonCompliance.length > 0) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: panelNeverAssessedCompliance.length > 0 ? 14 : 0 }}>
+                {[...panelOverdueCompliance, ...panelDueSoonCompliance].slice(0, 3).map(c => {
+                  const overdue = new Date(c.due_date + 'T12:00:00') < today;
+                  const dot   = overdue ? '#d9534f' : '#c8902a';
+                  const bg    = overdue ? '#faeae7' : '#fdf0dc';
+                  const daysLeft = Math.ceil((new Date(c.due_date + 'T12:00:00') - today) / 86400000);
+                  return (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: overdue ? '9px 12px' : '7px 10px', background: bg, borderRadius: 7, borderLeft: `${overdue ? 4 : 3}px solid ${dot}`, gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                        <div style={{ fontSize: 14, color: overdue ? dot : 'var(--text3)', marginTop: 1 }}>
+                          {overdue ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'Due today' : `Due in ${daysLeft}d`} · {fmt(c.due_date)}
+                        </div>
+                        <OwnerLine owner={c.responsible_name} color={overdue ? dot : 'var(--text3)'} navTo="compliance" onNavigate={onNavigate} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>
+                          {overdue ? 'Overdue' : 'Due Soon'}
+                        </span>
+                        {onNavigate && (
+                          <button
+                            onClick={() => onNavigate('compliance')}
+                            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                          >
+                            {NAV_LABELS.compliance}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <ViewAllLink shown={3} total={panelOverdueCompliance.length + panelDueSoonCompliance.length} navTo="compliance" onNavigate={onNavigate} />
+              </div>
+            )}
+
+            {/* Never-assessed — collapsible sub-section, unchanged behavior, shown whenever any exist */}
+            {panelNeverAssessedCompliance.length > 0 && (
+              !showNeverAssessedDetail ? (
+                <div
+                  onClick={() => setShowNeverAssessedDetail(true)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
+                    📋 {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — click to see
+                  </span>
+                  <span style={{ fontSize: 14, color: 'var(--text3)' }}>▼</span>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)' }}>
+                      📋 {panelNeverAssessedCompliance.length} item{panelNeverAssessedCompliance.length !== 1 ? 's' : ''} never assessed — no due date, never checked:
+                    </span>
+                    <span onClick={() => setShowNeverAssessedDetail(false)} style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer' }}>▲ Hide</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {panelNeverAssessedCompliance.map(c => (
+                      <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#f5f0e8', borderRadius: 7, borderLeft: '3px solid #7a7268', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                          <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>No due date set · never checked</div>
+                          <OwnerLine owner={c.responsible_name} color="var(--text3)" navTo="compliance" onNavigate={onNavigate} />
+                        </div>
+                        {onNavigate && (
+                          <button
+                            onClick={() => onNavigate('compliance')}
+                            style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#7a7268', border: '1px solid #7a7268', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                          >
+                            {NAV_LABELS.compliance}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )
+            )}
+
+            {complianceLevel === 'green' && (
+              <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 500 }}>
+                ✅ {panelCompliantComplianceArr.length} item{panelCompliantComplianceArr.length !== 1 ? 's' : ''} compliant, none overdue
+              </div>
+            )}
+          </>
+        )}
+      </StatusCard>
+
+      {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
+      <StatusCard
+        icon="🛡️"
+        title="Risk Register"
+        level={riskLevel}
+        number={riskNumber}
+        message={riskMessage}
+        trend={riskTrend}
+        rightContent={
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {panelHighOpenRisks.length > 0 && (
+              <span
+                onClick={() => setShowFullRisks(v => !v)}
+                style={{ fontSize: 14, color: 'var(--text3)', cursor: 'pointer', fontWeight: 600 }}
+              >
+                {showFullRisks ? 'Show shorter risks' : 'Show full risks'}
+              </span>
+            )}
+            {(d.entities || []).length > 0 && (
+              <select
+                className="no-print"
+                value={riskEntityFilter}
+                onChange={e => setRiskEntityFilter(e.target.value)}
+                style={{ fontSize: 14, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}
+              >
+                <option value="all">All Entities</option>
+                {d.entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+              </select>
+            )}
+          </div>
+        }
+      >
+        {risksForPanel.length === 0 ? (
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add risks in the Risk Register tab</div>
+        ) : panelHighOpenRisks.length === 0 ? (
+          <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+            ✅ No high-rated open risks
+            {panelOpenRisks.length > 0 ? ` · ${panelRiskControlsPct}% of open risks have controls listed` : ''}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 2 }}>
+              {panelRiskControlsPct}% of open risks have controls listed
+            </div>
+            {panelHighOpenRisks.slice(0, 3).map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: '#faeae7', borderRadius: 7, borderLeft: '3px solid #d9534f', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    ⚠️ {showFullRisks ? stripUrls(r.risk_description) : truncate(stripUrls(r.risk_description))}
+                  </div>
+                  <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 1 }}>
+                    {r.category} · {r.status}{r.review_date && ` · Review by ${fmt(r.review_date)}`}
+                  </div>
+                  <OwnerLine owner={r.owner} color="#a63020" navTo="risks" onNavigate={onNavigate} />
+                </div>
+                <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: '#a63020', borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>High</span>
                 {onNavigate && (
                   <button
-                    onClick={() => onNavigate('bookings')}
-                    style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    onClick={() => onNavigate('risks')}
+                    style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: '#a63020', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
                   >
-                    {NAV_LABELS.bookings}
+                    {NAV_LABELS.risks}
                   </button>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
-          {periodProjects.length === 0 ? (
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
-          ) : periodProjects.map(p => {
-            const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
-            return (
-              <div key={p.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {p.name}
-                    {overdue && <span style={{ fontSize: 14, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
-                    {onNavigate && (
-                      <button
-                        onClick={() => onNavigate('projects')}
-                        style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
-                      >
-                        {NAV_LABELS.projects}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {p.lead && <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
-                <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ══════════════════════════ GOVERNANCE ══════════════════════════ */}
-      <GroupHeading title="Governance" />
+            ))}
+            <ViewAllLink shown={3} total={panelHighOpenRisks.length} navTo="risks" onNavigate={onNavigate} />
+          </div>
+        )}
+        {onNavigate && risksForPanel.length > 0 && (
+          <button
+            onClick={() => onNavigate('risks')}
+            style={{ marginTop: 10, fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+          >
+            View Risk Register →
+          </button>
+        )}
+      </StatusCard>
 
       {/* ── STRATEGIC GOALS SUMMARY ──────────────────────────────────── */}
       <StatusCard icon="🎯" title="Strategic Goals" level={goalsLevel} number={goalsNumber} message={goalsMessage} trend={goalsTrend}>
@@ -2435,9 +2256,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         )}
       </StatusCard>
 
-
-      {/* ══════════════════════════ RESOURCES ══════════════════════════ */}
-      <GroupHeading title="Resources" />
 
       {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
       {isAdmin && (
@@ -2604,9 +2422,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </StatusCard>
       </div>
 
-      {/* ══════════════════════════ COMMUNITY ══════════════════════════ */}
-      <GroupHeading title="Community" />
-
       {/* ── COMMUNITY FEEDBACK ─────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 8 }}>
         <SectionTitle
@@ -2678,8 +2493,192 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       </div>
 
-      {/* ══════════════════════════ TRENDS & SCORE ══════════════════════════ */}
-      <GroupHeading title="Trends & Score" />
+      {/* ── WORKFLOW ACTIVITY — moved here as part of Marae Status in the 14yhc7kp7xg Step 3 reorg ── */}
+      {d.workflowInstances.length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Workflow Activity</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8eef8', borderRadius: 8, borderTop: '3px solid #1a4a8a', minWidth: 72 }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a8a', lineHeight: 1 }}>{activeWorkflows.length}</div>
+              <div style={{ fontSize: 14, color: '#1a4a8a', fontWeight: 600, marginTop: 2 }}>Active</div>
+            </div>
+            <div style={{ textAlign: 'center', padding: '7px 14px', background: '#e8f4ef', borderRadius: 8, borderTop: '3px solid #2e7d52', minWidth: 72 }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, color: '#1a4a3a', lineHeight: 1 }}>{completedWorkflowsThisMonth.length}</div>
+              <div style={{ fontSize: 14, color: '#1a4a3a', fontWeight: 600, marginTop: 2 }}>Done this month</div>
+            </div>
+            {activeWorkflows.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginLeft: 4 }}>
+                {(showMoreWorkflows ? activeWorkflows : activeWorkflows.slice(0, 3)).map(w => (
+                  <div key={w.id} style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1a4a8a', flexShrink: 0, display: 'inline-block' }} />
+                    {w.name}{w.entity_name && <span style={{ color: 'var(--text3)' }}> · {w.entity_name}</span>}
+                  </div>
+                ))}
+                {activeWorkflows.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreWorkflows(s => !s)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content',
+                      background: 'var(--surface2)', border: '1px solid var(--border)',
+                      borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
+                      fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                      fontFamily: 'DM Sans, sans-serif', marginTop: 2,
+                    }}
+                  >
+                    <span>{showMoreWorkflows ? '▲' : '▼'}</span>
+                    <span>{showMoreWorkflows ? 'Show less' : `+${activeWorkflows.length - 3} more active`}</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── WORKLOAD BY TRUSTEE — moved here as part of Marae Status in the 14yhc7kp7xg Step 3 reorg ── */}
+      {workloadRollup.length > 0 && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <SectionTitle icon="⚖️" title="Workload by Trustee" note="open items across Compliance, Tasks, Risk, Service Reminders, Minutes, Goals" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(showAllWorkload ? workloadRollup : workloadRollup.slice(0, 5)).map(w => (
+              <div key={w.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{w.name}</div>
+                <div style={{ fontSize: 14, color: 'var(--text2)' }}>{w.total} open</div>
+                {w.overdue > 0 && (
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--danger, #c0392b)' }}>{w.overdue} overdue</div>
+                )}
+              </div>
+            ))}
+          </div>
+          {workloadRollup.length > 5 && (
+            <button
+              type="button"
+              onClick={() => setShowAllWorkload(s => !s)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                background: 'var(--surface2)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 16px', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600, color: 'var(--text2)',
+                fontFamily: 'DM Sans, sans-serif', marginTop: 8,
+              }}
+            >
+              <span>{showAllWorkload ? '▲' : '▼'}</span>
+              <span>{showAllWorkload ? 'Show less' : `+${workloadRollup.length - 5} more`}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════ WHAT'S COMING (14yhc7kp7xg Step 3 — renamed from Operations) ══════════════════════════ */}
+      <GroupHeading title="What's Coming" />
+
+      {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+
+        {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
+        <div className="panel">
+          <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
+          {periodUpcoming.length === 0 ? (
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
+          ) : periodUpcoming.map(b => (
+            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{b.occasion}</div>
+                <div style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 14, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+                {onNavigate && (
+                  <button
+                    onClick={() => onNavigate('bookings')}
+                    style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                  >
+                    {NAV_LABELS.bookings}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
+        <div className="panel">
+          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
+          {periodProjects.length === 0 ? (
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
+          ) : periodProjects.map(p => {
+            const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
+            return (
+              <div key={p.id} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
+                    {p.name}
+                    {overdue && <span style={{ fontSize: 14, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('projects')}
+                        style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                      >
+                        {NAV_LABELS.projects}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {p.lead && <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
+                <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ══════════════════════════ AI REPORTS (14yhc7kp7xg Step 3 — promoted out of the header buttons) ══════════════════════════ */}
+      <GroupHeading title="AI Reports" />
+
+      <div className="panel no-print" style={{ marginBottom: 20 }}>
+        <SectionTitle icon="✨" title="AI Reports" />
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={generateReport}
+            disabled={aiLoading}
+            style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {aiLoading ? '⏳ Generating…' : '✨ AI Governance Report'}
+          </button>
+          {isAdmin && (
+          <button
+            onClick={generateFinancialReport}
+            disabled={finAiLoading}
+            style={{ background: finAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: finAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
+          </button>
+          )}
+          <button
+            onClick={generateComplianceReport}
+            disabled={compAiLoading}
+            style={{ background: compAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: compAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {compAiLoading ? '⏳ Generating…' : '✨ AI Compliance Report'}
+          </button>
+          <button
+            onClick={generateTasksReport}
+            disabled={tasksAiLoading}
+            style={{ background: tasksAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: tasksAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            {tasksAiLoading ? '⏳ Generating…' : '✨ AI Actions & Tasks Report'}
+          </button>
+        </div>
+      </div>
+
+      {/* ══════════════════════════ MARAE HEALTH (14yhc7kp7xg Step 3 — renamed from Trends & Score) ══════════════════════════ */}
+      <GroupHeading title="Marae Health" />
 
       {/* ── PERFORMANCE HISTORY ──────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 20 }}>
