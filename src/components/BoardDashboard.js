@@ -2695,18 +2695,25 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ══════════════════════════ MARAE HEALTH (14yhc7kp7xg Step 3 — renamed from Trends & Score) ══════════════════════════ */}
       <GroupHeading title="Marae Health" />
 
-      {/* ── PERFORMANCE HISTORY ──────────────────────────────────────────── */}
+      {/* ── PERFORMANCE HISTORY — 14yhc7kp7xg: table limited to the last 3 locked
+           months (Waj's shared mockup), not the full calendar year. d.kpiSnapshots
+           itself stays unsliced -- kpiTrendPair (month-over-month trend arrows)
+           still needs the full fetched array, only this panel's own display is
+           capped. ────────────────────────────────────────────────────────── */}
+      {(() => {
+        const recentSnapshots = d.kpiSnapshots.slice(-3);
+        return (
       <div className="panel" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
              onClick={() => setShowKpiHistory(v => !v)}>
-          <SectionTitle icon="📈" title="Performance History" count={d.kpiSnapshots.length} />
+          <SectionTitle icon="📈" title="Performance History" count={recentSnapshots.length} />
           <span style={{ fontSize: 14, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
         </div>
 
-        {d.kpiSnapshots.length === 0 ? (
+        {recentSnapshots.length === 0 ? (
           <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
         ) : !showKpiHistory ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.kpiSnapshots.length} month{d.kpiSnapshots.length !== 1 ? 's' : ''} locked this year — click to view</div>
+          <div style={{ fontSize: 14, color: 'var(--text3)' }}>Last {recentSnapshots.length} month{recentSnapshots.length !== 1 ? 's' : ''} locked — click to view</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
@@ -2717,7 +2724,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
               </tr>
             </thead>
             <tbody>
-              {[...d.kpiSnapshots].reverse().map(s => (
+              {[...recentSnapshots].reverse().map(s => (
                 <tr key={s.snapshot_month} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '8px', fontWeight: 600 }}>
                     {new Date(s.snapshot_month + 'T12:00:00').toLocaleDateString('en-NZ', { month: 'short', year: 'numeric' })}
@@ -2751,6 +2758,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           </table>
         )}
       </div>
+        );
+      })()}
 
       {/* ── HEALTH SCORE ──────────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 20 }}>
