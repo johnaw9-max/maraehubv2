@@ -2695,6 +2695,9 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ══════════════════════════ MARAE HEALTH (14yhc7kp7xg Step 3 — renamed from Trends & Score) ══════════════════════════ */}
       <GroupHeading title="Marae Health" />
 
+      {/* ── TWO-COLUMN: PERFORMANCE HISTORY + MARAE HEALTH SCORE (14yhc7kp7xg — added on request; known caveat: Performance History grows one row per locked month, Health Score is fixed-size, so this pair will drift out of balance over time) ────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
       {/* ── PERFORMANCE HISTORY — 14yhc7kp7xg: table limited to the last 3 locked
            months (Waj's shared mockup), not the full calendar year. d.kpiSnapshots
            itself stays unsliced -- kpiTrendPair (month-over-month trend arrows)
@@ -2782,6 +2785,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             </div>
           </>
         )}
+      </div>
+
       </div>
     </div>
   );
