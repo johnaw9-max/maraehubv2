@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials } from '../lib/xero';
 import Header from '../components/Header';
+import NavSidebar from '../components/NavSidebar';
 import BookingsManager from '../components/BookingsManager';
 import ProjectsManager from '../components/ProjectsManager';
 import AssetsManager from '../components/AssetsManager';
@@ -25,7 +26,6 @@ import HelpMenu from '../components/HelpMenu';
 import WorkflowEngine from '../components/WorkflowEngine';
 import WhatsNew from '../components/WhatsNew';
 import OnboardingFlow from '../components/OnboardingFlow';
-import GettingStartedChecklist from '../components/GettingStartedChecklist';
 
 const NAV_GROUPS = [
   {
@@ -511,15 +511,16 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   return (
     <div>
-      <Header profile={profile} onLogout={onLogout} activeTab={activeTab} setActiveTab={setActiveTab} groups={visibleNavGroups} />
+      <Header profile={profile} onLogout={onLogout} />
 
+      <div className="app-shell">
+      <NavSidebar profile={profile} activeTab={activeTab} setActiveTab={setActiveTab} groups={visibleNavGroups} isAdmin={isAdmin} onNavigate={setActiveTab} />
       <div className="main">
 
         {/* ── BOARD VIEW ─────────────────────────────────────────────────── */}
         {activeTab === 'board' && (
           <>
             {isAdmin && <OnboardingFlow onComplete={() => setBoardKey(k => k + 1)} />}
-            {isAdmin && <GettingStartedChecklist onNavigate={setActiveTab} />}
             <BoardDashboard key={boardKey} onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} isAdmin={isAdmin} />
           </>
         )}
@@ -624,6 +625,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'workflows' && <WorkflowEngine pendingWorkflow={pendingWorkflow} onPendingConsumed={() => setPendingWorkflow(null)} />}
 
         {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
+      </div>
       </div>
 
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>

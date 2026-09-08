@@ -1553,8 +1553,11 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ── SUMMARY STRIP — reuses the 6 StatusCard levels/numbers/messages, computes nothing new ── */}
       {/* 14yhc7kp7xg Step 2: more compact, not smaller text -- fontSize stays at
           14, the established readability floor (86d3y4rzd), Waj-validated on
-          another module. Compactness comes entirely from tighter padding/gaps. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '3px 10px', padding: '6px 10px', marginBottom: 12, background: 'var(--surface2)', borderRadius: 8 }}>
+          another module. Compactness comes entirely from tighter padding/gaps.
+          Follow-up: each item now gets its own panel for visibility, same data/
+          click-to-navigate/text as before -- only the wrapper changed, from one
+          shared flex row to a grid of individually-bordered cards. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 12 }}>
         {[
           {
             icon: '📋', label: 'Compliance', level: complianceLevel, navTo: 'compliance',
@@ -1568,14 +1571,15 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           { icon: '💰', label: 'Grants', level: grantsLevel, navTo: 'grants', detail: `${grantsNumber} ${grantsMessage}` },
           { icon: '🔧', label: 'Assets', level: serviceLevel, navTo: 'assets', detail: `${serviceNumber} ${serviceMessage}` },
         ].map(m => (
-          <span
+          <div
             key={m.label}
+            className="panel"
             onClick={() => onNavigate && onNavigate(m.navTo)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default', padding: '10px 12px', margin: 0 }}
           >
             {m.icon} {m.label} {LEVEL_EMOJI[m.level]}
             <span style={{ fontWeight: 400, color: 'var(--text3)' }}>{m.detail}</span>
-          </span>
+          </div>
         ))}
       </div>
 

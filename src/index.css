@@ -124,8 +124,53 @@ input, select, textarea {
   white-space: nowrap; cursor: default; user-select: none; flex-shrink: 0;
 }
 
+/* APP SHELL (14yhc7kp9th) -- trustee dashboard only: sidebar + main side by
+   side, below the top .header bar. CommunityPortal.js never opts into this
+   wrapper, so its existing .nav/.main layout is untouched. */
+.app-shell { display: flex; align-items: stretch; min-height: calc(100vh - 64px); }
+
+/* SIDEBAR (14yhc7kp9th) -- vertical equivalent of .nav/.nav-item/
+   .nav-group-label above, used only by NavSidebar.js. Text stays at the
+   14px readability floor (86d3y4rzd) -- the old horizontal .nav-item's
+   12px was a cramped-horizontal-space compromise that doesn't apply here;
+   this is new code, not a legacy carryover, and vertical space is not
+   tight the way the old single-row bar was. */
+.sidebar {
+  background: var(--brand-mid);
+  width: 220px; flex-shrink: 0;
+  padding: 14px 0;
+  border-right: 2px solid var(--accent);
+}
+
+.sidebar-item {
+  padding: 10px 18px 10px 22px;
+  font-size: 14px; color: rgba(255,255,255,0.6);
+  cursor: pointer; letter-spacing: 0.03em;
+  border-left: 3px solid transparent;
+  transition: color 0.2s, background 0.2s;
+}
+.sidebar-item.active { color: #fff; background: rgba(0,0,0,0.15); border-left-color: var(--accent-light); }
+.sidebar-item:hover { color: rgba(255,255,255,0.9); }
+
+.sidebar-group-label {
+  display: flex; align-items: center; gap: 6px;
+  margin: 18px 0 4px; padding: 0 18px;
+  font-size: 11px; font-weight: 700; line-height: 1.4;
+  color: var(--accent-light);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  user-select: none;
+}
+.sidebar-group-label:first-child { margin-top: 0; }
+
+.sidebar-founder { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.15); }
+
+.sidebar-getting-started {
+  margin: 14px 18px 14px; padding: 14px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+
 /* MAIN CONTENT */
-.main { padding: 24px 28px; max-width: 1400px; }
+.main { padding: 24px 28px; max-width: 1400px; flex: 1; min-width: 0; }
 
 /* CARDS / PANELS */
 .panel {
