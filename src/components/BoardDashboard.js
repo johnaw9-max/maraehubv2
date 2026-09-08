@@ -2698,6 +2698,58 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ── TWO-COLUMN: PERFORMANCE HISTORY + MARAE HEALTH SCORE (14yhc7kp7xg — added on request; known caveat: Performance History grows one row per locked month, Health Score is fixed-size, so this pair will drift out of balance over time) ────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
+      {/* ── HEALTH SCORE ──────────────────────────────────────────────── */}
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <SectionTitle icon="📊" title="Marae Health Score" />
+        {hsInsufficient ? (
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Not enough data yet across enough categories to calculate a score</div>
+        ) : (
+          <>
+            {/* Real, standard SVG progress ring -- stroke-dasharray technique,
+                no charting library. Circle circumference = 2*pi*r; the
+                foreground stroke's dasharray is set to the full circumference
+                and its dashoffset shortened by (1 - score/100) of that same
+                length, so exactly score% of the ring's circumference is
+                visibly drawn. Rotated -90deg so the fill starts at 12
+                o'clock, matching the prototyped mockup. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14 }}>
+              {(() => {
+                const R = 40, SW = 8;
+                const SIZE = (R + SW) * 2;
+                const C = 2 * Math.PI * R;
+                const pct = Math.max(0, Math.min(100, hsFinalScore));
+                const offset = C * (1 - pct / 100);
+                return (
+                  <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ flexShrink: 0 }}>
+                    <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="var(--border)" strokeWidth={SW} />
+                    <circle
+                      cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
+                      stroke="var(--brand)" strokeWidth={SW} strokeLinecap="round"
+                      strokeDasharray={C} strokeDashoffset={offset}
+                      transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+                    />
+                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontFamily="Playfair Display, serif" fontSize="24" fontWeight="700" fill="var(--brand)">
+                      {hsFinalScore}
+                    </text>
+                  </svg>
+                );
+              })()}
+              <div style={{ fontSize: 14, color: 'var(--text3)' }}>
+                out of 100 · based on {hsCategories.map(c => c.name).join(' · ')}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {hsCategories.map(c => (
+                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: 'var(--text3)' }}>
+                  <span>{HS_ICON[c.name]} {c.name} {LEVEL_EMOJI[HS_LEVEL[c.name]]}</span>
+                  <span>{c.detail}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* ── PERFORMANCE HISTORY — 14yhc7kp7xg: table limited to the last 3 locked
            months (Waj's shared mockup), not the full calendar year. d.kpiSnapshots
            itself stays unsliced -- kpiTrendPair (month-over-month trend arrows)
@@ -2824,29 +2876,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
         );
       })()}
-
-      {/* ── HEALTH SCORE ──────────────────────────────────────────────── */}
-      <div className="panel" style={{ marginBottom: 20 }}>
-        <SectionTitle icon="📊" title="Marae Health Score" />
-        {hsInsufficient ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Not enough data yet across enough categories to calculate a score</div>
-        ) : (
-          <>
-            <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 10 }}>
-              <strong style={{ fontFamily: 'Playfair Display, serif', fontSize: 20, color: 'var(--brand)' }}>{hsFinalScore}</strong>
-              <span style={{ color: 'var(--text3)' }}> / 100 · based on {hsCategories.map(c => c.name).join(' · ')}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {hsCategories.map(c => (
-                <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: 'var(--text3)' }}>
-                  <span>{HS_ICON[c.name]} {c.name} {LEVEL_EMOJI[HS_LEVEL[c.name]]}</span>
-                  <span>{c.detail}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
 
       </div>
     </div>
