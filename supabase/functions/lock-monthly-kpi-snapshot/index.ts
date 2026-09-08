@@ -4,11 +4,19 @@
  *
  * Runs shortly after each month rolls over and locks in one row in
  * module_kpi_snapshots for the month that just ended, computing the same
- * four percentages shown live on Board View (BoardDashboard.js):
- *   - compliance_pct : % of compliance_items not overdue and not due within 30 days
- *   - risk_pct       : % of open (non-Closed) risk_register rows with controls set
+ * percentages shown live on Board View (BoardDashboard.js):
+ *   - compliance_pct : % of assessed compliance_items not overdue (due date >30 days out
+ *                       or a real last_checked_date); never-assessed items excluded
+ *   - risk_pct       : % of risk_register rows (open and closed) clear of high-rated risk
  *   - assets_pct     : % of assets with no overdue service_reminders row
  *   - goals_pct      : % of active (non-not_started) goals that are on-track or completed
+ *   - health_score   : overall weighted score (Compliance 25 + Risk 20 + Tasks 20 +
+ *                       Finance 20 + Goals 15 = /100), matching BoardDashboard.js's live
+ *                       hsFinalScore formula exactly except Finance, which always uses
+ *                       raw finance_income/finance_expenses rather than live Xero P&L
+ *                       (out of scope here -- a different Xero report than the Balance
+ *                       Sheet already fetched below). Null when fewer than 2 of the 5
+ *                       categories have enough real data to score, same as live.
  *
  * Also locks 3 finance fields from Xero's Balance Sheet report, when the
  * marae has an active Xero connection (net_assets, total_assets,
@@ -191,12 +199,24 @@ serve(async (_req) => {
     const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
     const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
 
-    const [compRes, riskRes, assetRes, remRes, goalsRes, balanceSheet] = await Promise.all([
+    // NZ fiscal year (April 1 - March 31), matching BoardDashboard.js's
+    // fetchAll() exactly -- used only for the Finance health-score category
+    // below. Computed as of "today" (lock time), not the locked month --
+    // Finance's live score is always "FY-to-date as of now", never a
+    // point-in-time historical figure, same as it behaves live.
+    const fyYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+    const fyFrom = `${fyYear}-04-01`;
+    const fyTo   = `${fyYear + 1}-03-31`;
+
+    const [compRes, riskRes, assetRes, remRes, goalsRes, taskRes, finIncRes, finExpRes, balanceSheet] = await Promise.all([
       admin.from('compliance_items').select('id, due_date, last_checked_date'),
       admin.from('risk_register').select('id, status, controls, risk_rating'),
       admin.from('assets').select('id'),
       admin.from('service_reminders').select('id, asset_id, due_date'),
       admin.from('goals').select('id, status, target_date'),
+      admin.from('tasks').select('id, title, due_date, status').neq('status', 'cancelled').neq('status', 'completed'),
+      admin.from('finance_income').select('amount').gte('date', fyFrom).lte('date', fyTo),
+      admin.from('finance_expenses').select('amount').gte('date', fyFrom).lte('date', fyTo),
       fetchBalanceSheetSnapshot(admin),
     ]);
 
@@ -205,12 +225,18 @@ serve(async (_req) => {
     if (assetRes.error) return json({ error: assetRes.error.message }, 500);
     if (remRes.error) return json({ error: remRes.error.message }, 500);
     if (goalsRes.error) return json({ error: goalsRes.error.message }, 500);
+    if (taskRes.error) return json({ error: taskRes.error.message }, 500);
+    if (finIncRes.error) return json({ error: finIncRes.error.message }, 500);
+    if (finExpRes.error) return json({ error: finExpRes.error.message }, 500);
 
     const compliance = compRes.data || [];
     const risks      = riskRes.data || [];
     const assets     = assetRes.data || [];
     const reminders  = remRes.data || [];
     const goals      = goalsRes.data || [];
+    const tasks      = taskRes.data || [];
+    const finIncome  = finIncRes.data || [];
+    const finExpenses = finExpRes.data || [];
 
     // ── Compliance % ──────────────────────────────────────────────────────
     // Matches src/lib/complianceStatus.js's getComplianceStatus() exactly -
@@ -255,6 +281,54 @@ serve(async (_req) => {
     const goalsOnTrackOrComplete = activeGoals.filter(g => goalLight(g, today, in14) === 'green' || g.status === 'completed');
     const goalsPct = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : 100;
 
+    // ── Overall Marae Health Score ──────────────────────────────────────
+    // Matches BoardDashboard.js's live hsCategories/hsFinalScore exactly:
+    // Compliance(25) + Risk(20) + Tasks(20) + Finance(20) + Goals(15) = /100,
+    // each category gated on having enough real data before it counts at
+    // all, same as live. One deliberate, documented simplification: Finance
+    // always uses the raw finance_income/finance_expenses tables here, never
+    // live Xero Profit & Loss data -- fetching Xero P&L (a different report
+    // than the Balance Sheet already fetched above for net_assets) is out of
+    // scope for this column. A Xero-connected marae's locked Finance
+    // category may not always match what an admin sees live in that case;
+    // every other category matches exactly.
+    const hsCategories: { score: number; max: number }[] = [];
+
+    if (assessedTotal >= 3 && compliancePct !== null) {
+      hsCategories.push({ score: Math.round(25 * compliancePct / 100), max: 25 });
+    }
+    if (risks.length >= 1 && riskPct !== null) {
+      hsCategories.push({ score: Math.round(20 * riskPct / 100), max: 20 });
+    }
+
+    const scorableTasks = tasks.filter(t => !t.title?.startsWith('UPCOMING: '));
+    const overdueTasks  = scorableTasks.filter(t => t.due_date && new Date(t.due_date + 'T12:00:00') < today);
+    if (scorableTasks.length >= 3) {
+      hsCategories.push({ score: Math.round(20 * ((scorableTasks.length - overdueTasks.length) / scorableTasks.length)), max: 20 });
+    }
+
+    const hsRealFinRecords = [...finIncome, ...finExpenses].filter(r => parseFloat(String(r.amount ?? 0)) !== 0);
+    if (hsRealFinRecords.length >= 3) {
+      const finTotalIncome   = finIncome.reduce((s, r) => s + parseFloat(String(r.amount ?? 0)), 0);
+      const finTotalExpenses = finExpenses.reduce((s, r) => s + parseFloat(String(r.amount ?? 0)), 0);
+      const finNet = finTotalIncome - finTotalExpenses;
+      let finScore = 0;
+      if (finNet >= 0) finScore = 20;
+      else if (finTotalIncome > 0 && Math.abs(finNet) < finTotalIncome * 0.1) finScore = 10;
+      hsCategories.push({ score: finScore, max: 20 });
+    }
+
+    const hsTrackedGoals = activeGoals.filter(g => g.target_date || ['completed', 'at_risk'].includes(g.status));
+    const hsGoalsOnTrack = hsTrackedGoals.filter(g => goalLight(g, today, in14) === 'green' || g.status === 'completed');
+    if (hsTrackedGoals.length >= 1) {
+      hsCategories.push({ score: Math.round(15 * (hsGoalsOnTrack.length / hsTrackedGoals.length)), max: 15 });
+    }
+
+    const hsInsufficient = hsCategories.length < 2;
+    const hsRawTotal = hsCategories.reduce((s, c) => s + c.score, 0);
+    const hsMaxTotal  = hsCategories.reduce((s, c) => s + c.max, 0);
+    const healthScore = hsInsufficient ? null : Math.round((hsRawTotal / hsMaxTotal) * 100);
+
     const snapshotMonth = firstDayOfPreviousMonth(today);
 
     const { error: insertError } = await admin
@@ -265,6 +339,7 @@ serve(async (_req) => {
         risk_pct:       riskPct,
         assets_pct:     assetsPct,
         goals_pct:      goalsPct,
+        health_score:   healthScore,
         net_assets:         balanceSheet?.netAssets ?? null,
         total_assets:       balanceSheet?.totalAssets ?? null,
         total_liabilities:  balanceSheet?.totalLiabilities ?? null,
@@ -279,6 +354,7 @@ serve(async (_req) => {
       risk_pct:       riskPct,
       assets_pct:     assetsPct,
       goals_pct:      goalsPct,
+      health_score:   healthScore,
       net_assets:         balanceSheet?.netAssets ?? null,
       total_assets:       balanceSheet?.totalAssets ?? null,
       total_liabilities:  balanceSheet?.totalLiabilities ?? null,

@@ -1188,7 +1188,8 @@ create table if not exists module_kpi_snapshots (
   created_at timestamp with time zone not null default now(),
   net_assets numeric,
   total_assets numeric,
-  total_liabilities numeric
+  total_liabilities numeric,
+  health_score integer
 );
 
 alter table module_kpi_snapshots add constraint module_kpi_snapshots_pkey PRIMARY KEY (id);

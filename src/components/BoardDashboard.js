@@ -328,7 +328,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('finance_income').select('id').eq('source_type', 'booking').eq('amount', 0).eq('status', 'Pending'),
       supabase.from('interest_register').select('id').eq('status', 'Active'),
       supabase.from('risk_register').select('id, risk_description, risk_rating, category, status, controls, entity_id, owner, review_date').order('created_at', { ascending: false }),
-      supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct, net_assets, total_assets, total_liabilities').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
+      supabase.from('module_kpi_snapshots').select('snapshot_month, compliance_pct, risk_pct, assets_pct, goals_pct, health_score, net_assets, total_assets, total_liabilities').gte('snapshot_month', `${now.getFullYear()}-01-01`).lte('snapshot_month', `${now.getFullYear()}-12-31`).order('snapshot_month'),
       supabase.from('entities').select('id, name').order('name'),
       fetchXeroFinancials(),
       // Not fetched anywhere in Board View before Report #2 (14yhc7knp9n) --
@@ -2712,6 +2712,67 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           <SectionTitle icon="📈" title="Performance History" count={recentSnapshots.length} />
           <span style={{ fontSize: 14, color: 'var(--text3)' }}>{showKpiHistory ? '▲ Hide' : '▼ Show'}</span>
         </div>
+
+        {/* Real, hand-rolled SVG line chart -- no charting library. Always
+            visible (not gated behind showKpiHistory); the detailed table
+            stays behind the click-to-expand toggle below. Single line: the
+            overall Marae Health Score per month (module_kpi_snapshots.
+            health_score), not the 4 individual category percentages --
+            simplified per Waj's request. health_score is a new column
+            (20260909000000_add_health_score_to_kpi_snapshots.sql) locked
+            going forward only -- existing months have no real score and are
+            not retroactively estimated (see that migration's header for
+            why), so points only appear for months locked after it shipped. */}
+        {recentSnapshots.length > 0 && (() => {
+          const pts = recentSnapshots.map((s, i) => ({ i, v: s.health_score })).filter(p => p.v != null);
+          if (pts.length === 0) {
+            return (
+              <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic', marginBottom: 14 }}>
+                No Health Score history yet — starts locking from the next month-end
+              </div>
+            );
+          }
+
+          const W = 560, H = 140, PAD_L = 32, PAD_R = 10, PAD_T = 10, PAD_B = 20;
+          const plotW = W - PAD_L - PAD_R;
+          const plotH = H - PAD_T - PAD_B;
+          const n = recentSnapshots.length;
+          const xFor = i => n <= 1 ? PAD_L + plotW / 2 : PAD_L + (plotW * i) / (n - 1);
+          const yFor = v => PAD_T + plotH - (Math.max(0, Math.min(100, v)) / 100) * plotH;
+          const color = 'var(--brand)';
+
+          return (
+            <div style={{ marginBottom: 14 }}>
+              <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+                {[0, 50, 100].map(v => (
+                  <g key={v}>
+                    <line x1={PAD_L} y1={yFor(v)} x2={W - PAD_R} y2={yFor(v)} stroke="var(--border)" strokeWidth="1" />
+                    <text x={0} y={yFor(v) + 3} fontSize="10" fill="var(--text3)">{v}</text>
+                  </g>
+                ))}
+                {recentSnapshots.map((s, i) => (
+                  <text key={s.snapshot_month} x={xFor(i)} y={H - 4} fontSize="10" fill="var(--text3)" textAnchor="middle">
+                    {new Date(s.snapshot_month + 'T12:00:00').toLocaleDateString('en-NZ', { month: 'short' })}
+                  </text>
+                ))}
+                {pts.slice(1).map((p, idx) => (
+                  <line
+                    key={idx}
+                    x1={xFor(pts[idx].i)} y1={yFor(pts[idx].v)}
+                    x2={xFor(p.i)} y2={yFor(p.v)}
+                    stroke={color} strokeWidth="2"
+                  />
+                ))}
+                {pts.map(p => (
+                  <g key={p.i}>
+                    <circle cx={xFor(p.i)} cy={yFor(p.v)} r="3" fill={color} />
+                    <text x={xFor(p.i)} y={yFor(p.v) - 8} fontSize="10" fill={color} textAnchor="middle" fontWeight="700">{p.v}</text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          );
+        })()}
 
         {recentSnapshots.length === 0 ? (
           <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No locked months yet — history builds up once each month ends</div>
