@@ -1992,6 +1992,9 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ══════════════════════════ MARAE STATUS (14yhc7kp7xg Step 3 — Compliance + Governance + Resources + Workflow Activity + Workload + Community merged) ══════════════════════════ */}
       <GroupHeading title="Marae Status" />
 
+      {/* ── TWO-COLUMN: COMPLIANCE + GOALS (14yhc7kp7xg Step 4 layout check — comparable shape: both a 5-stat grid plus up to 3 flagged items) ────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+
       {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
       <StatusCard
         icon="📋"
@@ -2121,6 +2124,67 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         )}
       </StatusCard>
 
+      {/* ── STRATEGIC GOALS SUMMARY ──────────────────────────────────── */}
+      <StatusCard icon="🎯" title="Strategic Goals" level={goalsLevel} number={goalsNumber} message={goalsMessage} trend={goalsTrend}>
+        {d.goals.length === 0 ? (
+          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add goals in the Goals tab</div>
+        ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
+          <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+            ✅ All goals are on track or completed
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
+              {[
+                { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
+                { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
+                { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
+                { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
+                { label: '% On Track',  count: `${goalsPct}%`,       dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
+                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
+                  <div style={{ fontSize: 14, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[...goalsBehind, ...goalsAtRisk].slice(0, 3).map(g => {
+                const light = goalLight(g);
+                const dot   = light === 'red' ? '#d9534f' : '#c8902a';
+                const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
+                const label = light === 'red' ? 'Behind' : 'At Risk';
+                return (
+                  <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+                      {g.target_date && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>Target: {fmt(g.target_date)}</div>}
+                      <OwnerLine owner={g.responsible_name} color={dot} navTo="goals" onNavigate={onNavigate} />
+                    </div>
+                    <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
+                    {onNavigate && (
+                      <button
+                        onClick={() => onNavigate('goals')}
+                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        {NAV_LABELS.goals}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <ViewAllLink shown={3} total={goalsBehind.length + goalsAtRisk.length} navTo="goals" onNavigate={onNavigate} />
+            </div>
+          </>
+        )}
+      </StatusCard>
+
+      </div>
+
+      {/* ── TWO-COLUMN: RISK + FINANCIAL HEALTH (14yhc7kp7xg Step 4 layout check) ────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+
       {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
       <StatusCard
         icon="🛡️"
@@ -2200,62 +2264,6 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         )}
       </StatusCard>
 
-      {/* ── STRATEGIC GOALS SUMMARY ──────────────────────────────────── */}
-      <StatusCard icon="🎯" title="Strategic Goals" level={goalsLevel} number={goalsNumber} message={goalsMessage} trend={goalsTrend}>
-        {d.goals.length === 0 ? (
-          <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add goals in the Goals tab</div>
-        ) : goalsBehind.length === 0 && goalsAtRisk.length === 0 ? (
-          <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
-            ✅ All goals are on track or completed
-          </div>
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 14 }}>
-              {[
-                { label: 'On Track',    count: goalsOnTrack.length,  dot: '#2e7d52', bg: '#e8f4ef', color: '#1a4a3a' },
-                { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
-                { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
-                { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
-                { label: '% On Track',  count: `${goalsPct}%`,       dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>
-                  <div style={{ fontSize: 14, color: s.color, fontWeight: 600, marginTop: 3 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[...goalsBehind, ...goalsAtRisk].slice(0, 3).map(g => {
-                const light = goalLight(g);
-                const dot   = light === 'red' ? '#d9534f' : '#c8902a';
-                const bg    = light === 'red' ? '#faeae7' : '#fdf0dc';
-                const label = light === 'red' ? 'Behind' : 'At Risk';
-                return (
-                  <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: bg, borderRadius: 7, borderLeft: `3px solid ${dot}` }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0, marginTop: 4 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
-                      {g.target_date && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 2 }}>Target: {fmt(g.target_date)}</div>}
-                      <OwnerLine owner={g.responsible_name} color={dot} navTo="goals" onNavigate={onNavigate} />
-                    </div>
-                    <span style={{ fontSize: 14, background: 'rgba(255,255,255,0.7)', color: dot, borderRadius: 20, padding: '2px 8px', fontWeight: 700, flexShrink: 0 }}>{label}</span>
-                    {onNavigate && (
-                      <button
-                        onClick={() => onNavigate('goals')}
-                        style={{ fontSize: 14, background: 'rgba(255,255,255,0.6)', color: dot, border: `1px solid ${dot}`, borderRadius: 6, padding: '3px 10px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'DM Sans, sans-serif' }}
-                      >
-                        {NAV_LABELS.goals}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              <ViewAllLink shown={3} total={goalsBehind.length + goalsAtRisk.length} navTo="goals" onNavigate={onNavigate} />
-            </div>
-          </>
-        )}
-      </StatusCard>
-
 
       {/* ── FINANCIAL HEALTH ───────────────────────────────────────────── */}
       {isAdmin && (
@@ -2324,6 +2332,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         )}
       </StatusCard>
       )}
+
+      </div>
 
       {/* ── TWO-COLUMN: GRANTS + SERVICE REMINDERS (ASSETS) ────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
@@ -2493,6 +2503,9 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         </div>
       </div>
 
+      {/* ── TWO-COLUMN: WORKFLOW ACTIVITY + WORKLOAD BY TRUSTEE (14yhc7kp7xg Step 4 layout check) ────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
       {/* ── WORKFLOW ACTIVITY — moved here as part of Marae Status in the 14yhc7kp7xg Step 3 reorg ── */}
       {d.workflowInstances.length > 0 && (
         <div className="panel" style={{ marginBottom: 20 }}>
@@ -2569,6 +2582,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           )}
         </div>
       )}
+
+      </div>
 
       {/* ══════════════════════════ WHAT'S COMING (14yhc7kp7xg Step 3 — renamed from Operations) ══════════════════════════ */}
       <GroupHeading title="What's Coming" />
