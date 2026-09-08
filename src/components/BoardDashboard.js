@@ -2588,107 +2588,123 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       {/* ══════════════════════════ WHAT'S COMING (14yhc7kp7xg Step 3 — renamed from Operations) ══════════════════════════ */}
       <GroupHeading title="What's Coming" />
 
-      {/* ── TWO-COLUMN: BOOKINGS + PROJECTS ────────────────────────────── */}
+      {/* ── TWO-COLUMN: (BOOKINGS + PROJECTS, stacked) + AI REPORTS -- 14yhc7kp7xg
+           layout check: pairing What's Coming directly against AI Reports as
+           two side-by-side composite grids was rejected (unbounded Active
+           Projects list + already-2-column What's Coming would squeeze both
+           Bookings and Projects to quarter-width). First-principles fix
+           instead of skipping the pairing: (1) Bookings + Projects now stack
+           vertically in one column, so each still gets full half-page width
+           like every other panel in every other pairing; (2) Active Projects
+           capped to 3 + ViewAllLink, same pattern already used by Compliance/
+           Risk/Goals, closing the unbounded-height gap instead of avoiding
+           it. periodProjects itself stays unsliced -- the AI report text
+           generation above still needs the full list. ────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
 
-        {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
-          {periodUpcoming.length === 0 ? (
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
-          ) : periodUpcoming.map(b => (
-            <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{b.occasion}</div>
-                <div style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 14, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
-                {onNavigate && (
-                  <button
-                    onClick={() => onNavigate('bookings')}
-                    style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
-                  >
-                    {NAV_LABELS.bookings}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
-        <div className="panel">
-          <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
-          {periodProjects.length === 0 ? (
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
-          ) : periodProjects.map(p => {
-            const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
-            return (
-              <div key={p.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {p.name}
-                    {overdue && <span style={{ fontSize: 14, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
-                    {onNavigate && (
-                      <button
-                        onClick={() => onNavigate('projects')}
-                        style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
-                      >
-                        {NAV_LABELS.projects}
-                      </button>
-                    )}
-                  </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
+          <div className="panel">
+            <SectionTitle icon="📅" title="Upcoming Bookings" count={periodUpcoming.length} note={`(${pl})`} />
+            {periodUpcoming.length === 0 ? (
+              <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No upcoming bookings for this period</div>
+            ) : periodUpcoming.map(b => (
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{b.occasion}</div>
+                  <div style={{ fontSize: 14, color: 'var(--text3)' }}>{fmt(b.start_date)}{b.end_date !== b.start_date ? ` → ${fmt(b.end_date)}` : ''} · {b.guests} guests</div>
                 </div>
-                {p.lead && <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
-                <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 14, background: '#e8f4ef', color: '#1a4a3a', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Approved</span>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate('bookings')}
+                      style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                    >
+                      {NAV_LABELS.bookings}
+                    </button>
+                  )}
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* ── ACTIVE PROJECTS ────────────────────────────────────────── */}
+          <div className="panel">
+            <SectionTitle icon="📋" title="Active Projects" count={periodProjects.length} />
+            {periodProjects.length === 0 ? (
+              <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active projects started in this period</div>
+            ) : (
+              <>
+                {periodProjects.slice(0, 3).map(p => {
+                  const overdue = p.due_date && p.status !== 'completed' && new Date(p.due_date) < today;
+                  return (
+                    <div key={p.id} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>
+                          {p.name}
+                          {overdue && <span style={{ fontSize: 14, background: '#faeae7', color: 'var(--danger)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontWeight: 700 }}>OVERDUE</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand)' }}>{p.progress || 0}%</span>
+                          {onNavigate && (
+                            <button
+                              onClick={() => onNavigate('projects')}
+                              style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', color: 'var(--brand)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}
+                            >
+                              {NAV_LABELS.projects}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {p.lead && <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4 }}>👤 {p.lead}{p.due_date && ` · Due ${fmt(p.due_date)}`}</div>}
+                      <div style={{ height: 6, background: 'var(--cream2)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${p.progress || 0}%`, background: 'var(--brand-light)', borderRadius: 3 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                <ViewAllLink shown={3} total={periodProjects.length} navTo="projects" onNavigate={onNavigate} />
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ══════════════════════════ AI REPORTS (14yhc7kp7xg Step 3 — promoted out of the header buttons) ══════════════════════════ */}
-      <GroupHeading title="AI Reports" />
-
-      <div className="panel no-print" style={{ marginBottom: 20 }}>
-        <SectionTitle icon="✨" title="AI Reports" />
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            onClick={generateReport}
-            disabled={aiLoading}
-            style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {aiLoading ? '⏳ Generating…' : '✨ AI Governance Report'}
-          </button>
-          {isAdmin && (
-          <button
-            onClick={generateFinancialReport}
-            disabled={finAiLoading}
-            style={{ background: finAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: finAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
-          </button>
-          )}
-          <button
-            onClick={generateComplianceReport}
-            disabled={compAiLoading}
-            style={{ background: compAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: compAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {compAiLoading ? '⏳ Generating…' : '✨ AI Compliance Report'}
-          </button>
-          <button
-            onClick={generateTasksReport}
-            disabled={tasksAiLoading}
-            style={{ background: tasksAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: tasksAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            {tasksAiLoading ? '⏳ Generating…' : '✨ AI Actions & Tasks Report'}
-          </button>
+        {/* ══════════════════════════ AI REPORTS (14yhc7kp7xg Step 3 — promoted out of the header buttons) ══════════════════════════ */}
+        <div className="panel no-print">
+          <SectionTitle icon="✨" title="AI Reports" />
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={generateReport}
+              disabled={aiLoading}
+              style={{ background: aiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: aiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {aiLoading ? '⏳ Generating…' : '✨ AI Governance Report'}
+            </button>
+            {isAdmin && (
+            <button
+              onClick={generateFinancialReport}
+              disabled={finAiLoading}
+              style={{ background: finAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: finAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {finAiLoading ? '⏳ Generating…' : '✨ AI Financial Report'}
+            </button>
+            )}
+            <button
+              onClick={generateComplianceReport}
+              disabled={compAiLoading}
+              style={{ background: compAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: compAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {compAiLoading ? '⏳ Generating…' : '✨ AI Compliance Report'}
+            </button>
+            <button
+              onClick={generateTasksReport}
+              disabled={tasksAiLoading}
+              style={{ background: tasksAiLoading ? '#a0a0a0' : '#5a3e8a', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: tasksAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              {tasksAiLoading ? '⏳ Generating…' : '✨ AI Actions & Tasks Report'}
+            </button>
+          </div>
         </div>
       </div>
 
