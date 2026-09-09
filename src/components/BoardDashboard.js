@@ -1558,13 +1558,31 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
           Follow-up: each item now gets its own panel for visibility, same data/
           click-to-navigate/text as before -- only the wrapper changed, from one
           shared flex row to a grid of individually-bordered cards. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
         {[
           {
             icon: '📋', label: 'Compliance', level: complianceLevel, navTo: 'compliance',
-            // Fraction, not complianceNumber/Message -- compliant/assessed, consistent
-            // with the compliancePct fix (never-assessed excluded from the denominator).
-            detail: `${panelCompliantComplianceArr.length}/${complianceForPanel.length - panelNeverAssessedCompliance.length}`,
+            // Actionable overdue/due-soon counts, not the compliant/assessed
+            // fraction this used to show -- "0/8" was real but ambiguous to a
+            // trustee (real numbers say 3 overdue, 5 due soon, 18 never
+            // assessed, 0 compliant; "0/8" doesn't say which). Same arrays
+            // the detailed Compliance Tracker below already renders from
+            // (getComplianceStatus(complianceForPanel), destructured above)
+            // -- no new data or calculation, just a clearer label on what
+            // was already there. Cascades through every real state, not
+            // just the overdue one this was raised about.
+            detail:
+              panelOverdueCompliance.length > 0 && panelDueSoonCompliance.length > 0
+                ? `${panelOverdueCompliance.length} overdue · ${panelDueSoonCompliance.length} due soon`
+                : panelOverdueCompliance.length > 0
+                ? `${panelOverdueCompliance.length} overdue`
+                : panelDueSoonCompliance.length > 0
+                ? `${panelDueSoonCompliance.length} due soon`
+                : panelNeverAssessedCompliance.length > 0
+                ? `${panelNeverAssessedCompliance.length} never assessed`
+                : complianceForPanel.length > 0
+                ? `${panelCompliantComplianceArr.length} compliant`
+                : 'No items set up',
           },
           { icon: '🛡️', label: 'Risk', level: riskLevel, navTo: 'risks', detail: `${riskNumber} ${riskMessage}` },
           { icon: '🎯', label: 'Goals', level: goalsLevel, navTo: 'goals', detail: `${goalsNumber} ${goalsMessage}` },
