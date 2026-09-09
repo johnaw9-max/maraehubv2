@@ -9,6 +9,8 @@ const AREAS = [
   { icon: '📄', label: 'Documents' },
   { icon: '📅', label: 'Bookings' },
   { icon: '📁', label: 'Projects' },
+  { icon: '💰', label: 'Finance' },
+  { icon: '🤖', label: 'AI Reports' },
 ];
 
 const PROBLEMS = [
@@ -53,7 +55,7 @@ export default function WelcomeLanding() {
           MaraeHub brings the important parts of running a marae into one place — so nothing depends on one person remembering everything.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, maxWidth: 640, width: '100%', marginTop: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, maxWidth: 760, width: '100%', marginTop: 40 }}>
           {AREAS.map(a => (
             <div key={a.label} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, padding: '16px 10px', color: '#fff' }}>
               <div style={{ fontSize: 22, marginBottom: 6 }}>{a.icon}</div>
@@ -112,22 +114,22 @@ export default function WelcomeLanding() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
-            <span style={{ fontSize: 18, color: 'var(--text3)', textDecoration: 'line-through' }}>$99/month</span>
+            <span style={{ fontSize: 18, color: 'var(--text3)', textDecoration: 'line-through' }}>$49.50/month</span>
             <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 40, fontWeight: 700, color: 'var(--brand)' }}>
-              $49.50<span style={{ fontSize: 16, fontWeight: 600 }}>/month</span>
+              $29.50<span style={{ fontSize: 16, fontWeight: 600 }}>/month</span>
             </span>
           </div>
 
           <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 20 }}>
-            50% off for your first 12 months
+            Locked for your first 12 months
           </div>
 
           <div style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.6, marginBottom: 20 }}>
-            After your first 12 months, standard pricing of $99/month applies. This is not a permanent discount.
+            After your first 12 months, standard pricing of $49.50/month applies. This is not a permanent discount.
           </div>
 
           <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 24 }}>
-            Limited to the first 10 marae
+            Limited to the first 10 marae. After these spots are filled, standard pricing of $49.50/month applies for new marae.
           </div>
 
           <a href={FOUNDING_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
