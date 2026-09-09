@@ -44,8 +44,8 @@ const OFFICIAL_SOURCES = [
 export default function WelcomeLanding() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand)' }}>
-      <div style={{ background: '#000', padding: '20px', textAlign: 'center' }}>
-        <img src="/logo.png" alt="MaraeHub" style={{ height: 64, width: 'auto' }} />
+      <div style={{ background: 'var(--brand)', padding: '20px', textAlign: 'center' }}>
+        <img src="/logo.png" alt="MaraeHub" style={{ height: 96, width: 'auto' }} />
       </div>
 
       <div style={{ padding: '60px 20px 80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
