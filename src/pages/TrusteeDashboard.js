@@ -592,7 +592,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         )}
 
         {/* ── CONTACTS ───────────────────────────────────────────────────── */}
-        {activeTab === 'contacts' && <ContactsManager />}
+        {activeTab === 'contacts' && <ContactsManager onStartWorkflow={handleStartWorkflow} />}
 
         {/* ── COMPLIANCE ─────────────────────────────────────────────────── */}
         {activeTab === 'compliance' && (

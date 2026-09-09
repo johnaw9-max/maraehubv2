@@ -54,9 +54,10 @@ function Pill({ label, count, active, onClick }) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function ContactsManager() {
+export default function ContactsManager({ onStartWorkflow }) {
   const [users, setUsers]             = useState([]);
   const [contractors, setContractors] = useState([]);
+  const [templates, setTemplates]     = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [filter, setFilter]           = useState('all');
@@ -86,18 +87,26 @@ export default function ContactsManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [uRes, cRes, ctRes] = await Promise.all([
+    const [uRes, cRes, ctRes, tplRes] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('contractors').select('*').order('name'),
       supabase.from('contacts').select('*').order('created_at', { ascending: false }),
+      // Same fetch pattern AssetsManager.js already uses for its own
+      // onStartWorkflow buttons -- see matchWorkflowTemplate() there. No
+      // fuzzy matching needed here: every contractor maps to the same one
+      // template, unlike service reminders which vary by wording.
+      supabase.from('workflow_templates').select('id, name').eq('is_active', true),
     ]);
     const profileUsers  = (uRes.data  || []).map(u => ({ ...u, _source: 'profiles' }));
     const contactsUsers = (ctRes.data || []).map(u => ({ ...u, _source: 'contacts' }));
     profileUsers.sort((a, b) => (a.id === PINNED_TO_BOTTOM_ID ? 1 : 0) - (b.id === PINNED_TO_BOTTOM_ID ? 1 : 0));
     setUsers([...profileUsers, ...contactsUsers]);
     setContractors(cRes.data || []);
+    setTemplates(tplRes.data || []);
     setLoading(false);
   }
+
+  const contractorVettingTemplate = templates.find(t => t.name === 'Contractor Vetting and Approval');
 
   function tableFor(id) {
     return users.find(u => u.id === id)?._source === 'contacts' ? 'contacts' : 'profiles';
@@ -618,6 +627,21 @@ export default function ContactsManager() {
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {openingDocId === c.id ? 'Opening…' : (c.document_name || 'View document')}
                             </span>
+                          </button>
+                        )}
+                        {contractorVettingTemplate && onStartWorkflow && (
+                          <button
+                            onClick={() => onStartWorkflow({
+                              templateId: contractorVettingTemplate.id,
+                              workflowName: `Contractor Vetting and Approval — ${c.name}`,
+                              sourceName: `${c.name}${c.trade ? ` (${c.trade})` : ''}`,
+                              triggerType: 'contractor',
+                              entityType: 'contractor',
+                              entityId: c.id,
+                            })}
+                            style={{ fontSize: 14, background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start', marginTop: 2 }}
+                          >
+                            ⚙️ Start Vetting Workflow →
                           </button>
                         )}
                       </div>
