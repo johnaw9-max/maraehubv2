@@ -44,9 +44,11 @@ const OFFICIAL_SOURCES = [
 export default function WelcomeLanding() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand)' }}>
-      <div style={{ padding: '60px 20px 80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-        <div style={{ width: 56, height: 56, background: '#fff', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Playfair Display, serif', fontWeight: 700, fontSize: 26, color: 'var(--brand)', marginBottom: 28 }}>M</div>
+      <div style={{ background: '#000', padding: '20px', textAlign: 'center' }}>
+        <img src="/logo.png" alt="MaraeHub" style={{ height: 64, width: 'auto' }} />
+      </div>
 
+      <div style={{ padding: '60px 20px 80px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 34, fontWeight: 700, color: '#fff', maxWidth: 680, lineHeight: 1.3, margin: 0 }}>
           MaraeHub — Helping marae trustees stay organised, prepared and on top of compliance.
         </h1>
