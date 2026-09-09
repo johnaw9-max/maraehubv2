@@ -21,7 +21,6 @@ import GoalsReporting from '../components/GoalsReporting';
 import BoardDashboard from '../components/BoardDashboard';
 import TaskBoard from '../components/TaskBoard';
 import FeedbackButton from '../components/FeedbackButton';
-import UxPulsePrompt from '../components/UxPulsePrompt';
 import HelpMenu from '../components/HelpMenu';
 import WorkflowEngine from '../components/WorkflowEngine';
 import WhatsNew from '../components/WhatsNew';
@@ -630,7 +629,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
       <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>
       <FeedbackButton profile={profile} />
-      <UxPulsePrompt profile={profile} />
       <HelpMenu role="trustee" />
       <WhatsNew />
     </div>
