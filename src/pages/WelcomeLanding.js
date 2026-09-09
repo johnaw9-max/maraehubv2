@@ -166,6 +166,17 @@ export default function WelcomeLanding() {
         </div>
       </div>
 
+      <div style={{ background: 'var(--surface)', padding: '60px 20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text3)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            Your Privacy
+          </div>
+          <p style={{ fontSize: 16, color: 'var(--text1)', lineHeight: 1.6, margin: 0 }}>
+            Your marae's data stays private. Each marae has its own separate, encrypted database — never shared or mixed with any other marae's information.
+          </p>
+        </div>
+      </div>
+
       <div style={{ background: 'var(--surface)', padding: '70px 20px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
           <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 26, fontWeight: 700, color: 'var(--text1)', margin: 0 }}>
