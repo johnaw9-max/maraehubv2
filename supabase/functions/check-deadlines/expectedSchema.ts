@@ -455,7 +455,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_at",
     "net_assets",
     "total_assets",
-    "total_liabilities"
+    "total_liabilities",
+    "health_score"
   ],
   "notices": [
     "id",
