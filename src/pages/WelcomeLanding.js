@@ -215,12 +215,6 @@ export default function WelcomeLanding() {
           </div>
         </div>
       </div>
-
-      <div style={{ background: 'var(--surface2)', padding: '50px 20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 15, color: 'var(--text3)', maxWidth: 480, margin: '0 auto' }}>
-          More coming soon — we're building this page section by section.
-        </div>
-      </div>
     </div>
   );
 }
