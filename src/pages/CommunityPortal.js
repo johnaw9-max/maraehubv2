@@ -30,7 +30,7 @@ export default function CommunityPortal({ profile, onLogout }) {
           <BookingsManager isTrustee={false} userId={profile?.id} />
         )}
       </div>
-      <div className="footer">MaraeHub NZ Ltd · maraehub.com · Serving urban Māori communities across Aotearoa</div>
+      <div className="footer">MaraeHub NZ Ltd · maraehub.co.nz · Serving urban Māori communities across Aotearoa</div>
       <FeedbackButton profile={profile} />
       <HelpMenu role="community" />
     </div>

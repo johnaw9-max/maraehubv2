@@ -193,7 +193,7 @@ export default function LoginPage() {
         )}
 
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: 11, color: 'var(--text3)' }}>
-          MaraeHub NZ Ltd · maraehub.com
+          MaraeHub NZ Ltd · maraehub.co.nz
         </div>
       </div>
     </div>

@@ -42,7 +42,7 @@ export async function getEmailByName(fullName) {
 }
 
 const FOOTER =
-  '\n\nNō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.\n\n—\nMaraeHub Notifications\nmaraehub.com';
+  '\n\nNō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.\n\n—\nMaraeHub Notifications\nmaraehub.co.nz';
 
 function fmtDate(d) {
   if (!d) return 'date TBC';

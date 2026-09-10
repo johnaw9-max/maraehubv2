@@ -81,7 +81,7 @@ export default function PrivacyPolicy() {
 
       <div style={{ marginTop: 8, padding: '12px 16px', background: 'var(--cream2)', borderRadius: 10, fontSize: 12, color: 'var(--text3)', lineHeight: 1.6 }}>
         Questions about your privacy? Contact us at{' '}
-        <span style={{ color: 'var(--brand-light)', fontWeight: 600 }}>support@maraehub.com</span>
+        <span style={{ color: 'var(--brand-light)', fontWeight: 600 }}>maraehub@gmail.com</span>
       </div>
     </div>
   );
