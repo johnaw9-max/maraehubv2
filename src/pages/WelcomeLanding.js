@@ -131,7 +131,7 @@ export default function WelcomeLanding() {
           </div>
 
           <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 24 }}>
-            Limited to the first 10 marae. After these spots are filled, standard pricing of $49.50/month applies for new marae.
+            Limited to the first 5 marae. After these spots are filled, standard pricing of $49.50/month applies for new marae.
           </div>
 
           <a href={FOUNDING_PAYMENT_LINK} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '14px 32px', fontSize: 15, fontWeight: 700, cursor: 'pointer', textDecoration: 'none', fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
