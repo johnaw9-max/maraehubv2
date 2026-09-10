@@ -53,7 +53,7 @@ function fmtDate(d: string): string {
 }
 
 function footer(): string {
-  return '\n\nNō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.\n\n—\nMaraeHub Notifications\nmaraehub.com';
+  return '\n\nNō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.\n\n—\nMaraeHub Notifications\nmaraehub.co.nz';
 }
 
 // ── Email helper ─────────────────────────────────────────────────────────────

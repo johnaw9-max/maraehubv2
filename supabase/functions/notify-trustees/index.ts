@@ -15,7 +15,7 @@
  *   SUPABASE_URL              — set automatically by Supabase
  *   SUPABASE_SERVICE_ROLE_KEY — set automatically by Supabase
  *   RESEND_API_KEY            — set in Supabase Dashboard → Edge Functions → Secrets
- *   FROM_EMAIL                — optional, defaults to MaraeHub <notifications@maraehub.com>
+ *   FROM_EMAIL                — optional, defaults to MaraeHub <notifications@maraehub.co.nz>
  *   APP_URL                   — optional, defaults to https://maraehubv2.vercel.app
  *   RESEND_TEST_EMAIL         — when set, all emails are redirected to this address (test mode)
  */
@@ -78,7 +78,7 @@ function emailHtml(title: string, intro: string, rows: string[]): string {
   </td></tr>
   <tr><td style="padding:16px 32px;border-top:1px solid #f0ebe3;font-size:12px;color:#9a9088;line-height:1.6;">
     Nō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.<br>
-    <a href="${APP_URL}" style="color:#1a4a3a;text-decoration:none;">MaraeHub</a> · maraehub.com<br>
+    <a href="${APP_URL}" style="color:#1a4a3a;text-decoration:none;">MaraeHub</a> · maraehub.co.nz<br>
     <a href="${APP_URL}/?tab=settings#email-notifications" style="color:#9a9088;text-decoration:underline;">Manage your email preferences</a>
   </td></tr>
 </table>

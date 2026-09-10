@@ -43,7 +43,7 @@ This opens the app at http://localhost:3000
 
 | Role | Email | Password |
 |------|-------|----------|
-| Trustee | trustee@maraehub.com | Trustee123! |
+| Trustee | trustee@maraehub.co.nz | Trustee123! |
 | Community | community@maraehub.com | Community123! |
 
 ---
@@ -63,4 +63,4 @@ This opens the app at http://localhost:3000
 
 ## Project: MaraeHub NZ Ltd
 Founder: Waj Williams
-Domain: maraehub.com
+Domain: maraehub.co.nz

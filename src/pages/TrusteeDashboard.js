@@ -627,7 +627,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       </div>
       </div>
 
-      <div className="footer">MaraeHub NZ Ltd · maraehub.co.nz · Serving urban Māori communities across Aotearoa</div>
+      <div className="footer">MaraeHub NZ Ltd · maraehub.co.nz</div>
       <FeedbackButton profile={profile} />
       <HelpMenu role="trustee" />
       <WhatsNew />
