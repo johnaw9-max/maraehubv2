@@ -1375,6 +1375,38 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     });
   }
 
+  // Lightweight markdown rendering for AI-generated report text (**bold** spans
+  // and -/*/• bullet lines) -- the AI writes markdown by default but the modals
+  // were displaying it as a raw pre-wrap string, showing literal ** and -.
+  function renderReportText(text) {
+    if (!text) return null;
+    const blocks = [];
+    let listItems = null;
+
+    const renderInline = (str, key) =>
+      str.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <strong key={`${key}-${i}`}>{part.slice(2, -2)}</strong>
+          : <React.Fragment key={`${key}-${i}`}>{part}</React.Fragment>
+      );
+
+    text.split('\n').forEach((line, idx) => {
+      const trimmed = line.trim();
+      const bulletMatch = trimmed.match(/^[-*•]\s+(.*)/);
+      if (bulletMatch) {
+        (listItems ??= []).push(<li key={idx} style={{ marginBottom: 4 }}>{renderInline(bulletMatch[1], idx)}</li>);
+        return;
+      }
+      if (listItems) { blocks.push(<ul key={`ul-${idx}`} style={{ margin: '4px 0 12px', paddingLeft: 20 }}>{listItems}</ul>); listItems = null; }
+      if (trimmed === '') { blocks.push(<div key={idx} style={{ height: 8 }} />); return; }
+      const headingMatch = trimmed.match(/^\*\*(.+)\*\*:?$/);
+      if (headingMatch) { blocks.push(<div key={idx} style={{ fontWeight: 700, marginTop: 14, marginBottom: 4 }}>{headingMatch[1]}</div>); return; }
+      blocks.push(<div key={idx}>{renderInline(line, idx)}</div>);
+    });
+    if (listItems) blocks.push(<ul key="ul-end" style={{ margin: '4px 0 12px', paddingLeft: 20 }}>{listItems}</ul>);
+    return blocks;
+  }
+
   function reportEntityName(entityId) {
     if (entityId === 'all') return 'All Entities';
     return (d.entities || []).find(e => e.id === entityId)?.name || 'Unknown Entity';
@@ -1909,7 +1941,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {aiError ? (
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{aiError}</div>
             ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{aiReport}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(aiReport)}</div>
             )}
           </div>
         </div>
@@ -1941,7 +1973,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {finAiError ? (
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{finAiError}</div>
             ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{finAiReport}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(finAiReport)}</div>
             )}
           </div>
         </div>
@@ -1973,7 +2005,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {compAiError ? (
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{compAiError}</div>
             ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{compAiReport}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(compAiReport)}</div>
             )}
           </div>
         </div>
@@ -2005,7 +2037,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {tasksAiError ? (
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{tasksAiError}</div>
             ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)', whiteSpace: 'pre-wrap' }}>{tasksAiReport}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(tasksAiReport)}</div>
             )}
           </div>
         </div>
