@@ -11,6 +11,23 @@ Sentry.init({
   tracesSampleRate: 0.1,
 });
 
+// A deploy can replace a lazy-loaded route's JS chunk (e.g. /founder) out from under
+// a tab that's already open. The old chunk filename then 404s, but vercel.json's SPA
+// rewrite serves index.html instead, and the browser throws trying to parse it as JS
+// ("Unexpected token '<'"). Reload once to pick up the current build; a second failure
+// falls through to the manual-refresh fallback instead of reload-looping.
+function isStaleChunkError(error) {
+  const message = error?.message || '';
+  return /Loading chunk .* failed|Loading CSS chunk .* failed|Failed to fetch dynamically imported module|Unexpected token '<'/i.test(message);
+}
+
+function handleAppError(error) {
+  if (isStaleChunkError(error) && !sessionStorage.getItem('stale-chunk-reload-attempted')) {
+    sessionStorage.setItem('stale-chunk-reload-attempted', '1');
+    window.location.reload();
+  }
+}
+
 function ErrorFallback() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
@@ -28,7 +45,7 @@ function ErrorFallback() {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
+    <Sentry.ErrorBoundary fallback={<ErrorFallback />} onError={handleAppError}>
       <App />
     </Sentry.ErrorBoundary>
   </React.StrictMode>
