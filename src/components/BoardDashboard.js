@@ -612,19 +612,24 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
 
   // Stage 2 (86d41pc93) StatusCard. Behavior change: an empty risk register
   // now renders a grey card instead of not rendering at all, for consistency
-  // with Compliance's empty-state handling. No amber -- risk_rating has no
-  // medium-severity concept in the current data, only High/not-High.
+  // with Compliance's empty-state handling. Amber added (86d3taxdw) for open
+  // risks with low documented-controls coverage -- previously the calm green
+  // state was gated purely on risk_rating, blind to riskControlsPct entirely.
+  const LOW_CONTROLS_THRESHOLD = 50; // % of open risks with controls, below which amber fires
   const riskLevel =
     risksForPanel.length === 0 ? 'grey' :
     panelHighOpenRisks.length > 0 ? 'red' :
+    (panelOpenRisks.length > 0 && panelRiskControlsPct < LOW_CONTROLS_THRESHOLD) ? 'amber' :
     'green';
   const riskNumber =
     risksForPanel.length === 0 ? '—' :
     riskLevel === 'red' ? panelHighOpenRisks.length :
+    riskLevel === 'amber' ? `${panelRiskControlsPct}%` :
     `${panelRiskPct}%`;
   const riskMessage =
     risksForPanel.length === 0 ? 'No risks set up' :
     riskLevel === 'red' ? `high-rated risk${panelHighOpenRisks.length !== 1 ? 's' : ''} open` :
+    riskLevel === 'amber' ? 'open risks lack documented controls' :
     'clear of high-rated risks';
 
   // ─── ENTITY REPORT (deliberately independent of the 3 panel filters above —
@@ -2274,6 +2279,10 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       >
         {risksForPanel.length === 0 ? (
           <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>Add risks in the Risk Register tab</div>
+        ) : (panelOpenRisks.length > 0 && panelRiskControlsPct < LOW_CONTROLS_THRESHOLD) ? (
+          <div style={{ fontSize: 14, color: '#7a4f00', background: '#fdf0dc', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
+            ⚠️ No high-rated open risks, but only {panelRiskControlsPct}% of open risks have documented controls
+          </div>
         ) : panelHighOpenRisks.length === 0 ? (
           <div style={{ fontSize: 14, color: '#1a4a3a', background: '#e8f4ef', borderRadius: 7, padding: '8px 12px', fontWeight: 500 }}>
             ✅ No high-rated open risks

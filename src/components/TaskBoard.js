@@ -36,6 +36,29 @@ function isOverdue(task) {
   return new Date(task.due_date + 'T12:00:00') < today;
 }
 
+const TASK_URGENCY_ORDER = { overdue: 0, due_soon: 1, has_due_date: 2, no_due_date: 3, done: 4 };
+
+function taskUrgency(task) {
+  if (['completed', 'cancelled'].includes(task.status)) return 'done';
+  if (!task.due_date) return 'no_due_date';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
+  const due = new Date(task.due_date + 'T12:00:00');
+  if (due < today) return 'overdue';
+  if (due <= in7) return 'due_soon';
+  return 'has_due_date';
+}
+
+function compareTaskUrgency(a, b) {
+  const ua = TASK_URGENCY_ORDER[taskUrgency(a)];
+  const ub = TASK_URGENCY_ORDER[taskUrgency(b)];
+  if (ua !== ub) return ua - ub;
+  if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
+  if (a.due_date) return -1;
+  if (b.due_date) return 1;
+  return new Date(b.created_at) - new Date(a.created_at);
+}
+
 function isCompletedToday(task) {
   if (task.status !== 'completed' || !task.completed_at) return false;
   return new Date(task.completed_at).toDateString() === new Date().toDateString();
@@ -511,7 +534,8 @@ export default function TaskBoard() {
 
   async function fetchTasks() {
     setLoading(true);
-    const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('tasks').select('*');
+    data?.sort(compareTaskUrgency);
     setTasks(data || []);
     setLoading(false);
   }
