@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials } from '../lib/xero';
+import { isResolutionOpen } from '../lib/resolutionStatus';
 import Header from '../components/Header';
 import NavSidebar from '../components/NavSidebar';
 import BookingsManager from '../components/BookingsManager';
@@ -416,7 +417,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       const resolutions = resRes.data || [];
       const actions = actRes.data || [];
       const totalMeetings = meetings.length;
-      const openRes = resolutions.filter(r => !['Completed', 'Cancelled'].includes(r.status)).length;
+      const openRes = resolutions.filter(r => isResolutionOpen(r.status)).length;
       const openActs = actions.filter(a => a.status !== 'Completed').length;
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const overdueActs = actions.filter(a => a.due_date && new Date(a.due_date) < today && a.status !== 'Completed').length;

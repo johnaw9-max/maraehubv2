@@ -5,6 +5,7 @@ import useProfiles from '../lib/useProfiles';
 import useEntities from '../lib/useEntities';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
 import { ensureTask, closeLinkedTask } from '../lib/taskSync';
+import { isResolutionOpen } from '../lib/resolutionStatus';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -1074,8 +1075,7 @@ export default function CommitteeMinutes() {
   }
 
   // Summary stats
-  const CLOSED_STATUSES = ['Completed', 'Cancelled', 'Implemented', 'Superseded'];
-  const openResolutions = allResolutions.filter(r => !CLOSED_STATUSES.includes(r.status)).length;
+  const openResolutions = allResolutions.filter(r => isResolutionOpen(r.status)).length;
 
   // Decision Register filtered list
   const filteredDecisions = allResolutions.filter(r => {
