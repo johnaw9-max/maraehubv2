@@ -73,13 +73,6 @@ const NAV_GROUPS = [
   },
 ];
 
-function fmtMoney(n) {
-  if (!n) return '$0';
-  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `$${(n / 1000).toFixed(0)}k`;
-  return `$${n}`;
-}
-
 // ─── KPI BAR ──────────────────────────────────────────────────────────────────
 
 function KpiBar({ tiles, loading, count }) {
@@ -303,25 +296,20 @@ export default function TrusteeDashboard({ profile, onLogout }) {
     }
 
     if (tab === 'grants') {
-      const { data } = await supabase.from('grants').select('status, amount, deadline');
+      // Approved Funding and Urgent Deadlines deliberately omitted here --
+      // GrantsTracker.js already shows both (identical formulas), plus
+      // Pending/In Progress and a per-grant deadline breakdown neither of
+      // these tiles had (14yhc7kpea8 Step 2).
+      const { data } = await supabase.from('grants').select('status');
       const rows = data || [];
       const total = rows.length;
       const approvedRows = rows.filter(g => g.status === 'approved');
-      const approvedTotal = approvedRows.reduce((s, g) => s + (g.amount || 0), 0);
       const decided = rows.filter(g => ['approved', 'declined'].includes(g.status)).length;
       const successRate = decided > 0 ? Math.round((approvedRows.length / decided) * 100) : 0;
       const active = rows.filter(g => ['researching', 'in-progress', 'submitted'].includes(g.status)).length;
-      const today = new Date();
-      const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
-      const urgentDeadlines = rows.filter(g => {
-        if (!g.deadline || ['approved', 'declined'].includes(g.status)) return false;
-        const d = new Date(g.deadline);
-        return d >= today && d <= in14;
-      }).length;
 
       tiles = [
         { label: 'Total Grants', value: total, icon: '💰', bg: '#e8eef8' },
-        { label: 'Approved Funding', value: fmtMoney(approvedTotal), icon: '✅', bg: '#e8f4ef', valueColor: 'var(--brand)' },
         {
           label: 'Success Rate', value: decided > 0 ? `${successRate}%` : '—', icon: '🏆',
           bg: successRate >= 50 ? '#e8f4ef' : '#f5f5f5',
@@ -330,11 +318,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {
           label: 'Active Applications', value: active, icon: '📝', bg: '#f0ecf8',
           valueColor: active > 0 ? '#6b42a8' : 'var(--text3)',
-        },
-        {
-          label: 'Urgent Deadlines', value: urgentDeadlines, icon: '🔔',
-          bg: urgentDeadlines > 0 ? '#fdf0dc' : '#f5f5f5',
-          valueColor: urgentDeadlines > 0 ? 'var(--warning)' : 'var(--text3)',
         },
       ];
     }
