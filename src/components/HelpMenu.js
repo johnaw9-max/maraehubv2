@@ -1041,6 +1041,10 @@ const HELP_TOPICS = {
           ]},
           { text: 'Click "Save Meeting" to create the record. You can then open the meeting to add resolutions and action items.' },
         ] },
+        { q: 'What is Hui Mode?', a: [
+          { text: 'A distraction-free, full-screen reference view for use during the hui itself — open a meeting and click "🎯 Hui Mode". It shows the meeting\'s existing minutes (if any have been recorded), every outstanding resolution, and every open action, in large, easy-to-read type meant to be glanced at across a room, not read up close at a desk.' },
+          { text: 'It is deliberately read-only — nothing gets typed or recorded here. Real hui here are taken with rough notes during the meeting and formalised afterward using "Draft from Hui Notes" (see below), and Hui Mode is not designed to replace that — it is a reference for chairing the meeting, not a place to write the minutes. Use the "🔄 Refresh" button if something changes on another device while it is open, and "✕ Exit Hui Mode" to return to the normal screen.' },
+        ] },
         { q: 'How do I add a resolution?', a: [
           { text: 'Open a meeting from the Minutes tab and click the "Resolutions" section, then "+ Add Resolution".' },
           { header: 'Enter:', items: [
