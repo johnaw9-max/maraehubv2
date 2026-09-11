@@ -17,8 +17,16 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const trimmedEmail = email.trim();
+    const { error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
     if (error) setError(error.message);
+    // Fire-and-forget: feeds the login-attempt-burst check in check-deadlines
+    // (14yhc7kpfz3 Step 2). Never blocks login on this, never surfaces its
+    // own errors to the user -- logging shouldn't be able to break login.
+    supabase
+      .from('login_attempts')
+      .insert({ email: trimmedEmail.toLowerCase(), success: !error })
+      .then(() => {}, () => {});
     setLoading(false);
   }
 

@@ -506,6 +506,28 @@ create policy "Trustees can manage entities"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))));
 
 
+-- ── EXPORT_LOG ────────────────────────────────────────────────────────────
+create table if not exists export_log (
+  id uuid not null default gen_random_uuid(),
+  account_email text not null,
+  export_type text not null,
+  row_count integer not null,
+  exported_at timestamptz not null default now()
+);
+
+alter table export_log add constraint export_log_pkey PRIMARY KEY (id);
+
+create index if not exists export_log_account_email_exported_at_idx
+  on export_log (account_email, exported_at);
+
+alter table export_log enable row level security;
+
+create policy "export_log: authenticated can insert"
+  on export_log for insert
+  to authenticated
+  with check (true);
+
+
 -- ── FEEDBACK ──────────────────────────────────────────────────────────────
 create table if not exists feedback (
   id uuid not null default gen_random_uuid(),
@@ -517,10 +539,13 @@ create table if not exists feedback (
   page text,
   created_at timestamp without time zone default now(),
   marae text,
-  rating text
+  rating text,
+  status text not null default 'open',
+  resolved_at timestamptz
 );
 
 alter table feedback add constraint feedback_pkey PRIMARY KEY (id);
+alter table feedback add constraint feedback_status_check CHECK ((status = ANY (ARRAY['open'::text, 'resolved'::text])));
 
 alter table feedback enable row level security;
 
@@ -1032,6 +1057,27 @@ create policy "interest_register_update"
   with check (((EXISTS ( SELECT 1
    FROM profiles
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
+-- ── LOGIN_ATTEMPTS ────────────────────────────────────────────────────────
+create table if not exists login_attempts (
+  id uuid not null default gen_random_uuid(),
+  email text not null,
+  success boolean not null,
+  attempted_at timestamptz not null default now()
+);
+
+alter table login_attempts add constraint login_attempts_pkey PRIMARY KEY (id);
+
+create index if not exists login_attempts_email_attempted_at_idx
+  on login_attempts (email, attempted_at);
+
+alter table login_attempts enable row level security;
+
+create policy "login_attempts: anon and authenticated can insert"
+  on login_attempts for insert
+  to anon, authenticated
+  with check (true);
 
 
 -- ── MARAE_SETTINGS ────────────────────────────────────────────────────────

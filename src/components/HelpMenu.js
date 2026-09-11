@@ -199,6 +199,15 @@ const HELP_TOPICS = {
           ]},
           { text: "Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed." },
         ] },
+        { q: 'Does MaraeHub watch for suspicious login activity?', a: [
+          { text: 'Yes. A daily automated check looks for any single account with an unusually high number of failed sign-in attempts in a short window — a common early sign of an automated attack trying to guess a password.' },
+          { text: "Real, honest scope: this watches the app's own sign-in screen. It does not see attempts made directly against the underlying authentication service, bypassing the app entirely, and it does not cover the separate community sign-in link (which uses a one-time secret link rather than a guessable password, so it isn't exposed to this kind of attack the same way). This is a first layer against the common case, not a defence against a determined, targeted attacker." },
+        ] },
+        { q: 'Does MaraeHub watch for unusually large data exports?', a: [
+          { text: "Yes. When someone exports the Finance accountant CSV report, MaraeHub records who exported it and how many rows it contained. A daily automated check flags any single export far larger than normal, so an unusually large pull of financial data doesn't go unnoticed." },
+          { text: "Real, honest scope: this currently covers the Finance CSV export specifically — the only genuine bulk-export feature in MaraeHub today. Other downloads (a single document, a single invoice) are one record at a time, not bulk exports, and aren't covered by this check." },
+        ] },
+        { q: "How does MaraeHub keep its own software secure?", a: "MaraeHub's underlying software libraries are monitored for known, published security vulnerabilities through GitHub's Dependabot service, which checks automatically and flags when an update is genuinely needed. When a real vulnerability is found, it gets assessed and fixed — safe, non-breaking fixes are applied as soon as they're available; any fix that would require a larger, riskier change is reviewed deliberately rather than applied automatically." },
       ]
     },
     {

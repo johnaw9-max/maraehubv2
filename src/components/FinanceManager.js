@@ -942,6 +942,17 @@ ${gstSummaryHtml}
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    // Fire-and-forget: feeds the unusual-export-size check in check-deadlines
+    // (14yhc7kpfz3 Step 3). Never blocks the download, never surfaces its
+    // own errors -- logging shouldn't be able to break the export.
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user?.email) return;
+      supabase
+        .from('export_log')
+        .insert({ account_email: user.email.toLowerCase(), export_type: 'finance_accountant_csv', row_count: rows.length })
+        .then(() => {}, () => {});
+    });
   }
 
   // ── GL PERIOD HELPERS (Trial Balance / Financial Statements) ──────────────

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.iwi-pull-snapshot]
 verify_jwt = false
+
+[functions.check-deadlines]
+verify_jwt = false

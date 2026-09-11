@@ -13,7 +13,14 @@
  *
  * Environment variables required:
  *   SUPABASE_URL              set automatically by Supabase
- *   SUPABASE_SERVICE_ROLE_KEY set automatically by Supabase
+ *   CHECK_DEADLINES_SECRET_KEY  new sb_secret_ format key, scoped to this function only
+ *                                (replaces legacy SUPABASE_SERVICE_ROLE_KEY -- see
+ *                                20260911010000_migrate_check_deadlines_cron_auth.sql).
+ *                                Also doubles as the shared secret pg_cron sends on the
+ *                                `apikey` header, since verify_jwt is false for this
+ *                                function (the new key format isn't a JWT, so the gateway
+ *                                can't verify it) -- this function checks that header
+ *                                itself instead.
  *   SUPABASE_ANON_KEY         set automatically by Supabase
  *   LOGIN_CHECK_EMAIL         synthetic login-health check account (86d3u7790, Stage 5 item 1)
  *   LOGIN_CHECK_PASSWORD      synthetic login-health check account password
@@ -25,7 +32,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { EXPECTED_SCHEMA } from './expectedSchema.ts';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
-const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SECRET_KEY        = Deno.env.get('CHECK_DEADLINES_SECRET_KEY')!;
 const ANON_KEY          = Deno.env.get('SUPABASE_ANON_KEY');
 const ADMIN_ALERT_EMAIL = Deno.env.get('ADMIN_ALERT_EMAIL');
 const LOGIN_CHECK_EMAIL    = Deno.env.get('LOGIN_CHECK_EMAIL');
@@ -60,10 +67,11 @@ function footer(): string {
 
 async function notify(to: string[], subject: string, body: string) {
   if (to.length === 0) return;
+  // send-notification has verify_jwt = false and does not check Authorization
+  // itself, so no auth header is needed here.
   await fetch(NOTIFY_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ to, subject, body }),
@@ -147,8 +155,20 @@ function matchTemplate(
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 
-serve(async () => {
-  const db      = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+serve(async (req) => {
+  // verify_jwt is false for this function (the new sb_secret_ key isn't a
+  // JWT, so the gateway can't verify it as one -- see config.toml), so this
+  // function is the only thing standing between its URL and the public
+  // internet. pg_cron sends the secret key on the `apikey` header (it can't
+  // use Authorization: Bearer for the same JWT-format reason).
+  if (req.headers.get('apikey') !== SECRET_KEY) {
+    return new Response(JSON.stringify({ error: 'unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const db      = createClient(SUPABASE_URL, SECRET_KEY);
   const today   = todayStr();
   const dueDate = offsetDate(7);  // exact 7-day target for email notifications
 
@@ -1011,13 +1031,11 @@ serve(async () => {
   // trusted even when they exist (find_orphaned_auth_users' comment claimed
   // a lockdown that wasn't real for a full week). Each entry below was
   // individually verified live before being added, not assumed correct.
-  const ALLOWED_ANON_POLICIES: { table: string; policy: string }[] = [
-    // Deliberately empty as of 12 August 2026 - confirmed zero anon-role
-    // policies exist on either project right now. Both real instances found
-    // this session (profiles, and indirectly the trustee-login-activity
-    // RPC) are already fixed. Add an entry here only after confirming a
-    // genuine, deliberate need - e.g. a real public-facing booking flow -
-    // never as a default to silence a finding.
+  const ALLOWED_ANON_POLICIES: { table: string; policy: string; reason: string }[] = [
+    // First real entry as of 11 September 2026 - a genuine, deliberate
+    // need, not a default to silence a finding (per the note this replaces).
+    { table: 'login_attempts', policy: 'login_attempts: anon and authenticated can insert',
+      reason: 'Insert-only, no select/update/delete for anon (14yhc7kpfz3 Step 2) - a login attempt happens before any session exists, so the client is necessarily on the anon key at that point. Table has no select policy for anon at all, confirmed via the migration\'s own verify script - RLS silently returns empty rather than real rows for any anon SELECT.' },
   ];
 
   const ALLOWED_SECURITY_DEFINER_GRANTS: { function: string; grantees: string[]; reason: string }[] = [
@@ -1440,6 +1458,232 @@ serve(async () => {
     details: adoptionGapFindings,
   });
 
+  // ── Customer feedback follow-through check (86d3u7790 Stage 5 item 4) ──
+  // Confirms real, submitted feedback (86d3pkfqv) genuinely gets addressed,
+  // not silently forgotten. Requires a real "addressed" signal to check
+  // against -- migration 20260911000000 added feedback.status/resolved_at,
+  // and FounderDashboard now has a "Mark Addressed" action, since without
+  // that this check could only flag by age and could never go quiet once
+  // something is actually handled outside the app (which is how every
+  // feedback item has been handled so far).
+  //
+  // 'compliment' is excluded -- it expects no action. 'ux_pulse' is a
+  // separate passive monthly rating (UxPulsePrompt.js), not an individual
+  // request. Bug/question get a tighter grace period than suggestion since
+  // someone may be actively blocked or waiting on an answer; suggestion is
+  // lower urgency by nature.
+  const FEEDBACK_URGENT_GRACE_DAYS   = 7;  // bug, question
+  const FEEDBACK_SUGGESTION_GRACE_DAYS = 14;
+
+  const { data: openFeedbackRows, error: openFeedbackErr } = await db
+    .from('feedback')
+    .select('id, type, user_name, user_email, message, created_at')
+    .eq('status', 'open')
+    .in('type', ['bug', 'question', 'suggestion'])
+    .order('created_at', { ascending: true });
+
+  const feedbackFollowThroughFindings: {
+    id?: string; type?: string; user_name?: string; user_email?: string;
+    message?: string; created_at?: string; days_open?: number; error?: string;
+  }[] = [];
+
+  if (openFeedbackErr) {
+    feedbackFollowThroughFindings.push({ error: 'query failed' });
+  } else {
+    for (const row of openFeedbackRows ?? []) {
+      const graceDays = row.type === 'suggestion' ? FEEDBACK_SUGGESTION_GRACE_DAYS : FEEDBACK_URGENT_GRACE_DAYS;
+      const daysOpen = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 86400000);
+      if (daysOpen >= graceDays) {
+        feedbackFollowThroughFindings.push({
+          id: row.id,
+          type: row.type,
+          user_name: row.user_name,
+          user_email: row.user_email,
+          message: row.message,
+          created_at: row.created_at,
+          days_open: daysOpen,
+        });
+      }
+    }
+  }
+
+  if (feedbackFollowThroughFindings.length > 0) {
+    const ALERT_INTERVAL_DAYS = 7;
+    const { data: alertState } = await db
+      .from('check_alert_state')
+      .select('last_alerted_at')
+      .eq('check_name', 'feedback_follow_through')
+      .maybeSingle();
+    const daysSinceLastAlert = alertState?.last_alerted_at
+      ? (Date.now() - new Date(alertState.last_alerted_at).getTime()) / (1000 * 60 * 60 * 24)
+      : Infinity;
+
+    if (daysSinceLastAlert >= ALERT_INTERVAL_DAYS) {
+      const body =
+        `Tēnā koutou,\n\n` +
+        `MaraeHub's daily check found ${feedbackFollowThroughFindings.length} real feedback submission${feedbackFollowThroughFindings.length !== 1 ? 's' : ''} still open past its grace period (${FEEDBACK_URGENT_GRACE_DAYS} days for bug/question, ${FEEDBACK_SUGGESTION_GRACE_DAYS} for suggestion). This check runs daily, but this alert only repeats at most once a week while items remain open.\n\n` +
+        feedbackFollowThroughFindings.map(f => f.error
+          ? `- check could not run (${f.error})`
+          : `- [${f.type}] ${f.user_name || f.user_email || 'Unknown'}, open ${f.days_open} days: "${(f.message || '').slice(0, 140)}"`
+        ).join('\n') +
+        `\n\nMark each one Addressed on the Founder Dashboard once it's genuinely handled.` +
+        footer();
+
+      await notifyAdmin(`Feedback follow-through check — ${feedbackFollowThroughFindings.length} item${feedbackFollowThroughFindings.length !== 1 ? 's' : ''} past grace period`, body);
+      await db.from('check_alert_state').upsert({ check_name: 'feedback_follow_through', last_alerted_at: new Date().toISOString() });
+    }
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'feedback_follow_through',
+    findings_count: feedbackFollowThroughFindings.length,
+    details: feedbackFollowThroughFindings,
+  });
+
+  // ── Login-attempt burst check (14yhc7kpfz3 Step 2) ──────────────────────
+  // Real, honest scope: login_attempts is written client-side by
+  // LoginPage.js's password-login form only -- it does not see attempts
+  // against the Supabase Auth API made directly (bypassing the app UI), nor
+  // the separate community magic-link path (already gated by its own
+  // secret token). First-layer signal for a naive automated attack against
+  // the visible login form, not a defense against a targeted attacker who
+  // already knows to go around it. Supabase Auth's own audit log
+  // (auth.audit_log_entries) was investigated and ruled out first -- it
+  // stayed empty across 5 real login attempts even with its Postgres-write
+  // setting genuinely enabled and the project restarted afterward.
+  //
+  // No check_alert_state throttle here, deliberately, unlike
+  // feedback_follow_through: that throttle exists because feedback stays
+  // open for weeks and would otherwise re-alert daily about the same
+  // unresolved item. A login burst is a point-in-time event -- each day's
+  // check looks at that day's fresh window, so the daily run cadence
+  // already prevents repeat alerts about the same burst without extra state.
+  const LOGIN_BURST_WINDOW_MINUTES  = 15;
+  const LOGIN_BURST_THRESHOLD       = 5;
+  const LOGIN_ATTEMPTS_LOOKBACK_HOURS = 24;
+  const LOGIN_ATTEMPTS_RETENTION_DAYS = 30;
+
+  const lookbackStart = new Date(Date.now() - LOGIN_ATTEMPTS_LOOKBACK_HOURS * 60 * 60 * 1000).toISOString();
+  const { data: recentFailedAttempts, error: loginAttemptsErr } = await db
+    .from('login_attempts')
+    .select('email, attempted_at')
+    .eq('success', false)
+    .gte('attempted_at', lookbackStart)
+    .order('attempted_at', { ascending: true });
+
+  const loginBurstFindings: { email: string; window_start: string; failed_count: number }[] = [];
+
+  if (!loginAttemptsErr) {
+    const windowMs = LOGIN_BURST_WINDOW_MINUTES * 60 * 1000;
+    const byEmail = new Map<string, number[]>();
+    for (const row of recentFailedAttempts ?? []) {
+      const t = new Date(row.attempted_at).getTime();
+      const arr = byEmail.get(row.email) ?? [];
+      arr.push(t);
+      byEmail.set(row.email, arr);
+    }
+    for (const [emailAddr, timestamps] of byEmail) {
+      timestamps.sort((a, b) => a - b);
+      for (let i = 0; i + LOGIN_BURST_THRESHOLD - 1 < timestamps.length; i++) {
+        const windowEndIdx = i + LOGIN_BURST_THRESHOLD - 1;
+        if (timestamps[windowEndIdx] - timestamps[i] <= windowMs) {
+          loginBurstFindings.push({
+            email: emailAddr,
+            window_start: new Date(timestamps[i]).toISOString(),
+            failed_count: LOGIN_BURST_THRESHOLD,
+          });
+          break; // one flag per email per run is enough signal
+        }
+      }
+    }
+  }
+
+  if (loginBurstFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily check found ${loginBurstFindings.length} account${loginBurstFindings.length !== 1 ? 's' : ''} with ${LOGIN_BURST_THRESHOLD}+ failed login attempts within a ${LOGIN_BURST_WINDOW_MINUTES}-minute window in the last ${LOGIN_ATTEMPTS_LOOKBACK_HOURS} hours -- a common early sign of an automated attack against the login form.\n\n` +
+      loginBurstFindings.map(f => `- ${f.email}: ${f.failed_count}+ failed attempts starting ${f.window_start}`).join('\n') +
+      `\n\nReal, honest coverage note: this only sees attempts against the app's own login form, not the Supabase Auth API directly or the community magic-link path.` +
+      footer();
+
+    await notifyAdmin(`Login attempt burst — ${loginBurstFindings.length} account${loginBurstFindings.length !== 1 ? 's' : ''} flagged`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'login_attempt_burst',
+    findings_count: loginBurstFindings.length,
+    details: loginBurstFindings,
+  });
+
+  // Prune: login_attempts has no natural cap unlike most tables here.
+  await db
+    .from('login_attempts')
+    .delete()
+    .lt('attempted_at', new Date(Date.now() - LOGIN_ATTEMPTS_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString());
+
+  // ── Unusual data-export size check (14yhc7kpfz3 Step 3) ─────────────────
+  // Real, honest scope: an audit of the whole codebase found exactly one
+  // genuine bulk-export feature -- exportAccountantCSV() in
+  // FinanceManager.js, self-logged to export_log at export time. Everything
+  // else is a single-item download or a print view of already-visible
+  // data, not covered here. Same self-reported/spoofable caveat as
+  // login_attempts -- a first-layer signal, not a defense against a user
+  // who deliberately avoids triggering the log.
+  //
+  // Flat absolute threshold, not a per-account historical baseline:
+  // checked both real projects' entire transaction history at build time --
+  // under 10 rows combined, on each project. "Baseline per account" isn't
+  // a meaningful statistic at this org's real scale yet; a flat threshold
+  // matches the actual data instead of over-building for a problem this
+  // app doesn't have. 500 rows is a judgment call -- clearly whole-history/
+  // bulk-scale for a single marae's finance ledger, comfortably above any
+  // normal single-period export, but not scientifically derived. Revisit
+  // once real export volume exists to look at.
+  const EXPORT_SIZE_THRESHOLD = 500;
+  const EXPORT_LOG_LOOKBACK_HOURS = 24;
+
+  const { data: recentExports, error: exportLogErr } = await db
+    .from('export_log')
+    .select('account_email, export_type, row_count, exported_at')
+    .gt('row_count', EXPORT_SIZE_THRESHOLD)
+    .gte('exported_at', new Date(Date.now() - EXPORT_LOG_LOOKBACK_HOURS * 60 * 60 * 1000).toISOString())
+    .order('exported_at', { ascending: true });
+
+  const largeExportFindings: { email?: string; export_type?: string; row_count?: number; exported_at?: string; error?: string }[] = [];
+
+  if (exportLogErr) {
+    largeExportFindings.push({ error: 'query failed' });
+  } else {
+    for (const row of recentExports ?? []) {
+      largeExportFindings.push({
+        email: row.account_email,
+        export_type: row.export_type,
+        row_count: row.row_count,
+        exported_at: row.exported_at,
+      });
+    }
+  }
+
+  if (largeExportFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily check found ${largeExportFindings.length} data export${largeExportFindings.length !== 1 ? 's' : ''} larger than ${EXPORT_SIZE_THRESHOLD} rows in the last ${EXPORT_LOG_LOOKBACK_HOURS} hours.\n\n` +
+      largeExportFindings.map(f => f.error
+        ? `- check could not run (${f.error})`
+        : `- ${f.email} exported ${f.row_count} rows (${f.export_type}) at ${f.exported_at}`
+      ).join('\n') +
+      `\n\nWorth confirming this was a genuine, expected export.` +
+      footer();
+
+    await notifyAdmin(`Large data export — ${largeExportFindings.length} flagged`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'unusual_export_size',
+    findings_count: largeExportFindings.length,
+    details: largeExportFindings,
+  });
+
   // ── Founder capacity check (ClickUp 86d3u7790 Stage 5 item 3) ───────────
   // Real, deliberate difference from every other check in this file:
   // there is no DB anomaly to detect here. This is a pure calendar-based
@@ -1533,6 +1777,9 @@ serve(async () => {
       dead_field_detection_findings: deadFieldFindings.length,
       login_health_findings: loginHealthFindings.length,
       silent_adoption_gap_findings: adoptionGapFindings.length,
+      feedback_follow_through_findings: feedbackFollowThroughFindings.length,
+      login_attempt_burst_findings: loginBurstFindings.length,
+      unusual_export_size_findings: largeExportFindings.length,
       founder_capacity_check_findings: founderCheckDue ? 1 : 0,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,

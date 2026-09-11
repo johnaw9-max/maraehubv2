@@ -205,6 +205,13 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "name",
     "created_at"
   ],
+  "export_log": [
+    "id",
+    "account_email",
+    "export_type",
+    "row_count",
+    "exported_at"
+  ],
   "feedback": [
     "id",
     "user_id",
@@ -215,7 +222,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "page",
     "created_at",
     "marae",
-    "rating"
+    "rating",
+    "status",
+    "resolved_at"
   ],
   "finance_balance_sheet": [
     "id",
@@ -394,6 +403,12 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "status",
     "created_at",
     "entity_id"
+  ],
+  "login_attempts": [
+    "id",
+    "email",
+    "success",
+    "attempted_at"
   ],
   "marae_settings": [
     "id",
