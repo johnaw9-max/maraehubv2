@@ -339,7 +339,7 @@ function ActionForm({ initial, onSave, onCancel, saving, error }) {
 
 // ─── MEETING DETAIL VIEW ──────────────────────────────────────────────────────
 
-function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
+function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHuiMode }) {
   const [resolutions, setResolutions] = useState([]);
   const [actions, setActions] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
@@ -590,6 +590,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents }) {
                 {calendarSyncing ? 'Syncing…' : calendarSynced ? '✅ Synced — Update' : '📅 Add to my Google Calendar'}
               </button>
             )}
+            <button onClick={() => onStartHuiMode(meeting.id)} style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>🎯 Hui Mode</button>
             <button onClick={onEdit} style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Edit</button>
             <button onClick={onDelete} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Delete</button>
           </div>
@@ -917,7 +918,7 @@ function InterestForm({ initial, onSave, onCancel, saving, error }) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function CommitteeMinutes() {
+export default function CommitteeMinutes({ onStartHuiMode }) {
   const entities = useEntities();
   const [view, setView] = useState('list'); // 'list' | 'form' | 'detail'
   const [meetings, setMeetings] = useState([]);
@@ -1135,6 +1136,7 @@ export default function CommitteeMinutes() {
         onEdit={() => { setEditMeeting(selectedMeeting); setError(''); setView('form'); }}
         onDelete={() => handleDeleteMeeting(selectedMeeting)}
         documents={documents}
+        onStartHuiMode={onStartHuiMode}
       />
     );
   }

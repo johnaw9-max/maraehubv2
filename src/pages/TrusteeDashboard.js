@@ -10,6 +10,7 @@ import AssetsManager from '../components/AssetsManager';
 import DocumentsManager from '../components/DocumentsManager';
 import NoticeboardManager from '../components/NoticeboardManager';
 import CommitteeMinutes from '../components/CommitteeMinutes';
+import HuiModeView from '../components/HuiModeView';
 import CalendarView from '../components/CalendarView';
 import MaraeSettings from '../components/MaraeSettings';
 import GrantsTracker from '../components/GrantsTracker';
@@ -140,6 +141,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
   const [pendingRisk, setPendingRisk] = useState(null);
   const [boardKey, setBoardKey] = useState(0);
+  const [huiModeMeetingId, setHuiModeMeetingId] = useState(null);
 
   function handleStartWorkflow(suggestion) {
     setPendingWorkflow(suggestion);
@@ -492,6 +494,13 @@ export default function TrusteeDashboard({ profile, onLogout }) {
 
   // ── RENDER ─────────────────────────────────────────────────────────────────
 
+  // Full-screen bypass, same pattern App.js already uses for /request-booking
+  // etc. -- deliberately skips Header/NavSidebar/KpiBar entirely, not just
+  // hidden via CSS, since Hui Mode needs to be genuinely distraction-free.
+  if (huiModeMeetingId) {
+    return <HuiModeView meetingId={huiModeMeetingId} onExit={() => setHuiModeMeetingId(null)} />;
+  }
+
   return (
     <div>
       <Header profile={profile} onLogout={onLogout} />
@@ -523,7 +532,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'minutes' && (
           <>
             <KpiBar tiles={kpis.minutes || []} loading={kpiLoading.minutes} count={4} />
-            <CommitteeMinutes />
+            <CommitteeMinutes onStartHuiMode={setHuiModeMeetingId} />
           </>
         )}
 
