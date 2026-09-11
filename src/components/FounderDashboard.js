@@ -294,8 +294,8 @@ export default function FounderDashboard({ profile }) {
       supabase.from('founder_notes').select('marae_name, step_key, completed, data'),
       // ux_pulse rows excluded here -- shown as their own summary below, not
       // mixed in with real bug reports/suggestions/questions/compliments.
-      supabase.from('feedback').select('id, type, user_name, user_email, message, created_at').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
-      supabaseTineka.from('feedback').select('id, type, user_name, user_email, message, created_at').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
+      supabase.from('feedback').select('id, type, user_name, user_email, message, created_at, status').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
+      supabaseTineka.from('feedback').select('id, type, user_name, user_email, message, created_at, status').neq('type', 'ux_pulse').order('created_at', { ascending: false }).limit(20),
       supabase.from('feedback').select('rating, message, created_at').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
       supabaseTineka.from('feedback').select('rating, message, created_at').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
     ]);
@@ -393,6 +393,12 @@ export default function FounderDashboard({ profile }) {
     setCustomMarae(m => m.filter(e => e.prefix !== prefix));
     await supabase.from('founder_notes').delete()
       .eq('marae_name', prefix).eq('step_key', 'custom_marae');
+  }
+
+  async function markFeedbackResolved(f) {
+    setRecentFeedback(fb => fb.map(row => row.id === f.id ? { ...row, status: 'resolved' } : row));
+    const client = f.envLabel === 'Tineka' ? supabaseTineka : supabase;
+    await client.from('feedback').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', f.id);
   }
 
   async function addPipelineLead() {
@@ -613,13 +619,26 @@ export default function FounderDashboard({ profile }) {
         ) : (
           recentFeedback.map((f, i) => {
             const icon = f.type === 'bug' ? '🐛' : f.type === 'suggestion' ? '💡' : f.type === 'question' ? '❓' : '🌟';
+            const actionable = f.type !== 'compliment';
+            const resolved = f.status === 'resolved';
             return (
-              <div key={f.id} style={{ padding: '10px 0', borderBottom: i < recentFeedback.length - 1 ? `1px solid ${BORDER}` : 'none' }}>
+              <div key={f.id} style={{ padding: '10px 0', borderBottom: i < recentFeedback.length - 1 ? `1px solid ${BORDER}` : 'none', opacity: resolved ? 0.6 : 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1 }}>{icon} {f.user_name || f.user_email || 'Unknown'} · {f.envLabel}</span>
                   <span style={{ fontSize: 11, color: TEXT3 }}>{new Date(f.created_at).toLocaleString('en-NZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <div style={{ fontSize: 13, color: TEXT1 }}>{f.message}</div>
+                <div style={{ fontSize: 13, color: TEXT1, marginBottom: actionable ? 6 : 0 }}>{f.message}</div>
+                {actionable && (
+                  resolved
+                    ? <span style={{ fontSize: 11, color: TEXT3 }}>✓ Addressed</span>
+                    : (
+                      <button
+                        onClick={() => markFeedbackResolved(f)}
+                        style={{ background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, padding: '3px 10px', fontSize: 11, color: TEXT1, cursor: 'pointer' }}>
+                        Mark Addressed
+                      </button>
+                    )
+                )}
               </div>
             );
           })
