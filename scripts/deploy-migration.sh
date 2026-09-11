@@ -8,11 +8,26 @@ set -u -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_FILE="$SCRIPT_DIR/deploy-projects.conf"
 
-MIGRATION_FILE="${1:-}"
-VERIFY_FILE="${2:-}"
+ONLY_NAME=""
+POSITIONAL=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only)
+      ONLY_NAME="${2:-}"
+      shift 2
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+MIGRATION_FILE="${POSITIONAL[0]:-}"
+VERIFY_FILE="${POSITIONAL[1]:-}"
 
 if [ -z "$MIGRATION_FILE" ]; then
-  echo "Usage: $0 <migration-file> [verify-file]"
+  echo "Usage: $0 [--only <project-name>] <migration-file> [verify-file]"
   exit 1
 fi
 if [ ! -f "$MIGRATION_FILE" ]; then
@@ -94,6 +109,7 @@ PYEOF
 
 declare -a NAMES=()
 declare -a STATUS=()
+FOUND_ONLY=0
 
 print_summary() {
   echo ""
@@ -107,6 +123,8 @@ print_summary() {
 while IFS=',' read -r NAME REF || [ -n "$NAME" ]; do
   [ -z "$NAME" ] && continue
   case "$NAME" in "#"*) continue ;; esac
+  if [ -n "$ONLY_NAME" ] && [ "$NAME" != "$ONLY_NAME" ]; then continue; fi
+  [ -n "$ONLY_NAME" ] && FOUND_ONLY=1
 
   NAMES+=("$NAME")
 
@@ -170,6 +188,11 @@ while IFS=',' read -r NAME REF || [ -n "$NAME" ]; do
   fi
 
 done < "$CONF_FILE"
+
+if [ -n "$ONLY_NAME" ] && [ "$FOUND_ONLY" -eq 0 ]; then
+  echo "❌ --only '$ONLY_NAME' not found in $CONF_FILE"
+  exit 1
+fi
 
 print_summary
 echo ""
