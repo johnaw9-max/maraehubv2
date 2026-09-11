@@ -17,9 +17,11 @@ const HELP_TOPICS = {
         ] },
         { q: 'What are the condition ratings?', a: [
           { items: [
+            'Excellent — like new, no concerns.',
             'Good — asset is functioning well.',
             'Fair — showing wear, monitor closely.',
             'Poor — needs attention or replacement planning.',
+            'Critical — needs urgent attention; counted alongside Poor wherever MaraeHub flags assets needing attention (e.g. Board View, the Assets tab summary).',
           ]},
         ] },
         { q: 'What does Board View show for assets?', a: 'Assets nearing end of life or in poor condition will surface automatically in Board View so trustees are aware without having to check manually.' },
