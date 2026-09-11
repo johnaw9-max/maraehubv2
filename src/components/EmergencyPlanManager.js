@@ -43,6 +43,23 @@ function linkify(text) {
     );
   });
 }
+// printEmergencyGuide() is the first print function in this file to put
+// free-text trustee-editable content (likely_impact, what_to_do, full_name)
+// into a print window via document.write -- printEmergencyReadinessSummary()
+// never needed this since it only interpolates hazard_type (a constrained
+// enum) and counts/dates. Without escaping, a stored <script> or
+// <img onerror=...> in a hazard's "what to do" field would execute as live
+// HTML in the print window.
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const EMPTY_PERSON_FORM = { role_category: 'marae_contact', full_name: '', phone: '', entity_id: '', skill_type: '' };
 
 function fmtDate(d) {
@@ -363,6 +380,76 @@ export default function EmergencyPlanManager() {
     win.print();
   }
 
+  // Real, actionable guide for use during an outage -- unlike
+  // printEmergencyReadinessSummary() above, this prints the actual hazard
+  // guidance text (likely_impact/what_to_do), not just which hazards have
+  // been documented. Deliberately no data fetch of its own -- reuses
+  // whatever is already loaded, matching the read-only, print-in-advance
+  // scope this was built for (86d43pxzb-adjacent, per-marae offline access
+  // investigation, 2026-09-12).
+  function printEmergencyGuide() {
+    const entityName = id => id ? (entities.find(e => e.id === id)?.name || null) : null;
+    const documentedHazards = hazards.filter(h => (h.likely_impact || '').trim() || (h.what_to_do || '').trim());
+
+    const hazardBlocks = documentedHazards.map(h => {
+      const ent = entityName(h.entity_id);
+      return `
+<h2>${escapeHtml(h.hazard_type)}${ent ? ` <span style="font-weight:normal;color:#666">(${escapeHtml(ent)})</span>` : ''}</h2>
+${h.likely_impact?.trim() ? `<p><strong>Likely Impact:</strong> ${escapeHtml(h.likely_impact).replace(/\n/g, '<br>')}</p>` : ''}
+${h.what_to_do?.trim() ? `<p><strong>What To Do:</strong> ${escapeHtml(h.what_to_do).replace(/\n/g, '<br>')}</p>` : ''}`;
+    }).join('');
+
+    const peopleRows = list => list.map(p => {
+      const ent = entityName(p.entity_id);
+      return `<tr><td>${escapeHtml(p.full_name)}${ent ? ` <span style="color:#888">(${escapeHtml(ent)})</span>` : ''}</td><td>${escapeHtml(p.phone) || '—'}</td></tr>`;
+    }).join('');
+
+    const contactSections = CONTACT_LISTS.map(l => {
+      const rows = peopleRows(people.filter(p => p.role_category === l.key));
+      return `<h2>${escapeHtml(l.label)}</h2><table><tr><th>Name</th><th>Phone</th></tr>${rows || '<tr><td colspan="2">None recorded</td></tr>'}</table>`;
+    }).join('');
+
+    const skillSections = SKILL_LISTS.map(l => {
+      const rows = peopleRows(people.filter(p => p.role_category === l.key));
+      return `<h2>${escapeHtml(l.label)}</h2><table><tr><th>Name</th><th>Phone</th></tr>${rows || '<tr><td colspan="2">None recorded</td></tr>'}</table>`;
+    }).join('');
+
+    const specialised = people.filter(p => p.role_category === 'specialised_skill');
+    const specialisedRows = specialised.map(p => {
+      const ent = entityName(p.entity_id);
+      return `<tr><td>${escapeHtml(p.full_name)}${ent ? ` <span style="color:#888">(${escapeHtml(ent)})</span>` : ''}</td><td>${escapeHtml(p.skill_type) || '—'}</td><td>${escapeHtml(p.phone) || '—'}</td></tr>`;
+    }).join('');
+    const specialisedSection = `<h2>Specialised Skills</h2><table><tr><th>Name</th><th>Skill</th><th>Phone</th></tr>${specialisedRows || '<tr><td colspan="3">None recorded</td></tr>'}</table>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Emergency Guide — ${escapeHtml(maraeName)}</title>
+<style>
+  body{font-family:Georgia,serif;max-width:900px;margin:40px auto;color:#222;line-height:1.6}
+  h1{font-size:24px;border-bottom:2px solid #1a4a3a;padding-bottom:8px}
+  h2{font-size:16px;margin-top:24px;color:#1a4a3a}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:12px}
+  td{padding:6px 8px;border-bottom:1px solid #eee}
+  p{font-size:14px}
+  .note{font-size:12px;color:#888;font-style:italic;margin:4px 0 12px}
+</style>
+</head><body>
+<h1>Emergency Guide — ${escapeHtml(maraeName)}</h1>
+<p style="color:#666;font-size:13px">Generated ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+
+${hazardBlocks || '<p class="note">No hazard guidance has been recorded yet.</p>'}
+
+${contactSections}
+${skillSections}
+${specialisedSection}
+
+<p class="note" style="margin-top:24px">MaraeHub needs power and internet to load. Print this guide or save it somewhere accessible without either, and keep it up to date by reprinting after any changes to hazards or contacts.</p>
+<p style="font-size:11px;color:#999;margin-top:24px">Generated by MaraeHub · maraehub.co.nz</p>
+</body></html>`);
+    win.document.close();
+    win.print();
+  }
+
   function PersonRow({ person }) {
     const entityName = person.entity_id ? entities.find(e => e.id === person.entity_id)?.name : null;
     return (
@@ -460,6 +547,9 @@ export default function EmergencyPlanManager() {
             </button>
           ))}
         </div>
+        <button className="btn-secondary" onClick={printEmergencyGuide} style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+          📋 Print Emergency Guide
+        </button>
         <button className="btn-secondary" onClick={printEmergencyReadinessSummary} style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
           🖨️ Emergency Readiness Summary
         </button>
