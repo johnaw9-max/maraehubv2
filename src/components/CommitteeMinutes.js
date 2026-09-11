@@ -363,6 +363,16 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const [draftError, setDraftError] = useState('');
   const [aiDraft, setAiDraft] = useState(null); // { minutes, resolutions, actions } | null
 
+  // Voice dictation for roughNotes (English only -- real, honest limitation,
+  // not a bilingual solution; see the caveat text rendered near the button).
+  // Audio is processed by the browser's own speech-recognition service, not
+  // sent to any MaraeHub server -- same as any other page using this API.
+  const dictationSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const [dictating, setDictating] = useState(false);
+  const [dictationError, setDictationError] = useState('');
+  const recognitionRef = useRef(null);
+  const baseNotesRef = useRef('');
+
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarSyncing, setCalendarSyncing] = useState(false);
   const [calendarSyncError, setCalendarSyncError] = useState('');
@@ -494,6 +504,50 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
     await supabase.from('meeting_actions').delete().eq('id', id);
     fetchDetail();
   }
+
+  function startDictation() {
+    const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionImpl) return;
+    setDictationError('');
+    baseNotesRef.current = roughNotes;
+    const recognition = new SpeechRecognitionImpl();
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalTranscript += transcript;
+        else interimTranscript += transcript;
+      }
+      if (finalTranscript) baseNotesRef.current = baseNotesRef.current + finalTranscript;
+      setRoughNotes(baseNotesRef.current + interimTranscript);
+    };
+    recognition.onerror = (event) => {
+      setDictationError(
+        event.error === 'not-allowed' || event.error === 'permission-denied'
+          ? "Couldn't access your microphone — check your browser's permission settings."
+          : 'Voice input stopped unexpectedly — try again, or type your notes directly.'
+      );
+      setDictating(false);
+    };
+    recognition.onend = () => setDictating(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setDictating(true);
+  }
+
+  function stopDictation() {
+    recognitionRef.current?.stop();
+  }
+
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop(); };
+  }, []);
 
   async function generateDraft() {
     if (!roughNotes.trim()) return;
@@ -653,6 +707,25 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
                 <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>
                   Paste or type your rough notes from the hui below. MaraeHub will draft a minutes summary and suggest any resolutions and actions it clearly finds in your notes — you review and confirm everything before it's saved. Nothing here is saved automatically.
                 </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={dictating ? stopDictation : startDictation}
+                    disabled={!dictationSupported}
+                    style={{ fontSize: 12, flexShrink: 0 }}
+                  >
+                    {!dictationSupported
+                      ? '🎤 Dictate (not available in this browser)'
+                      : dictating ? '🔴 Stop Dictating' : '🎤 Dictate'}
+                  </button>
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
+                  {dictationSupported
+                    ? "Voice input works best in English and may not accurately transcribe te reo Māori. Available in Chrome, Edge, and Safari. Your voice is processed by your browser's own speech-recognition service, not sent to MaraeHub's servers."
+                    : 'Voice input isn\'t available in this browser — try Chrome, Edge, or Safari, or type your notes directly.'}
+                </p>
+                {dictationError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{dictationError}</div>}
                 <textarea
                   className="form-input"
                   rows={5}
