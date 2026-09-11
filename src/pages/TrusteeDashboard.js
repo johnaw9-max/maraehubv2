@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials } from '../lib/xero';
 import { isResolutionOpen } from '../lib/resolutionStatus';
+import { isAssetInPoorCondition } from '../lib/assetCondition';
 import Header from '../components/Header';
 import NavSidebar from '../components/NavSidebar';
 import BookingsManager from '../components/BookingsManager';
@@ -256,13 +257,13 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
       const [assetRes, reminderRes] = await Promise.all([
-        supabase.from('assets').select('id, condition'),
+        supabase.from('assets').select('id, condition, category'),
         supabase.from('service_reminders').select('asset_id, due_date'),
       ]);
       const assets = assetRes.data || [];
       const reminders = reminderRes.data || [];
       const total = assets.length;
-      const poor = assets.filter(a => a.condition === 'poor').length;
+      const criticalOrPoor = assets.filter(isAssetInPoorCondition).length;
       const overdueReminders = reminders.filter(r => new Date(r.due_date + 'T12:00:00') < today).length;
       const dueSoon = reminders.filter(r => {
         const d = new Date(r.due_date + 'T12:00:00');
@@ -276,9 +277,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       tiles = [
         { label: 'Total Assets', value: total, icon: '🏗️', bg: '#e8eef8' },
         {
-          label: 'Poor Condition', value: poor, icon: '⚠️',
-          bg: poor > 0 ? '#faeae7' : '#f5f5f5',
-          valueColor: poor > 0 ? 'var(--danger)' : 'var(--text3)',
+          label: 'Critical / Poor Condition', value: criticalOrPoor, icon: '⚠️',
+          bg: criticalOrPoor > 0 ? '#faeae7' : '#f5f5f5',
+          valueColor: criticalOrPoor > 0 ? 'var(--danger)' : 'var(--text3)',
         },
         {
           label: 'Overdue Services', value: overdueReminders, icon: '🔴',

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import useProfiles from '../lib/useProfiles';
+import { isAssetInPoorCondition } from '../lib/assetCondition';
 
 const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Inventory', 'Other'];
 const INVENTORY_CATEGORIES = ['Linen', 'Crockery', 'Kitchen', 'Other'];
@@ -597,7 +598,7 @@ export default function AssetsManager({ onStartWorkflow }) {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const in2yr  = new Date(today); in2yr.setFullYear(in2yr.getFullYear() + 2);
         const in5yr  = new Date(today); in5yr.setFullYear(in5yr.getFullYear() + 5);
-        const criticalOrPoor = physicalItems.filter(a => ['critical', 'poor'].includes(a.condition));
+        const criticalOrPoor = physicalItems.filter(isAssetInPoorCondition);
         const dueIn5yr = physicalItems.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today && new Date(a.replacement_date + 'T12:00:00') <= in5yr);
         const replacementTotal = dueIn5yr.reduce((s, a) => s + (parseFloat(a.replacement_cost) || 0), 0);
         const nextUp = physicalItems.filter(a => a.replacement_date && new Date(a.replacement_date + 'T12:00:00') >= today).sort((a, b) => new Date(a.replacement_date) - new Date(b.replacement_date))[0];
