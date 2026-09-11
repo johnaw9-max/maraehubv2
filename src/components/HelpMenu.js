@@ -1045,6 +1045,11 @@ const HELP_TOPICS = {
           { text: 'A distraction-free, full-screen reference view for use during the hui itself — open a meeting and click "🎯 Hui Mode". It shows the meeting\'s existing minutes (if any have been recorded), every outstanding resolution, and every open action, in large, easy-to-read type meant to be glanced at across a room, not read up close at a desk.' },
           { text: 'It is deliberately read-only — nothing gets typed or recorded here. Real hui here are taken with rough notes during the meeting and formalised afterward using "Draft from Hui Notes" (see below), and Hui Mode is not designed to replace that — it is a reference for chairing the meeting, not a place to write the minutes. Use the "🔄 Refresh" button if something changes on another device while it is open, and "✕ Exit Hui Mode" to return to the normal screen.' },
         ] },
+        { q: 'Can I dictate my rough notes instead of typing them?', a: [
+          { text: 'Yes — click "🎤 Dictate" above the rough notes box when recording a meeting, and speak your notes instead of typing. Click "🔴 Stop Dictating" when you\'re done, or keep typing and dictating interchangeably in the same box.' },
+          { text: 'Real, honest limitation: it works best in English and may not accurately transcribe te reo Māori, since it relies on your browser\'s built-in speech-recognition service rather than anything built by MaraeHub. It is available in Chrome, Edge, and Safari — the button shows as unavailable in browsers that do not support it, and typing directly always works as a fallback.' },
+          { text: "Your voice is processed by your browser's own speech-recognition service, not sent to MaraeHub's servers — the same as any other website using this browser feature." },
+        ] },
         { q: 'How do I add a resolution?', a: [
           { text: 'Open a meeting from the Minutes tab and click the "Resolutions" section, then "+ Add Resolution".' },
           { header: 'Enter:', items: [
