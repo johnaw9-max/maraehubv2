@@ -960,7 +960,12 @@ ${specialisedSection}
               </div>
             ) : maraeLat != null && maraeLng != null ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ fontSize: 14, color: 'var(--text2)' }}>{maraeLat}, {maraeLng}</div>
+                <div style={{ fontSize: 14, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span>{maraeLat}, {maraeLng}</span>
+                  <a href={`https://www.google.com/maps?q=${maraeLat},${maraeLng}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 600 }}>
+                    View on Google Maps
+                  </a>
+                </div>
                 <button onClick={openEditLocation} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
                   Edit
                 </button>
