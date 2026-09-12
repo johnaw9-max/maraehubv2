@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadGoogleMapsScript } from '../lib/googleMapsLoader';
 import FormError from './FormError';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -151,6 +152,14 @@ export default function EmergencyPlanManager() {
   const [pointForm, setPointForm] = useState(EMPTY_POINT_FORM);
   const [pointSaving, setPointSaving] = useState(false);
   const [pointError, setPointError] = useState('');
+
+  // Location search (Places Autocomplete) -- additive to manual lat/lng
+  // entry, not a replacement, since a rural marae may not be findable by
+  // name or address in Google's Places data.
+  const [placesReady, setPlacesReady] = useState(false);
+  const searchInputRef = useRef(null);
+  const autocompleteRef = useRef(null);
+  const sessionTokenRef = useRef(null);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -352,6 +361,45 @@ export default function EmergencyPlanManager() {
     setLocationError('');
     setEditingLocation(true);
   }
+
+  // Attach Places Autocomplete only while the location form is open, and
+  // only if a real key is configured -- no key means no search bar, manual
+  // entry still works as it always did.
+  useEffect(() => {
+    if (!editingLocation) return;
+    let cancelled = false;
+    loadGoogleMapsScript().then(maps => {
+      if (cancelled || !searchInputRef.current) return;
+      setPlacesReady(true);
+      sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+      const autocomplete = new maps.places.Autocomplete(searchInputRef.current, {
+        fields: ['geometry', 'name'],
+        sessionToken: sessionTokenRef.current,
+      });
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        const loc = place?.geometry?.location;
+        if (loc) {
+          setLocationForm(f => ({ ...f, latitude: String(loc.lat()), longitude: String(loc.lng()) }));
+        }
+        // Selecting a place ends this billing session -- a fresh token
+        // starts the next one, so a second search isn't lumped into the
+        // same (already-billed) session as the first.
+        sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
+        autocomplete.set('sessionToken', sessionTokenRef.current);
+      });
+      autocompleteRef.current = autocomplete;
+    }).catch(() => setPlacesReady(false));
+
+    return () => {
+      cancelled = true;
+      if (autocompleteRef.current && window.google?.maps) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+      autocompleteRef.current = null;
+      setPlacesReady(false);
+    };
+  }, [editingLocation]);
 
   async function handleSaveLocation() {
     const lat = parseFloat(locationForm.latitude);
@@ -873,6 +921,23 @@ ${specialisedSection}
             {editingLocation ? (
               <div>
                 <FormError message={locationError} />
+                <div className="form-group">
+                  <label className="form-label">Search for your marae</label>
+                  <input
+                    ref={searchInputRef}
+                    className="form-input"
+                    placeholder={placesReady ? "Type your marae's name or address..." : 'Search not available — Google Maps API key not configured'}
+                    disabled={!placesReady}
+                  />
+                </div>
+                {!placesReady && (
+                  <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
+                    Search isn't available yet. You can still set your location manually below.
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 600, margin: '10px 0 8px' }}>
+                  {placesReady ? 'Or enter coordinates manually' : 'Enter coordinates manually'}
+                </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label">Latitude</label>
