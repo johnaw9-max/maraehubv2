@@ -536,7 +536,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const goalsComplete = d.goals.filter(g => g.status === 'completed');
   const activeGoals             = d.goals.filter(g => g.status !== 'not_started');
   const goalsOnTrackOrComplete   = activeGoals.filter(g => goalLight(g) === 'green' || g.status === 'completed');
-  const goalsPct                 = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : 100;
+  // null (not 100) when there are no active goals -- same fix as
+  // compliancePct/riskPct (flagged 2026-09-13, was showing a fake 100 in
+  // Performance History while Opeke genuinely had zero goals).
+  const goalsPct                 = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : null;
 
   // Stage 2 (86d41pc93) StatusCard.
   const goalsLevel =
@@ -548,6 +551,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     d.goals.length === 0 ? '—' :
     goalsLevel === 'red' ? goalsBehind.length :
     goalsLevel === 'amber' ? goalsAtRisk.length :
+    goalsPct === null ? '—' :
     `${goalsPct}%`;
   const goalsMessage =
     d.goals.length === 0 ? 'No strategic goals set' :
@@ -556,7 +560,10 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     'on track or completed';
   const overdueReminders  = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
   const assetsWithOverdue = new Set(overdueReminders.map(r => r.asset_id));
-  const compliantPct      = d.assets.length ? Math.round(((d.assets.length - assetsWithOverdue.size) / d.assets.length) * 100) : 100;
+  // null (not 100) when there are no assets -- same fix as
+  // compliancePct/riskPct (flagged 2026-09-13, was showing a fake 100 in
+  // Performance History while Opeke genuinely had zero assets).
+  const compliantPct      = d.assets.length ? Math.round(((d.assets.length - assetsWithOverdue.size) / d.assets.length) * 100) : null;
   const upcomingReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') <= in60).sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
 
   // Stage 2 (86d41pc93) StatusCard. New section-level logic -- Service
@@ -1042,7 +1049,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       `- Active Projects: ${periodProjects.length}`,
       `- Open Meeting Actions: ${d.actions.length}`,
       `- Grants Secured: ${fmtMoney(approvedGrantsAmt)}`,
-      `- Assets Compliant: ${compliantPct}%`,
+      `- Assets Compliant: ${compliantPct === null ? 'N/A' : compliantPct + '%'}`,
       ``,
       `UPCOMING BOOKINGS (${periodUpcoming.length}):`,
       periodUpcoming.length
@@ -2200,7 +2207,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 { label: 'At Risk',     count: goalsAtRisk.length,   dot: '#c8902a', bg: '#fdf0dc', color: '#7a4f00' },
                 { label: 'Behind',      count: goalsBehind.length,   dot: '#d9534f', bg: '#faeae7', color: '#a63020' },
                 { label: 'Completed',   count: goalsComplete.length, dot: '#6b42a8', bg: '#f0ecf8', color: '#6b42a8' },
-                { label: '% On Track',  count: `${goalsPct}%`,       dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
+                { label: '% On Track',  count: goalsPct === null ? '—' : `${goalsPct}%`, dot: '#4a6fa5', bg: '#eaf0fa', color: '#1a4a8a' },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: s.bg, borderRadius: 8, borderTop: `3px solid ${s.dot}` }}>
                   <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 22, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.count}</div>

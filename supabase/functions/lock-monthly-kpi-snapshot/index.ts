@@ -272,14 +272,19 @@ serve(async (_req) => {
     const riskPct = risks.length ? Math.round(((risks.length - highOpenRisks.length) / risks.length) * 100) : null;
 
     // ── Assets % ──────────────────────────────────────────────────────────
+    // null (not 100) when there are no assets to track -- same reasoning as
+    // compliancePct/riskPct above (this branch was missed in that fix; found
+    // 2026-09-13 when Opeke's Performance History showed a fake 100 while
+    // assets was genuinely empty).
     const overdueReminders  = reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') < today);
     const assetsWithOverdue = new Set(overdueReminders.map(r => r.asset_id));
-    const assetsPct = assets.length ? Math.round(((assets.length - assetsWithOverdue.size) / assets.length) * 100) : 100;
+    const assetsPct = assets.length ? Math.round(((assets.length - assetsWithOverdue.size) / assets.length) * 100) : null;
 
     // ── Goals % ───────────────────────────────────────────────────────────
+    // null (not 100) when there are no active goals -- same fix as above.
     const activeGoals           = goals.filter(g => g.status !== 'not_started');
     const goalsOnTrackOrComplete = activeGoals.filter(g => goalLight(g, today, in14) === 'green' || g.status === 'completed');
-    const goalsPct = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : 100;
+    const goalsPct = activeGoals.length ? Math.round((goalsOnTrackOrComplete.length / activeGoals.length) * 100) : null;
 
     // ── Overall Marae Health Score ──────────────────────────────────────
     // Matches BoardDashboard.js's live hsCategories/hsFinalScore exactly:
