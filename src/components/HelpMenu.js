@@ -279,7 +279,7 @@ const HELP_TOPICS = {
       items: [
         { q: 'What is the Emergency Plan module, and how is it different from "Emergency Preparedness" in Compliance?', a: 'Compliance Tracker\'s "Emergency Preparedness" category tracks 10 generic checklist items (renewal dates for your Civil Defence plan, generator, water supply, and so on). The separate Emergency Plan tab (Assets & Compliance group) is a full, guided digitisation of the real official Marae Emergency Preparedness Plan (Waikato District Council / Te Puni Kōkiri, Civil Defence Emergency Management) — a genuinely different, more complete document, built directly from the real template.' },
         { q: 'How do I use it?', a: [
-          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus a sixth, MaraeHub-specific section not part of the original template (see Response History below).' },
+          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus two extra, MaraeHub-specific sections not part of the original template (see Response History and Map below).' },
           { items: [
             'History — the marae\'s own history, in your words.',
             'Hazards — 11 pre-seeded hazard types, each with a Likely Impact and What To Do.',
@@ -287,6 +287,7 @@ const HELP_TOPICS = {
             'Skilled People — Marae Operators, First Aiders, and Specialised Skills.',
             'Contacts — Marae Contacts and Emergency Contacts.',
             'Response History — real, dated record of times the marae has actually supported the community during an emergency.',
+            'Map — the marae\'s real location plus hand-added points for water sources, muster/evacuation points, and key assets.',
           ]},
         ] },
         { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not exactly. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents too. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub, and — via the "Emergency Readiness Summary" print button — generating a real, factual document from what you\'ve entered, for your own records or for external use (e.g. supporting a funding application).' },
@@ -296,10 +297,15 @@ const HELP_TOPICS = {
         ] },
         { q: 'What is the "Print Emergency Guide" button, and how is it different from the Readiness Summary?', a: [
           { text: 'A genuinely different document for a genuinely different purpose. The Readiness Summary is a factual record for funding applications and your own files — it deliberately lists only which hazard types have guidance recorded, not the guidance itself. Print Emergency Guide prints the real content: the actual Likely Impact and What To Do text for every hazard with guidance recorded, plus Marae Contacts, Emergency Contacts, and Skilled People with their phone numbers — something usable during an actual emergency, not a record about one.' },
-          { text: 'This exists because MaraeHub itself needs power and internet to load — during a real outage, the app cannot help you. Print this guide (or save it as a PDF) in advance and keep a copy somewhere accessible without either. It only reflects what was entered as of the moment you printed it, so reprint after any real change to your hazards, contacts, or skilled people.' },
+          { text: 'This exists because MaraeHub itself needs power and internet to load — during a real outage, the app cannot help you. Print this guide (or save it as a PDF) in advance and keep a copy somewhere accessible without either. It only reflects what was entered as of the moment you printed it, so reprint after any real change to your hazards, contacts, skilled people, or map.' },
         ] },
         { q: 'What is Response History, and why is it separate from the Incident Register in Compliance?', a: 'Response History records real, dated instances of the marae actually responding to or supporting the community during an emergency — sheltering people, providing meals, welfare checks — with an optional evidence upload (a photo, media coverage, a council acknowledgement letter). This is proof of service, not preparedness, and it\'s a genuinely different kind of record from the Incident Register, which is framed entirely as an adverse-event/health-and-safety log (severity levels, "steps taken to address the incident"). Mixing "we sheltered 40 people during a cyclone" into the same list as "someone slipped on wet flooring" would conflate two different things.' },
-        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History section above. The rest of the official template (service providers, infrastructure, inventory, site plan, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
+        { q: 'What is the Map section, and how do I use it?', a: [
+          { text: 'A simple map of the marae\'s real location, with key emergency features marked — water sources, muster/evacuation points, and key assets. Everything is added by hand: set your marae\'s location once (find your coordinates by right-clicking your location on Google Maps and copying the numbers shown), then use "+ Add Point" for each feature you want marked, giving it a type, a label, and its own coordinates.' },
+          { text: 'Real, honest limitation: "Muster / Evacuation Point" marks a single rally point, not a routed evacuation path — MaraeHub does not have real path-tracing data to draw an actual route, so a marked point is the honest option rather than a route that looks more precise than it is.' },
+          { text: 'The map preview only appears once a Google Maps API key has been configured for MaraeHub — if you see "Map preview not available", the marae\'s location and points are still saved correctly, the visual preview just is not connected yet.' },
+        ] },
+        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History and Map sections above. The rest of the official template (service providers, infrastructure, inventory, site plan, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
       ]
     },
     {

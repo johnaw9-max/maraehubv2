@@ -171,6 +171,16 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "entity_id",
     "charter_fields"
   ],
+  "emergency_map_points": [
+    "id",
+    "entity_id",
+    "point_type",
+    "label",
+    "latitude",
+    "longitude",
+    "notes",
+    "created_at"
+  ],
   "emergency_plan_hazards": [
     "id",
     "hazard_type",
@@ -430,7 +440,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "emergency_plan_supported_by",
     "emergency_plan_history",
     "reminders_paused",
-    "gst_registered"
+    "gst_registered",
+    "latitude",
+    "longitude"
   ],
   "meeting_actions": [
     "id",

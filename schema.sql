@@ -483,6 +483,37 @@ create policy "Trustees can manage emergency response events within their entiti
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
 
 
+-- ── EMERGENCY_MAP_POINTS ──────────────────────────────────────────────────
+create table if not exists emergency_map_points (
+  id uuid not null default gen_random_uuid(),
+  entity_id uuid,
+  point_type text not null,
+  label text not null,
+  latitude numeric not null,
+  longitude numeric not null,
+  notes text,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table emergency_map_points add constraint emergency_map_points_pkey PRIMARY KEY (id);
+alter table emergency_map_points add constraint emergency_map_points_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table emergency_map_points add constraint emergency_map_points_point_type_check CHECK ((point_type = ANY (ARRAY['water_source'::text, 'muster_point'::text, 'key_asset'::text, 'other'::text])));
+alter table emergency_map_points add constraint emergency_map_points_latitude_check CHECK ((latitude BETWEEN -90 AND 90));
+alter table emergency_map_points add constraint emergency_map_points_longitude_check CHECK ((longitude BETWEEN -180 AND 180));
+
+alter table emergency_map_points enable row level security;
+
+create policy "Trustees can manage emergency map points within their entities"
+  on emergency_map_points for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
 -- ── ENTITIES ──────────────────────────────────────────────────────────────
 create table if not exists entities (
   id uuid not null default gen_random_uuid(),
@@ -1101,11 +1132,15 @@ create table if not exists marae_settings (
   emergency_plan_supported_by text,
   emergency_plan_history text,
   reminders_paused boolean not null default false,
-  gst_registered boolean not null default false
+  gst_registered boolean not null default false,
+  latitude numeric,
+  longitude numeric
 );
 
 alter table marae_settings add constraint marae_settings_pkey PRIMARY KEY (id);
 alter table marae_settings add constraint marae_settings_automation_level_check CHECK ((automation_level = ANY (ARRAY['manual'::text, 'assisted'::text, 'automatic'::text])));
+alter table marae_settings add constraint marae_settings_latitude_check CHECK ((latitude IS NULL OR latitude BETWEEN -90 AND 90));
+alter table marae_settings add constraint marae_settings_longitude_check CHECK ((longitude IS NULL OR longitude BETWEEN -180 AND 180));
 
 alter table marae_settings enable row level security;
 

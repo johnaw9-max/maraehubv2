@@ -69,6 +69,34 @@ function fmtDate(d) {
 
 const EMPTY_EVENT_FORM = { event_date: new Date().toISOString().split('T')[0], event_name: '', description: '', people_served: '', duration_days: '', entity_id: '' };
 
+// Deliberately POINTS, not routed lines -- a real evacuation route needs real
+// path-tracing data nothing in this schema has. "Muster / Evacuation Point"
+// marks a rally point, an honest simplification, not a substitute for one.
+const POINT_TYPES = [
+  { value: 'water_source', label: 'Water Source', color: 'blue' },
+  { value: 'muster_point', label: 'Muster / Evacuation Point', color: 'orange' },
+  { value: 'key_asset',    label: 'Key Asset', color: 'gray' },
+  { value: 'other',        label: 'Other', color: 'purple' },
+];
+const EMPTY_POINT_FORM = { point_type: 'water_source', label: '', latitude: '', longitude: '', notes: '', entity_id: '' };
+
+// Client-side only -- ships in the public bundle, same as any Maps
+// JavaScript/Static API key (referrer-restricted in Google Cloud Console,
+// not a secret like the Calendar OAuth credential). Real, honest limitation:
+// until this is configured, the map simply doesn't render -- no broken
+// image request, no silent failure.
+function buildStaticMapUrl(lat, lng, points) {
+  const key = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+  if (!key || lat == null || lng == null) return null;
+  const markers = [
+    `color:green|label:M|${lat},${lng}`,
+    ...points
+      .filter(p => p.latitude != null && p.longitude != null)
+      .map(p => `color:${POINT_TYPES.find(t => t.value === p.point_type)?.color || 'purple'}|${p.latitude},${p.longitude}`),
+  ].map(m => `markers=${encodeURIComponent(m)}`).join('&');
+  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=640x400&${markers}&key=${key}`;
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function EmergencyPlanManager() {
@@ -109,16 +137,32 @@ export default function EmergencyPlanManager() {
   const [eventSaving, setEventSaving] = useState(false);
   const [eventError, setEventError] = useState('');
 
+  // Map (14yhc7kphv2 -- real trustee request, Option C: manual pin-drop,
+  // no auto-geocoding, no routed evacuation lines)
+  const [maraeLat, setMaraeLat] = useState(null);
+  const [maraeLng, setMaraeLng] = useState(null);
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationForm, setLocationForm] = useState({ latitude: '', longitude: '' });
+  const [locationSaving, setLocationSaving] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [mapPoints, setMapPoints] = useState([]);
+  const [showPointModal, setShowPointModal] = useState(false);
+  const [editPoint, setEditPoint] = useState(null);
+  const [pointForm, setPointForm] = useState(EMPTY_POINT_FORM);
+  const [pointSaving, setPointSaving] = useState(false);
+  const [pointError, setPointError] = useState('');
+
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);
-    const [settingsRes, hazardsRes, peopleRes, entRes, eventsRes] = await Promise.all([
-      supabase.from('marae_settings').select('id, marae_name, emergency_plan_history, emergency_plan_supported_by').limit(1).single(),
+    const [settingsRes, hazardsRes, peopleRes, entRes, eventsRes, pointsRes] = await Promise.all([
+      supabase.from('marae_settings').select('id, marae_name, emergency_plan_history, emergency_plan_supported_by, latitude, longitude').limit(1).single(),
       supabase.from('emergency_plan_hazards').select('*'),
       supabase.from('emergency_plan_people').select('*').order('full_name'),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('emergency_response_events').select('*').order('event_date', { ascending: false }),
+      supabase.from('emergency_map_points').select('*').order('created_at'),
     ]);
     if (settingsRes.data) {
       setSettingsId(settingsRes.data.id);
@@ -127,6 +171,8 @@ export default function EmergencyPlanManager() {
         supported_by: settingsRes.data.emergency_plan_supported_by || '',
         history: settingsRes.data.emergency_plan_history || '',
       });
+      setMaraeLat(settingsRes.data.latitude);
+      setMaraeLng(settingsRes.data.longitude);
     }
     const sortedHazards = (hazardsRes.data || []).slice().sort(
       (a, b) => HAZARD_ORDER.indexOf(a.hazard_type) - HAZARD_ORDER.indexOf(b.hazard_type)
@@ -135,6 +181,7 @@ export default function EmergencyPlanManager() {
     setPeople(peopleRes.data || []);
     setEntities(entRes.data || []);
     setResponseEvents(eventsRes.data || []);
+    setMapPoints(pointsRes.data || []);
     setLoading(false);
   }
 
@@ -295,6 +342,85 @@ export default function EmergencyPlanManager() {
     setResponseEvents(prev => prev.filter(e => e.id !== id));
   }
 
+  // ── MAP: MARAE LOCATION ──────────────────────────────────────────────────
+
+  function openEditLocation() {
+    setLocationForm({
+      latitude: maraeLat != null ? String(maraeLat) : '',
+      longitude: maraeLng != null ? String(maraeLng) : '',
+    });
+    setLocationError('');
+    setEditingLocation(true);
+  }
+
+  async function handleSaveLocation() {
+    const lat = parseFloat(locationForm.latitude);
+    const lng = parseFloat(locationForm.longitude);
+    if (isNaN(lat) || lat < -90 || lat > 90) { setLocationError('Enter a valid latitude between -90 and 90.'); return; }
+    if (isNaN(lng) || lng < -180 || lng > 180) { setLocationError('Enter a valid longitude between -180 and 180.'); return; }
+    if (!settingsId) return;
+    setLocationSaving(true); setLocationError('');
+    const { error } = await supabase.from('marae_settings').update({ latitude: lat, longitude: lng }).eq('id', settingsId);
+    if (error) { setLocationError(error.message); setLocationSaving(false); return; }
+    setMaraeLat(lat);
+    setMaraeLng(lng);
+    setEditingLocation(false);
+    setLocationSaving(false);
+  }
+
+  // ── MAP: POINTS ───────────────────────────────────────────────────────────
+
+  function openAddPoint() {
+    setEditPoint(null);
+    setPointForm(EMPTY_POINT_FORM);
+    setPointError('');
+    setShowPointModal(true);
+  }
+
+  function openEditPoint(point) {
+    setEditPoint(point);
+    setPointForm({
+      point_type: point.point_type || 'water_source',
+      label: point.label || '',
+      latitude: point.latitude != null ? String(point.latitude) : '',
+      longitude: point.longitude != null ? String(point.longitude) : '',
+      notes: point.notes || '',
+      entity_id: point.entity_id || '',
+    });
+    setPointError('');
+    setShowPointModal(true);
+  }
+
+  async function handleSavePoint() {
+    if (!pointForm.label.trim()) { setPointError('Label is required.'); return; }
+    const lat = parseFloat(pointForm.latitude);
+    const lng = parseFloat(pointForm.longitude);
+    if (isNaN(lat) || lat < -90 || lat > 90) { setPointError('Enter a valid latitude between -90 and 90.'); return; }
+    if (isNaN(lng) || lng < -180 || lng > 180) { setPointError('Enter a valid longitude between -180 and 180.'); return; }
+    setPointSaving(true); setPointError('');
+    const payload = {
+      point_type: pointForm.point_type,
+      label: pointForm.label.trim(),
+      latitude: lat,
+      longitude: lng,
+      notes: pointForm.notes.trim() || null,
+      entity_id: pointForm.entity_id || null,
+    };
+    const { error } = editPoint
+      ? await supabase.from('emergency_map_points').update(payload).eq('id', editPoint.id)
+      : await supabase.from('emergency_map_points').insert(payload);
+    if (error) { setPointError(error.message); setPointSaving(false); return; }
+    await fetchAll();
+    setShowPointModal(false);
+    setPointSaving(false);
+  }
+
+  async function deletePoint(id) {
+    if (!window.confirm('Remove this map point?')) return;
+    await supabase.from('emergency_map_points').delete().eq('id', id);
+    setMapPoints(prev => prev.filter(p => p.id !== id));
+  }
+
   // ── EMERGENCY READINESS SUMMARY (Post #13) ──────────────────────────────
   // Deliberately factual and non-AI-generated, matching the Finance
   // module's AGM Report/Trial Balance pattern, not the AI Compliance
@@ -421,6 +547,18 @@ ${h.what_to_do?.trim() ? `<p><strong>What To Do:</strong> ${escapeHtml(h.what_to
     }).join('');
     const specialisedSection = `<h2>Specialised Skills</h2><table><tr><th>Name</th><th>Skill</th><th>Phone</th></tr>${specialisedRows || '<tr><td colspan="3">None recorded</td></tr>'}</table>`;
 
+    const mapUrl = buildStaticMapUrl(maraeLat, maraeLng, mapPoints);
+    const pointRows = mapPoints.map(p => {
+      const typeInfo = POINT_TYPES.find(t => t.value === p.point_type);
+      const ent = entityName(p.entity_id);
+      return `<tr><td>${escapeHtml(p.label)}${ent ? ` <span style="color:#888">(${escapeHtml(ent)})</span>` : ''}</td><td>${escapeHtml(typeInfo?.label || p.point_type)}</td><td>${p.latitude}, ${p.longitude}</td></tr>`;
+    }).join('');
+    const mapSection = (maraeLat != null && maraeLng != null) ? `
+<h2>Map</h2>
+${mapUrl ? `<img src="${mapUrl}" alt="Map of marae location and marked points" style="width:100%;max-width:640px;display:block;margin:8px 0">` : ''}
+<table><tr><th>Point</th><th>Type</th><th>Coordinates</th></tr>${pointRows || '<tr><td colspan="3">No points marked</td></tr>'}</table>
+<p class="note">Points are hand-added by trustees. "Muster / Evacuation Point" marks a rally point, not a routed evacuation path.</p>` : '';
+
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head><title>Emergency Guide — ${escapeHtml(maraeName)}</title>
 <style>
@@ -438,6 +576,7 @@ ${h.what_to_do?.trim() ? `<p><strong>What To Do:</strong> ${escapeHtml(h.what_to
 <p style="color:#666;font-size:13px">Generated ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
 ${hazardBlocks || '<p class="note">No hazard guidance has been recorded yet.</p>'}
+${mapSection}
 
 ${contactSections}
 ${skillSections}
@@ -531,7 +670,8 @@ ${specialisedSection}
             { key: 'skilled_people', label: '👷 Skilled People' },
             { key: 'contacts',       label: '📞 Contacts' },
             { key: 'response_history', label: '📖 Response History' },
-          ].map((s, i) => (
+            { key: 'map',              label: '🗺️ Map' },
+          ].map((s, i, arr) => (
             <button
               key={s.key}
               onClick={() => setSection(s.key)}
@@ -539,7 +679,7 @@ ${specialisedSection}
                 padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 background: section === s.key ? 'var(--brand)' : 'var(--surface)',
                 color: section === s.key ? '#fff' : 'var(--text2)',
-                border: 'none', borderRight: i < 5 ? '1px solid var(--border)' : 'none',
+                border: 'none', borderRight: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
                 fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap',
               }}
             >
@@ -717,6 +857,169 @@ ${specialisedSection}
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── MAP ───────────────────────────────────────────────────────────── */}
+      {section === 'map' && (
+        <div>
+          <div style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 640, marginBottom: 20 }}>
+            A simple map of the marae's real location, with key emergency features marked. Points are added by hand — nothing here is automatically located. "Muster / Evacuation Point" marks a rally point, not a routed evacuation path.
+          </div>
+
+          {/* Marae location */}
+          <div className="panel" style={{ padding: '16px 18px', marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', marginBottom: 10 }}>Marae Location</div>
+            {editingLocation ? (
+              <div>
+                <FormError message={locationError} />
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Latitude</label>
+                    <input className="form-input" value={locationForm.latitude} onChange={e => setLocationForm(f => ({ ...f, latitude: e.target.value }))} placeholder="e.g. -37.0082" style={{ width: 160 }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Longitude</label>
+                    <input className="form-input" value={locationForm.longitude} onChange={e => setLocationForm(f => ({ ...f, longitude: e.target.value }))} placeholder="e.g. 174.8860" style={{ width: 160 }} />
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 14 }}>
+                  Find your coordinates: right-click your marae's location on Google Maps, then click the numbers shown — they copy straight to your clipboard.
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setEditingLocation(false)} className="btn-secondary">Cancel</button>
+                  <button onClick={handleSaveLocation} className="btn-primary" disabled={locationSaving}>
+                    {locationSaving ? 'Saving...' : 'Save Location'}
+                  </button>
+                </div>
+              </div>
+            ) : maraeLat != null && maraeLng != null ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ fontSize: 14, color: 'var(--text2)' }}>{maraeLat}, {maraeLng}</div>
+                <button onClick={openEditLocation} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ fontSize: 14, color: 'var(--text3)' }}>Marae location not set yet.</div>
+                <button className="btn-primary" onClick={openEditLocation} style={{ fontSize: 14 }}>Set Location</button>
+              </div>
+            )}
+          </div>
+
+          {/* Static map preview */}
+          {maraeLat != null && maraeLng != null && (
+            (() => {
+              const mapUrl = buildStaticMapUrl(maraeLat, maraeLng, mapPoints);
+              return mapUrl ? (
+                <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', marginBottom: 20 }}>
+                  <img src={mapUrl} alt="Map of marae location and marked emergency points" style={{ width: '100%', display: 'block' }} />
+                </div>
+              ) : (
+                <div className="panel" style={{ padding: '14px 16px', marginBottom: 20, fontSize: 13, color: 'var(--text3)' }}>
+                  Map preview not available — Google Maps API key not configured.
+                </div>
+              );
+            })()
+          )}
+
+          {/* Points list */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)' }}>Marked Points</div>
+            <button className="btn-primary" onClick={openAddPoint} style={{ fontSize: 14 }}>+ Add Point</button>
+          </div>
+          {mapPoints.length === 0 ? (
+            <div className="empty-state"><div className="emoji">🗺️</div><div>No points added yet</div></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {mapPoints.map(point => {
+                const typeInfo = POINT_TYPES.find(t => t.value === point.point_type);
+                const entityName = point.entity_id ? entities.find(e => e.id === point.entity_id)?.name : null;
+                return (
+                  <div key={point.id} className="panel" style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text1)', marginBottom: 4 }}>
+                          {point.label} <span style={{ fontWeight: 400, color: 'var(--text3)' }}>· {typeInfo?.label || point.point_type}</span>
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text3)' }}>
+                          {point.latitude}, {point.longitude}
+                          {entityName && ` · ${entityName}`}
+                        </div>
+                        {point.notes && <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6 }}>{point.notes}</div>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => openEditPoint(point)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                          Edit
+                        </button>
+                        <button onClick={() => deletePoint(point.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── POINT MODAL ──────────────────────────────────────────────────── */}
+      {showPointModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 480, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, margin: 0, color: 'var(--brand)' }}>
+                {editPoint ? 'Edit Point' : 'Add Point'}
+              </h2>
+              <button onClick={() => setShowPointModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <FormError message={pointError} />
+
+            <div className="form-group">
+              <label className="form-label">Type</label>
+              <select className="form-input" value={pointForm.point_type} onChange={e => setPointForm(f => ({ ...f, point_type: e.target.value }))}>
+                {POINT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Label *</label>
+              <input className="form-input" value={pointForm.label} onChange={e => setPointForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Rainwater tank, north side" />
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Latitude *</label>
+                <input className="form-input" value={pointForm.latitude} onChange={e => setPointForm(f => ({ ...f, latitude: e.target.value }))} placeholder="e.g. -37.0082" />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label">Longitude *</label>
+                <input className="form-input" value={pointForm.longitude} onChange={e => setPointForm(f => ({ ...f, longitude: e.target.value }))} placeholder="e.g. 174.8860" />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <textarea className="form-input" rows={2} value={pointForm.notes} onChange={e => setPointForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical' }} />
+            </div>
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={pointForm.entity_id} onChange={e => setPointForm(f => ({ ...f, entity_id: e.target.value }))}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowPointModal(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleSavePoint} className="btn-primary" disabled={pointSaving}>
+                {pointSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
