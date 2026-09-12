@@ -532,10 +532,7 @@ export default function FounderDashboard({ profile }) {
             <FieldInput label="Last Shipped" value={shipped} onChange={setShipped} placeholder="e.g. Workflow automation" />
           </div>
           <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 24 }}>
-            <StatRow label="Open Tasks"        value={taskCount} />
-            <StatRow label="Upcoming Bookings" value={kpiOpeke?.bookings ?? '—'} />
-            <StatRow label="Compliance Items"  value={kpiOpeke?.compliance ?? '—'} />
-            <StatRow label="Assets"            value={kpiOpeke?.assets ?? '—'} />
+            <StatRow label="Open Tasks" value={taskCount} />
           </div>
           <div style={{ borderLeft: `1px solid ${BORDER}`, paddingLeft: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ fontSize: 11, color: TEXT3, marginBottom: 4 }}>Days to Sep 7 launch</div>
