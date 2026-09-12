@@ -373,7 +373,7 @@ export default function EmergencyPlanManager() {
       setPlacesReady(true);
       sessionTokenRef.current = new maps.places.AutocompleteSessionToken();
       const autocomplete = new maps.places.Autocomplete(searchInputRef.current, {
-        fields: ['geometry', 'name'],
+        fields: ['geometry', 'name', 'place_id'],
         sessionToken: sessionTokenRef.current,
       });
       autocomplete.addListener('place_changed', () => {
@@ -381,6 +381,9 @@ export default function EmergencyPlanManager() {
         const loc = place?.geometry?.location;
         if (loc) {
           setLocationForm(f => ({ ...f, latitude: String(loc.lat()), longitude: String(loc.lng()) }));
+          setLocationError('');
+        } else {
+          setLocationError('Could not get a location for that address -- try again or enter coordinates manually below.');
         }
         // Selecting a place ends this billing session -- a fresh token
         // starts the next one, so a second search isn't lumped into the
