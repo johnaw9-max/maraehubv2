@@ -197,7 +197,7 @@ const HELP_TOPICS = {
             'Vercel — hosts and delivers the MaraeHub application itself',
             'Xero (optional) — if you choose to connect it, syncs your real accounting data directly into Finance',
             'Google Calendar (optional, personal) — if you choose to connect your own Google account, lets you add individual hui dates to your own calendar. This is a personal connection per trustee, not marae-wide, and nothing is shared between trustees\' calendars',
-            'Anthropic (Claude) — powers the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report, using only the same data already visible on your Board View screen',
+            'Anthropic (Claude) — powers the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report on Board View, and the Draft Application (AI) button in Grants, using only the same real data already recorded in MaraeHub — it never invents facts, and flags anything it does not have with a placeholder instead',
           ]},
           { text: "Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed." },
         ] },
@@ -829,6 +829,12 @@ const HELP_TOPICS = {
             'Approved or Declined — the outcome.',
             'Reporting — funding has been received and you are completing required progress reports.',
           ]},
+        ] },
+        { q: 'What is "Possible match"?', a: 'When you expand a grant, MaraeHub checks it against your Goals & Reporting goals and shows any it thinks might be related — based on an explicit tag, a matching category, or shared keywords. This is a suggestion to help you find the right goal faster, not an automatic link — it is not clickable, and no application is ever drafted from it until you choose a goal yourself.' },
+        { q: 'What is "Draft Application (AI)"?', a: [
+          { text: 'Once you have chosen which goal a grant application is for — using the dropdown in the expanded grant card, not just the "Possible match" suggestion above it — click "Draft Application (AI)" to generate a first-draft application letter using only the real information already recorded for that grant, that goal, and your marae.' },
+          { text: 'It never invents facts. Anywhere it does not have real recorded information — a budget breakdown, your charity or IRD registration number, bank details, a track record — it inserts a bracketed placeholder such as [INSERT: charity registration number] instead of writing something that merely sounds plausible. It also never claims your marae is legally compliant, or that it can or cannot afford the project — those are judgement calls for trustees, not the AI.' },
+          { text: 'This is always a first draft, never a finished application. Every draft ends with a reminder that a trustee must check every fact and fill in every placeholder before it is used anywhere. Nothing is saved automatically — copy it out and edit it yourself.' },
         ] },
       ]
     },
