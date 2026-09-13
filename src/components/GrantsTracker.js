@@ -12,7 +12,7 @@ const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health
 const EMPTY_FORM = {
   name: '', funder: '', amount: '', category: 'Community', status: 'researching',
   deadline: '', submitted_date: '', decision_date: '', reporting_date: '',
-  contact_name: '', contact_email: '', owner: '', notes: '',
+  contact_name: '', contact_email: '', owner: '', notes: '', source_url: '',
 };
 
 function fmt(d) {
@@ -100,6 +100,7 @@ export default function GrantsTracker() {
       contact_email: g.contact_email || '',
       owner: g.owner || '',
       notes: g.notes || '',
+      source_url: g.source_url || '',
     });
     setEditId(g.id);
     setError('');
@@ -128,6 +129,7 @@ export default function GrantsTracker() {
       contact_email: form.contact_email.trim() || null,
       owner: form.owner || null,
       notes: form.notes.trim() || null,
+      source_url: form.source_url.trim() || null,
     };
 
     if (editId) {
@@ -319,8 +321,13 @@ export default function GrantsTracker() {
             </div>
 
             <div className="form-group">
+              <label className="form-label">Source Link</label>
+              <input type="url" className="form-input" value={form.source_url} onChange={e => setField('source_url', e.target.value)} placeholder="Link to where you found this grant" />
+            </div>
+
+            <div className="form-group">
               <label className="form-label">Notes</label>
-              <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Any additional notes..." style={{ resize: 'vertical' }} />
+              <textarea className="form-input" rows={3} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="What does this grant fund? Any eligibility criteria worth noting?" style={{ resize: 'vertical' }} />
             </div>
 
             <div className="modal-actions">
@@ -416,6 +423,7 @@ export default function GrantsTracker() {
                       { label: 'Contact', val: g.contact_name || '—' },
                       { label: 'Email', val: g.contact_email ? <a href={`mailto:${g.contact_email}`} style={{ color: 'var(--brand)' }}>{g.contact_email}</a> : '—' },
                       { label: 'Owner', val: g.owner || '—' },
+                      { label: 'Source', val: g.source_url ? <a href={g.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>View link</a> : '—' },
                     ].map(({ label, val }) => (
                       <div key={label}>
                         <span style={{ color: 'var(--text3)', fontWeight: 500 }}>{label}: </span>
