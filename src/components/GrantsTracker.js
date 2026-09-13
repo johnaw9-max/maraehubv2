@@ -6,6 +6,7 @@ import { ensureTask } from '../lib/taskSync';
 import useProfiles from '../lib/useProfiles';
 import { syncEntryForAmountChange } from '../lib/glPosting';
 import { matchGrantToGoals } from '../lib/grantMatching';
+import { renderReportText } from '../lib/renderReportText';
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -46,8 +47,21 @@ export default function GrantsTracker() {
   const [success, setSuccess] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
+  const [maraeSettings, setMaraeSettings] = useState(null);
 
-  useEffect(() => { fetchGrants(); fetchGoals(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // AI Grant Drafting (14yhc7kpjbd, Step 7). draftGoalId is the trustee's
+  // explicit confirmation of which goal an application is for -- per the
+  // Step 6 design, a grantMatching.js match (especially Tier 3/4) is a
+  // suggestion, not authorization to draft from. Reset whenever a different
+  // grant card is expanded so a stale selection can't carry across grants.
+  const [draftGoalId, setDraftGoalId] = useState('');
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState('');
+  const [draftText, setDraftText] = useState('');
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [draftCopied, setDraftCopied] = useState(false);
+
+  useEffect(() => { fetchGrants(); fetchGoals(); fetchMaraeSettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchGrants() {
     setLoading(true);
@@ -63,6 +77,65 @@ export default function GrantsTracker() {
   async function fetchGoals() {
     const { data } = await supabase.from('goals').select('id, name, description, status, focus_area, related_module, target_date');
     setGoals(data || []);
+  }
+
+  async function fetchMaraeSettings() {
+    const { data } = await supabase.from('marae_settings').select('marae_name, location, iwi, hapu').maybeSingle();
+    setMaraeSettings(data || null);
+  }
+
+  // Step 6 design: never invent a fact -- every field below is either a real
+  // recorded value or an explicit "not recorded" string, so the AI has no
+  // reason to guess. Deliberately excludes finance/asset figures for now --
+  // GrantsTracker.js doesn't fetch those tables, and Step 6's own real-data
+  // investigation found them sparse-to-empty on both live projects anyway;
+  // the explicit "none included" line tells the AI to placeholder that
+  // section rather than silently omit or fabricate it.
+  function buildGrantDraftContext(grant, goal) {
+    return [
+      `MARAE: ${maraeSettings?.marae_name || 'not recorded'}`,
+      `LOCATION: ${maraeSettings?.location || 'not recorded'}`,
+      (maraeSettings?.iwi || maraeSettings?.hapu) ? `IWI/HAPŪ: ${[maraeSettings?.iwi, maraeSettings?.hapu].filter(Boolean).join(' / ')}` : `IWI/HAPŪ: not recorded`,
+      '',
+      'GRANT:',
+      `- Name: ${grant.name}`,
+      `- Funder: ${grant.funder}`,
+      `- Amount requested: ${grant.amount ? fmtMoney(grant.amount) : 'not recorded'}`,
+      `- Category: ${grant.category || 'not recorded'}`,
+      `- Deadline: ${grant.deadline ? fmt(grant.deadline) : 'not recorded'}`,
+      `- What this grant funds / eligibility notes (trustee-entered): ${grant.notes || 'not recorded — trustee has not entered this yet'}`,
+      '',
+      'GOAL / PROJECT THIS APPLICATION IS FOR (explicitly confirmed by a trustee, not an automatic match):',
+      `- Name: ${goal.name}`,
+      `- Description: ${goal.description || 'not recorded — trustee has not entered this yet'}`,
+      `- Focus area: ${goal.focus_area || 'not recorded'}`,
+      `- Target date: ${goal.target_date ? fmt(goal.target_date) : 'not recorded'}`,
+      '',
+      'SUPPORTING FINANCIAL OR ASSET DATA: none included in this draft. Do not infer or invent any -- use a bracketed placeholder for any section that would normally cite financial position or asset details.',
+    ].join('\n');
+  }
+
+  async function generateGrantDraft(grant) {
+    const goal = goals.find(x => x.id === draftGoalId);
+    if (!goal) return;
+    setDraftLoading(true);
+    setDraftError('');
+    setDraftText('');
+    const context = buildGrantDraftContext(grant, goal);
+    const { data, error } = await supabase.functions.invoke('generate-grant-draft', {
+      body: { maraeName: maraeSettings?.marae_name || 'this marae', context },
+    });
+    setDraftLoading(false);
+    if (error) { setDraftError(error.message || 'Could not reach AI service'); return; }
+    setDraftText(data?.draft || '');
+    setShowDraftModal(true);
+  }
+
+  function copyDraft() {
+    navigator.clipboard.writeText(draftText).then(() => {
+      setDraftCopied(true);
+      setTimeout(() => setDraftCopied(false), 2000);
+    });
   }
 
   async function createUrgentTasks(rows) {
@@ -349,6 +422,23 @@ export default function GrantsTracker() {
         </div>
       )}
 
+      {/* AI GRANT DRAFT MODAL (14yhc7kpjbd, Step 7) */}
+      {showDraftModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowDraftModal(false); }}>
+          <div className="modal" style={{ maxWidth: 640, maxHeight: '80vh', overflowY: 'auto' }}>
+            <div className="modal-title">Grant Application — AI First Draft</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--warning)', background: '#fdf0dc', borderRadius: 6, padding: '8px 10px', marginBottom: 12 }}>
+              ⚠ Unverified AI draft — check every fact and fill every bracketed placeholder before use.
+            </div>
+            <div style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text1)' }}>{renderReportText(draftText)}</div>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setShowDraftModal(false)}>Close</button>
+              <button className="btn-primary" onClick={copyDraft}>{draftCopied ? 'Copied!' : 'Copy'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FILTER BAR */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {['all', ...STATUSES].map(s => (
@@ -394,7 +484,7 @@ export default function GrantsTracker() {
             >
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-                onClick={() => setExpandedId(isExpanded ? null : g.id)}
+                onClick={() => { setExpandedId(isExpanded ? null : g.id); setDraftGoalId(''); }}
               >
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{g.name}</div>
@@ -451,6 +541,33 @@ export default function GrantsTracker() {
                       <div style={{ color: 'var(--text3)', marginTop: 2 }}>{reasons.join(' · ')}</div>
                     </div>
                   ))}
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Draft an application (AI)</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select
+                        className="form-input"
+                        style={{ fontSize: 12, maxWidth: 280 }}
+                        value={draftGoalId}
+                        onChange={e => setDraftGoalId(e.target.value)}
+                      >
+                        <option value="">— Select the goal this application is for —</option>
+                        {goals.filter(x => x.status !== 'completed').map(x => (
+                          <option key={x.id} value={x.id}>{x.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn-secondary"
+                        style={{ fontSize: 11 }}
+                        disabled={!draftGoalId || draftLoading}
+                        onClick={() => generateGrantDraft(g)}
+                      >
+                        {draftLoading ? 'Drafting…' : 'Draft Application (AI)'}
+                      </button>
+                    </div>
+                    {draftError && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 6 }}>{draftError}</div>}
+                  </div>
+
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       onClick={() => openEdit(g)}
