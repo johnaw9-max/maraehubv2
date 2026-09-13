@@ -5,6 +5,7 @@ import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import useProfiles from '../lib/useProfiles';
 import { syncEntryForAmountChange } from '../lib/glPosting';
+import { matchGrantToGoals } from '../lib/grantMatching';
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -35,6 +36,7 @@ export default function GrantsTracker() {
   const allProfiles = useProfiles();
   const trustees = allProfiles.filter(p => p.role === 'trustee');
   const [grants, setGrants] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -45,7 +47,7 @@ export default function GrantsTracker() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
 
-  useEffect(() => { fetchGrants(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchGrants(); fetchGoals(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchGrants() {
     setLoading(true);
@@ -54,6 +56,13 @@ export default function GrantsTracker() {
     setGrants(rows);
     setLoading(false);
     createUrgentTasks(rows);
+  }
+
+  // Step 4/5 (14yhc7kpjbd) -- fetched once for grantMatching.js's
+  // matchGrantToGoals(), not refetched per grant.
+  async function fetchGoals() {
+    const { data } = await supabase.from('goals').select('id, name, description, status, focus_area, related_module, target_date');
+    setGoals(data || []);
   }
 
   async function createUrgentTasks(rows) {
@@ -436,6 +445,12 @@ export default function GrantsTracker() {
                       {g.notes}
                     </div>
                   )}
+                  {matchGrantToGoals(g, goals).map(({ goal, reasons }) => (
+                    <div key={goal.id} style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--surface2)', borderRadius: 6, padding: '8px 10px', marginBottom: 8 }}>
+                      <span style={{ fontWeight: 600 }}>🎯 Possible match: {goal.name}</span>
+                      <div style={{ color: 'var(--text3)', marginTop: 2 }}>{reasons.join(' · ')}</div>
+                    </div>
+                  ))}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       onClick={() => openEdit(g)}
