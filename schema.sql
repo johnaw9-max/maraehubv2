@@ -2,20 +2,28 @@
 -- MaraeHub — Complete Database Schema
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Regenerated from live Opeke (cbeenkpjpnhmtqtnjiyd) via information_schema/
--- pg_catalog introspection, most recently 2026-08-30 (previously 2026-08-28,
--- 2026-08-25, 2026-08-18). This re-sync exists specifically to close the
--- schema_drift check's own known, previously-observed-live limitation
--- (ClickUp 86d3u7790): nothing enforces this file getting regenerated when
--- new migrations land.
--- Real diff this time, computed directly against live Opeke via raw
--- information_schema.columns introspection (full column list per public
--- base table, cross-checked column-by-column against this file): profiles
--- gained is_system_account boolean not null default false (20260829020000,
--- the is_system_account exclusion added for find_never_logged_in_trustees).
--- Confirmed present with identical definition on the test project too. No
--- other column or table diffs found on either project.
--- 47 real base tables (the pre-existing xero_connection_status VIEW is
--- correctly excluded).
+-- pg_catalog introspection, most recently a full table-by-table pass on
+-- 2026-08-30 (previously 2026-08-28, 2026-08-25, 2026-08-18). This re-sync
+-- exists specifically to close the schema_drift check's own known,
+-- previously-observed-live limitation (ClickUp 86d3u7790): nothing enforces
+-- this file getting regenerated when new migrations land.
+-- Targeted catch-up pass, 15 Sept 2026 (not a full re-audit of all 47
+-- tables): grants gained source_url text, nullable (20260913010000 --
+-- confirmed present, identical definition, on both Opeke and the test
+-- project via direct information_schema query). emergency_map_points and
+-- marae_settings.latitude/longitude were checked at the same time and found
+-- already correctly present in this file from an earlier, unlogged update --
+-- both re-confirmed column-for-column against live Opeke, no changes
+-- needed. profiles.last_sign_in_at is a real column on the test project's
+-- profiles table but does not exist on Opeke (confirmed directly) --
+-- correctly absent here since this file documents Opeke, not a deliberate
+-- test-only extra to add.
+-- 58 real base tables as of 15 Sept 2026 (re-verified table-name-for-
+-- table-name against live Opeke's information_schema.tables this pass --
+-- the "47" figure here was stale, last accurate as of the 2026-08-30 full
+-- pass; this was a table-existence check only, not a column-level re-audit
+-- of the 11 tables added since then). The pre-existing xero_connection_status
+-- VIEW is correctly excluded.
 -- Tables are listed alphabetically (not dependency order — accuracy over
 -- runnable ordering; foreign keys mean this file is not guaranteed to run
 -- top-to-bottom against a fresh empty database without reordering).
@@ -991,7 +999,8 @@ create table if not exists grants (
   contact_email text,
   notes text,
   created_at timestamp without time zone default now(),
-  owner text
+  owner text,
+  source_url text
 );
 
 alter table grants add constraint grants_pkey PRIMARY KEY (id);

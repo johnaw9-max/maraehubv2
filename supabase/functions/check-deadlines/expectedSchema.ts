@@ -171,16 +171,6 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "entity_id",
     "charter_fields"
   ],
-  "emergency_map_points": [
-    "id",
-    "entity_id",
-    "point_type",
-    "label",
-    "latitude",
-    "longitude",
-    "notes",
-    "created_at"
-  ],
   "emergency_plan_hazards": [
     "id",
     "hazard_type",
@@ -208,6 +198,16 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "duration_days",
     "document_url",
     "document_name",
+    "created_at"
+  ],
+  "emergency_map_points": [
+    "id",
+    "entity_id",
+    "point_type",
+    "label",
+    "latitude",
+    "longitude",
+    "notes",
     "created_at"
   ],
   "entities": [
@@ -386,7 +386,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "contact_email",
     "notes",
     "created_at",
-    "owner"
+    "owner",
+    "source_url"
   ],
   "incidents": [
     "id",
