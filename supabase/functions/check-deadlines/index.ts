@@ -30,6 +30,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { EXPECTED_SCHEMA } from './expectedSchema.ts';
+import { EXPECTED_MIGRATIONS } from './expectedMigrations.ts';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SECRET_KEY        = Deno.env.get('CHECK_DEADLINES_SECRET_KEY')!;
@@ -1071,6 +1072,8 @@ serve(async (req) => {
       reason: '86d3uy01x - Board View Finance restriction. authenticated needed so standard trustees can call it directly for an admin-independent Health Score input; the function\'s own internal role=trustee check is the real auth boundary here, not a wrapping Edge Function, since this is the first SECURITY DEFINER RPC meant to be called directly by any authenticated browser client rather than only from service_role Edge Functions.' },
     { function: 'find_never_logged_in_trustees', grantees: ['postgres', 'service_role'],
       reason: '86d3u7790 Stage 5 item 2 - returns real trustee full_name/email, comparable sensitivity to find_orphaned_auth_users. Locked to service_role from creation, 29 Aug 2026.' },
+    { function: 'get_schema_migrations_versions', grantees: ['postgres', 'service_role'],
+      reason: 'migration_tracking_drift check\'s own RPC - version strings only, no PII, but locked to service_role from creation anyway, same discipline as every RPC this project has added.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
@@ -1741,6 +1744,165 @@ serve(async (req) => {
     details: founderCheckDue ? [{ note: 'Monthly checkpoint nudge sent' }] : [],
   });
 
+  // ── Migration-tracking drift check (maintenance shield, new) ─────────────
+  // supabase_migrations.schema_migrations vs. the local supabase/migrations/
+  // directory -- a migration applied for real via direct db query/SQL
+  // editor rather than `supabase db push` never gets recorded here, fully
+  // invisible to schema_drift (which only diffs schema.sql against live
+  // table/column structure, never this tracking table). Real, known,
+  // currently-open gap: roughly 90 migrations on Opeke, per the
+  // migration-tracking drift investigation.
+  //
+  // EXPECTED_MIGRATIONS is generated from supabase/migrations/ by
+  // scripts/generate-expected-migrations.js, same "committed output, not
+  // read live" reasoning as EXPECTED_SCHEMA -- check-deadlines has no
+  // filesystem access to the repo at runtime.
+  //
+  // Throttled weekly, not immediate, same precedent as dead_field_detection:
+  // the underlying gap is real and known but isn't something a code fix in
+  // this file resolves, or that changes between one daily run and the
+  // next -- an immediate daily alert would just be noise until the
+  // dedicated cleanup investigation happens.
+  const migrationVersionsRes = await db.rpc('get_schema_migrations_versions');
+
+  const migrationDriftFindings: { type: string; version: string }[] = [];
+
+  if (migrationVersionsRes.error) {
+    migrationDriftFindings.push({ type: 'query_failed', version: migrationVersionsRes.error.message });
+  } else {
+    const liveVersions = new Set((migrationVersionsRes.data ?? []).map((r: { version: string }) => r.version));
+    const expectedVersions = new Set(EXPECTED_MIGRATIONS);
+
+    for (const version of EXPECTED_MIGRATIONS) {
+      if (!liveVersions.has(version)) migrationDriftFindings.push({ type: 'missing_in_schema_migrations', version });
+    }
+    for (const version of liveVersions) {
+      if (!expectedVersions.has(version)) migrationDriftFindings.push({ type: 'missing_local_migration_file', version });
+    }
+  }
+
+  if (migrationDriftFindings.length > 0) {
+    const ALERT_INTERVAL_DAYS = 7;
+    const { data: migrationAlertState } = await db
+      .from('check_alert_state')
+      .select('last_alerted_at')
+      .eq('check_name', 'migration_tracking_drift')
+      .maybeSingle();
+    const daysSinceMigrationAlert = migrationAlertState?.last_alerted_at
+      ? (Date.now() - new Date(migrationAlertState.last_alerted_at).getTime()) / (1000 * 60 * 60 * 24)
+      : Infinity;
+
+    if (daysSinceMigrationAlert >= ALERT_INTERVAL_DAYS) {
+      const body =
+        `Tēnā koutou,\n\n` +
+        `MaraeHub's migration-tracking check found ${migrationDriftFindings.length} difference${migrationDriftFindings.length !== 1 ? 's' : ''} between the local migration files and the database's own tracking table. This check runs daily, but this alert only repeats at most once a week while the gap remains.\n\n` +
+        migrationDriftFindings.slice(0, 20).map(f => `- ${f.type} — ${f.version}`).join('\n') +
+        (migrationDriftFindings.length > 20 ? `\n...and ${migrationDriftFindings.length - 20} more (see system_check_log for the full list).` : '') +
+        `\n\nThis is a known, already-tracked gap, not necessarily a new problem -- see the migration-tracking drift investigation notes before treating every entry as urgent.` +
+        footer();
+
+      await notifyAdmin(`Migration-tracking drift check — ${migrationDriftFindings.length} difference${migrationDriftFindings.length !== 1 ? 's' : ''} found`, body);
+      await db.from('check_alert_state').upsert({ check_name: 'migration_tracking_drift', last_alerted_at: new Date().toISOString() });
+    }
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'migration_tracking_drift',
+    findings_count: migrationDriftFindings.length,
+    details: migrationDriftFindings,
+  });
+
+  // ── Edge function reachability check (maintenance shield, new) ───────────
+  // Real incident this protects against: generate-grant-draft was deployed
+  // to Tineka but not Opeke for a period this session, uncaught by any
+  // existing check -- process_config_safety checks buckets/secrets, nothing
+  // checks whether a function that exists in the codebase is actually live
+  // on both projects.
+  //
+  // EXPECTED_EDGE_FUNCTIONS is a maintained allowlist, not derived from the
+  // filesystem (same "no repo access at runtime" reason as
+  // EXPECTED_SCHEMA/EXPECTED_MIGRATIONS) -- each restriction below was
+  // individually investigated (git history, source comments, live auth.users
+  // queries, frontend call sites), not assumed, matching
+  // security_access_control's own discipline. iwi-pull-snapshot is
+  // deliberately absent entirely -- it deploys to the separate Iwi Hub
+  // project, not Opeke or Tineka. check-deadlines itself is deliberately
+  // absent too -- probing its own reachability from within its own
+  // currently-running invocation is trivially always true.
+  //
+  // Sends an OPTIONS preflight to each function's URL. Flags 404 only (or a
+  // network-level failure), not "any non-200" -- confirmed live that a
+  // genuinely undeployed function returns 404, but stripe-webhook, which
+  // has no OPTIONS handling at all (Stripe's own server-to-server webhook
+  // calls never trigger a browser CORS preflight, so it was never written
+  // to expect one), returns 500 while still being genuinely deployed and
+  // reachable. 500 proves the function exists and executed real code; only
+  // 404 or a thrown fetch error actually means "not deployed here." No new
+  // credentials needed: this runs against whichever project this
+  // invocation of check-deadlines is already deployed to, using its own
+  // SUPABASE_URL.
+  const IS_OPEKE = SUPABASE_URL.includes('cbeenkpjpnhmtqtnjiyd');
+
+  const EXPECTED_EDGE_FUNCTIONS: { name: string; opekeOnly?: boolean; reason?: string }[] = [
+    { name: 'ban-trustee' },
+    { name: 'community-auto-login', opekeOnly: true,
+      reason: 'Hardcodes COMMUNITY_EMAIL = community@maraehub.com -- confirmed no matching auth.users row exists on Tineka, so deploying it there would just always fail. Functionally justified, not just undocumented.' },
+    { name: 'create-trustee' },
+    { name: 'draft-minutes' },
+    { name: 'generate-compliance-report' },
+    { name: 'generate-financial-report' },
+    { name: 'generate-grant-draft' },
+    { name: 'generate-report' },
+    { name: 'generate-tasks-report' },
+    { name: 'get-tineka-session', opekeOnly: true,
+      reason: 'Own file header: mints Tineka sessions for the founder, called from Opeke only by design.' },
+    { name: 'get-trustee-login-activity' },
+    { name: 'google-calendar-callback' },
+    { name: 'invite-trustee' },
+    { name: 'lock-monthly-kpi-snapshot' },
+    { name: 'mark-action-done' },
+    { name: 'notify-hirer' },
+    { name: 'notify-trustees' },
+    { name: 'public-booking-request', opekeOnly: true,
+      reason: 'KNOWN GAP, not yet fixed -- no technical reason found; unauthenticated PublicBookingRequest.js calls it unconditionally. Left Opeke-only deliberately for now given negligible real-world exposure (Tineka is test/staging, no real external public is ever pointed at it) -- revisit if that changes.' },
+    { name: 'send-notification' },
+    { name: 'stripe-webhook' },
+    { name: 'sync-hui-to-calendar' },
+    { name: 'xero-callback' },
+    { name: 'xero-financials' },
+  ];
+
+  const reachabilityFindings: { function: string; error: string }[] = [];
+
+  for (const fn of EXPECTED_EDGE_FUNCTIONS) {
+    if (fn.opekeOnly && !IS_OPEKE) continue;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn.name}`, { method: 'OPTIONS' });
+      if (res.status === 404) {
+        reachabilityFindings.push({ function: fn.name, error: `HTTP ${res.status}` });
+      }
+    } catch (err) {
+      reachabilityFindings.push({ function: fn.name, error: (err as Error).message });
+    }
+  }
+
+  if (reachabilityFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily edge-function check found ${reachabilityFindings.length} function${reachabilityFindings.length !== 1 ? 's' : ''} that should be deployed here but ${reachabilityFindings.length !== 1 ? "aren't" : "isn't"} reachable. This shouldn't happen through normal use of the app — worth a look.\n\n` +
+      reachabilityFindings.map(f => `- ${f.function} — ${f.error}`).join('\n') +
+      `\n\nPlease check this function's deployment status directly.` +
+      footer();
+
+    await notifyAdmin(`Edge function reachability check — ${reachabilityFindings.length} issue${reachabilityFindings.length !== 1 ? 's' : ''} found`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'edge_function_reachability',
+    findings_count: reachabilityFindings.length,
+    details: reachabilityFindings,
+  });
+
   // ── Self-liveness ping (ClickUp 86d3u7790, self-liveness monitor) ───────
   // Every check above depends on check-deadlines itself actually firing --
   // if pg_cron stops invoking this function, or it throws before reaching
@@ -1781,6 +1943,8 @@ serve(async (req) => {
       login_attempt_burst_findings: loginBurstFindings.length,
       unusual_export_size_findings: largeExportFindings.length,
       founder_capacity_check_findings: founderCheckDue ? 1 : 0,
+      migration_tracking_drift_findings: migrationDriftFindings.length,
+      edge_function_reachability_findings: reachabilityFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,
