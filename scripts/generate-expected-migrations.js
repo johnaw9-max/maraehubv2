@@ -18,12 +18,13 @@ const MIGRATIONS_DIR = path.join(__dirname, '..', 'supabase', 'migrations');
 const OUTPUT_PATH = path.join(__dirname, '..', 'supabase', 'functions', 'check-deadlines', 'expectedMigrations.ts');
 
 // Matches the Supabase CLI's own migration filename convention: a 14-digit
-// timestamp, then an underscore, then a descriptive name. Files that don't
-// match (e.g. interest_register.sql -- not a dated migration, a one-off
-// reference file living in this directory) are silently skipped, not
-// treated as an error -- this directory is confirmed to hold at least one
-// such file already.
-const VERSION_RE = /^(\d{14})_/;
+// timestamp, then an underscore, then a descriptive name -- OR the 7 real,
+// early bare-8-digit-date files this repo also has (20260608_..., etc.,
+// predating the 14-digit convention; confirmed real, tracked, applied
+// migrations, not a typo). Files that don't match either shape (e.g.
+// interest_register.sql -- not a dated migration, a one-off reference file
+// living in this directory) are silently skipped, not treated as an error.
+const VERSION_RE = /^(\d{14}|\d{8})_/;
 
 const files = fs.readdirSync(MIGRATIONS_DIR);
 const versions = [];
