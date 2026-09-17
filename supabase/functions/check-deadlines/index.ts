@@ -999,11 +999,28 @@ serve(async (req) => {
     }
   }
 
-  if (schemaDriftFindings.length > 0) {
+  // Allowlist for genuine, deliberate, individually-verified cross-project
+  // asymmetries -- same discipline as security_access_control's ALLOWED_*
+  // lists (maintained here, not derived from schema.sql comments, since
+  // check-deadlines has no filesystem access to read those at runtime).
+  // This is the FIRST exception to this check's original design (see the
+  // comment above: "a real difference between them... is a genuine
+  // finding, not a false positive") -- add sparingly, and only for a
+  // difference that's been confirmed real and deliberate, not assumed.
+  const SCHEMA_DRIFT_ALLOWLIST: { type: string; table: string; column?: string; reason: string }[] = [
+    { type: 'missing_column_in_schema_sql', table: 'profiles', column: 'last_sign_in_at',
+      reason: 'Real column on Tineka only -- confirmed absent on Opeke via direct information_schema query, 15 Sept 2026. schema.sql documents Opeke, so its absence there is correct, not drift. Same asymmetry class as get-tineka-session/community-auto-login being Opeke-only for their own documented reasons.' },
+  ];
+
+  const filteredSchemaDriftFindings = schemaDriftFindings.filter(f =>
+    !SCHEMA_DRIFT_ALLOWLIST.some(a => a.type === f.type && a.table === f.table && a.column === f.column)
+  );
+
+  if (filteredSchemaDriftFindings.length > 0) {
     const body =
       `Tēnā koutou,\n\n` +
-      `MaraeHub's daily schema check found ${schemaDriftFindings.length} difference${schemaDriftFindings.length !== 1 ? 's' : ''} between schema.sql and the live database. This shouldn't happen through normal use of the app — worth a look.\n\n` +
-      schemaDriftFindings.map(f => f.error
+      `MaraeHub's daily schema check found ${filteredSchemaDriftFindings.length} difference${filteredSchemaDriftFindings.length !== 1 ? 's' : ''} between schema.sql and the live database. This shouldn't happen through normal use of the app — worth a look.\n\n` +
+      filteredSchemaDriftFindings.map(f => f.error
         ? `- check could not run (${f.error})`
         : f.column
           ? `- ${f.type} — ${f.table}.${f.column}`
@@ -1012,13 +1029,13 @@ serve(async (req) => {
       `\n\nPlease update schema.sql or the live database directly, then regenerate expectedSchema.ts (scripts/generate-expected-schema.js) if schema.sql changed.` +
       footer();
 
-    await notifyAdmin(`Schema drift check — ${schemaDriftFindings.length} difference${schemaDriftFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Schema drift check — ${filteredSchemaDriftFindings.length} difference${filteredSchemaDriftFindings.length !== 1 ? 's' : ''} found`, body);
   }
 
   await db.from('system_check_log').insert({
     check_name: 'schema_drift',
-    findings_count: schemaDriftFindings.length,
-    details: schemaDriftFindings,
+    findings_count: filteredSchemaDriftFindings.length,
+    details: filteredSchemaDriftFindings,
   });
 
   // ── Security/access-control check (ClickUp 86d3u7790, Stage 3) ───────────
@@ -1933,7 +1950,7 @@ serve(async (req) => {
       single_row_invariant_findings: singleRowFindings.length,
       cron_health_findings: cronFindings.length,
       orphaned_auth_users_findings: orphanedAuthFindings.length,
-      schema_drift_findings: schemaDriftFindings.length,
+      schema_drift_findings: filteredSchemaDriftFindings.length,
       security_access_control_findings: securityFindings.length,
       process_config_safety_findings: processConfigFindings.length,
       dead_field_detection_findings: deadFieldFindings.length,
