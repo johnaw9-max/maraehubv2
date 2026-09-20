@@ -98,11 +98,71 @@ export async function ensureUpcomingTask({ sourceId, sourceType, name, descripti
   });
 }
 
+// Role Setup workflows: the step number that, on completion, creates the
+// role's real recurring duty (see ensureSecretaryRecurringDuty below).
+// Matched against workflow_templates.name, not just step_order, so an
+// unrelated template's step 7 can never collide with this.
+const ROLE_SETUP_DUTY_STEP = {
+  'Secretary Role Setup': 7,
+};
+
+// Secretary Role Setup step 7 (86d... Role Setup, 2026-09-20): creates the
+// recurring "Take Hui Minutes" compliance_items row the same way every
+// other recurring obligation in this app works (renewal_months + due_date,
+// see ComplianceTracker.js's nextDueDate()) -- monthly cadence, plain Mark
+// Done, no auto-re-run of the workflow, per that session's confirmation.
+// entity_id is looked up from trustee_entities only when the trustee has
+// exactly one marae assignment; multi-entity trustees or unassigned
+// trustees get a null entity_id, matching how compliance_items already
+// treats entity_id as optional elsewhere in this codebase.
+async function ensureSecretaryRecurringDuty(secretaryName, trusteeProfileId) {
+  if (!secretaryName) return;
+
+  const { data: existing } = await supabase
+    .from('compliance_items')
+    .select('id')
+    .eq('name', 'Take Hui Minutes')
+    .eq('responsible_name', secretaryName)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+
+  let entityId = null;
+  if (trusteeProfileId) {
+    const { data: assigned } = await supabase
+      .from('trustee_entities')
+      .select('entity_id')
+      .eq('profile_id', trusteeProfileId);
+    if (assigned && assigned.length === 1) entityId = assigned[0].entity_id;
+  }
+
+  await supabase.from('compliance_items').insert({
+    category: 'trustee',
+    name: 'Take Hui Minutes',
+    renewal_months: 1,
+    due_date: nextDate(1),
+    responsible_name: secretaryName,
+    entity_id: entityId,
+    classification: 'task',
+  });
+}
+
 // Called when a task moves to 'completed'. Routes to the correct source action
 // based on title prefix and [source_id] / [source_type] markers in description.
 export async function onTaskCompleted(task) {
   if (task.workflow_instance_id) {
     await updateWorkflowProgress(task.workflow_instance_id);
+
+    if (task.workflow_step_order != null) {
+      const { data: inst } = await supabase
+        .from('workflow_instances')
+        .select('entity_name, entity_id, workflow_templates(name)')
+        .eq('id', task.workflow_instance_id)
+        .single();
+      const templateName = inst?.workflow_templates?.name;
+      if (templateName && ROLE_SETUP_DUTY_STEP[templateName] === task.workflow_step_order) {
+        await ensureSecretaryRecurringDuty(inst.entity_name, inst.entity_id);
+      }
+    }
   }
 
   const title = task.title || '';

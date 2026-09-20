@@ -47,7 +47,7 @@ const SETTINGS_TABS = [
   { key: 'privacy',  label: 'Privacy & Data' },
 ];
 
-export default function MaraeSettings({ profile, isAdmin }) {
+export default function MaraeSettings({ profile, isAdmin, onStartWorkflow }) {
   const [activeSubTab, setActiveSubTab] = useState('settings');
   const [form, setForm] = useState(EMPTY_FORM);
   const [settingsId, setSettingsId] = useState(null);
@@ -82,6 +82,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [trusteePermsLoading, setTrusteePermsLoading] = useState(false);
   const [trusteePermsError, setTrusteePermsError] = useState('');
   const [trusteePermsSuccess, setTrusteePermsSuccess] = useState('');
+
+  // Role Setup workflow templates (Secretary Role Setup, etc.)
+  const [workflowTemplates, setWorkflowTemplates] = useState([]);
 
   // Entity assignments state
   const [assignments, setAssignments] = useState([]);
@@ -149,7 +152,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchSettings();
     fetchTemplates();
     if (profile?.id) fetchNotifPrefs(profile.id);
-    if (isAdmin) { fetchTrustees(); fetchAssignments(); }
+    if (isAdmin) { fetchTrustees(); fetchAssignments(); fetchWorkflowTemplates(); }
     fetchEntities();
     fetchXeroStatus();
     fetchGoogleStatus();
@@ -369,6 +372,11 @@ export default function MaraeSettings({ profile, isAdmin }) {
       .order('full_name');
     setTrustees(data || []);
     setTrusteePermsLoading(false);
+  }
+
+  async function fetchWorkflowTemplates() {
+    const { data } = await supabase.from('workflow_templates').select('id, name').eq('is_active', true);
+    setWorkflowTemplates(data || []);
   }
 
   async function fetchAssignments() {
@@ -1360,7 +1368,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
           ) : trustees.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--text3)' }}>No trustees found.</div>
           ) : (
-            trustees.map(t => {
+            (() => {
+              const secretaryRoleSetupTemplate = workflowTemplates.find(wt => wt.name === 'Secretary Role Setup');
+              return trustees.map(t => {
               const isYou = t.id === profile?.id;
               const isCurrentAdmin = t.trustee_role === 'admin';
               return (
@@ -1420,6 +1430,25 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     >
                       Handover pack
                     </button>
+                    {secretaryRoleSetupTemplate && onStartWorkflow && (
+                      <button
+                        onClick={() => onStartWorkflow({
+                          templateId: secretaryRoleSetupTemplate.id,
+                          workflowName: `Secretary Role Setup — ${t.full_name}`,
+                          sourceName: t.full_name,
+                          triggerType: 'role_setup',
+                          entityType: 'profile',
+                          entityId: t.id,
+                        })}
+                        style={{
+                          fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                          cursor: 'pointer', border: '1px solid var(--border)',
+                          background: 'var(--surface)', color: 'var(--text2)', fontWeight: 400,
+                        }}
+                      >
+                        ⚙️ Start Secretary Role Setup
+                      </button>
+                    )}
                     {!isYou && (
                       <button
                         onClick={() => openOffboard(t)}
@@ -1440,7 +1469,8 @@ export default function MaraeSettings({ profile, isAdmin }) {
                   </div>
                 </div>
               );
-            })
+              });
+            })()
           )}
         </div>
       )}
