@@ -174,7 +174,7 @@ export default function WelcomeLanding() {
             Your Privacy
           </div>
           <p style={{ fontSize: 16, color: 'var(--text1)', lineHeight: 1.6, margin: 0 }}>
-            Your marae's data stays private. Each marae has its own separate, encrypted database — never shared or mixed with any other marae's information.
+            Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed.
           </p>
         </div>
       </div>
