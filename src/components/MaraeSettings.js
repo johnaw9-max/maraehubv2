@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials } from '../lib/xero';
 import PrivacyPolicy from './PrivacyPolicy';
+import RoleSetupModal from './RoleSetup';
 import { fetchAssignableItems, fetchTrusteeDecisions, reassignItems } from '../lib/trusteeWorkload';
 
 const EMPTY_FORM = {
@@ -47,7 +48,7 @@ const SETTINGS_TABS = [
   { key: 'privacy',  label: 'Privacy & Data' },
 ];
 
-export default function MaraeSettings({ profile, isAdmin, onStartWorkflow }) {
+export default function MaraeSettings({ profile, isAdmin }) {
   const [activeSubTab, setActiveSubTab] = useState('settings');
   const [form, setForm] = useState(EMPTY_FORM);
   const [settingsId, setSettingsId] = useState(null);
@@ -110,6 +111,8 @@ export default function MaraeSettings({ profile, isAdmin, onStartWorkflow }) {
   const [offboardReassignTo, setOffboardReassignTo] = useState('');
   const [offboardReassigning, setOffboardReassigning] = useState(false);
   const [offboardError, setOffboardError] = useState('');
+
+  const [roleSetupTarget, setRoleSetupTarget] = useState(null);
 
   const [handoverTarget, setHandoverTarget] = useState(null);
   const [handoverItems, setHandoverItems] = useState([]);
@@ -1369,7 +1372,6 @@ export default function MaraeSettings({ profile, isAdmin, onStartWorkflow }) {
             <div style={{ fontSize: 13, color: 'var(--text3)' }}>No trustees found.</div>
           ) : (
             (() => {
-              const secretaryRoleSetupTemplate = workflowTemplates.find(wt => wt.name === 'Secretary Role Setup');
               return trustees.map(t => {
               const isYou = t.id === profile?.id;
               const isCurrentAdmin = t.trustee_role === 'admin';
@@ -1430,25 +1432,16 @@ export default function MaraeSettings({ profile, isAdmin, onStartWorkflow }) {
                     >
                       Handover pack
                     </button>
-                    {secretaryRoleSetupTemplate && onStartWorkflow && (
-                      <button
-                        onClick={() => onStartWorkflow({
-                          templateId: secretaryRoleSetupTemplate.id,
-                          workflowName: `Secretary Role Setup — ${t.full_name}`,
-                          sourceName: t.full_name,
-                          triggerType: 'role_setup',
-                          entityType: 'profile',
-                          entityId: t.id,
-                        })}
-                        style={{
-                          fontSize: 12, padding: '5px 12px', borderRadius: 6,
-                          cursor: 'pointer', border: '1px solid var(--border)',
-                          background: 'var(--surface)', color: 'var(--text2)', fontWeight: 400,
-                        }}
-                      >
-                        ⚙️ Start Secretary Role Setup
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setRoleSetupTarget(t)}
+                      style={{
+                        fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                        cursor: 'pointer', border: '1px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text2)', fontWeight: 400,
+                      }}
+                    >
+                      ⚙️ Role Setup
+                    </button>
                     {!isYou && (
                       <button
                         onClick={() => openOffboard(t)}
@@ -1683,6 +1676,14 @@ export default function MaraeSettings({ profile, isAdmin, onStartWorkflow }) {
             </div>
           </div>
         </div>
+      )}
+
+      {roleSetupTarget && (
+        <RoleSetupModal
+          trustee={roleSetupTarget}
+          templates={workflowTemplates}
+          onClose={() => setRoleSetupTarget(null)}
+        />
       )}
 
       {handoverTarget && (

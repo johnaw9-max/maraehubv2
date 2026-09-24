@@ -580,7 +580,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {/* ── WORKFLOWS ──────────────────────────────────────────────────── */}
         {activeTab === 'workflows' && <WorkflowEngine pendingWorkflow={pendingWorkflow} onPendingConsumed={() => setPendingWorkflow(null)} />}
 
-        {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} onStartWorkflow={handleStartWorkflow} />}
+        {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
       </div>
       </div>
 

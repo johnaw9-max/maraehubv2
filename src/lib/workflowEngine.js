@@ -30,6 +30,7 @@ export async function startWorkflow(templateId, context = {}) {
     entity_name: context.entity_name || null,
     trigger_type: context.trigger_type || null,
     trigger_date: context.trigger_date || null,
+    context_data: context.context_data || null,
   };
   console.log('[startWorkflow] inserting workflow_instance with payload:', instancePayload);
   const { data: instance, error: instanceError } = await supabase
