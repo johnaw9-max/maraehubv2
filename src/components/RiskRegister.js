@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import { getUrgencyStatus, compareByUrgency, URGENCY_ORDER } from '../lib/urgencyStatus';
 
 const CATEGORIES   = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
 const LIKELIHOODS  = ['Low', 'Medium', 'High'];
@@ -36,6 +37,40 @@ function daysSince(dateStr) {
 function fmt(d) {
   if (!d) return '—';
   return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Consistent Sort (14yhc7kpea4) Step 3 -- review_date was previously unused
+// for both classification and sort order (created_at DESC only). Reuses the
+// shared urgencyStatus.js helper from Step 2 with a 30-day due-soon window
+// (matches Compliance's governance-cadence window, not Tasks' 7-day or
+// Grants' 14-day -- risk reviews are a periodic governance item). Missing
+// review_date deliberately stays in the low-priority 'no_date' tier rather
+// than being promoted to urgent -- matches the existing convention of
+// treating a High-rated Open risk with no review_date as a known, accepted
+// gap tracked separately, not silently solved here.
+const RISK_URGENCY_OPTS = { dateField: 'review_date', dueSoonDays: 30, doneStatuses: ['Closed'] };
+const RATING_RANK = { High: 0, Medium: 1, Low: 2 };
+
+// risk_rating isn't a date concept so it can't live inside the generic
+// helper's shape -- applied here as a tie-break within each urgency tier
+// (same principle as GoalsReporting.js keeping its own status-override
+// logic in Step 2) before falling through to compareByUrgency's own
+// date/created_at tie-break.
+function compareRiskUrgency(a, b) {
+  const ua = URGENCY_ORDER[getUrgencyStatus(a, RISK_URGENCY_OPTS)];
+  const ub = URGENCY_ORDER[getUrgencyStatus(b, RISK_URGENCY_OPTS)];
+  if (ua !== ub) return ua - ub;
+  const ra = RATING_RANK[a.risk_rating] ?? 3;
+  const rb = RATING_RANK[b.risk_rating] ?? 3;
+  if (ra !== rb) return ra - rb;
+  return compareByUrgency(a, b, RISK_URGENCY_OPTS);
+}
+
+function reviewDateStyle(r) {
+  const status = getUrgencyStatus(r, RISK_URGENCY_OPTS);
+  if (status === 'overdue') return { color: 'var(--danger)', fontWeight: 700 };
+  if (status === 'due_soon') return { color: '#7a4f00', fontWeight: 600 };
+  return { color: 'var(--text2)' };
 }
 
 const EMPTY = {
@@ -82,7 +117,9 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
       supabase.from('workflow_templates').select('id, name').eq('name', 'Risk Remediation Plan').maybeSingle(),
       supabase.from('workflow_instances').select('entity_id').eq('entity_type', 'risk').eq('status', 'active'),
     ]);
-    setRisks(risksRes.data || []);
+    const riskRows = risksRes.data || [];
+    riskRows.sort(compareRiskUrgency);
+    setRisks(riskRows);
     setEntities(entRes.data || []);
     setAssets(assetsRes.data || []);
     setRemediationTemplate(tplRes.data || null);
@@ -308,7 +345,7 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text2)' }}>{r.owner || '—'}</td>
-                    <td style={{ padding: '12px 14px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{fmt(r.review_date)}</td>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap', ...reviewDateStyle(r) }}>{fmt(r.review_date)}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ ...sp, padding: '4px 11px', borderRadius: 20, fontSize: 14, fontWeight: 600 }}>
                         {r.status}
