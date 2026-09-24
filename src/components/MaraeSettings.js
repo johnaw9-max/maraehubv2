@@ -446,6 +446,22 @@ export default function MaraeSettings({ profile, isAdmin }) {
     setRenamingEntity(false);
   }
 
+  // supabase-js's error.message on a non-2xx Edge Function response is
+  // always the generic "Edge Function returned a non-2xx status code" --
+  // the function's real, specific message (e.g. "already registered")
+  // lives in the response body instead, at error.context (confirmed
+  // 2026-09-24 investigating a real Add Trustee report that turned out
+  // to be this exact swallowing, not a backend/deployment problem).
+  async function functionErrorMessage(error, fallback) {
+    if (error?.context && typeof error.context.json === 'function') {
+      try {
+        const body = await error.context.clone().json();
+        if (body?.error) return body.error;
+      } catch { /* response wasn't JSON */ }
+    }
+    return error?.message || fallback;
+  }
+
   async function sendInvite() {
     const email = inviteEmail.trim().toLowerCase();
     if (!email || !email.includes('@')) { setInviteError('Enter a valid email address'); return; }
@@ -456,7 +472,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       body: { email, redirectTo: window.location.origin },
     });
     setInviting(false);
-    if (error) { setInviteError(error.message || 'Failed to send invite'); return; }
+    if (error) { setInviteError(await functionErrorMessage(error, 'Failed to send invite')); return; }
     if (data?.error) { setInviteError(data.error); return; }
     if (data?.alreadyRegistered) {
       setInviteSuccess(`${email} already has an account — they can log in now. Check their role in the list below.`);
@@ -476,7 +492,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       body: { fullName: fullName.trim(), email: email.trim().toLowerCase(), committeeRole, permissionLevel },
     });
     setAddSaving(false);
-    if (error) { setAddError(error.message || 'Failed to create account'); return; }
+    if (error) { setAddError(await functionErrorMessage(error, 'Failed to create account')); return; }
     if (data?.error) { setAddError(data.error); return; }
     setAddSuccess({ name: fullName.trim(), email: email.trim().toLowerCase(), tempPassword: data.tempPassword });
     setAddForm(EMPTY_ADD);
