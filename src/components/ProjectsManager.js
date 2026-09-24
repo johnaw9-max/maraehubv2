@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
+import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
+
+const PROJECT_URGENCY_OPTS = { dueSoonDays: 7, doneStatuses: ['completed'] };
 
 const STATUS_OPTIONS = ['planning', 'active', 'review', 'completed'];
 
@@ -119,6 +122,7 @@ export default function ProjectsManager() {
     setLoading(true);
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
     const rows = data || [];
+    rows.sort((a, b) => compareByUrgency(a, b, PROJECT_URGENCY_OPTS));
     setProjects(rows);
     const counts = {};
     rows.forEach(p => { counts[p.id] = (p.subtasks || []).length; });
@@ -129,11 +133,8 @@ export default function ProjectsManager() {
   }
 
   async function createOverdueTasks(rows) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayStr = new Date().toISOString().split('T')[0];
-    const overdue = rows.filter(p =>
-      p.due_date && new Date(p.due_date) < today && p.status !== 'completed'
-    );
+    const overdue = rows.filter(p => getUrgencyStatus(p, PROJECT_URGENCY_OPTS) === 'overdue');
     for (const p of overdue) {
       await ensureTask({
         title: `PROJECT: ${p.name}`,
@@ -146,14 +147,7 @@ export default function ProjectsManager() {
   }
 
   async function createUpcomingTasks(rows) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
-    const approaching = rows.filter(p =>
-      p.due_date &&
-      new Date(p.due_date) >= today &&
-      new Date(p.due_date) <= in7 &&
-      p.status !== 'completed'
-    );
+    const approaching = rows.filter(p => getUrgencyStatus(p, PROJECT_URGENCY_OPTS) === 'due_soon');
     for (const p of approaching) {
       await ensureUpcomingTask({
         sourceId: p.id,

@@ -7,6 +7,9 @@ import useProfiles from '../lib/useProfiles';
 import { syncEntryForAmountChange } from '../lib/glPosting';
 import { matchGrantToGoals } from '../lib/grantMatching';
 import { renderReportText } from '../lib/renderReportText';
+import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
+
+const GRANT_URGENCY_OPTS = { dateField: 'deadline', dueSoonDays: 14, doneStatuses: ['approved', 'declined'] };
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -67,6 +70,7 @@ export default function GrantsTracker() {
     setLoading(true);
     const { data } = await supabase.from('grants').select('*').order('created_at', { ascending: false });
     const rows = data || [];
+    rows.sort((a, b) => compareByUrgency(a, b, GRANT_URGENCY_OPTS));
     setGrants(rows);
     setLoading(false);
     createUrgentTasks(rows);
@@ -140,12 +144,7 @@ export default function GrantsTracker() {
 
   async function createUrgentTasks(rows) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
-    const urgent = rows.filter(g => {
-      if (!g.deadline || ['approved', 'declined'].includes(g.status)) return false;
-      const d = new Date(g.deadline);
-      return d >= today && d <= in14;
-    });
+    const urgent = rows.filter(g => getUrgencyStatus(g, GRANT_URGENCY_OPTS) === 'due_soon');
     for (const g of urgent) {
       const daysLeft = Math.ceil((new Date(g.deadline) - today) / 86400000);
       await ensureTask({
@@ -272,10 +271,7 @@ export default function GrantsTracker() {
   // Summary calculations
   const approvedTotal = grants.filter(g => g.status === 'approved').reduce((sum, g) => sum + (g.amount || 0), 0);
   const pendingTotal = grants.filter(g => ['submitted', 'in-progress', 'researching'].includes(g.status)).reduce((sum, g) => sum + (g.amount || 0), 0);
-  const urgentDeadlines = grants.filter(g => {
-    const days = daysUntil(g.deadline);
-    return days !== null && days >= 0 && days <= 14 && !['approved', 'declined'].includes(g.status);
-  });
+  const urgentDeadlines = grants.filter(g => getUrgencyStatus(g, GRANT_URGENCY_OPTS) === 'due_soon');
 
   const filtered = filterStatus === 'all' ? grants : grants.filter(g => g.status === filterStatus);
 

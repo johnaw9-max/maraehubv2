@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
+import { getUrgencyStatus } from '../lib/urgencyStatus';
 
 const GOAL_STATUSES = ['not_started', 'in_progress', 'at_risk', 'completed'];
 
@@ -106,17 +107,16 @@ function computeAutoProgress(links, projects, complianceItems, grants) {
 }
 
 function getTrafficLight(goal, effectiveProgress) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const target = goal.target_date ? new Date(goal.target_date + 'T12:00:00') : null;
-  const in14 = new Date(today); in14.setDate(in14.getDate() + 14);
+  const dateUrgency = goal.target_date
+    ? getUrgencyStatus(goal, { dateField: 'target_date', dueSoonDays: 14 })
+    : 'no_date';
   if (goal.status === 'completed') return 'green';
   if (goal.status === 'at_risk') return 'orange';
   if (goal.status === 'not_started') {
-    if (target && target < today) return 'red';
-    return 'green';
+    return dateUrgency === 'overdue' ? 'red' : 'green';
   }
-  if (target && target < today) return 'red';
-  if (target && target <= in14) return 'orange';
+  if (dateUrgency === 'overdue') return 'red';
+  if (dateUrgency === 'due_soon') return 'orange';
   return 'green';
 }
 

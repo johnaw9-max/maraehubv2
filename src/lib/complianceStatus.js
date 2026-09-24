@@ -1,12 +1,9 @@
-export function getItemComplianceStatus(item) {
-  const now  = new Date(); now.setHours(0, 0, 0, 0);
-  const in30 = new Date(now); in30.setDate(in30.getDate() + 30);
+import { getUrgencyStatus } from './urgencyStatus';
 
+export function getItemComplianceStatus(item) {
   if (item.due_date) {
-    const due = new Date(item.due_date + 'T12:00:00');
-    if (due < now) return 'overdue';
-    if (due <= in30) return 'due_soon';
-    return 'compliant';
+    const status = getUrgencyStatus(item, { dueSoonDays: 30 });
+    return status === 'upcoming' ? 'compliant' : status;
   }
   return item.last_checked_date ? 'compliant' : 'not_set';
 }
