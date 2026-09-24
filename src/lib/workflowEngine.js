@@ -3,13 +3,19 @@ import { supabase } from './supabase';
 export async function startWorkflow(templateId, context = {}) {
   console.log('[startWorkflow] START — templateId:', templateId, 'context:', context);
 
-  // 1) Load steps
-  console.log('[startWorkflow] loading workflow_steps for template', templateId);
-  const { data: steps, error: stepsError } = await supabase
+  // 1) Load steps -- context.role_key optionally scopes to one role's
+  // steps within a shared template (e.g. "Role Setup" holds Secretary/
+  // Chairperson/Treasurer steps under one template_id). Every other
+  // caller never passes role_key, so this filter is skipped and behaves
+  // exactly as before.
+  console.log('[startWorkflow] loading workflow_steps for template', templateId, 'role_key:', context.role_key || null);
+  let stepsQuery = supabase
     .from('workflow_steps')
     .select('*')
     .eq('template_id', templateId)
     .order('step_order');
+  if (context.role_key) stepsQuery = stepsQuery.eq('role_key', context.role_key);
+  const { data: steps, error: stepsError } = await stepsQuery;
 
   if (stepsError) {
     console.error('[startWorkflow] failed to load steps:', stepsError);

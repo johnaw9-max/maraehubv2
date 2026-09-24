@@ -98,37 +98,32 @@ export async function ensureUpcomingTask({ sourceId, sourceType, name, descripti
   });
 }
 
-// Role Setup workflows: config for the step that, on completion, creates
-// the role's real recurring duties (see ensureRoleDuties below). Matched
-// against workflow_templates.name, not just step_order, so an unrelated
-// template's step 7 can never collide with this. Only roles with a real
-// workflow_templates row belong here -- Chairperson/Treasurer are
-// deliberately absent (Settings > Role Setup modal, 2026-09-24): their
-// picker cards are visual-only today, no template exists for them yet.
-const ROLE_SETUP_CONFIG = {
-  'Secretary Role Setup': {
-    dutyStep: 7,
-    duties: [
-      { name: 'Take Hui Minutes', category: 'trustee', cadence: 'meeting_frequency' },
-    ],
-  },
-};
-
-// Role Setup step completion (86d... Role Setup, 2026-09-20; generalized
-// and meeting-frequency-driven cadence added 2026-09-24): creates each of
-// the role's recurring compliance_items rows the same way every other
-// recurring obligation in this app works (renewal_months + due_date, see
-// ComplianceTracker.js's nextDueDate()) -- plain Mark Done, no auto-re-run
-// of the workflow. A duty's cadence is either 'meeting_frequency' (read
-// from workflow_instances.context_data, set by the Role Setup modal's
-// "how often does your marae meet?" input, falling back to annual if
-// somehow missing) or a fixed RECURRING_MONTHS key for duties that aren't
+// Role Setup completion (86d... Role Setup, 2026-09-20; generalized into
+// role_configs 2026-09-24): creates each of the role's recurring
+// compliance_items rows the same way every other recurring obligation in
+// this app works (renewal_months + due_date, see ComplianceTracker.js's
+// nextDueDate()) -- plain Mark Done, no auto-re-run of the workflow. A
+// duty's cadence is either 'meeting_frequency' (read from
+// workflow_instances.context_data, set by the Role Setup modal's "how
+// often does your marae meet?" input, falling back to annual if somehow
+// missing) or a fixed RECURRING_MONTHS key for duties that aren't
 // meeting-linked. entity_id is looked up from trustee_entities only when
 // the trustee has exactly one marae assignment; multi-entity trustees or
 // unassigned trustees get a null entity_id, matching how compliance_items
 // already treats entity_id as optional elsewhere in this codebase.
-async function ensureRoleDuties(config, roleName, trusteeProfileId, contextData) {
-  if (!roleName) return;
+//
+// Role metadata and duty definitions live in role_configs (not a
+// hardcoded JS object) so Chairperson/Treasurer can go live with a data
+// change once their real duties exist, no deploy required.
+async function ensureRoleDuties(roleKey, roleName, trusteeProfileId, contextData) {
+  if (!roleKey || !roleName) return;
+
+  const { data: config } = await supabase
+    .from('role_configs')
+    .select('duties')
+    .eq('role_key', roleKey)
+    .maybeSingle();
+  if (!config?.duties?.length) return;
 
   let entityId = null;
   if (trusteeProfileId) {
@@ -173,13 +168,21 @@ export async function onTaskCompleted(task) {
     if (task.workflow_step_order != null) {
       const { data: inst } = await supabase
         .from('workflow_instances')
-        .select('entity_name, entity_id, context_data, workflow_templates(name)')
+        .select('status, entity_name, entity_id, context_data, workflow_templates(name)')
         .eq('id', task.workflow_instance_id)
         .single();
       const templateName = inst?.workflow_templates?.name;
-      const roleConfig = templateName && ROLE_SETUP_CONFIG[templateName];
-      if (roleConfig && roleConfig.dutyStep === task.workflow_step_order) {
-        await ensureRoleDuties(roleConfig, inst.entity_name, inst.entity_id, inst.context_data);
+      // 'Secretary Role Setup' kept for backward compat: instances
+      // started before the 2026-09-24 rename to the shared 'Role Setup'
+      // template still carry the old name.
+      const isRoleSetup = templateName === 'Role Setup' || templateName === 'Secretary Role Setup';
+      // Triggers on the whole instance completing, not a fixed step
+      // number, so each role's checklist can have a different step count.
+      if (isRoleSetup && inst.status === 'complete') {
+        // context_data is null for instances started before it existed
+        // (and before any role but Secretary did) -- default accordingly.
+        const roleKey = inst.context_data?.role_key || 'secretary';
+        await ensureRoleDuties(roleKey, inst.entity_name, inst.entity_id, inst.context_data);
       }
     }
   }

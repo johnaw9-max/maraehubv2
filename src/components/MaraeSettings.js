@@ -84,7 +84,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [trusteePermsError, setTrusteePermsError] = useState('');
   const [trusteePermsSuccess, setTrusteePermsSuccess] = useState('');
 
-  // Role Setup workflow templates (Secretary Role Setup, etc.)
+  // Workflow templates, incl. the shared "Role Setup" template
   const [workflowTemplates, setWorkflowTemplates] = useState([]);
 
   // Entity assignments state
