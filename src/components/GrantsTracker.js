@@ -8,8 +8,31 @@ import { syncEntryForAmountChange } from '../lib/glPosting';
 import { matchGrantToGoals } from '../lib/grantMatching';
 import { renderReportText } from '../lib/renderReportText';
 import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
+import { useSortPreference } from '../lib/useSortPreference';
+import SortSelect from './SortSelect';
 
 const GRANT_URGENCY_OPTS = { dateField: 'deadline', dueSoonDays: 14, doneStatuses: ['approved', 'declined'] };
+
+// Consistent Sort (14yhc7kpea4) Step 4, Part 2. Grants has no
+// priority/rating field, so it gets a reduced 3-option set.
+const GRANT_SORT_OPTIONS = [
+  { value: 'urgency', label: 'Urgency' },
+  { value: 'due_date', label: 'Deadline' },
+  { value: 'alpha', label: 'A–Z' },
+];
+
+function compareGrantsByMode(mode) {
+  return (a, b) => {
+    if (mode === 'alpha') return (a.name || '').localeCompare(b.name || '');
+    if (mode === 'due_date') {
+      if (a.deadline && b.deadline) return new Date(a.deadline) - new Date(b.deadline);
+      if (a.deadline) return -1;
+      if (b.deadline) return 1;
+      return compareByUrgency(a, b, GRANT_URGENCY_OPTS);
+    }
+    return compareByUrgency(a, b, GRANT_URGENCY_OPTS);
+  };
+}
 
 const STATUSES = ['researching', 'in-progress', 'submitted', 'approved', 'declined', 'reporting'];
 const CATEGORIES = ['Community', 'Cultural', 'Education', 'Environment', 'Health', 'Infrastructure', 'Sport & Recreation', 'Other'];
@@ -51,6 +74,7 @@ export default function GrantsTracker() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
   const [maraeSettings, setMaraeSettings] = useState(null);
+  const [sortMode, setSortMode] = useSortPreference('grants', 'urgency');
 
   // AI Grant Drafting (14yhc7kpjbd, Step 7). draftGoalId is the trustee's
   // explicit confirmation of which goal an application is for -- per the
@@ -65,12 +89,13 @@ export default function GrantsTracker() {
   const [draftCopied, setDraftCopied] = useState(false);
 
   useEffect(() => { fetchGrants(); fetchGoals(); fetchMaraeSettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setGrants(prev => [...prev].sort(compareGrantsByMode(sortMode))); }, [sortMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchGrants() {
     setLoading(true);
     const { data } = await supabase.from('grants').select('*').order('created_at', { ascending: false });
     const rows = data || [];
-    rows.sort((a, b) => compareByUrgency(a, b, GRANT_URGENCY_OPTS));
+    rows.sort(compareGrantsByMode(sortMode));
     setGrants(rows);
     setLoading(false);
     createUrgentTasks(rows);
@@ -436,7 +461,8 @@ export default function GrantsTracker() {
       )}
 
       {/* FILTER BAR */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+        <SortSelect value={sortMode} onChange={setSortMode} options={GRANT_SORT_OPTIONS} />
         {['all', ...STATUSES].map(s => (
           <button
             key={s}

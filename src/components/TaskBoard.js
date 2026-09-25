@@ -5,6 +5,8 @@ import StatusPill from './StatusPill';
 import { onTaskCompleted } from '../lib/taskSync';
 import { updateWorkflowProgress } from '../lib/workflowEngine';
 import { compareByUrgency } from '../lib/urgencyStatus';
+import { useSortPreference } from '../lib/useSortPreference';
+import SortSelect from './SortSelect';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -39,6 +41,37 @@ function isOverdue(task) {
 
 function compareTaskUrgency(a, b) {
   return compareByUrgency(a, b, { dueSoonDays: 7, doneStatuses: ['completed', 'cancelled'] });
+}
+
+// Consistent Sort (14yhc7kpea4) Step 4, Part 2 -- user-selectable sort on
+// top of the urgency default. Tasks has a real priority field, so it gets
+// the full 4-option set (Compliance/Goals/Grants/Projects don't and get a
+// reduced set -- see each module's own SORT_OPTIONS).
+const TASK_SORT_OPTIONS = [
+  { value: 'urgency', label: 'Urgency' },
+  { value: 'due_date', label: 'Due Date' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'alpha', label: 'A–Z' },
+];
+const TASK_PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 };
+
+function compareTasksByMode(mode) {
+  return (a, b) => {
+    if (mode === 'due_date') {
+      if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+      return compareTaskUrgency(a, b);
+    }
+    if (mode === 'priority') {
+      const pa = TASK_PRIORITY_RANK[a.priority] ?? 3;
+      const pb = TASK_PRIORITY_RANK[b.priority] ?? 3;
+      if (pa !== pb) return pa - pb;
+      return compareTaskUrgency(a, b);
+    }
+    if (mode === 'alpha') return (a.title || '').localeCompare(b.title || '');
+    return compareTaskUrgency(a, b);
+  };
 }
 
 function isCompletedToday(task) {
@@ -511,13 +544,15 @@ export default function TaskBoard() {
   const [showArchive, setShowArchive] = useState(false);
   const [commentCounts, setCommentCounts] = useState({});
   const [commentTask, setCommentTask] = useState(null);
+  const [sortMode, setSortMode] = useSortPreference('tasks', 'urgency');
 
   useEffect(() => { fetchTasks(); fetchCommentCounts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setTasks(prev => [...prev].sort(compareTasksByMode(sortMode))); }, [sortMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchTasks() {
     setLoading(true);
     const { data } = await supabase.from('tasks').select('*');
-    data?.sort(compareTaskUrgency);
+    data?.sort(compareTasksByMode(sortMode));
     setTasks(data || []);
     setLoading(false);
   }
@@ -715,6 +750,7 @@ export default function TaskBoard() {
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </span>
         )}
+        <SortSelect value={sortMode} onChange={setSortMode} options={TASK_SORT_OPTIONS} />
         <div style={{ marginLeft: 'auto' }}>
           <button className="btn-primary" onClick={openAdd} style={{ padding: '10px 20px' }}>
             + Add Task

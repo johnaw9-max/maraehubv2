@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import { getUrgencyStatus, compareByUrgency, URGENCY_ORDER } from '../lib/urgencyStatus';
+import { useSortPreference } from '../lib/useSortPreference';
+import SortSelect from './SortSelect';
 
 const CATEGORIES   = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
 const LIKELIHOODS  = ['Low', 'Medium', 'High'];
@@ -73,6 +75,36 @@ function reviewDateStyle(r) {
   return { color: 'var(--text2)' };
 }
 
+// Consistent Sort (14yhc7kpea4) Step 4, Part 2. Risk Register has a real
+// rating field (risk_rating), so "Priority" here means sort by rating --
+// exactly the fork the original task design anticipated ("Risk Register
+// might sort by rating, not due date").
+const RISK_SORT_OPTIONS = [
+  { value: 'urgency', label: 'Urgency' },
+  { value: 'due_date', label: 'Review Date' },
+  { value: 'priority', label: 'Rating' },
+  { value: 'alpha', label: 'A–Z' },
+];
+
+function compareRisksByMode(mode) {
+  return (a, b) => {
+    if (mode === 'alpha') return (a.risk_description || '').localeCompare(b.risk_description || '');
+    if (mode === 'due_date') {
+      if (a.review_date && b.review_date) return new Date(a.review_date) - new Date(b.review_date);
+      if (a.review_date) return -1;
+      if (b.review_date) return 1;
+      return compareRiskUrgency(a, b);
+    }
+    if (mode === 'priority') {
+      const ra = RATING_RANK[a.risk_rating] ?? 3;
+      const rb = RATING_RANK[b.risk_rating] ?? 3;
+      if (ra !== rb) return ra - rb;
+      return compareRiskUrgency(a, b);
+    }
+    return compareRiskUrgency(a, b);
+  };
+}
+
 const EMPTY = {
   risk_description: '',
   category:    'Health & Safety',
@@ -101,6 +133,7 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
   const [catFilter, setCatFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
+  const [sortMode, setSortMode] = useSortPreference('risks', 'urgency');
   const [linkedItemName, setLinkedItemName] = useState('');
   const [remediationTemplate, setRemediationTemplate] = useState(null);
   const [activeWorkflowRiskIds, setActiveWorkflowRiskIds] = useState(new Set());
@@ -118,16 +151,17 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
       supabase.from('workflow_instances').select('entity_id').eq('entity_type', 'risk').eq('status', 'active'),
     ]);
     const riskRows = risksRes.data || [];
-    riskRows.sort(compareRiskUrgency);
+    riskRows.sort(compareRisksByMode(sortMode));
     setRisks(riskRows);
     setEntities(entRes.data || []);
     setAssets(assetsRes.data || []);
     setRemediationTemplate(tplRes.data || null);
     setActiveWorkflowRiskIds(new Set((wfRes.data || []).map(w => w.entity_id)));
     setLoading(false);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setRisks(prev => [...prev].sort(compareRisksByMode(sortMode))); }, [sortMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Compliance -> Risk suggestion prompt (86d44k66b). Same shape as
   // WorkflowEngine's pendingWorkflow effect (TrusteeDashboard.js) --
@@ -288,6 +322,7 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
             {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
           </select>
         )}
+        <SortSelect value={sortMode} onChange={setSortMode} options={RISK_SORT_OPTIONS} />
       </div>
 
       {/* ── TABLE ── */}

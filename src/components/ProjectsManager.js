@@ -4,8 +4,31 @@ import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
+import { useSortPreference } from '../lib/useSortPreference';
+import SortSelect from './SortSelect';
 
 const PROJECT_URGENCY_OPTS = { dueSoonDays: 7, doneStatuses: ['completed'] };
+
+// Consistent Sort (14yhc7kpea4) Step 4, Part 2. Projects has no top-level
+// priority field (only subtasks do), so it gets a reduced 3-option set.
+const PROJECT_SORT_OPTIONS = [
+  { value: 'urgency', label: 'Urgency' },
+  { value: 'due_date', label: 'Due Date' },
+  { value: 'alpha', label: 'A–Z' },
+];
+
+function compareProjectsByMode(mode) {
+  return (a, b) => {
+    if (mode === 'alpha') return (a.name || '').localeCompare(b.name || '');
+    if (mode === 'due_date') {
+      if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+      return compareByUrgency(a, b, PROJECT_URGENCY_OPTS);
+    }
+    return compareByUrgency(a, b, PROJECT_URGENCY_OPTS);
+  };
+}
 
 const STATUS_OPTIONS = ['planning', 'active', 'review', 'completed'];
 
@@ -115,14 +138,16 @@ export default function ProjectsManager() {
   const [subtaskForm, setSubtaskForm]           = useState(EMPTY_SUBTASK_FORM);
   const [savingSubtask, setSavingSubtask]       = useState(false);
   const [subtaskError, setSubtaskError]         = useState('');
+  const [sortMode, setSortMode] = useSortPreference('projects', 'urgency');
 
   useEffect(() => { fetchProjects(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setProjects(prev => [...prev].sort(compareProjectsByMode(sortMode))); }, [sortMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchProjects() {
     setLoading(true);
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
     const rows = data || [];
-    rows.sort((a, b) => compareByUrgency(a, b, PROJECT_URGENCY_OPTS));
+    rows.sort(compareProjectsByMode(sortMode));
     setProjects(rows);
     const counts = {};
     rows.forEach(p => { counts[p.id] = (p.subtasks || []).length; });
@@ -517,6 +542,7 @@ export default function ProjectsManager() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontSize: 22 }}>Projects</h2>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <SortSelect value={sortMode} onChange={setSortMode} options={PROJECT_SORT_OPTIONS} />
             <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               <button onClick={() => setView('list')} style={{ padding: '7px 16px', fontSize: 14, fontWeight: 600, background: view === 'list' ? 'var(--brand)' : 'var(--surface)', color: view === 'list' ? '#fff' : 'var(--text2)', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>☰ List</button>
               <button onClick={() => setView('kanban')} style={{ padding: '7px 16px', fontSize: 14, fontWeight: 600, background: view === 'kanban' ? 'var(--brand)' : 'var(--surface)', color: view === 'kanban' ? '#fff' : 'var(--text2)', border: 'none', borderLeft: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>▦ Board</button>

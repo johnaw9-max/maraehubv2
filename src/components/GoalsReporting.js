@@ -4,6 +4,20 @@ import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { getUrgencyStatus } from '../lib/urgencyStatus';
+import { useSortPreference } from '../lib/useSortPreference';
+import SortSelect from './SortSelect';
+
+// Consistent Sort (14yhc7kpea4) Step 4, Part 2. Goals renders as
+// red/orange/green/completed tiers, not a flat list -- the tier grouping
+// itself already IS the urgency concept (getTrafficLight), so a sort mode
+// here only reorders WITHIN each tier, it doesn't replace the grouping.
+// No "Due Date" option: the default tier order is already target-date
+// ascending within each tier, so it would be a redundant duplicate of
+// "Urgency". No "Priority" option: goals have no priority/rating field.
+const GOAL_SORT_OPTIONS = [
+  { value: 'urgency', label: 'Urgency' },
+  { value: 'alpha', label: 'A–Z' },
+];
 
 const GOAL_STATUSES = ['not_started', 'in_progress', 'at_risk', 'completed'];
 
@@ -200,6 +214,7 @@ export default function GoalsReporting() {
   const [focusAreaFilter, setFocusAreaFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortMode, setSortMode] = useSortPreference('goals', 'urgency');
   const [showCompleted, setShowCompleted] = useState(false);
 
   const [showModal, setShowModal]     = useState(false);
@@ -406,10 +421,13 @@ export default function GoalsReporting() {
     if (!b.target_date) return -1;
     return new Date(a.target_date) - new Date(b.target_date);
   };
-  const behindGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'red').sort(byTargetDateAsc);
-  const atRiskGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'orange').sort(byTargetDateAsc);
-  const onTrackGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'green' && g.status !== 'completed').sort(byTargetDateAsc);
-  const completedGoals = filteredGoals.filter(g => g.status === 'completed').sort(byTargetDateAsc);
+  const inTierCompare = sortMode === 'alpha'
+    ? (a, b) => (a.name || '').localeCompare(b.name || '')
+    : byTargetDateAsc;
+  const behindGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'red').sort(inTierCompare);
+  const atRiskGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'orange').sort(inTierCompare);
+  const onTrackGoals = filteredGoals.filter(g => getTrafficLight(g, getEffectiveProgress(g)) === 'green' && g.status !== 'completed').sort(inTierCompare);
+  const completedGoals = filteredGoals.filter(g => g.status === 'completed').sort(inTierCompare);
   const visibleGoals = [...behindGoals, ...atRiskGoals, ...onTrackGoals];
 
   if (loading) return <div className="loading">Loading goals...</div>;
@@ -710,6 +728,7 @@ export default function GoalsReporting() {
                 <option key={k} value={k}>{v.icon} {v.label}</option>
               ))}
             </select>
+            <SortSelect value={sortMode} onChange={setSortMode} options={GOAL_SORT_OPTIONS} />
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
             {[{ key: 'all', label: 'All Statuses' }, ...Object.entries(STATUS_CFG).map(([k, v]) => ({ key: k, label: v.label }))].map(s => (

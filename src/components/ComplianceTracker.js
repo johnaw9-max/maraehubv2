@@ -5,6 +5,8 @@ import StatusPill from './StatusPill';
 import FormError from './FormError';
 import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync';
 import { getItemComplianceStatus } from '../lib/complianceStatus';
+import { useSortPreference } from '../lib/useSortPreference';
+import SortSelect from './SortSelect';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -75,6 +77,33 @@ const SEVERITY_CFG = {
 
 const STATUS_ORDER = { overdue: 0, due_soon: 1, compliant: 2, not_set: 3 };
 
+// Consistent Sort (14yhc7kpea4) Step 4, Part 2. Compliance has no
+// priority/rating field, so it gets a reduced 3-option set (no "Priority").
+const COMPLIANCE_SORT_OPTIONS = [
+  { value: 'urgency', label: 'Urgency' },
+  { value: 'due_date', label: 'Due Date' },
+  { value: 'alpha', label: 'A–Z' },
+];
+
+function compareComplianceByMode(mode) {
+  return (a, b) => {
+    if (mode === 'alpha') return (a.name || '').localeCompare(b.name || '');
+    if (mode === 'due_date') {
+      if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+      return 0;
+    }
+    const sa = STATUS_ORDER[getItemComplianceStatus(a)];
+    const sb = STATUS_ORDER[getItemComplianceStatus(b)];
+    if (sa !== sb) return sa - sb;
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return new Date(a.due_date) - new Date(b.due_date);
+  };
+}
+
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '', last_checked_date: '',
   renewal_months: 12, responsible_name: '', notes: '', entity_id: '',
@@ -132,6 +161,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [catFilter, setCatFilter] = useState('all');
   const [classFilter, setClassFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
+  const [sortMode, setSortMode] = useSortPreference('compliance', 'urgency');
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
   const [linkedComplianceItemIds, setLinkedComplianceItemIds] = useState(new Set());
@@ -491,15 +521,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     .filter(i => classFilter === 'all' || i.classification === classFilter)
     .filter(i => entityFilter === 'all' || i.entity_id === entityFilter || i.entity_id === null)
     .slice()
-    .sort((a, b) => {
-      const sa = STATUS_ORDER[getItemComplianceStatus(a)];
-      const sb = STATUS_ORDER[getItemComplianceStatus(b)];
-      if (sa !== sb) return sa - sb;
-      if (!a.due_date && !b.due_date) return 0;
-      if (!a.due_date) return 1;
-      if (!b.due_date) return -1;
-      return new Date(a.due_date) - new Date(b.due_date);
-    });
+    .sort(compareComplianceByMode(sortMode));
 
   // Urgency-first (86d420evd): never-assessed items collapse into a single,
   // honest count by default rather than rendering as full rows -- same
@@ -816,6 +838,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
               </select>
             )}
+            <SortSelect value={sortMode} onChange={setSortMode} options={COMPLIANCE_SORT_OPTIONS} />
           </div>
 
           {/* Items list */}
