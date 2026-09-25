@@ -69,6 +69,7 @@ const NAV_LABELS = {
   bookings:   'View Bookings →',
   projects:   'View Projects →',
   finance:    'View Finance →',
+  workflows:  'View Workflows →',
 };
 
 function Stars({ rating }) {

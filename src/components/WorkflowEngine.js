@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { startWorkflow, getActiveWorkflows } from '../lib/workflowEngine';
+import { startWorkflow, getActiveWorkflows, updateWorkflowProgress } from '../lib/workflowEngine';
+import { onTaskCompleted } from '../lib/taskSync';
+import StatusPill from './StatusPill';
+import CommentModal from './CommentModal';
+
+// Task View Cleanup (14yhc7kutvv) Step 2 -- same 4 statuses TaskBoard.js's
+// Kanban columns use, needed here now that step-completion moved onto this
+// panel instead.
+const STEP_STATUSES = ['open', 'in-progress', 'completed', 'cancelled'];
 
 export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
   const [templates, setTemplates] = useState([]);
@@ -15,6 +23,13 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Task View Cleanup (14yhc7kutvv) Step 2 -- step-list expand, comments,
+  // and delete now live here instead of TaskBoard.js's WorkflowParentCard.
+  const [expandedInstance, setExpandedInstance] = useState(null);
+  const [commentCounts, setCommentCounts] = useState({});
+  const [commentInstance, setCommentInstance] = useState(null);
+  const [confirmDeleteInstance, setConfirmDeleteInstance] = useState(null);
 
   // Template management state
   const [expandedTemplate, setExpandedTemplate] = useState(null);
@@ -39,13 +54,58 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
 
     const grouped = {};
     insts.forEach(inst => {
-      grouped[inst.id] = inst.tasks || [];
+      grouped[inst.id] = (inst.tasks || [])
+        .slice()
+        .sort((a, b) => (a.workflow_step_order || 0) - (b.workflow_step_order || 0));
     });
     setInstanceTasks(grouped);
     setLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); fetchCommentCounts(); }, [load]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function fetchCommentCounts() {
+    const { data } = await supabase.from('task_comments').select('task_id');
+    if (!data) return;
+    const counts = {};
+    data.forEach(r => { counts[r.task_id] = (counts[r.task_id] || 0) + 1; });
+    setCommentCounts(counts);
+  }
+
+  function handleCommentPosted(taskId) {
+    setCommentCounts(prev => ({ ...prev, [taskId]: (prev[taskId] || 0) + 1 }));
+  }
+
+  // Same shape as TaskBoard.js's old changeTaskStatus, scoped to a single
+  // workflow step. onTaskCompleted already calls updateWorkflowProgress
+  // internally when task.workflow_instance_id is set.
+  async function changeStepStatus(step, newStatus) {
+    const updates = { status: newStatus };
+    if (newStatus === 'completed' && step.status !== 'completed') {
+      updates.completed_at = new Date().toISOString();
+    } else if (newStatus !== 'completed' && step.status === 'completed') {
+      updates.completed_at = null;
+    }
+    await supabase.from('tasks').update(updates).eq('id', step.id);
+
+    if (newStatus === 'completed' && step.status !== 'completed') {
+      await onTaskCompleted(step);
+    } else if (step.status === 'completed' && newStatus !== 'completed') {
+      await updateWorkflowProgress(step.workflow_instance_id);
+    }
+    await load();
+  }
+
+  // Same shape as TaskBoard.js's old handleDelete workflow branch --
+  // deleting the parent task cascades to its subtasks (ON DELETE CASCADE),
+  // then the workflow_instance itself is marked cancelled.
+  async function handleDeleteWorkflow() {
+    if (!confirmDeleteInstance) return;
+    await supabase.from('tasks').delete().eq('id', confirmDeleteInstance.parentTaskId);
+    await supabase.from('workflow_instances').update({ status: 'cancelled' }).eq('id', confirmDeleteInstance.id);
+    setConfirmDeleteInstance(null);
+    await load();
+  }
 
   useEffect(() => {
     if (!pendingWorkflow) return;
@@ -365,14 +425,111 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
                 </div>
 
                 {next ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <span style={{ fontSize: 14, color: 'var(--text3)', flexShrink: 0 }}>Next:</span>
                     <span style={{ fontSize: 14, color: 'var(--text2)', background: '#fdf4e8', border: '1px solid #e8c880', borderRadius: 6, padding: '4px 11px' }}>
                       {next.title}
                     </span>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500 }}>✅ All steps complete</div>
+                  <div style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500, marginBottom: 10 }}>✅ All steps complete</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={() => setExpandedInstance(e => (e === inst.id ? null : inst.id))}
+                    style={{
+                      flex: 1, background: 'var(--surface)', color: 'var(--text2)',
+                      border: '1px solid var(--border)', borderRadius: 6,
+                      padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    {expandedInstance === inst.id ? '▲ Hide Steps' : '▼ Show Steps'}
+                  </button>
+                  <button
+                    onClick={() => setCommentInstance(inst)}
+                    title="View updates"
+                    style={{
+                      background: (commentCounts[inst.parentTaskId] || 0) > 0 ? '#e8eef8' : 'var(--surface)',
+                      color: (commentCounts[inst.parentTaskId] || 0) > 0 ? '#1a4a8a' : 'var(--text3)',
+                      border: `1px solid ${(commentCounts[inst.parentTaskId] || 0) > 0 ? '#b8ccee' : 'var(--border)'}`,
+                      borderRadius: 6, padding: '4px 8px', fontSize: 13,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                      flexShrink: 0,
+                    }}
+                  >
+                    💬
+                    {(commentCounts[inst.parentTaskId] || 0) > 0 && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        background: 'var(--brand)', color: '#fff',
+                        borderRadius: 10, padding: '0 5px', lineHeight: '16px',
+                        minWidth: 16, textAlign: 'center', display: 'inline-block',
+                      }}>
+                        {commentCounts[inst.parentTaskId]}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteInstance(inst)}
+                    style={{
+                      flex: 1, background: '#faeae7', color: 'var(--danger)',
+                      border: '1px solid #f0b8b0', borderRadius: 6,
+                      padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                {expandedInstance === inst.id && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid var(--cream2)', paddingTop: 8 }}>
+                    {(instanceTasks[inst.id] || []).map((step, idx) => (
+                      <div key={step.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 7,
+                        padding: '5px 0',
+                        borderBottom: idx < (instanceTasks[inst.id] || []).length - 1 ? '1px solid var(--cream2)' : 'none',
+                      }}>
+                        {step.status === 'completed' ? (
+                          <span style={{
+                            flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
+                            background: 'var(--brand)', color: '#fff',
+                            fontSize: 9, fontWeight: 700,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            ✓
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            title="Mark as Done"
+                            onClick={() => changeStepStatus(step, 'completed')}
+                            style={{
+                              flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
+                              background: '#e8eef8', color: '#1a4a8a',
+                              fontSize: 9, fontWeight: 700, border: '1.5px solid #b8ccee',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', padding: 0,
+                            }}
+                          >
+                            {step.workflow_step_order || idx + 1}
+                          </button>
+                        )}
+                        <span style={{
+                          flex: 1, fontSize: 14, minWidth: 0,
+                          color: step.status === 'completed' ? 'var(--text3)' : 'var(--text2)',
+                          textDecoration: step.status === 'completed' ? 'line-through' : 'none',
+                        }}>
+                          {step.title}
+                        </span>
+                        <StatusPill
+                          status={step.status}
+                          options={STEP_STATUSES}
+                          onStatusChange={s => changeStepStatus(step, s)}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             );
@@ -701,6 +858,29 @@ export default function WorkflowEngine({ pendingWorkflow, onPendingConsumed }) {
           </div>
         )}
       </div>
+
+      {commentInstance && (
+        <CommentModal
+          task={{ id: commentInstance.parentTaskId, title: commentInstance.name }}
+          onClose={() => setCommentInstance(null)}
+          onCommentPosted={handleCommentPosted}
+        />
+      )}
+
+      {confirmDeleteInstance && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setConfirmDeleteInstance(null); }}>
+          <div className="modal" style={{ maxWidth: 380 }}>
+            <div className="modal-title" style={{ fontSize: 18 }}>Delete Workflow?</div>
+            <p style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+              This will permanently delete "{confirmDeleteInstance.name}" and all its steps. This cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setConfirmDeleteInstance(null)}>Cancel</button>
+              <button className="btn-danger" onClick={handleDeleteWorkflow}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

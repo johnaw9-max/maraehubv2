@@ -144,9 +144,14 @@ export async function getActiveWorkflows() {
 
   if (error) console.error('[getActiveWorkflows] query error:', error);
 
-  // Expose only subtasks for progress calculation in WorkflowEngine panel
+  // Task View Cleanup (14yhc7kutvv) Step 2 -- parentTaskId exposed
+  // alongside the subtasks (previously discarded) so the WorkflowEngine
+  // panel can key step-completion, delete, and comments off the real
+  // parent task id, now that those interactions live here instead of
+  // TaskBoard.js's WorkflowParentCard.
   return (data || []).map(inst => ({
     ...inst,
+    parentTaskId: (inst.tasks || []).find(t => !t.parent_task_id)?.id || null,
     tasks: (inst.tasks || []).filter(t => t.parent_task_id),
   }));
 }

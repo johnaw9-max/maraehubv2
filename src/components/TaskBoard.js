@@ -3,10 +3,10 @@ import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import { onTaskCompleted } from '../lib/taskSync';
-import { updateWorkflowProgress } from '../lib/workflowEngine';
 import { compareByUrgency } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
+import CommentModal from './CommentModal';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -77,322 +77,6 @@ function compareTasksByMode(mode) {
 function isCompletedToday(task) {
   if (task.status !== 'completed' || !task.completed_at) return false;
   return new Date(task.completed_at).toDateString() === new Date().toDateString();
-}
-
-// ─── WORKFLOW PARENT CARD ─────────────────────────────────────────────────────
-
-function WorkflowParentCard({ task, subtasks, onDelete, onChangeSubtaskStatus, commentCount, onOpenComments }) {
-  const [expanded, setExpanded] = useState(false);
-  const total = subtasks.length;
-  const done = subtasks.filter(t => t.status === 'completed').length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const allDone = total > 0 && done === total;
-  const next = subtasks.find(t => t.status !== 'completed' && t.status !== 'cancelled');
-
-  return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderLeft: '4px solid var(--brand)',
-      borderRadius: '0 8px 8px 0',
-      padding: '12px 12px 10px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <span style={{
-          fontSize: 14, fontWeight: 700, letterSpacing: '0.08em',
-          background: 'var(--brand)', color: '#fff',
-          borderRadius: 4, padding: '3px 8px',
-        }}>
-          WORKFLOW
-        </span>
-      </div>
-
-      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 8, lineHeight: 1.4 }}>
-        {task.title}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 14, color: 'var(--text3)' }}>
-          {done} / {total} steps complete
-        </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: allDone ? 'var(--brand)' : 'var(--text3)' }}>
-          {pct}%
-        </span>
-      </div>
-
-      <div style={{ height: 5, background: '#e8eef8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-        <div style={{
-          height: '100%', width: `${pct}%`,
-          background: allDone ? 'var(--brand)' : '#5b8dee',
-          borderRadius: 3, transition: 'width 0.3s',
-        }} />
-      </div>
-
-      {allDone ? (
-        <div style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500, marginBottom: 8 }}>
-          All steps complete
-        </div>
-      ) : next ? (
-        <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 8, fontStyle: 'italic' }}>
-          Next: {next.title}
-        </div>
-      ) : null}
-
-      <div style={{ display: 'flex', gap: 4 }}>
-        <button
-          onClick={() => setExpanded(e => !e)}
-          style={{
-            flex: 1, background: 'var(--surface2)', color: 'var(--text2)',
-            border: '1px solid var(--border)', borderRadius: 6,
-            padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          {expanded ? '▲ Hide Steps' : '▼ Show Steps'}
-        </button>
-        <button
-          onClick={() => onOpenComments(task)}
-          title="View updates"
-          style={{
-            background: commentCount > 0 ? '#e8eef8' : 'var(--surface2)',
-            color: commentCount > 0 ? '#1a4a8a' : 'var(--text3)',
-            border: `1px solid ${commentCount > 0 ? '#b8ccee' : 'var(--border)'}`,
-            borderRadius: 6, padding: '4px 8px', fontSize: 13,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-            flexShrink: 0,
-          }}
-        >
-          💬
-          {commentCount > 0 && (
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              background: 'var(--brand)', color: '#fff',
-              borderRadius: 10, padding: '0 5px', lineHeight: '16px',
-              minWidth: 16, textAlign: 'center', display: 'inline-block',
-            }}>
-              {commentCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => onDelete(task.id)}
-          style={{
-            flex: 1, background: '#faeae7', color: 'var(--danger)',
-            border: '1px solid #f0b8b0', borderRadius: 6,
-            padding: '5px 0', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Delete
-        </button>
-      </div>
-
-      {expanded && (
-        <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-          {subtasks.map((sub, idx) => (
-            <div key={sub.id} style={{
-              display: 'flex', alignItems: 'center', gap: 7,
-              padding: '5px 0',
-              borderBottom: idx < subtasks.length - 1 ? '1px solid var(--border)' : 'none',
-            }}>
-              {sub.status === 'completed' ? (
-                <span style={{
-                  flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
-                  background: 'var(--brand)', color: '#fff',
-                  fontSize: 9, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  ✓
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  title="Mark as Done"
-                  onClick={() => onChangeSubtaskStatus(sub, 'completed')}
-                  style={{
-                    flexShrink: 0, width: 18, height: 18, borderRadius: '50%',
-                    background: '#e8eef8', color: '#1a4a8a',
-                    fontSize: 9, fontWeight: 700, border: '1.5px solid #b8ccee',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', padding: 0,
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'var(--brand)';
-                    e.currentTarget.style.color = '#fff';
-                    e.currentTarget.style.borderColor = 'var(--brand)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = '#e8eef8';
-                    e.currentTarget.style.color = '#1a4a8a';
-                    e.currentTarget.style.borderColor = '#b8ccee';
-                  }}
-                >
-                  {sub.workflow_step_order || idx + 1}
-                </button>
-              )}
-              <span style={{
-                flex: 1, fontSize: 14, minWidth: 0,
-                color: sub.status === 'completed' ? 'var(--text3)' : 'var(--text2)',
-                textDecoration: sub.status === 'completed' ? 'line-through' : 'none',
-              }}>
-                {sub.title}
-              </span>
-              <StatusPill
-                status={sub.status}
-                options={TASK_STATUSES}
-                onStatusChange={s => onChangeSubtaskStatus(sub, s)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── COMMENT MODAL ────────────────────────────────────────────────────────────
-
-function CommentModal({ task, onClose, onCommentPosted }) {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const [currentUserEmail, setCurrentUserEmail] = useState('');
-
-  useEffect(() => {
-    fetchComments();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserEmail(user?.email || '');
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function fetchComments() {
-    setLoading(true);
-    const { data } = await supabase
-      .from('task_comments')
-      .select('*')
-      .eq('task_id', task.id)
-      .order('created_at', { ascending: false });
-    setComments(data || []);
-    setLoading(false);
-  }
-
-  async function handleSend() {
-    const msg = text.trim();
-    if (!msg) return;
-    setSending(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const email = user?.email || '';
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user?.id)
-      .single();
-    const authorName = profile?.full_name || email || 'Unknown';
-    const { error } = await supabase.from('task_comments').insert({
-      task_id: task.id,
-      author_name: authorName,
-      author_email: email,
-      message: msg,
-    });
-    setSending(false);
-    if (!error) {
-      setText('');
-      fetchComments();
-      onCommentPosted(task.id);
-    }
-  }
-
-  async function handleDelete(commentId) {
-    if (!window.confirm('Delete this comment?')) return;
-    await supabase.from('task_comments').delete().eq('id', commentId);
-    setComments(prev => prev.filter(c => c.id !== commentId));
-    onCommentPosted(task.id);
-  }
-
-  function fmtCommentTime(ts) {
-    return new Date(ts).toLocaleString('en-NZ', {
-      day: 'numeric', month: 'short', year: 'numeric',
-      hour: 'numeric', minute: '2-digit',
-    });
-  }
-
-  return (
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: 500, display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}>
-        <div className="modal-title" style={{ fontSize: 16, marginBottom: 4 }}>
-          Updates
-        </div>
-        <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 16 }}>{task.title}</div>
-
-        {/* Thread */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, marginBottom: 16 }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 14, padding: 24 }}>Loading...</div>
-          ) : comments.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 14, padding: 24 }}>
-              No updates yet. Be the first to post.
-            </div>
-          ) : comments.map(c => (
-            <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <div style={{
-                flexShrink: 0, width: 32, height: 32, borderRadius: '50%',
-                background: 'var(--brand)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 700,
-              }}>
-                {(c.author_name || '?').charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)' }}>{c.author_name}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text3)' }}>{fmtCommentTime(c.created_at)}</span>
-                  {c.author_email === currentUserEmail && (
-                    <button
-                      onClick={() => handleDelete(c.id)}
-                      style={{
-                        marginLeft: 'auto', background: 'none', border: 'none',
-                        cursor: 'pointer', color: 'var(--text3)', fontSize: 14,
-                        padding: '0 2px', lineHeight: 1,
-                      }}
-                      title="Delete comment"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 14, color: 'var(--text2)', lineHeight: 1.55,
-                  background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px',
-                  wordBreak: 'break-word',
-                }}>
-                  {c.message}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Input */}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-          <textarea
-            className="form-input"
-            rows={3}
-            placeholder="Write an update..."
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend(); }}
-            style={{ resize: 'none', marginBottom: 10 }}
-            autoFocus
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button className="btn-secondary" onClick={onClose}>Close</button>
-            <button className="btn-primary" onClick={handleSend} disabled={sending || !text.trim()}>
-              {sending ? 'Sending...' : 'Send'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
@@ -569,19 +253,12 @@ export default function TaskBoard() {
     setCommentCounts(prev => ({ ...prev, [taskId]: (prev[taskId] || 0) + 1 }));
   }
 
-  // Subtasks grouped by parent task id — used by WorkflowParentCard
-  const subtasksByParent = useMemo(() => {
-    const map = {};
-    tasks.filter(t => t.parent_task_id).forEach(t => {
-      if (!map[t.parent_task_id]) map[t.parent_task_id] = [];
-      map[t.parent_task_id].push(t);
-    });
-    Object.values(map).forEach(arr => arr.sort((a, b) => (a.workflow_step_order || 0) - (b.workflow_step_order || 0)));
-    return map;
-  }, [tasks]);
-
-  // Non-subtask tasks only — used for KPIs and the kanban board
-  const visibleTasks = useMemo(() => tasks.filter(t => !t.parent_task_id), [tasks]);
+  // Task View Cleanup (14yhc7kutvv) Step 2 -- workflow parent/subtask rows
+  // excluded entirely, not just given a special card. Workflow progress,
+  // step-completion, delete, and comments now live on the Workflows tab
+  // (WorkflowEngine.js) instead. Non-subtask, non-workflow tasks only --
+  // used for KPIs and the kanban board.
+  const visibleTasks = useMemo(() => tasks.filter(t => !t.parent_task_id && !t.workflow_instance_id), [tasks]);
 
   const kpis = useMemo(() => ({
     total: visibleTasks.length,
@@ -653,15 +330,11 @@ export default function TaskBoard() {
 
   async function handleDelete() {
     if (!confirmDeleteId) return;
-    const taskToDelete = tasks.find(t => t.id === confirmDeleteId);
+    // Task View Cleanup (14yhc7kutvv) Step 2 -- workflow parent tasks are
+    // excluded from visibleTasks entirely, so confirmDeleteId can now only
+    // ever be a plain task. Workflow deletion (and cancelling the linked
+    // workflow_instance) now lives on the Workflows tab instead.
     await supabase.from('tasks').delete().eq('id', confirmDeleteId);
-    // If deleting a workflow parent task, also cancel the workflow instance
-    if (taskToDelete?.workflow_instance_id && !taskToDelete?.parent_task_id) {
-      await supabase
-        .from('workflow_instances')
-        .update({ status: 'cancelled' })
-        .eq('id', taskToDelete.workflow_instance_id);
-    }
     setConfirmDeleteId(null);
     fetchTasks();
   }
@@ -682,11 +355,12 @@ export default function TaskBoard() {
     }
     await supabase.from('tasks').update(updates).eq('id', task.id);
 
+    // Task View Cleanup (14yhc7kutvv) Step 2 -- the subtask-uncompleted
+    // branch this used to have is now dead: subtask rows are excluded from
+    // visibleTasks entirely, so task.parent_task_id can never be true here.
+    // That workflow-progress bookkeeping now lives on the Workflows tab.
     if (newStatus === 'completed' && task.status !== 'completed') {
       await onTaskCompleted(task);
-    } else if (task.parent_task_id && task.workflow_instance_id && task.status === 'completed' && newStatus !== 'completed') {
-      // Subtask un-completed — update workflow progress to push parent back to in-progress/open
-      await updateWorkflowProgress(task.workflow_instance_id);
     }
 
     fetchTasks();
@@ -703,10 +377,9 @@ export default function TaskBoard() {
       valueColor: kpis.completedToday > 0 ? 'var(--success)' : 'var(--text3)' },
   ];
 
-  // For the delete confirm modal
-  const taskToConfirmDelete = tasks.find(t => t.id === confirmDeleteId);
-  const isWorkflowParentDelete = taskToConfirmDelete?.workflow_instance_id && !taskToConfirmDelete?.parent_task_id;
-  const deleteSubtaskCount = isWorkflowParentDelete ? (subtasksByParent[confirmDeleteId] || []).length : 0;
+  // For the delete confirm modal. Workflow parent tasks are excluded from
+  // visibleTasks entirely (Step 2 above), so confirmDeleteId can now only
+  // ever be a plain task -- no workflow-vs-task branch needed here anymore.
 
   return (
     <div>
@@ -794,29 +467,17 @@ export default function TaskBoard() {
                       No tasks
                     </div>
                   ) : colTasks.map(task => (
-                    task.workflow_instance_id ? (
-                      <WorkflowParentCard
-                        key={task.id}
-                        task={task}
-                        subtasks={subtasksByParent[task.id] || []}
-                        onDelete={setConfirmDeleteId}
-                        onChangeSubtaskStatus={changeTaskStatus}
-                        commentCount={commentCounts[task.id] || 0}
-                        onOpenComments={setCommentTask}
-                      />
-                    ) : (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        colIndex={colIndex}
-                        onMove={moveTask}
-                        onEdit={openEdit}
-                        onDelete={setConfirmDeleteId}
-                        onChangeStatus={changeTaskStatus}
-                        commentCount={commentCounts[task.id] || 0}
-                        onOpenComments={setCommentTask}
-                      />
-                    )
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      colIndex={colIndex}
+                      onMove={moveTask}
+                      onEdit={openEdit}
+                      onDelete={setConfirmDeleteId}
+                      onChangeStatus={changeTaskStatus}
+                      commentCount={commentCounts[task.id] || 0}
+                      onOpenComments={setCommentTask}
+                    />
                   ))}
                 </div>
               </div>
@@ -958,12 +619,10 @@ export default function TaskBoard() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setConfirmDeleteId(null); }}>
           <div className="modal" style={{ maxWidth: 380 }}>
             <div className="modal-title" style={{ fontSize: 18 }}>
-              {isWorkflowParentDelete ? 'Delete Workflow?' : 'Delete Task?'}
+              Delete Task?
             </div>
             <p style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-              {isWorkflowParentDelete
-                ? `This will permanently delete this workflow and all ${deleteSubtaskCount} step${deleteSubtaskCount !== 1 ? 's' : ''}. This cannot be undone.`
-                : 'This task will be permanently deleted and cannot be recovered.'}
+              This task will be permanently deleted and cannot be recovered.
             </p>
             <div className="modal-actions">
               <button className="btn-secondary" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
