@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
-import { onTaskCompleted } from '../lib/taskSync';
+import { onTaskCompleted, taskSource } from '../lib/taskSync';
 import { compareByUrgency } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
@@ -88,6 +88,15 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
   const isFirst = colIndex === 0;
   const isLast = colIndex === COLUMNS.length - 1;
 
+  // Task View Cleanup (14yhc7kutvv) Step 3 -- light-touch category badge
+  // for auto-generated tasks, reusing the existing TASK_SOURCES mapping
+  // (previously unused anywhere). Manually-created tasks have no matching
+  // prefix, so source is null and no badge shows -- itself informative,
+  // not a gap to fill. Display-only: the raw title (prefix included) is
+  // still what the edit form and delete/comment modals show.
+  const source = taskSource(task.title);
+  const displayTitle = source ? task.title.slice(source.prefix.length) : task.title;
+
   return (
     <div style={{
       background: 'var(--surface)',
@@ -96,8 +105,21 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
       borderRadius: '0 8px 8px 0',
       padding: '12px 12px 10px',
     }}>
+      {source && (
+        <div style={{ marginBottom: 5 }}>
+          <span style={{
+            fontSize: 12, fontWeight: 600, color: 'var(--text2)',
+            background: 'var(--surface2)', border: '1px solid var(--border)',
+            borderRadius: 20, padding: '2px 9px', display: 'inline-flex',
+            alignItems: 'center', gap: 4,
+          }}>
+            {source.icon} {source.label}
+          </span>
+        </div>
+      )}
+
       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 6, lineHeight: 1.4 }}>
-        {task.title}
+        {displayTitle}
       </div>
 
       {task.assigned_to && (
