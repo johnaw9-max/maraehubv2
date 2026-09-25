@@ -301,15 +301,21 @@ export async function closeLinkedTask(sourceId) {
 
 // Map a task title prefix to a source label and icon for Board View grouping.
 // UPCOMING must be listed before OVERDUE so its prefix is matched first.
+//
+// action classifies what completing the task does, per Step 4's audit
+// (14yhc7kutvv): 'actionable' writes back to the source item, 'reference'
+// is acknowledgment-only (no source write), 'ambiguous' has no completion
+// handling in onTaskCompleted at all -- currently only GRANT:, a real gap
+// left as a separate decision rather than papered over here.
 export const TASK_SOURCES = [
-  { prefix: 'UPCOMING: ', label: 'Upcoming',        icon: '🟡', tab: 'tasks'      },
-  { prefix: 'OVERDUE: ',  label: 'Compliance',       icon: '✅', tab: 'compliance' },
-  { prefix: 'PROJECT: ',  label: 'Projects',          icon: '📋', tab: 'projects'   },
-  { prefix: 'SERVICE: ',  label: 'Asset Services',    icon: '🔧', tab: 'assets'     },
-  { prefix: 'ACTION: ',   label: 'Meeting Actions',   icon: '📝', tab: 'minutes'    },
-  { prefix: 'GOAL: ',     label: 'Strategic Goals',   icon: '🎯', tab: 'goals'      },
-  { prefix: 'GRANT: ',    label: 'Grants',            icon: '💰', tab: 'grants'     },
-  { prefix: 'FINANCE: ',  label: 'Finance',           icon: '📊', tab: 'finance'    },
+  { prefix: 'UPCOMING: ', label: 'Upcoming',        icon: '🟡', tab: 'tasks',      action: 'reference'  },
+  { prefix: 'OVERDUE: ',  label: 'Compliance',       icon: '✅', tab: 'compliance', action: 'actionable' },
+  { prefix: 'PROJECT: ',  label: 'Projects',          icon: '📋', tab: 'projects',   action: 'actionable' },
+  { prefix: 'SERVICE: ',  label: 'Asset Services',    icon: '🔧', tab: 'assets',     action: 'actionable' },
+  { prefix: 'ACTION: ',   label: 'Meeting Actions',   icon: '📝', tab: 'minutes',    action: 'actionable' },
+  { prefix: 'GOAL: ',     label: 'Strategic Goals',   icon: '🎯', tab: 'goals',      action: 'actionable' },
+  { prefix: 'GRANT: ',    label: 'Grants',            icon: '💰', tab: 'grants',     action: 'ambiguous'  },
+  { prefix: 'FINANCE: ',  label: 'Finance',           icon: '📊', tab: 'finance',    action: 'reference'  },
 ];
 
 export function taskSource(title) {

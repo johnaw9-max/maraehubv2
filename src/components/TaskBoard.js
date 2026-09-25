@@ -24,6 +24,18 @@ const PRIORITY_BADGE  = {
   Low:    { bg: '#e8f4ef', color: '#2d6e57' },
 };
 
+// Step 4 (14yhc7kutvv): action-ness is a property of the source category,
+// not the individual task, so it's a style variant on the existing pill
+// rather than a new badge. 'actionable' keeps Step 3's original filled
+// look; 'reference' is deliberately quieter (no fill, muted text); the
+// dashed border on 'ambiguous' flags GRANT: as needing a real decision
+// (see taskSync.js), not a settled reference-vs-actionable case.
+const SOURCE_ACTION_STYLE = {
+  actionable: { background: 'var(--surface2)', border: '1px solid var(--border)',  color: 'var(--text2)', fontWeight: 600 },
+  reference:  { background: 'transparent',      border: 'none',                     color: 'var(--text3)', fontWeight: 500 },
+  ambiguous:  { background: 'var(--surface2)', border: '1px dashed var(--border)', color: 'var(--text2)', fontWeight: 600 },
+};
+
 const EMPTY_FORM = { title: '', description: '', assigned_to: '', due_date: '', priority: 'Medium' };
 
 const TASK_STATUSES = COLUMNS.map(c => c.key);
@@ -108,10 +120,9 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
       {source && (
         <div style={{ marginBottom: 5 }}>
           <span style={{
-            fontSize: 12, fontWeight: 600, color: 'var(--text2)',
-            background: 'var(--surface2)', border: '1px solid var(--border)',
-            borderRadius: 20, padding: '2px 9px', display: 'inline-flex',
+            fontSize: 12, borderRadius: 20, padding: '2px 9px', display: 'inline-flex',
             alignItems: 'center', gap: 4,
+            ...SOURCE_ACTION_STYLE[source.action],
           }}>
             {source.icon} {source.label}
           </span>
