@@ -557,6 +557,13 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "asset_id",
     "workflow_prompt_dismissed_at"
   ],
+  "role_configs": [
+    "role_key",
+    "label",
+    "icon",
+    "is_active",
+    "duties"
+  ],
   "service_reminders": [
     "id",
     "asset_id",
@@ -622,7 +629,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "created_by",
     "entity_name",
     "trigger_type",
-    "trigger_date"
+    "trigger_date",
+    "context_data"
   ],
   "workflow_steps": [
     "id",
@@ -632,7 +640,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "description",
     "requires_document",
     "document_label",
-    "created_at"
+    "created_at",
+    "role_key"
   ],
   "workflow_templates": [
     "id",

@@ -1484,6 +1484,30 @@ create policy "Trustees can manage risk_register within their entities"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
 
 
+-- ── ROLE_CONFIGS ──────────────────────────────────────────────────────────
+create table if not exists role_configs (
+  role_key text not null,
+  label text not null,
+  icon text,
+  is_active boolean not null default false,
+  duties jsonb not null default '[]'::jsonb
+);
+
+alter table role_configs add constraint role_configs_pkey PRIMARY KEY (role_key);
+
+alter table role_configs enable row level security;
+
+create policy "authenticated users manage role_configs"
+  on role_configs for all
+  to public
+  using ((auth.role() = 'authenticated'::text));
+
+create policy "authenticated users view role_configs"
+  on role_configs for select
+  to public
+  using ((auth.role() = 'authenticated'::text));
+
+
 -- ── SERVICE_REMINDERS ─────────────────────────────────────────────────────
 create table if not exists service_reminders (
   id uuid not null default gen_random_uuid(),
@@ -1651,7 +1675,8 @@ create table if not exists workflow_instances (
   created_by uuid,
   entity_name text,
   trigger_type text,
-  trigger_date date
+  trigger_date date,
+  context_data jsonb
 );
 
 alter table workflow_instances add constraint workflow_instances_pkey PRIMARY KEY (id);
@@ -1681,11 +1706,13 @@ create table if not exists workflow_steps (
   description text,
   requires_document boolean default false,
   document_label text,
-  created_at timestamp with time zone default now()
+  created_at timestamp with time zone default now(),
+  role_key text
 );
 
 alter table workflow_steps add constraint workflow_steps_pkey PRIMARY KEY (id);
 alter table workflow_steps add constraint workflow_steps_template_id_fkey FOREIGN KEY (template_id) REFERENCES workflow_templates(id) ON DELETE CASCADE;
+alter table workflow_steps add constraint workflow_steps_template_role_step_key UNIQUE (template_id, role_key, step_order);
 
 alter table workflow_steps enable row level security;
 
