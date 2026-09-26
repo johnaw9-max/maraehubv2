@@ -588,11 +588,26 @@ alter table feedback add constraint feedback_status_check CHECK ((status = ANY (
 
 alter table feedback enable row level security;
 
-create policy "allow_authenticated"
-  on feedback for all
+create policy "feedback: anyone can submit"
+  on feedback for insert
   to authenticated
-  using (true)
   with check (true);
+
+create policy "feedback: founder can read"
+  on feedback for select
+  to authenticated
+  using (is_founder());
+
+create policy "feedback: founder can resolve"
+  on feedback for update
+  to authenticated
+  using (is_founder())
+  with check (is_founder());
+
+create policy "feedback: founder can delete"
+  on feedback for delete
+  to authenticated
+  using (is_founder());
 
 
 -- ── FINANCE_BALANCE_SHEET ─────────────────────────────────────────────────
@@ -775,11 +790,29 @@ alter table founder_notes add constraint founder_notes_pkey PRIMARY KEY (marae_n
 
 alter table founder_notes enable row level security;
 
-create policy "founder_notes: authenticated access"
+create policy "founder_notes: founder only"
   on founder_notes for all
   to authenticated
-  using (true)
-  with check (true);
+  using (is_founder())
+  with check (is_founder());
+
+
+-- ── FOUNDER_METRICS ───────────────────────────────────────────────────────
+create table if not exists founder_metrics (
+  id uuid not null default gen_random_uuid(),
+  data jsonb,
+  updated_at timestamp with time zone default now()
+);
+
+alter table founder_metrics add constraint founder_metrics_pkey PRIMARY KEY (id);
+
+alter table founder_metrics enable row level security;
+
+create policy "founder_metrics: founder only"
+  on founder_metrics for all
+  to authenticated
+  using (is_founder())
+  with check (is_founder());
 
 
 -- ── GL_ACCOUNTS ───────────────────────────────────────────────────────────
@@ -1133,7 +1166,6 @@ create table if not exists marae_settings (
   updated_at timestamp without time zone default now(),
   use_xero boolean not null default false,
   automation_level text default 'assisted'::text,
-  founder_metrics jsonb,
   onboarding_complete boolean default false,
   onboarding_step integer default 0,
   payment_details text,

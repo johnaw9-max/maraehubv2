@@ -203,7 +203,7 @@ export default function FounderDashboard({ profile }) {
   const [weekFocus, setWeekFocus]    = useState({ ship: '', contact: '', fix: '' });
   const [saved, setSaved]            = useState(false);
   const [loading, setLoading]        = useState(true);
-  const [settingsId, setSettingsId]  = useState(null);
+  const [metricsId, setMetricsId]    = useState(null);
 
   const [opeke,    setOpeke]    = useState({ status: 'Active', note: '' });
   const [tineka,   setTineka]   = useState({ status: 'Trial',  note: '' });
@@ -285,8 +285,14 @@ export default function FounderDashboard({ profile }) {
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
     const startOfMonthIso = startOfMonth.toISOString();
 
-    const [settingsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes, fbOpekeRes, fbTinekaRes, uxOpekeRes, uxTinekaRes] = await Promise.all([
-      supabase.from('marae_settings').select('id, founder_metrics').limit(1).single(),
+    const [metricsRes, tasksRes, profilesRes, kpiT, kpiTi, notesRes, fbOpekeRes, fbTinekaRes, uxOpekeRes, uxTinekaRes] = await Promise.all([
+      // founder_metrics used to live as a column on marae_settings, but
+      // RLS is row-level -- it moved to its own table (2026-09-26) so it
+      // can be founder-only without locking every trustee out of the
+      // marae_settings columns everything else in the app depends on.
+      // maybeSingle(), not single(): the row may not exist yet on a
+      // project that never had founder_metrics set before the migration.
+      supabase.from('founder_metrics').select('id, data').limit(1).maybeSingle(),
       supabase.from('tasks').select('id', { count: 'exact', head: true }).neq('status', 'completed').neq('status', 'cancelled'),
       supabase.from('profiles').select('id', { count: 'exact', head: true }),
       fetchEnvKPIs(supabase, 'Opeke'),
@@ -300,9 +306,9 @@ export default function FounderDashboard({ profile }) {
       supabaseTineka.from('feedback').select('rating, message, created_at').eq('type', 'ux_pulse').gte('created_at', startOfMonthIso),
     ]);
 
-    if (settingsRes.data) {
-      setSettingsId(settingsRes.data.id);
-      const m = settingsRes.data.founder_metrics || {};
+    if (metricsRes.data) {
+      setMetricsId(metricsRes.data.id);
+      const m = metricsRes.data.data || {};
       if (m.mrr         !== undefined) setMrr(m.mrr);
       if (m.signedMarae !== undefined) setSignedMarae(m.signedMarae);
       if (m.shipped     !== undefined) setShipped(m.shipped);
@@ -451,9 +457,17 @@ export default function FounderDashboard({ profile }) {
   }
 
   async function saveMetrics() {
-    if (!settingsId) return;
     const payload = { mrr, signedMarae, shipped, weekFocus, opeke, tineka };
-    await supabase.from('marae_settings').update({ founder_metrics: payload }).eq('id', settingsId);
+    if (metricsId) {
+      await supabase.from('founder_metrics')
+        .update({ data: payload, updated_at: new Date().toISOString() })
+        .eq('id', metricsId);
+    } else {
+      // First save on a project that never had founder_metrics before --
+      // no row to update yet.
+      const { data } = await supabase.from('founder_metrics').insert({ data: payload }).select('id').single();
+      if (data) setMetricsId(data.id);
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

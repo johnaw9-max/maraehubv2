@@ -312,6 +312,11 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "updated_at",
     "data"
   ],
+  "founder_metrics": [
+    "id",
+    "data",
+    "updated_at"
+  ],
   "gl_accounts": [
     "id",
     "code",
@@ -433,7 +438,6 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "updated_at",
     "use_xero",
     "automation_level",
-    "founder_metrics",
     "onboarding_complete",
     "onboarding_step",
     "payment_details",
