@@ -270,7 +270,19 @@ export async function onTaskCompleted(task) {
     return;
   }
 
-  // GRANT: — no auto-reset; grant workflow is manual
+  // ── GRANTS (prefix "GRANT: ") → acknowledges the deadline reminder ─────────
+  if (title.startsWith('GRANT: ')) {
+    // No DB update: this task is a deadline-approaching reminder, not a
+    // submission confirmation (see GrantsTracker.js's createUrgentTasks).
+    // Auto-advancing grants.status to 'submitted' on completion would
+    // assert something that may not be true -- the trustee might have
+    // completed the task without having actually submitted the
+    // application. Status changes stay a deliberate, explicit action in
+    // GrantsTracker.js's own UI. A new task will be created next time
+    // GrantsTracker.js loads if the deadline is still approaching and the
+    // grant hasn't been moved out of researching/in-progress.
+    return;
+  }
 
   // ── FINANCE (prefix "FINANCE: ") → acknowledges over-budget review ───────────
   if (title.startsWith('FINANCE: ')) {
@@ -304,9 +316,10 @@ export async function closeLinkedTask(sourceId) {
 //
 // action classifies what completing the task does, per Step 4's audit
 // (14yhc7kutvv): 'actionable' writes back to the source item, 'reference'
-// is acknowledgment-only (no source write), 'ambiguous' has no completion
-// handling in onTaskCompleted at all -- currently only GRANT:, a real gap
-// left as a separate decision rather than papered over here.
+// is acknowledgment-only (no source write). GRANT: was 'ambiguous' (no
+// completion handling at all) until the branch above was added -- now
+// 'reference', same as FINANCE:, since a deadline reminder being checked
+// off isn't proof the grant was actually submitted.
 export const TASK_SOURCES = [
   { prefix: 'UPCOMING: ', label: 'Upcoming',        icon: '🟡', tab: 'tasks',      action: 'reference'  },
   { prefix: 'OVERDUE: ',  label: 'Compliance',       icon: '✅', tab: 'compliance', action: 'actionable' },
@@ -314,7 +327,7 @@ export const TASK_SOURCES = [
   { prefix: 'SERVICE: ',  label: 'Asset Services',    icon: '🔧', tab: 'assets',     action: 'actionable' },
   { prefix: 'ACTION: ',   label: 'Meeting Actions',   icon: '📝', tab: 'minutes',    action: 'actionable' },
   { prefix: 'GOAL: ',     label: 'Strategic Goals',   icon: '🎯', tab: 'goals',      action: 'actionable' },
-  { prefix: 'GRANT: ',    label: 'Grants',            icon: '💰', tab: 'grants',     action: 'ambiguous'  },
+  { prefix: 'GRANT: ',    label: 'Grants',            icon: '💰', tab: 'grants',     action: 'reference'  },
   { prefix: 'FINANCE: ',  label: 'Finance',           icon: '📊', tab: 'finance',    action: 'reference'  },
 ];
 

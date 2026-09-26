@@ -27,13 +27,10 @@ const PRIORITY_BADGE  = {
 // Step 4 (14yhc7kutvv): action-ness is a property of the source category,
 // not the individual task, so it's a style variant on the existing pill
 // rather than a new badge. 'actionable' keeps Step 3's original filled
-// look; 'reference' is deliberately quieter (no fill, muted text); the
-// dashed border on 'ambiguous' flags GRANT: as needing a real decision
-// (see taskSync.js), not a settled reference-vs-actionable case.
+// look; 'reference' is deliberately quieter (no border, muted text).
 const SOURCE_ACTION_STYLE = {
-  actionable: { background: 'var(--surface2)', border: '1px solid var(--border)',  color: 'var(--text2)', fontWeight: 600 },
-  reference:  { background: 'transparent',      border: 'none',                     color: 'var(--text3)', fontWeight: 500 },
-  ambiguous:  { background: 'var(--surface2)', border: '1px dashed var(--border)', color: 'var(--text2)', fontWeight: 600 },
+  actionable: { background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', fontWeight: 600 },
+  reference:  { background: 'transparent',      border: 'none',                    color: 'var(--text3)', fontWeight: 500 },
 };
 
 const EMPTY_FORM = { title: '', description: '', assigned_to: '', due_date: '', priority: 'Medium' };
