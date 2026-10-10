@@ -21,7 +21,7 @@ const PROBLEMS = [
   'Nobody knows who is responsible for an action',
 ];
 
-const FOUNDING_PAYMENT_LINK = 'https://buy.stripe.com/4gM6oHeAD6sPcAd9OZgrS00';
+const FOUNDING_PAYMENT_LINK = 'https://buy.stripe.com/3cI5kD8cfbN943H3qBgrS01';
 const DEMO_EMAIL = 'mailto:maraehub@gmail.com?subject=Demo%20Request';
 
 const EDUCATION_TOPICS = [
@@ -118,7 +118,7 @@ export default function WelcomeLanding() {
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
             <span style={{ fontSize: 18, color: 'var(--text3)', textDecoration: 'line-through' }}>$49.50/month</span>
             <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 40, fontWeight: 700, color: 'var(--brand)' }}>
-              $29.50<span style={{ fontSize: 16, fontWeight: 600 }}>/month</span>
+              $24.75<span style={{ fontSize: 16, fontWeight: 600 }}>/month</span>
             </span>
           </div>
 
