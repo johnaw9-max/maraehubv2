@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
+import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import useProfiles from '../lib/useProfiles';
 import { isAssetInPoorCondition } from '../lib/assetCondition';
@@ -247,6 +247,12 @@ export default function AssetsManager({ onStartWorkflow }) {
     // compliance_items.linked_service_reminder_id as part of that same
     // delete. Looking the link up after the delete would find nothing.
     await syncLinkedComplianceItem(r.id);
+
+    // Close the linked overdue task if this reminder was serviced from its
+    // own screen instead of from the Task Board -- same shape as
+    // ComplianceTracker.handleMarkDone and Meeting Actions' save() (14yhc7kv4t3).
+    await closeLinkedTask(r.id);
+
     if (r.recurring === 'none') {
       await supabase.from('service_reminders').delete().eq('id', r.id);
     } else {
