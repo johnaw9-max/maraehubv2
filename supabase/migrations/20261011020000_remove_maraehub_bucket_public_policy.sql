@@ -1,0 +1,22 @@
+-- Test project only (14yhc7kv4t3 follow-up). The legacy `maraehub`
+-- storage bucket has one policy, "Allow all maraehub" (ALL, role
+-- public) -- the only public/anon storage policy the new Check C
+-- (security_access_control) found on the test project.
+--
+-- Confirmed before removing: no app code anywhere calls
+-- supabase.storage.from('maraehub') (grep across src and
+-- supabase/functions, zero matches). The one place that mentions the
+-- literal string "maraehub" is DocumentsManager.js's handleDelete, which
+-- only splits file_url on '/maraehub/' as a legacy URL-parsing
+-- delimiter before deleting from the documents bucket -- dead for any
+-- current upload, since current file_url values never contain that
+-- substring (confirmed: 0 documents rows match '%/maraehub/%').
+--
+-- The bucket itself still has one orphaned object with no documents row
+-- referencing it (confirmed: 1 row in storage.objects for this bucket).
+-- Left in place -- only the policy is removed here; deleting the object
+-- or the bucket itself was not asked for.
+--
+-- Idempotent / safe to re-run.
+
+drop policy if exists "Allow all maraehub" on storage.objects;
