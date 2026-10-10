@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FormError from './FormError';
 import { supabase } from '../lib/supabase';
 import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
@@ -190,6 +190,28 @@ ${sigLines}
 export default function CharterGenerator({ onClose, initialValues }) {
   const [form, setForm] = useState(() => initialValues ? { ...EMPTY_FORM, ...initialValues } : EMPTY_FORM);
   const [error, setError] = useState('');
+
+  // Pre-fill from marae_settings (Framework Alignment Audit Step 5,
+  // 14yhc7kv4t3) -- only for a fresh Charter, never when reopening a saved
+  // one (initialValues already carries the user's own saved values, which
+  // must win). Checks the freshest form state at merge time, not a stale
+  // closure, so anything the user already typed before this resolves is
+  // never overwritten. Read-only -- never writes back to marae_settings.
+  // town <- location and iwi_name <- iwi are direct matches; hapu_name is
+  // deliberately not pre-filled here (marae_settings.hapu is stored with
+  // the "Ngāti" prefix, this field wants it without -- see audit notes).
+  useEffect(() => {
+    if (initialValues) return;
+    supabase.from('marae_settings').select('marae_name, iwi, location').maybeSingle().then(({ data }) => {
+      if (!data) return;
+      setForm(f => ({
+        ...f,
+        marae_name: f.marae_name || data.marae_name || '',
+        iwi_name:   f.iwi_name   || data.iwi         || '',
+        town:       f.town       || data.location    || '',
+      }));
+    });
+  }, [initialValues]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FormError from './FormError';
+import { supabase } from '../lib/supabase';
 
 // Master template sourced directly from the real Ngāti Whātua Ōrākei
 // Trustee Limited Health and Safety Policy (July 2021), read and
@@ -150,6 +151,17 @@ table.def td.term{font-weight:bold;width:220px}
 export default function HSPolicyGenerator({ onClose }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
+
+  // Pre-fill org_name from marae_settings (Framework Alignment Audit
+  // Step 5, 14yhc7kv4t3) -- same shape as CharterGenerator's pre-fill:
+  // checks the freshest form state at merge time so anything already
+  // typed is never overwritten, and never writes back to marae_settings.
+  useEffect(() => {
+    supabase.from('marae_settings').select('marae_name').maybeSingle().then(({ data }) => {
+      if (!data) return;
+      setForm(f => ({ ...f, org_name: f.org_name || data.marae_name || '' }));
+    });
+  }, []);
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
