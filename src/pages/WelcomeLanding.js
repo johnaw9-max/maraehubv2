@@ -174,7 +174,7 @@ export default function WelcomeLanding() {
             Your Privacy
           </div>
           <p style={{ fontSize: 16, color: 'var(--text1)', lineHeight: 1.6, margin: 0 }}>
-            Your marae's information lives in its own separate, private database — never mixed with any other marae's data, and only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Your data is encrypted both in storage and when it's being accessed.
+            Your marae's records — compliance items, finance, risk register, minutes, and more — live in their own separate database, never mixed with any other marae's data, and are only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen. Files you upload (documents, compliance evidence, receipts) are stored separately: only logged-in trustees can upload, replace, or delete them, but anyone with a direct link to a specific file can view it — the same way a shared Google Drive link works. Your data is encrypted both in storage and when it's being accessed.
           </p>
         </div>
       </div>
