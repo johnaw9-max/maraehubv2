@@ -1091,6 +1091,8 @@ serve(async (req) => {
       reason: '86d3u7790 Stage 5 item 2 - returns real trustee full_name/email, comparable sensitivity to find_orphaned_auth_users. Locked to service_role from creation, 29 Aug 2026.' },
     { function: 'get_schema_migrations_versions', grantees: ['postgres', 'service_role'],
       reason: 'migration_tracking_drift check\'s own RPC - version strings only, no PII, but locked to service_role from creation anyway, same discipline as every RPC this project has added.' },
+    { function: 'get_storage_security_posture', grantees: ['postgres', 'service_role'],
+      reason: 'This check\'s own Check-C RPC (storage.objects policies + bucket public flags, 14yhc7kv4t3 follow-up) - locked to service_role from creation, 11 Oct 2026. Same self-referential gap every prior Check-RPC in this allowlist hit during its own build.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
@@ -1099,12 +1101,28 @@ serve(async (req) => {
     return as.size === bs.size && [...as].every(x => bs.has(x));
   }
 
-  const [anonPoliciesRes, secDefGrantsRes] = await Promise.all([
+  // Check C: storage.objects policies for role public or anon, any
+  // command (INSERT/UPDATE/DELETE/ALL/SELECT) -- a public/anon grant at
+  // the storage layer bypasses every table-level RLS protection this
+  // project otherwise relies on (14yhc7kv4t3: documents bucket's public
+  // SELECT policy let anon enumerate every object via the list endpoint,
+  // closed 11 Oct 2026). Keyed off role+cmd, not policy name -- names
+  // varied across all three projects for the exact same policy during
+  // that same fix (documents' old public INSERT policy was "Allow
+  // inserts" on the test project, "Allow uploads" on Opeke), so a
+  // name-based allowlist would be fragile in exactly the way this check
+  // exists to catch. Starts empty: every bucket on every project is
+  // confirmed authenticated-only as of this check's build, so there is
+  // not yet one genuine case to allowlist.
+  const ALLOWED_PUBLIC_STORAGE_POLICIES: { cmd: string; role: string; reason: string }[] = [];
+
+  const [anonPoliciesRes, secDefGrantsRes, storagePostureRes] = await Promise.all([
     db.rpc('get_anon_granted_policies'),
     db.rpc('get_security_definer_function_grants'),
+    db.rpc('get_storage_security_posture'),
   ]);
 
-  const securityFindings: { type: string; table?: string; policy?: string; function?: string; grantees?: string[]; error?: string }[] = [];
+  const securityFindings: { type: string; table?: string; policy?: string; function?: string; grantees?: string[]; cmd?: string; role?: string; error?: string }[] = [];
 
   if (anonPoliciesRes.error) {
     securityFindings.push({ type: 'anon_policy_check_failed', error: anonPoliciesRes.error.message });
@@ -1130,6 +1148,21 @@ serve(async (req) => {
     }
   }
 
+  if (storagePostureRes.error) {
+    securityFindings.push({ type: 'storage_policy_check_failed', error: storagePostureRes.error.message });
+  } else {
+    for (const row of storagePostureRes.data ?? []) {
+      if (row.kind !== 'policy') continue;
+      for (const role of row.roles ?? []) {
+        if (role !== 'public' && role !== 'anon') continue;
+        const allowed = ALLOWED_PUBLIC_STORAGE_POLICIES.some(a => a.cmd === row.cmd && a.role === role);
+        if (!allowed) {
+          securityFindings.push({ type: 'storage_policy_not_allowlisted', policy: row.name, cmd: row.cmd, role });
+        }
+      }
+    }
+  }
+
   if (securityFindings.length > 0) {
     const body =
       `Tēnā koutou,\n\n` +
@@ -1138,7 +1171,9 @@ serve(async (req) => {
         ? `- ${f.type} — check could not run (${f.error})`
         : f.function
           ? `- ${f.type} — ${f.function} (grantees: ${f.grantees?.join(', ')})`
-          : `- ${f.type} — ${f.table}.${f.policy}`
+          : f.cmd
+            ? `- ${f.type} — storage.objects "${f.policy}" (${f.cmd}, role: ${f.role})`
+            : `- ${f.type} — ${f.table}.${f.policy}`
       ).join('\n') +
       `\n\nPlease review this directly in the database.` +
       footer();
@@ -1160,6 +1195,7 @@ serve(async (req) => {
 
   const EXPECTED_BUCKETS = [
     'documents', 'meeting-attachments', 'compliance-docs', 'finance-receipts', 'contractor-docs',
+    'emergency-response-evidence',
   ];
 
   const REQUIRED_SECRETS: { name: string; format?: RegExp }[] = [
