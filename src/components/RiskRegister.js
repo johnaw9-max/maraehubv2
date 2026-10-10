@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
+import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { getUrgencyStatus, compareByUrgency, URGENCY_ORDER } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
@@ -47,9 +48,10 @@ function fmt(d) {
 // (matches Compliance's governance-cadence window, not Tasks' 7-day or
 // Grants' 14-day -- risk reviews are a periodic governance item). Missing
 // review_date deliberately stays in the low-priority 'no_date' tier rather
-// than being promoted to urgent -- matches the existing convention of
-// treating a High-rated Open risk with no review_date as a known, accepted
-// gap tracked separately, not silently solved here.
+// than being promoted to urgent -- matches the explicit, twice-stated
+// convention in createOverdueTasks() below and the check-deadlines cron's
+// risk-reminder block: a High-rated Open risk with no review_date is a
+// known, accepted gap tracked separately, not silently solved here.
 const RISK_URGENCY_OPTS = { dateField: 'review_date', dueSoonDays: 30, doneStatuses: ['Closed'] };
 const RATING_RANK = { High: 0, Medium: 1, Low: 2 };
 
@@ -158,10 +160,59 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
     setRemediationTemplate(tplRes.data || null);
     setActiveWorkflowRiskIds(new Set((wfRes.data || []).map(w => w.entity_id)));
     setLoading(false);
+    await createOverdueTasks(riskRows);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setRisks(prev => [...prev].sort(compareRisksByMode(sortMode))); }, [sortMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Task-sync engine (14yhc7kq5ga) -- same on-tab-load convention as
+  // ComplianceTracker.js's createOverdueTasks(), but its own "RISK: " prefix
+  // (not "OVERDUE: ") -- that prefix belongs to Compliance in TASK_SOURCES /
+  // onTaskCompleted, and reusing it made completed risk tasks silently
+  // no-op against compliance_items instead of the risk (14yhc7kv4t3).
+  // Deliberately review_date-only for this first pass: a High-rated Open
+  // risk with no review_date set gets no task here, same blind spot
+  // Compliance already accepts for items with no due_date -- logged
+  // separately as its own follow-up, not silently solved by inventing a
+  // broader heuristic here.
+  //
+  // status === 'Open' only, not 'Being Managed' -- a risk actively being
+  // managed already has a real, human-chosen response in progress and
+  // shouldn't also get an automated nag, same reasoning 'in-progress' tasks
+  // are excluded from overdue sweeps elsewhere.
+  async function createOverdueTasks(currentRisks) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const overdueRisks = currentRisks.filter(
+      r => r.status === 'Open' && r.review_date && new Date(r.review_date + 'T12:00:00') < today
+    );
+    const snoozeCutoff = new Date(); snoozeCutoff.setDate(snoozeCutoff.getDate() - 7);
+    for (const r of overdueRisks) {
+      const title = `RISK: ${r.risk_description}`;
+      // 7-day snooze -- don't immediately recreate a task the trustee just
+      // ticked off (acknowledgment-only completion, see onTaskCompleted's
+      // RISK: branch in taskSync.js). Same shape as ensureUpcomingTask's
+      // own recentDone check, just inlined here rather than added to the
+      // shared ensureTask() since no other caller needs it.
+      const { data: recentDone } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('title', title)
+        .eq('status', 'completed')
+        .gte('completed_at', snoozeCutoff.toISOString())
+        .limit(1);
+      if (recentDone && recentDone.length > 0) continue;
+
+      await ensureTask({
+        title,
+        description: `Risk review overdue. Category: ${r.category}. Rating: ${r.risk_rating}. Review and update controls. [source_id:${r.id}]`,
+        assigned_to: r.owner || null,
+        due_date: todayStr,
+        priority: 'High',
+      });
+    }
+  }
 
   // Compliance -> Risk suggestion prompt (86d44k66b). Same shape as
   // WorkflowEngine's pendingWorkflow effect (TrusteeDashboard.js) --
@@ -240,6 +291,15 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
     } else {
       const { error: err } = await supabase.from('risk_register').insert(payload);
       if (err) { setError(err.message); setSaving(false); return; }
+    }
+
+    // Task-sync engine (14yhc7kq5ga) -- same shape as CommitteeMinutes.js's
+    // meeting-action save: hooked into the general edit-save, not a separate
+    // "mark done" button. closeLinkedTask is idempotent (no-ops if no open
+    // task exists), so calling it on every save where status is Closed,
+    // not just on the transition into it, is safe.
+    if (editRisk && payload.status === 'Closed') {
+      await closeLinkedTask(editRisk.id);
     }
 
     await load();

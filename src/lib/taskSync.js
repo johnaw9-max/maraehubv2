@@ -290,6 +290,22 @@ export async function onTaskCompleted(task) {
     // A new task will be created next time Finance tab is visited if still over budget.
     return;
   }
+
+  // ── RISK REGISTER (prefix "RISK: ") → no DB write, by design ────────────────
+  if (title.startsWith('RISK: ')) {
+    // Deliberately writes nothing to risk_register or compliance_items.
+    // A risk review is recorded by updating the risk's own review_date from
+    // the Risk Register screen -- that save already calls closeLinkedTask(),
+    // which closes this task directly. Ticking the task from the Task Board
+    // is acknowledgment-only, same as GRANT:/FINANCE: above; it does not
+    // advance review_date, so createOverdueTasks() will recreate this task
+    // next load if the risk is still Open and overdue -- intentional, since
+    // there's no renewal_months-equivalent cadence on risk_register to
+    // advance to automatically (14yhc7kv4t3, fixing the previous bug where
+    // this reused Compliance's "OVERDUE: " prefix and silently no-op'd
+    // against compliance_items instead of touching the risk at all).
+    return;
+  }
 }
 
 // Reverse of onTaskCompleted -- closes any open/in-progress task linked to
@@ -329,6 +345,7 @@ export const TASK_SOURCES = [
   { prefix: 'GOAL: ',     label: 'Strategic Goals',   icon: '🎯', tab: 'goals',      action: 'actionable' },
   { prefix: 'GRANT: ',    label: 'Grants',            icon: '💰', tab: 'grants',     action: 'reference'  },
   { prefix: 'FINANCE: ',  label: 'Finance',           icon: '📊', tab: 'finance',    action: 'reference'  },
+  { prefix: 'RISK: ',     label: 'Risk Register',     icon: '⚠️', tab: 'risks',      action: 'reference'  },
 ];
 
 export function taskSource(title) {
