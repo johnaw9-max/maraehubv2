@@ -108,7 +108,7 @@ echo "✅ Project reachable."
 
 # ── Step 2: confirm the project is registered ────────────────────────────
 # Unlike the old deploy-projects.conf (name,ref only), a registry entry also
-# needs role, frontend_project, and expected_functions/expected_jobs -- none
+# needs role, frontend_project, and excluded_functions/excluded_jobs -- none
 # of which this script can safely infer on its own. So it checks, it never
 # writes: a new marae must be added to marae-registry.json by hand (or by
 # the future provision-a-new-marae command, 14yhc7kw74b's own suggested
@@ -132,7 +132,7 @@ case "$REG_CHECK" in
   ref_match) echo "✅ Already registered." ;;
   name_conflict) fail "Name '$MARAE_NAME' is already registered in $REGISTRY_FILE for a different ref -- pick a different name." ;;
   ref_under_other_name:*) fail "Ref '$PROJECT_REF' is already registered under a different name (${REG_CHECK#ref_under_other_name:}) -- fix the registry or the name you passed." ;;
-  not_found) fail "'$MARAE_NAME' ($PROJECT_REF) is not in $REGISTRY_FILE. Add it by hand first -- role, frontend_project, and expected_functions/expected_jobs all need a real decision this script won't guess for you." ;;
+  not_found) fail "'$MARAE_NAME' ($PROJECT_REF) is not in $REGISTRY_FILE. Add it by hand first -- role, frontend_project, and excluded_functions/excluded_jobs all need a real decision this script won't guess for you." ;;
   *) fail "Could not check the registry (unexpected output: $REG_CHECK)" ;;
 esac
 

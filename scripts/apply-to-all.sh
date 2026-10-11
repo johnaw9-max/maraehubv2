@@ -112,24 +112,33 @@ else
 fi
 
 # ── Registry reading, role-ordered ──────────────────────────────────────────
+# A function or job is assumed to belong on every project unless this
+# project's excluded_functions/excluded_jobs says otherwise, with a reason.
+# For --kind function, resolves whether FUNCTION_NAME is excluded on each
+# project and its reason; for --kind migration this is unused (empty).
 projects_in_order() {
   python3 -c "
 import json, sys
 registry = json.load(open(sys.argv[1]))
 order = {'test': 0, 'canary': 1, 'production': 2}
 up_to = order[sys.argv[2]]
+fn = sys.argv[3] if len(sys.argv) > 3 else ''
 projects = [p for p in registry['projects'] if order.get(p['role'], 99) <= up_to]
 projects.sort(key=lambda p: order.get(p['role'], 99))
 for p in projects:
-    funcs = ','.join(p.get('expected_functions', []))
-    print(f\"{p['name']}|{p['ref']}|{p['role']}|{funcs}\")
-" "$REGISTRY_FILE" "$UP_TO"
+    excluded, reason = '0', ''
+    for ex in p.get('excluded_functions', []):
+        if ex['name'] == fn:
+            excluded, reason = '1', ex['reason']
+            break
+    print(f\"{p['name']}|{p['ref']}|{p['role']}|{excluded}|{reason}\")
+" "$REGISTRY_FILE" "$UP_TO" "${FUNCTION_NAME:-}"
 }
 
 # ── Dry run: no worktree, no execution, just what-would-happen ─────────────
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "── DRY RUN (--up-to $UP_TO) -- nothing will be executed ──"
-  while IFS='|' read -r NAME REF ROLE FUNCS; do
+  while IFS='|' read -r NAME REF ROLE EXCLUDED REASON; do
     echo ""
     echo "── $NAME ($REF) [$ROLE] ────────────────────────────────────"
     if [ "$KIND" = "migration" ]; then
@@ -141,13 +150,10 @@ if [ "$DRY_RUN" -eq 1 ]; then
       fi
       echo "Would then register version $VERSION in supabase_migrations.schema_migrations on $REF."
     else
-      FOUND=0
-      IFS=',' read -ra EXPECTED <<< "$FUNCS"
-      for f in "${EXPECTED[@]}"; do [ "$f" = "$FUNCTION_NAME" ] && FOUND=1; done
-      if [ "$FOUND" -eq 1 ]; then
-        echo "Would run: supabase functions deploy $FUNCTION_NAME --project-ref $REF"
+      if [ "$EXCLUDED" = "1" ]; then
+        echo "Would skip: '$FUNCTION_NAME' is excluded on $NAME -- $REASON"
       else
-        echo "Would skip: '$FUNCTION_NAME' is not in $NAME's expected_functions -- not deployed here."
+        echo "Would run: supabase functions deploy $FUNCTION_NAME --project-ref $REF"
       fi
     fi
   done < <(projects_in_order)
@@ -196,18 +202,15 @@ PYEOF
 )
 }
 
-while IFS='|' read -r NAME REF ROLE FUNCS; do
+while IFS='|' read -r NAME REF ROLE EXCLUDED REASON; do
   NAMES+=("$NAME")
   echo ""
   echo "── $NAME ($REF) [$ROLE] ────────────────────────────────────"
 
   if [ "$KIND" = "function" ]; then
-    FOUND=0
-    IFS=',' read -ra EXPECTED <<< "$FUNCS"
-    for f in "${EXPECTED[@]}"; do [ "$f" = "$FUNCTION_NAME" ] && FOUND=1; done
-    if [ "$FOUND" -eq 0 ]; then
-      echo "⏭ skipped — $FUNCTION_NAME is not in $NAME's expected_functions"
-      STATUSES+=("⏭ skipped (not expected)")
+    if [ "$EXCLUDED" = "1" ]; then
+      echo "⏭ skipped — $FUNCTION_NAME is excluded on $NAME: $REASON"
+      STATUSES+=("⏭ skipped ($REASON)")
       continue
     fi
 

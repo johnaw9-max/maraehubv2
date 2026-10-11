@@ -31,6 +31,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { EXPECTED_SCHEMA } from './expectedSchema.ts';
 import { EXPECTED_MIGRATIONS } from './expectedMigrations.ts';
+import { EXPECTED_DEPLOYMENT, MASTER_FUNCTIONS } from './expectedDeployment.ts';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SECRET_KEY        = Deno.env.get('CHECK_DEADLINES_SECRET_KEY')!;
@@ -41,6 +42,22 @@ const LOGIN_CHECK_PASSWORD = Deno.env.get('LOGIN_CHECK_PASSWORD');
 const CRONITOR_PING_URL    = Deno.env.get('CRONITOR_PING_URL');
 const NOTIFY_URL       = `${SUPABASE_URL}/functions/v1/send-notification`;
 const adminEmails      = ADMIN_ALERT_EMAIL ? [ADMIN_ALERT_EMAIL] : [];
+
+// This project's own entry in the generated deployment registry (14yhc7kw74b
+// apply-to-all refinement), looked up by the ref embedded in SUPABASE_URL --
+// no new credentials or config needed, same "read live" reasoning as
+// EXPECTED_SCHEMA/EXPECTED_MIGRATIONS. Falls back to no exclusions (the
+// strictest, most-alerting behavior) if this project's ref somehow isn't in
+// the registry, rather than silently exempting everything.
+const CURRENT_PROJECT_REF = (SUPABASE_URL.match(/https:\/\/([a-z0-9]+)\.supabase\.co/) ?? [])[1] ?? '';
+const CURRENT_DEPLOYMENT = EXPECTED_DEPLOYMENT[CURRENT_PROJECT_REF] ?? {
+  name: CURRENT_PROJECT_REF || 'unknown',
+  expected_functions: MASTER_FUNCTIONS,
+  excluded_functions: [],
+  excluded_jobs: [],
+};
+const EXCLUDED_FUNCTION_NAMES = new Set(CURRENT_DEPLOYMENT.excluded_functions.map(e => e.name));
+const EXCLUDED_JOB_NAMES = new Set(CURRENT_DEPLOYMENT.excluded_jobs.map(e => e.name));
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -827,53 +844,66 @@ serve(async (req) => {
   // runs is one full calendar month, plus this check itself only runs once
   // a day at 08:00 UTC — 35 days gives slack for month-length variance and
   // the daily cadence of this check without masking a genuinely missed run.
-  const { data: lastCronSuccess, error: cronErr } = await db.rpc(
-    'check_cron_job_last_success',
-    { job_name_pattern: '%lock-monthly-kpi-snapshot%' },
-  );
+  // maraehub-lock-kpi-snapshot exclusion (14yhc7kw74b): if this project's
+  // own registry entry excludes the job, skip the RPC/snapshot queries
+  // below entirely (the job genuinely doesn't exist here, so "checking" it
+  // would just be querying for data that was never going to exist) and log
+  // one exempt entry with the reason instead.
+  const LOCK_KPI_SNAPSHOT_EXCLUDED = EXCLUDED_JOB_NAMES.has('maraehub-lock-kpi-snapshot');
+  const lockKpiSnapshotExemptReason = CURRENT_DEPLOYMENT.excluded_jobs.find(e => e.name === 'maraehub-lock-kpi-snapshot')?.reason ?? '';
 
   const cronFindings: { job: string; layer: 1 | 2; last_success: string | null; days_since: number | null; error?: string }[] = [];
+  const cronExempt: { job: string; exempt: true; reason: string }[] = [];
 
-  if (cronErr) {
-    cronFindings.push({ job: 'lock-monthly-kpi-snapshot', layer: 1, last_success: null, days_since: null, error: cronErr.message });
+  if (LOCK_KPI_SNAPSHOT_EXCLUDED) {
+    cronExempt.push({ job: 'lock-monthly-kpi-snapshot', exempt: true, reason: lockKpiSnapshotExemptReason });
   } else {
-    const daysSince = lastCronSuccess
-      ? Math.floor((Date.now() - new Date(lastCronSuccess).getTime()) / 86400000)
-      : null;
+    const { data: lastCronSuccess, error: cronErr } = await db.rpc(
+      'check_cron_job_last_success',
+      { job_name_pattern: '%lock-monthly-kpi-snapshot%' },
+    );
 
-    // null means the job has never once succeeded — as much a finding as a
-    // stale one, and daysSince has no numeric value to threshold against.
-    if (daysSince === null || daysSince > 35) {
-      cronFindings.push({
-        job:          'lock-monthly-kpi-snapshot',
-        layer:        1,
-        last_success: lastCronSuccess,
-        days_since:   daysSince,
-      });
+    if (cronErr) {
+      cronFindings.push({ job: 'lock-monthly-kpi-snapshot', layer: 1, last_success: null, days_since: null, error: cronErr.message });
+    } else {
+      const daysSince = lastCronSuccess
+        ? Math.floor((Date.now() - new Date(lastCronSuccess).getTime()) / 86400000)
+        : null;
+
+      // null means the job has never once succeeded — as much a finding as a
+      // stale one, and daysSince has no numeric value to threshold against.
+      if (daysSince === null || daysSince > 35) {
+        cronFindings.push({
+          job:          'lock-monthly-kpi-snapshot',
+          layer:        1,
+          last_success: lastCronSuccess,
+          days_since:   daysSince,
+        });
+      }
     }
-  }
 
-  const { data: lastSnapshot, error: snapshotErr } = await db
-    .from('module_kpi_snapshots')
-    .select('locked_at')
-    .order('locked_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    const { data: lastSnapshot, error: snapshotErr } = await db
+      .from('module_kpi_snapshots')
+      .select('locked_at')
+      .order('locked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (snapshotErr) {
-    cronFindings.push({ job: 'lock-monthly-kpi-snapshot', layer: 2, last_success: null, days_since: null, error: snapshotErr.message });
-  } else {
-    const daysSinceSnapshot = lastSnapshot?.locked_at
-      ? Math.floor((Date.now() - new Date(lastSnapshot.locked_at).getTime()) / 86400000)
-      : null;
+    if (snapshotErr) {
+      cronFindings.push({ job: 'lock-monthly-kpi-snapshot', layer: 2, last_success: null, days_since: null, error: snapshotErr.message });
+    } else {
+      const daysSinceSnapshot = lastSnapshot?.locked_at
+        ? Math.floor((Date.now() - new Date(lastSnapshot.locked_at).getTime()) / 86400000)
+        : null;
 
-    if (daysSinceSnapshot === null || daysSinceSnapshot > 35) {
-      cronFindings.push({
-        job:          'lock-monthly-kpi-snapshot',
-        layer:        2,
-        last_success: lastSnapshot?.locked_at ?? null,
-        days_since:   daysSinceSnapshot,
-      });
+      if (daysSinceSnapshot === null || daysSinceSnapshot > 35) {
+        cronFindings.push({
+          job:          'lock-monthly-kpi-snapshot',
+          layer:        2,
+          last_success: lastSnapshot?.locked_at ?? null,
+          days_since:   daysSinceSnapshot,
+        });
+      }
     }
   }
 
@@ -895,7 +925,7 @@ serve(async (req) => {
   await db.from('system_check_log').insert({
     check_name: 'cron_health',
     findings_count: cronFindings.length,
-    details: cronFindings,
+    details: [...cronFindings, ...cronExempt],
   });
 
   // ── Orphaned auth accounts check (ClickUp 86d3u7790) ──────────────────────
@@ -1198,12 +1228,19 @@ serve(async (req) => {
     'emergency-response-evidence',
   ];
 
+  // COMMUNITY_LOGIN_TOKEN is only required if community-auto-login is
+  // actually expected to be deployed here (14yhc7kw74b) -- a project that
+  // excludes the function has no use for the token and shouldn't be alerted
+  // over it. Opeke and the test project don't exclude community-auto-login,
+  // so this is unchanged for them.
+  const COMMUNITY_AUTO_LOGIN_EXCLUDED = EXCLUDED_FUNCTION_NAMES.has('community-auto-login');
+
   const REQUIRED_SECRETS: { name: string; format?: RegExp }[] = [
     { name: 'ADMIN_ALERT_EMAIL', format: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ },
     { name: 'RESEND_API_KEY' },
     { name: 'FROM_EMAIL',        format: /^([^<>]+<)?[^\s@]+@[^\s@]+\.[^\s@]+>?$/ },
     { name: 'FRONTEND_URL',      format: /^https?:\/\// },
-    { name: 'COMMUNITY_LOGIN_TOKEN' },
+    ...(COMMUNITY_AUTO_LOGIN_EXCLUDED ? [] : [{ name: 'COMMUNITY_LOGIN_TOKEN' }]),
   ];
 
   const processConfigFindings: { type: string; bucket?: string; secret?: string; error?: string }[] = [];
@@ -1865,23 +1902,25 @@ serve(async (req) => {
     details: migrationDriftFindings,
   });
 
-  // ── Edge function reachability check (maintenance shield, new) ───────────
+  // ── Edge function reachability check (maintenance shield) ────────────────
   // Real incident this protects against: generate-grant-draft was deployed
   // to Tineka but not Opeke for a period this session, uncaught by any
   // existing check -- process_config_safety checks buckets/secrets, nothing
   // checks whether a function that exists in the codebase is actually live
   // on both projects.
   //
-  // EXPECTED_EDGE_FUNCTIONS is a maintained allowlist, not derived from the
-  // filesystem (same "no repo access at runtime" reason as
-  // EXPECTED_SCHEMA/EXPECTED_MIGRATIONS) -- each restriction below was
-  // individually investigated (git history, source comments, live auth.users
-  // queries, frontend call sites), not assumed, matching
-  // security_access_control's own discipline. iwi-pull-snapshot is
-  // deliberately absent entirely -- it deploys to the separate Iwi Hub
-  // project, not Opeke or Tineka. check-deadlines itself is deliberately
-  // absent too -- probing its own reachability from within its own
-  // currently-running invocation is trivially always true.
+  // Expected/excluded functions come from EXPECTED_DEPLOYMENT (generated by
+  // scripts/generate-expected-deployment.js from marae-registry.json),
+  // looked up by this project's own ref -- not a hand-maintained allowlist
+  // keyed off a single IS_OPEKE boolean anymore (14yhc7kw74b). check-deadlines
+  // itself is never in either list -- probing its own reachability from
+  // within its own currently-running invocation is trivially always true.
+  // iwi-pull-snapshot is excluded everywhere -- it deploys to the separate
+  // Iwi Hub project, not any of these three.
+  //
+  // An excluded function is still probed, so exemption is proven rather than
+  // assumed, but it's logged as exempt (with its reason) instead of
+  // alerting, regardless of whether it's actually reachable.
   //
   // Sends an OPTIONS preflight to each function's URL. Flags 404 only (or a
   // network-level failure), not "any non-200" -- confirmed live that a
@@ -1894,49 +1933,26 @@ serve(async (req) => {
   // credentials needed: this runs against whichever project this
   // invocation of check-deadlines is already deployed to, using its own
   // SUPABASE_URL.
-  const IS_OPEKE = SUPABASE_URL.includes('cbeenkpjpnhmtqtnjiyd');
 
-  const EXPECTED_EDGE_FUNCTIONS: { name: string; opekeOnly?: boolean; reason?: string }[] = [
-    { name: 'ban-trustee' },
-    { name: 'community-auto-login', opekeOnly: true,
-      reason: 'Hardcodes COMMUNITY_EMAIL = community@maraehub.com -- confirmed no matching auth.users row exists on Tineka, so deploying it there would just always fail. Functionally justified, not just undocumented.' },
-    { name: 'create-trustee' },
-    { name: 'draft-minutes' },
-    { name: 'generate-compliance-report' },
-    { name: 'generate-financial-report' },
-    { name: 'generate-grant-draft' },
-    { name: 'generate-report' },
-    { name: 'generate-tasks-report' },
-    { name: 'get-tineka-session', opekeOnly: true,
-      reason: 'Own file header: mints Tineka sessions for the founder, called from Opeke only by design.' },
-    { name: 'get-trustee-login-activity' },
-    { name: 'google-calendar-callback' },
-    { name: 'invite-trustee' },
-    { name: 'lock-monthly-kpi-snapshot' },
-    { name: 'mark-action-done' },
-    { name: 'notify-hirer' },
-    { name: 'notify-trustees' },
-    { name: 'public-booking-request', opekeOnly: true,
-      reason: 'KNOWN GAP, not yet fixed -- no technical reason found; unauthenticated PublicBookingRequest.js calls it unconditionally. Left Opeke-only deliberately for now given negligible real-world exposure (Tineka is test/staging, no real external public is ever pointed at it) -- revisit if that changes.' },
-    { name: 'send-notification' },
-    { name: 'stripe-webhook' },
-    { name: 'sync-hui-to-calendar' },
-    { name: 'xero-callback' },
-    { name: 'xero-financials' },
-  ];
+  async function probeFunctionReachability(name: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, { method: 'OPTIONS' });
+      return res.status === 404 ? `HTTP ${res.status}` : null;
+    } catch (err) {
+      return (err as Error).message;
+    }
+  }
 
   const reachabilityFindings: { function: string; error: string }[] = [];
+  for (const name of CURRENT_DEPLOYMENT.expected_functions) {
+    const error = await probeFunctionReachability(name);
+    if (error) reachabilityFindings.push({ function: name, error });
+  }
 
-  for (const fn of EXPECTED_EDGE_FUNCTIONS) {
-    if (fn.opekeOnly && !IS_OPEKE) continue;
-    try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn.name}`, { method: 'OPTIONS' });
-      if (res.status === 404) {
-        reachabilityFindings.push({ function: fn.name, error: `HTTP ${res.status}` });
-      }
-    } catch (err) {
-      reachabilityFindings.push({ function: fn.name, error: (err as Error).message });
-    }
+  const reachabilityExempt: { function: string; exempt: true; reason: string; error: string | null }[] = [];
+  for (const ex of CURRENT_DEPLOYMENT.excluded_functions) {
+    const error = await probeFunctionReachability(ex.name);
+    reachabilityExempt.push({ function: ex.name, exempt: true, reason: ex.reason, error });
   }
 
   if (reachabilityFindings.length > 0) {
@@ -1953,7 +1969,7 @@ serve(async (req) => {
   await db.from('system_check_log').insert({
     check_name: 'edge_function_reachability',
     findings_count: reachabilityFindings.length,
-    details: reachabilityFindings,
+    details: [...reachabilityFindings, ...reachabilityExempt],
   });
 
   // ── Self-liveness ping (ClickUp 86d3u7790, self-liveness monitor) ───────
