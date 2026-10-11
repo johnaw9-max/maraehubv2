@@ -204,7 +204,7 @@ create table if not exists bookings (
   end_date date,
   guests integer,
   overnight boolean default false,
-  facilities _text[],
+  facilities text[],
   iwi text,
   notes text,
   status text default 'pending'::text,
