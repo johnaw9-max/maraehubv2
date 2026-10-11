@@ -8,8 +8,7 @@
       "frontend_project": "maraehub-test",
       "excluded_functions": [
         { "name": "get-tineka-session", "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design." },
-        { "name": "iwi-pull-snapshot", "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects." },
-        { "name": "community-auto-login", "reason": "TEMPORARY test exclusion (14yhc7kw74b) -- proving exempt-vs-alert behavior. Remove after." }
+        { "name": "iwi-pull-snapshot", "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects." }
       ],
       "excluded_jobs": []
     },

@@ -47,6 +47,7 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
     "name": "tineka",
     "expected_functions": [
       "ban-trustee",
+      "community-auto-login",
       "create-trustee",
       "draft-minutes",
       "generate-compliance-report",
@@ -76,10 +77,6 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
       {
         "name": "iwi-pull-snapshot",
         "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
-      },
-      {
-        "name": "community-auto-login",
-        "reason": "TEMPORARY test exclusion (14yhc7kw74b) -- proving exempt-vs-alert behavior. Remove after."
       }
     ],
     "excluded_jobs": []
