@@ -87,11 +87,12 @@ export default function OnboardingFlow({ onComplete }) {
   }
 
   async function loadOnboarding() {
-    const { data } = await supabase
+    const { data, error: loadError } = await supabase
       .from('marae_settings')
       .select('id, marae_name, location, iwi, hapu, onboarding_complete, onboarding_step')
       .limit(1)
-      .single();
+      .maybeSingle();
+    if (loadError) { setError(loadError.message); setLoading(false); return; }
     if (data) {
       if (data.onboarding_complete) { setHidden(true); setLoading(false); return; }
       setSettingsId(data.id);
@@ -106,9 +107,10 @@ export default function OnboardingFlow({ onComplete }) {
     setLoading(false);
   }
 
-  async function advanceStep(num, extra = {}) {
-    if (settingsId) {
-      await supabase.from('marae_settings').update({ onboarding_step: num, ...extra }).eq('id', settingsId);
+  async function advanceStep(num, extra = {}, idOverride = null) {
+    const id = idOverride || settingsId;
+    if (id) {
+      await supabase.from('marae_settings').update({ onboarding_step: num, ...extra }).eq('id', id);
     }
   }
 
@@ -125,15 +127,18 @@ export default function OnboardingFlow({ onComplete }) {
   async function saveStep1() {
     if (!maraeName.trim()) { setError('Marae name is required'); return; }
     setSaving(true); setError('');
-    if (settingsId) {
-      await supabase.from('marae_settings').update({
-        marae_name: maraeName.trim(),
-        location:   location.trim(),
-        iwi:        iwi.trim(),
-        hapu:       hapu.trim(),
-      }).eq('id', settingsId);
-    }
-    await advanceStep(1);
+    const payload = {
+      marae_name: maraeName.trim(),
+      location:   location.trim(),
+      iwi:        iwi.trim(),
+      hapu:       hapu.trim(),
+    };
+    const { data, error: saveError } = settingsId
+      ? await supabase.from('marae_settings').update(payload).eq('id', settingsId).select('id').single()
+      : await supabase.from('marae_settings').insert(payload).select('id').single();
+    if (saveError) { setError(saveError.message); setSaving(false); return; }
+    if (!settingsId) setSettingsId(data.id);
+    await advanceStep(1, {}, data.id);
     setSaving(false);
     setStep(2);
   }
@@ -346,6 +351,12 @@ export default function OnboardingFlow({ onComplete }) {
       </div>
 
       {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+      {step > 1 && (
+        <button className="btn-secondary" onClick={() => { setError(''); setStep(step - 1); }} style={{ marginBottom: 16 }}>
+          ← Back
+        </button>
+      )}
 
       {/* ── STEP 1: Your Marae ───────────────────────────────────────────── */}
       {step === 1 && (
