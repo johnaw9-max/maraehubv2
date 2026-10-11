@@ -5,3 +5,6 @@ build/
 .env.production.local
 supabase/.temp/
 .DS_Store
+.vercel
+.env*
+scripts/.provision-state/
