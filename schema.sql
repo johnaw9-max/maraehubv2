@@ -1494,7 +1494,8 @@ create table if not exists risk_register (
   trustee_id uuid,
   compliance_item_id uuid,
   asset_id uuid,
-  workflow_prompt_dismissed_at timestamp with time zone
+  workflow_prompt_dismissed_at timestamp with time zone,
+  last_reminded_at timestamp with time zone
 );
 
 alter table risk_register add constraint risk_register_pkey PRIMARY KEY (id);

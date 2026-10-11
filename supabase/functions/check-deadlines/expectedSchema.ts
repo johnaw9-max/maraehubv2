@@ -559,7 +559,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "trustee_id",
     "compliance_item_id",
     "asset_id",
-    "workflow_prompt_dismissed_at"
+    "workflow_prompt_dismissed_at",
+    "last_reminded_at"
   ],
   "role_configs": [
     "role_key",
