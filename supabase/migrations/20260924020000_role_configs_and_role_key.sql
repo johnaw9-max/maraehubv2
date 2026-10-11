@@ -20,11 +20,13 @@ create table if not exists role_configs (
 
 alter table role_configs enable row level security;
 
+drop policy if exists "authenticated users manage role_configs" on role_configs;
 create policy "authenticated users manage role_configs"
   on role_configs for all
   to public
   using ((auth.role() = 'authenticated'::text));
 
+drop policy if exists "authenticated users view role_configs" on role_configs;
 create policy "authenticated users view role_configs"
   on role_configs for select
   to public
@@ -57,6 +59,13 @@ update workflow_steps ws
 -- NULLs never conflict under a unique constraint, so this is a no-op for
 -- every other template's steps (role_key always null there) and only
 -- enforces per-role step_order uniqueness within Role Setup itself.
-alter table workflow_steps
-  add constraint workflow_steps_template_role_step_key
-  unique (template_id, role_key, step_order);
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS, so guard it by hand --
+-- same reasoning as every other guarded object in this migration.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'workflow_steps_template_role_step_key') then
+    alter table workflow_steps
+      add constraint workflow_steps_template_role_step_key
+      unique (template_id, role_key, step_order);
+  end if;
+end $$;
