@@ -109,6 +109,14 @@ else
   FUNCTION_NAME="${POSITIONAL[0]:-}"
   [ -n "$FUNCTION_NAME" ] || fail "function name required"
   [ -d "$REPO_DIR/supabase/functions/$FUNCTION_NAME" ] || fail "No such function directory: supabase/functions/$FUNCTION_NAME"
+
+  # Refuse if the committed expectedDeployment.ts doesn't match what the
+  # registry + functions directory would produce right now -- the exclusion
+  # reasons check-deadlines relies on (and the exclusion skip below) are
+  # only as trustworthy as that file being current. No override flag, same
+  # as every other refusal here.
+  node "$SCRIPT_DIR/generate-expected-deployment.js" --check \
+    || fail "supabase/functions/check-deadlines/expectedDeployment.ts is stale -- run 'node scripts/generate-expected-deployment.js', commit it, and try again. No override flag exists for this."
 fi
 
 # ── Registry reading, role-ordered ──────────────────────────────────────────

@@ -100,7 +100,24 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
   excluded_jobs: { name: string; reason: string }[];
 }> = ${JSON.stringify(expected, null, 2)};\n`;
 
-fs.writeFileSync(OUTPUT_PATH, header + body);
+const generated = header + body;
+
+// --check: used by apply-to-all.sh to refuse a function deploy if the
+// committed file doesn't match what the registry + functions directory
+// would produce right now -- prints nothing on a match, a one-line diff
+// summary on a mismatch, and never writes the file either way.
+if (process.argv.includes('--check')) {
+  const existing = fs.existsSync(OUTPUT_PATH) ? fs.readFileSync(OUTPUT_PATH, 'utf8') : null;
+  if (existing === generated) {
+    process.exit(0);
+  }
+  console.error(existing === null
+    ? `${OUTPUT_PATH} does not exist -- run \`node scripts/generate-expected-deployment.js\` and commit it.`
+    : `${OUTPUT_PATH} is stale relative to marae-registry.json / the functions directory -- run \`node scripts/generate-expected-deployment.js\` and commit the result.`);
+  process.exit(1);
+}
+
+fs.writeFileSync(OUTPUT_PATH, generated);
 
 console.log(`Wrote ${OUTPUT_PATH}`);
 console.log(`${masterFunctions.length} functions in the master list, ${projectCount} projects`);
