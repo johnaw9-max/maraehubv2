@@ -7,23 +7,9 @@
       "role": "test",
       "frontend_project": "maraehub-test",
       "excluded_functions": [
-        {
-          "name": "get-tineka-session",
-          "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design."
-        },
-        {
-          "name": "iwi-pull-snapshot",
-          "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
-        },
-        {
-          "name": "community-auto-login",
-          "reason": "hardcoded to Opeke's community account; generalise first",
-          "clickup": "14yhc7kum12"
-        },
-        {
-          "name": "stripe-webhook",
-          "reason": "STALENESS TEST ONLY"
-        }
+        { "name": "get-tineka-session", "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design." },
+        { "name": "iwi-pull-snapshot", "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects." },
+        { "name": "community-auto-login", "reason": "hardcoded to Opeke's community account; generalise first", "clickup": "14yhc7kum12" }
       ],
       "excluded_jobs": []
     },
@@ -33,77 +19,25 @@
       "role": "canary",
       "frontend_project": "maraehub-terere",
       "excluded_functions": [
-        {
-          "name": "get-tineka-session",
-          "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design."
-        },
-        {
-          "name": "iwi-pull-snapshot",
-          "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
-        },
-        {
-          "name": "community-auto-login",
-          "reason": "hardcoded to Opeke's community account; generalise first",
-          "clickup": "14yhc7kum12"
-        },
-        {
-          "name": "draft-minutes",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "generate-compliance-report",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "generate-financial-report",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "generate-grant-draft",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "generate-report",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "generate-tasks-report",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "get-trustee-login-activity",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "google-calendar-callback",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "lock-monthly-kpi-snapshot",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "stripe-webhook",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "sync-hui-to-calendar",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "xero-callback",
-          "reason": "secrets not yet provisioned"
-        },
-        {
-          "name": "xero-financials",
-          "reason": "secrets not yet provisioned"
-        }
+        { "name": "get-tineka-session", "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design." },
+        { "name": "iwi-pull-snapshot", "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects." },
+        { "name": "community-auto-login", "reason": "hardcoded to Opeke's community account; generalise first", "clickup": "14yhc7kum12" },
+        { "name": "draft-minutes", "reason": "secrets not yet provisioned" },
+        { "name": "generate-compliance-report", "reason": "secrets not yet provisioned" },
+        { "name": "generate-financial-report", "reason": "secrets not yet provisioned" },
+        { "name": "generate-grant-draft", "reason": "secrets not yet provisioned" },
+        { "name": "generate-report", "reason": "secrets not yet provisioned" },
+        { "name": "generate-tasks-report", "reason": "secrets not yet provisioned" },
+        { "name": "get-trustee-login-activity", "reason": "secrets not yet provisioned" },
+        { "name": "google-calendar-callback", "reason": "secrets not yet provisioned" },
+        { "name": "lock-monthly-kpi-snapshot", "reason": "secrets not yet provisioned" },
+        { "name": "stripe-webhook", "reason": "secrets not yet provisioned" },
+        { "name": "sync-hui-to-calendar", "reason": "secrets not yet provisioned" },
+        { "name": "xero-callback", "reason": "secrets not yet provisioned" },
+        { "name": "xero-financials", "reason": "secrets not yet provisioned" }
       ],
       "excluded_jobs": [
-        {
-          "name": "maraehub-lock-kpi-snapshot",
-          "reason": "secrets not yet provisioned"
-        }
+        { "name": "maraehub-lock-kpi-snapshot", "reason": "secrets not yet provisioned" }
       ]
     },
     {
@@ -112,10 +46,7 @@
       "role": "production",
       "frontend_project": "maraehubv2",
       "excluded_functions": [
-        {
-          "name": "iwi-pull-snapshot",
-          "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
-        }
+        { "name": "iwi-pull-snapshot", "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects." }
       ],
       "excluded_jobs": []
     }
