@@ -47,7 +47,6 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
     "name": "tineka",
     "expected_functions": [
       "ban-trustee",
-      "community-auto-login",
       "create-trustee",
       "draft-minutes",
       "generate-compliance-report",
@@ -77,6 +76,11 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
       {
         "name": "iwi-pull-snapshot",
         "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
+      },
+      {
+        "name": "community-auto-login",
+        "reason": "hardcoded to Opeke's community account; generalise first",
+        "clickup": "14yhc7kum12"
       }
     ],
     "excluded_jobs": []
@@ -85,7 +89,6 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
     "name": "terere",
     "expected_functions": [
       "ban-trustee",
-      "community-auto-login",
       "create-trustee",
       "invite-trustee",
       "mark-action-done",
@@ -102,6 +105,11 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
       {
         "name": "iwi-pull-snapshot",
         "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
+      },
+      {
+        "name": "community-auto-login",
+        "reason": "hardcoded to Opeke's community account; generalise first",
+        "clickup": "14yhc7kum12"
       },
       {
         "name": "draft-minutes",
