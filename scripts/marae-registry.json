@@ -1,0 +1,48 @@
+{
+  "_comment": "Committed registry of marae Supabase projects, replacing the old local/uncommitted deploy-projects.conf. role drives execution order in apply-to-all.sh (test, then canary, then production) -- it replaces every per-name special case (e.g. the old `if [ \"$NAME\" = \"opeke\" ]` gate) in the deploy-*.sh scripts. expected_functions / expected_jobs record what SHOULD be deployed/scheduled on each project today, so tooling can tell a deliberate gap (a project-scoped function) from a real one. Keep this file and live reality in sync by hand until there's a command that can do it for you.",
+  "projects": [
+    {
+      "ref": "zfefukxaliuximizjkwa",
+      "name": "tineka",
+      "role": "test",
+      "frontend_project": "maraehub-test",
+      "expected_functions": [
+        "ban-trustee", "check-deadlines", "create-trustee", "draft-minutes",
+        "generate-compliance-report", "generate-financial-report", "generate-grant-draft",
+        "generate-report", "generate-tasks-report", "get-trustee-login-activity",
+        "google-calendar-callback", "invite-trustee", "lock-monthly-kpi-snapshot",
+        "mark-action-done", "notify-hirer", "notify-trustees", "send-notification",
+        "stripe-webhook", "sync-hui-to-calendar", "xero-callback", "xero-financials"
+      ],
+      "expected_jobs": ["maraehub-check-deadlines", "maraehub-lock-kpi-snapshot", "maraehub-notify-trustees"]
+    },
+    {
+      "ref": "fwtxbirekiyhbxqdctkq",
+      "name": "terere",
+      "role": "canary",
+      "frontend_project": "maraehub-terere",
+      "expected_functions": [
+        "ban-trustee", "check-deadlines", "community-auto-login", "create-trustee",
+        "invite-trustee", "mark-action-done", "notify-hirer", "notify-trustees",
+        "public-booking-request", "send-notification"
+      ],
+      "expected_jobs": ["maraehub-check-deadlines", "maraehub-notify-trustees"]
+    },
+    {
+      "ref": "cbeenkpjpnhmtqtnjiyd",
+      "name": "opeke",
+      "role": "production",
+      "frontend_project": "maraehubv2",
+      "expected_functions": [
+        "ban-trustee", "check-deadlines", "community-auto-login", "create-trustee",
+        "draft-minutes", "generate-compliance-report", "generate-financial-report",
+        "generate-grant-draft", "generate-report", "generate-tasks-report",
+        "get-tineka-session", "get-trustee-login-activity", "google-calendar-callback",
+        "invite-trustee", "lock-monthly-kpi-snapshot", "mark-action-done", "notify-hirer",
+        "notify-trustees", "public-booking-request", "send-notification", "stripe-webhook",
+        "sync-hui-to-calendar", "xero-callback", "xero-financials"
+      ],
+      "expected_jobs": ["maraehub-check-deadlines", "maraehub-lock-kpi-snapshot", "maraehub-notify-trustees"]
+    }
+  ]
+}

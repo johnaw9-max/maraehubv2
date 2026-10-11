@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
-# Applies a migration file to Tineka, Sandbox, then Opeke in sequence.
+# Applies a migration file to every project in scripts/marae-registry.json,
+# in role order (test, then canary, then production).
 # Stops immediately on any failure — never continues to the next project.
-# Requires explicit confirmation before the Opeke leg, every run, regardless
-# of how many times this has succeeded before (ClickUp 86d3u5rjc / 86d3u5rjf).
+# Requires explicit confirmation before any production-role project, every
+# run, regardless of how many times this has succeeded before (ClickUp
+# 86d3u5rjc / 86d3u5rjf) — this now triggers on role: production from the
+# registry, not a literal project name, so it covers any future production
+# marae too, not just Opeke specifically.
+#
+# For applying the same migration to every project non-interactively (e.g.
+# from CI), use apply-to-all.sh instead — this script's interactive
+# production gate is a deliberate, human-in-the-loop safety feature, kept
+# here for hand-run use, not a bug to route around.
 set -u -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONF_FILE="$SCRIPT_DIR/deploy-projects.conf"
+REGISTRY_FILE="$SCRIPT_DIR/marae-registry.json"
 
 ONLY_NAME=""
 POSITIONAL=()
@@ -38,8 +47,8 @@ if [ -n "$VERIFY_FILE" ] && [ ! -f "$VERIFY_FILE" ]; then
   echo "❌ Verify file not found: $VERIFY_FILE"
   exit 1
 fi
-if [ ! -f "$CONF_FILE" ]; then
-  echo "❌ Project list not found: $CONF_FILE"
+if [ ! -f "$REGISTRY_FILE" ]; then
+  echo "❌ Registry not found: $REGISTRY_FILE"
   exit 1
 fi
 
@@ -51,6 +60,17 @@ if [ -z "$VERIFY_FILE" ]; then
   echo "   same pattern used for every migration verified this week."
   echo ""
 fi
+
+projects_in_order() {
+  python3 -c "
+import json, sys
+registry = json.load(open(sys.argv[1]))
+order = {'test': 0, 'canary': 1, 'production': 2}
+projects = sorted(registry['projects'], key=lambda p: order.get(p['role'], 99))
+for p in projects:
+    print(f\"{p['name']}|{p['ref']}|{p['role']}\")
+" "$REGISTRY_FILE"
+}
 
 # Extracts the JSON value from `supabase db query`'s output, which is
 # surrounded by non-JSON lines ("Initialising login role...", CLI update
@@ -120,33 +140,32 @@ print_summary() {
   echo "────────────────────────────────────────────────────"
 }
 
-while IFS=',' read -r NAME REF || [ -n "$NAME" ]; do
+while IFS='|' read -r NAME REF ROLE || [ -n "$NAME" ]; do
   [ -z "$NAME" ] && continue
-  case "$NAME" in "#"*) continue ;; esac
   if [ -n "$ONLY_NAME" ] && [ "$NAME" != "$ONLY_NAME" ]; then continue; fi
   [ -n "$ONLY_NAME" ] && FOUND_ONLY=1
 
   NAMES+=("$NAME")
 
-  if [ "$NAME" = "opeke" ]; then
+  if [ "$ROLE" = "production" ]; then
     echo ""
-    echo "⚠️  Tineka succeeded. Proceed to Opeke (LIVE production)? [y/N]"
+    echo "⚠️  Proceed to $NAME ($REF) — role: production? [y/N]"
     if ! read -r CONFIRM < /dev/tty 2>/dev/null; then
-      echo "❌ No terminal available — please run this script directly in your own terminal to confirm the Opeke deployment."
+      echo "❌ No terminal available — please run this script directly in your own terminal to confirm the production deployment."
       STATUS+=("❌ no terminal available for confirmation")
       print_summary
       exit 1
     fi
     if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
       STATUS+=("⏭ skipped (declined confirmation)")
-      echo "Stopped before Opeke — no changes made to production."
+      echo "Stopped before $NAME — no changes made to production."
       print_summary
       exit 1
     fi
   fi
 
   echo ""
-  echo "── $NAME ($REF) ────────────────────────────────────"
+  echo "── $NAME ($REF) [$ROLE] ────────────────────────────────────"
 
   LINK_OUTPUT=$(cd "$SCRIPT_DIR/.." && npx supabase link --project-ref "$REF" 2>&1)
   ACTUAL_REF=$(cat "$SCRIPT_DIR/../supabase/.temp/project-ref" 2>/dev/null || echo "")
@@ -187,10 +206,10 @@ while IFS=',' read -r NAME REF || [ -n "$NAME" ]; do
     STATUS+=("✅ applied (unverified — no verify-file given)")
   fi
 
-done < "$CONF_FILE"
+done < <(projects_in_order)
 
 if [ -n "$ONLY_NAME" ] && [ "$FOUND_ONLY" -eq 0 ]; then
-  echo "❌ --only '$ONLY_NAME' not found in $CONF_FILE"
+  echo "❌ --only '$ONLY_NAME' not found in $REGISTRY_FILE"
   exit 1
 fi
 

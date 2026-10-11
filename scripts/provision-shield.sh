@@ -50,7 +50,7 @@
 set -u -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONF_FILE="$SCRIPT_DIR/deploy-projects.conf"
+REGISTRY_FILE="$SCRIPT_DIR/marae-registry.json"
 STATE_DIR="$SCRIPT_DIR/.provision-state"
 SCRATCH_DIR="${TMPDIR:-/tmp}/provision-shield-$$"
 ACCESS_TOKEN_FILE="$HOME/.supabase/access-token"
@@ -106,17 +106,35 @@ PROJECT_HTTP=$(curl -sS -o "$SCRATCH_DIR/project.json" -w "%{http_code}" \
 [ "$PROJECT_HTTP" = "200" ] || fail "Project $PROJECT_REF not reachable (HTTP $PROJECT_HTTP) -- check the ref."
 echo "✅ Project reachable."
 
-# ── Step 2: add to deploy-projects.conf (idempotent) ─────────────────────────
+# ── Step 2: confirm the project is registered ────────────────────────────
+# Unlike the old deploy-projects.conf (name,ref only), a registry entry also
+# needs role, frontend_project, and expected_functions/expected_jobs -- none
+# of which this script can safely infer on its own. So it checks, it never
+# writes: a new marae must be added to marae-registry.json by hand (or by
+# the future provision-a-new-marae command, 14yhc7kw74b's own suggested
+# order item 5, not built yet) before this can run.
 echo ""
-echo "[2/8] Updating $CONF_FILE..."
-if grep -q ",$PROJECT_REF\$" "$CONF_FILE" 2>/dev/null; then
-  echo "✅ Already present."
-elif grep -q "^$MARAE_NAME," "$CONF_FILE" 2>/dev/null; then
-  fail "Name '$MARAE_NAME' already used in $CONF_FILE for a different ref -- pick a different name."
-else
-  echo "$MARAE_NAME,$PROJECT_REF" >> "$CONF_FILE"
-  echo "✅ Added."
-fi
+echo "[2/8] Checking $REGISTRY_FILE..."
+REG_CHECK=$(python3 -c "
+import json, sys
+registry = json.load(open(sys.argv[1]))
+name, ref = sys.argv[2], sys.argv[3]
+for p in registry['projects']:
+    if p['name'] == name:
+        print('ref_match' if p['ref'] == ref else 'name_conflict')
+        sys.exit(0)
+    if p['ref'] == ref:
+        print('ref_under_other_name:' + p['name'])
+        sys.exit(0)
+print('not_found')
+" "$REGISTRY_FILE" "$MARAE_NAME" "$PROJECT_REF")
+case "$REG_CHECK" in
+  ref_match) echo "✅ Already registered." ;;
+  name_conflict) fail "Name '$MARAE_NAME' is already registered in $REGISTRY_FILE for a different ref -- pick a different name." ;;
+  ref_under_other_name:*) fail "Ref '$PROJECT_REF' is already registered under a different name (${REG_CHECK#ref_under_other_name:}) -- fix the registry or the name you passed." ;;
+  not_found) fail "'$MARAE_NAME' ($PROJECT_REF) is not in $REGISTRY_FILE. Add it by hand first -- role, frontend_project, and expected_functions/expected_jobs all need a real decision this script won't guess for you." ;;
+  *) fail "Could not check the registry (unexpected output: $REG_CHECK)" ;;
+esac
 
 # ── Step 3: create the secret key (idempotent via state file) ───────────────
 echo ""
