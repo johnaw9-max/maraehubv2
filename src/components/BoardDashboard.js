@@ -7,6 +7,7 @@ import { getRiskStatus } from '../lib/riskStatus';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
 import { renderReportText } from '../lib/renderReportText';
+import { functionErrorMessage } from '../lib/functionErrorMessage';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -1097,7 +1098,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
     setAiLoading(false);
 
-    if (error) { setAiError(error.message || 'Could not reach AI service'); return; }
+    if (error) {
+      const msg = await functionErrorMessage(error, 'Could not reach AI service');
+      setAiError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
+      return;
+    }
     if (data?.error) { setAiError(data.error); return; }
 
     setAiReport(data?.report || '');
@@ -1224,7 +1229,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
     setFinAiLoading(false);
 
-    if (error) { setFinAiError(error.message || 'Could not reach AI service'); return; }
+    if (error) {
+      const msg = await functionErrorMessage(error, 'Could not reach AI service');
+      setFinAiError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
+      return;
+    }
     if (data?.error) { setFinAiError(data.error); return; }
 
     setFinAiReport(data?.report || '');
@@ -1304,7 +1313,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
     setCompAiLoading(false);
 
-    if (error) { setCompAiError(error.message || 'Could not reach AI service'); return; }
+    if (error) {
+      const msg = await functionErrorMessage(error, 'Could not reach AI service');
+      setCompAiError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
+      return;
+    }
     if (data?.error) { setCompAiError(data.error); return; }
 
     setCompAiReport(data?.report || '');
@@ -1375,7 +1388,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
 
     setTasksAiLoading(false);
 
-    if (error) { setTasksAiError(error.message || 'Could not reach AI service'); return; }
+    if (error) {
+      const msg = await functionErrorMessage(error, 'Could not reach AI service');
+      setTasksAiError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
+      return;
+    }
     if (data?.error) { setTasksAiError(data.error); return; }
 
     setTasksAiReport(data?.report || '');

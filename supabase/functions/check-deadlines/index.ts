@@ -1972,6 +1972,78 @@ serve(async (req) => {
     details: [...reachabilityFindings, ...reachabilityExempt],
   });
 
+  // ── AI key health check (14yhc7kw74b) ────────────────────────────────────
+  // The 6 Anthropic-backed functions (draft-minutes, generate-*-report,
+  // generate-grant-draft) all read ANTHROPIC_API_KEY and nothing else
+  // credential-wise -- a single project-wide key, so this checks it once,
+  // not per function. GET /v1/models is used because it bills no tokens
+  // (confirmed via Anthropic's own API docs) while still exercising real
+  // auth the same way a chat completion call would.
+  //
+  // Same exemption pattern as LOCK_KPI_SNAPSHOT_EXCLUDED above: skip the
+  // live check and log one exempt entry only if every one of these
+  // functions is excluded on this project (the registry's own signal that
+  // AI isn't provisioned here at all), rather than guessing from the key's
+  // presence alone.
+  //
+  // Never logs the key itself -- only whether it's set and what HTTP
+  // status Anthropic returned.
+  const AI_FUNCTION_NAMES = [
+    'draft-minutes',
+    'generate-compliance-report',
+    'generate-financial-report',
+    'generate-grant-draft',
+    'generate-report',
+    'generate-tasks-report',
+  ];
+  const AI_FUNCTIONS_EXCLUDED = AI_FUNCTION_NAMES.every(name => EXCLUDED_FUNCTION_NAMES.has(name));
+  const aiKeyExemptReason = CURRENT_DEPLOYMENT.excluded_functions.find(e => AI_FUNCTION_NAMES.includes(e.name))?.reason ?? '';
+
+  const aiKeyFindings: { detail: string; status: number | null }[] = [];
+  const aiKeyExempt: { check: string; exempt: true; reason: string }[] = [];
+
+  if (AI_FUNCTIONS_EXCLUDED) {
+    aiKeyExempt.push({ check: 'ai_key_health', exempt: true, reason: aiKeyExemptReason });
+  } else {
+    const anthropicKeyForHealthCheck = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!anthropicKeyForHealthCheck) {
+      aiKeyFindings.push({ detail: 'ANTHROPIC_API_KEY is not set', status: null });
+    } else {
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/models', {
+          headers: {
+            'x-api-key': anthropicKeyForHealthCheck,
+            'anthropic-version': '2023-06-01',
+          },
+        });
+        if (res.status === 401) {
+          aiKeyFindings.push({ detail: 'ANTHROPIC_API_KEY appears expired or revoked (Anthropic returned 401)', status: 401 });
+        } else if (res.status !== 200) {
+          aiKeyFindings.push({ detail: `Anthropic API returned HTTP ${res.status}`, status: res.status });
+        }
+      } catch (err) {
+        aiKeyFindings.push({ detail: `Could not reach the Anthropic API: ${(err as Error).message}`, status: null });
+      }
+    }
+  }
+
+  if (aiKeyFindings.length > 0) {
+    const body =
+      `Tēnā koutou,\n\n` +
+      `MaraeHub's daily check found a problem with the AI service key on this project.\n\n` +
+      aiKeyFindings.map(f => `- ${f.detail}`).join('\n') +
+      `\n\nPlease check the ANTHROPIC_API_KEY secret directly in the Supabase dashboard.` +
+      footer();
+
+    await notifyAdmin(`AI key health check — ${aiKeyFindings[0].detail}`, body);
+  }
+
+  await db.from('system_check_log').insert({
+    check_name: 'ai_key_health',
+    findings_count: aiKeyFindings.length,
+    details: [...aiKeyFindings, ...aiKeyExempt],
+  });
+
   // ── Self-liveness ping (ClickUp 86d3u7790, self-liveness monitor) ───────
   // Every check above depends on check-deadlines itself actually firing --
   // if pg_cron stops invoking this function, or it throws before reaching
@@ -2014,6 +2086,7 @@ serve(async (req) => {
       founder_capacity_check_findings: founderCheckDue ? 1 : 0,
       migration_tracking_drift_findings: migrationDriftFindings.length,
       edge_function_reachability_findings: reachabilityFindings.length,
+      ai_key_health_findings: aiKeyFindings.length,
       grants:            grants?.length ?? 0,
       reminders:         reminders?.length ?? 0,
       meeting_action_reminders_sent:    actionReminderLog.length,

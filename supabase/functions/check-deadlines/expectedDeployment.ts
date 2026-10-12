@@ -90,6 +90,12 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
     "expected_functions": [
       "ban-trustee",
       "create-trustee",
+      "draft-minutes",
+      "generate-compliance-report",
+      "generate-financial-report",
+      "generate-grant-draft",
+      "generate-report",
+      "generate-tasks-report",
       "invite-trustee",
       "mark-action-done",
       "notify-hirer",
@@ -110,30 +116,6 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
         "name": "community-auto-login",
         "reason": "hardcoded to Opeke's community account; generalise first",
         "clickup": "14yhc7kum12"
-      },
-      {
-        "name": "draft-minutes",
-        "reason": "secrets not yet provisioned"
-      },
-      {
-        "name": "generate-compliance-report",
-        "reason": "secrets not yet provisioned"
-      },
-      {
-        "name": "generate-financial-report",
-        "reason": "secrets not yet provisioned"
-      },
-      {
-        "name": "generate-grant-draft",
-        "reason": "secrets not yet provisioned"
-      },
-      {
-        "name": "generate-report",
-        "reason": "secrets not yet provisioned"
-      },
-      {
-        "name": "generate-tasks-report",
-        "reason": "secrets not yet provisioned"
       },
       {
         "name": "get-trustee-login-activity",
