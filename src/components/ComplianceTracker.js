@@ -7,6 +7,7 @@ import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync
 import { getItemComplianceStatus } from '../lib/complianceStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -146,6 +147,117 @@ function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
+// Same logic as TaskBoard.js's getInitials -- matching the Tasks list's
+// owner-initials display exactly.
+function getInitials(name) {
+  if (!name) return null;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// ─── COMPACT LIST VIEW (14yhc7kw7dt Phase C1) ──────────────────────────────
+// Compact | Detailed toggle, Compact default. The compact row uses the
+// shared ListRow shell: Mark Done as the marker, the computed status chip
+// (StatusPill with no options/onStatusChange -- display-only, never a
+// menu), title, category, due date, and a trimmed '···' menu carrying
+// everything the detailed row's action buttons do except Mark Done
+// (Edit / Start Workflow / View Document / Delete). Expanding a row (click
+// anywhere on it) reveals the same classification, owner, evidence/cost
+// badges, and notes the detailed row already shows -- nothing new, just
+// relocated behind a tap. Filters, sort, the 30-day window
+// (complianceStatus.js), closeLinkedTask, and what Mark Done does are all
+// untouched -- only how a row is drawn changes.
+
+function CMenuItem({ label, onClick, danger, href }) {
+  const style = {
+    display: 'flex', alignItems: 'center', width: '100%', padding: '8px 14px',
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    fontSize: 13, fontWeight: 500, color: danger ? 'var(--danger)' : 'var(--text1)',
+    textAlign: 'left', fontFamily: 'DM Sans, sans-serif', textDecoration: 'none',
+  };
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" style={style} onClick={e => e.stopPropagation()}>
+        {label}
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={style}
+      onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  const canStartWorkflow = item.classification === 'workflow' && item.workflow_template_id && onStartWorkflow;
+
+  return (
+    <span ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        title="More actions"
+        aria-label="More actions"
+        style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          fontSize: 18, padding: '2px 8px', color: 'var(--text3)', lineHeight: 1,
+        }}
+      >
+        ···
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 960,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.16)', minWidth: 190, overflow: 'hidden', padding: '4px 0',
+          }}
+        >
+          <CMenuItem label="Edit" onClick={() => { onEdit(item); setOpen(false); }} />
+          {canStartWorkflow && (
+            <CMenuItem
+              label="⚙️ Start Workflow →"
+              onClick={() => {
+                onStartWorkflow({
+                  templateId: item.workflow_template_id,
+                  workflowName: item.name,
+                  sourceName: item.name,
+                  triggerType: 'renewal_reminder',
+                });
+                setOpen(false);
+              }}
+            />
+          )}
+          {item.document_url && <CMenuItem label="📎 View Document" href={item.document_url} />}
+          <CMenuItem label="Delete" danger onClick={() => { onDelete(item.id); setOpen(false); }} />
+        </div>
+      )}
+    </span>
+  );
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
@@ -162,6 +274,10 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [classFilter, setClassFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
   const [sortMode, setSortMode] = useSortPreference('compliance', 'urgency');
+  // Compact | Detailed toggle (14yhc7kw7dt), remembered per browser like
+  // the sort preference above. Compact is the default.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('compliance_view', 'compact');
+  const [expandedCompactIds, setExpandedCompactIds] = useState(new Set());
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
   const [linkedComplianceItemIds, setLinkedComplianceItemIds] = useState(new Set());
@@ -715,6 +831,112 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     );
   }
 
+  function toggleCompactExpand(id) {
+    setExpandedCompactIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function renderCompactItemRow(item) {
+    const status = getItemComplianceStatus(item);
+    const cat = CATEGORIES[item.category] || CATEGORIES.other;
+    const cls = CLASSIFICATIONS[item.classification] || CLASSIFICATIONS.task;
+    const isExpanded = expandedCompactIds.has(item.id);
+    const linkedDocument = item.linked_document_id ? documents.find(d => d.id === item.linked_document_id) : null;
+    const linkedExpense = item.linked_expense_id ? expenses.find(e => e.id === item.linked_expense_id) : null;
+
+    return (
+      <div key={item.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <ListRow
+          onClick={() => toggleCompactExpand(item.id)}
+          marker={
+            <button
+              onClick={e => { e.stopPropagation(); handleMarkDone(item); }}
+              title={item.renewal_months
+                ? `Mark done today — next due date set to ${nextDueDate(item.renewal_months)}`
+                : 'Mark as checked today'}
+              aria-label="Mark this item as checked"
+              style={{
+                fontSize: 13, fontWeight: 700, color: '#1a4a3a', background: '#e8f4ef',
+                border: '1px solid #a8d8c0', borderRadius: 6, padding: '4px 9px', cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              Mark done
+            </button>
+          }
+          chip={<span style={{ flexShrink: 0 }}><StatusPill status={status} /></span>}
+          title={item.name}
+          meta={[
+            item.responsible_name ? (
+              <span key="owner" title={item.responsible_name} style={{
+                width: 24, height: 24, borderRadius: '50%', background: 'var(--surface2)',
+                color: 'var(--text2)', fontSize: 11, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                {getInitials(item.responsible_name)}
+              </span>
+            ) : (
+              <span key="owner" style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                Unassigned
+              </span>
+            ),
+            <span key="cat" style={{
+              fontSize: 12, fontWeight: 600, background: cat.bg, color: cat.color,
+              borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap',
+            }}>
+              {cat.icon} {cat.label}
+            </span>,
+            item.due_date && (
+              <span key="due" style={{
+                fontSize: 13, whiteSpace: 'nowrap',
+                color: status === 'overdue' ? 'var(--danger)' : 'var(--text3)',
+                fontWeight: status === 'overdue' ? 700 : 400,
+              }}>
+                {fmt(item.due_date)}
+              </span>
+            ),
+          ]}
+          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} />}
+        />
+        {isExpanded && (
+          <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, background: cls.bg, color: cls.color, borderRadius: 20, padding: '3px 10px' }}>
+                {cls.icon} {cls.label}
+              </span>
+              {item.responsible_name && (
+                <span style={{ fontSize: 14, color: 'var(--text2)' }}>👤 {item.responsible_name}</span>
+              )}
+              {linkedDocument && (
+                <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                  📄 Evidence: {linkedDocument.title}
+                </span>
+              )}
+              {linkedExpense && (
+                <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                  💰 Cost: {linkedExpense.description} — ${parseFloat(linkedExpense.amount || 0).toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              )}
+            </div>
+            {(item.notes || item.legal_basis) && (
+              <div style={{ fontSize: 14, color: 'var(--text2)' }}>
+                {item.notes && <div style={{ fontStyle: 'italic', color: 'var(--text3)' }}>{item.notes}</div>}
+                {item.legal_basis && (
+                  <div style={{ marginTop: item.notes ? 6 : 0 }}>
+                    <strong>{item.legal_basis}</strong>
+                    {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ── INCIDENT ARCHIVE SPLIT ─────────────────────────────────────────────────
   const INCIDENT_ARCHIVE_THRESHOLD = 50;
   const resolvedIncidents  = incidents.filter(i => i.resolved);
@@ -839,14 +1061,40 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </select>
             )}
             <SortSelect value={sortMode} onChange={setSortMode} options={COMPLIANCE_SORT_OPTIONS} />
+            <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setItemsViewMode('compact')}
+                style={{
+                  padding: '7px 14px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: itemsViewMode === 'compact' ? 'var(--brand)' : 'var(--surface2)',
+                  color: itemsViewMode === 'compact' ? '#fff' : 'var(--text2)',
+                }}
+              >
+                Compact
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemsViewMode('detailed')}
+                style={{
+                  padding: '7px 14px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: itemsViewMode === 'detailed' ? 'var(--brand)' : 'var(--surface2)',
+                  color: itemsViewMode === 'detailed' ? '#fff' : 'var(--text2)',
+                }}
+              >
+                Detailed
+              </button>
+            </div>
           </div>
+
+          {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
 
           {/* Items list */}
           {filteredItems.length === 0 ? (
             <div className="empty-state"><div className="emoji">✅</div><div>No compliance items in this category</div></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {visibleItems.map(renderItemRow)}
+              {visibleItems.map(itemsViewMode === 'compact' ? renderCompactItemRow : renderItemRow)}
             </div>
           )}
 
@@ -869,7 +1117,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </button>
               {showNeverAssessed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                  {neverAssessedItems.map(renderItemRow)}
+                  {neverAssessedItems.map(itemsViewMode === 'compact' ? renderCompactItemRow : renderItemRow)}
                 </div>
               )}
             </div>

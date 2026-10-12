@@ -95,7 +95,7 @@ async function renderBoard() {
 }
 
 function findRowByText(text) {
-  const rows = Array.from(container.querySelectorAll('.task-list-row'));
+  const rows = Array.from(container.querySelectorAll('.list-row'));
   return rows.find(r => r.textContent.includes(text));
 }
 
@@ -206,7 +206,7 @@ test('in-progress tasks show once, only in the top In progress group', async () 
   expect(inProgressHeaderIdx).toBeLessThan(needsAttentionIdx);
 
   // Overdue AND in-progress -- must not also appear in Needs attention.
-  const matches = Array.from(container.querySelectorAll('.task-list-row'))
+  const matches = Array.from(container.querySelectorAll('.list-row'))
     .filter(r => r.textContent.includes('Write grant report'));
   expect(matches.length).toBe(1);
 });
@@ -227,4 +227,17 @@ test('reopening a task from the completed/cancelled group works', async () => {
   const updates = __getUpdateCalls();
   const reopen = updates.find(u => u.table === 'tasks' && u.eqId === 't4' && u.payload.status === 'open');
   expect(reopen).toBeTruthy();
+});
+
+test('regression (14yhc7kw7dt): the status chip word is a real word boundary in the row\'s copied text, not fused to a neighbour', async () => {
+  await renderBoard();
+
+  const row = findRowByText('Fix the roof');
+  expect(row).toBeTruthy();
+  // A naive substring check (row.textContent.includes('Open')) would
+  // pass even if the chip's text were glued to its neighbours with no
+  // separator -- a word-boundary match is what a real copy-paste or a
+  // human reading the text actually needs. Found via the shared ListRow
+  // component Compliance also uses; fixed there for both consumers.
+  expect(row.textContent).toMatch(/(^|\s)Open(\s|$)/);
 });

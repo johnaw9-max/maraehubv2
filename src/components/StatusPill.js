@@ -100,13 +100,24 @@ export function getStatusLabel(status) {
  *   options        — array of valid status strings for the dropdown (omit for read-only)
  *   onStatusChange — (newStatus) => void  (omit for read-only)
  *   size           — 'sm' (default, 11px) | 'md' (12px)
+ *   palette        — optional { [status]: { bg, color, hoverBg? } } override map
+ *                    (14yhc7kw7dt). Omit to use the shared STATUS_TO_COLOR/
+ *                    PILL_COLORS lookup exactly as before -- a status with
+ *                    no entry in a given palette also falls back to that
+ *                    same shared lookup, so a partial palette is safe.
+ *   minTapSize     — optional px floor applied to both minHeight and
+ *                    minWidth (14yhc7kw7dt). Omit for the exact sizing
+ *                    every current caller already gets.
  */
-export default function StatusPill({ status, options, onStatusChange, size = 'sm' }) {
+export default function StatusPill({ status, options, onStatusChange, size = 'sm', palette, minTapSize }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
-  const colorKey = getColorKey(status);
-  const colors   = PILL_COLORS[colorKey];
+  function resolveColors(s) {
+    return (palette && palette[s]) || PILL_COLORS[getColorKey(s)];
+  }
+
+  const colors   = resolveColors(status);
   const label    = getStatusLabel(status);
   const interactive = Boolean(options && onStatusChange);
 
@@ -136,6 +147,7 @@ export default function StatusPill({ status, options, onStatusChange, size = 'sm
     cursor: interactive ? 'pointer' : 'default',
     userSelect: 'none',
     transition: 'background 0.15s',
+    ...(minTapSize ? { minHeight: minTapSize, minWidth: minTapSize, justifyContent: 'center' } : {}),
   };
 
   if (!interactive) {
@@ -147,7 +159,7 @@ export default function StatusPill({ status, options, onStatusChange, size = 'sm
       <button
         type="button"
         style={{ ...pillStyle, WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
-        onMouseEnter={e => { e.currentTarget.style.background = colors.hoverBg; }}
+        onMouseEnter={e => { e.currentTarget.style.background = colors.hoverBg || colors.bg; }}
         onMouseLeave={e => { e.currentTarget.style.background = colors.bg; }}
         onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
         aria-label={`Status: ${label}. Click to change.`}
@@ -174,8 +186,7 @@ export default function StatusPill({ status, options, onStatusChange, size = 'sm
           onClick={e => e.stopPropagation()}
         >
           {options.map(opt => {
-            const ck     = getColorKey(opt);
-            const oc     = PILL_COLORS[ck];
+            const oc     = resolveColors(opt);
             const ol     = getStatusLabel(opt);
             const active = opt === status;
             return (

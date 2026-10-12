@@ -7,6 +7,7 @@ import { compareByUrgency } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 import CommentModal from './CommentModal';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 const COLUMNS = [
   { key: 'open',        label: 'Open',        icon: '📋', headerBg: '#e8eef8', headerColor: '#1a4a8a' },
@@ -411,14 +412,8 @@ function TaskListRow({ task, onEdit, onDelete, onChangeStatus, onOpenComments })
   const isComplete = task.status === 'completed';
 
   return (
-    <div
-      className="task-list-row"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-      }}
-    >
-      <div className="task-list-row-primary" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 auto', minWidth: 0 }}>
+    <ListRow
+      marker={
         <input
           type="checkbox"
           checked={isComplete}
@@ -426,54 +421,50 @@ function TaskListRow({ task, onEdit, onDelete, onChangeStatus, onOpenComments })
           aria-label={isComplete ? 'Mark task incomplete' : 'Mark task complete'}
           style={{ width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
         />
-        <StatusChip status={task.status} onChangeStatus={newStatus => onChangeStatus(task, newStatus)} />
-        {source && (
-          <span style={{
-            fontSize: 11, borderRadius: 20, padding: '2px 8px', display: 'inline-flex',
-            alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',
-            ...SOURCE_ACTION_STYLE[source.action],
-          }}>
-            {source.icon} {source.label}
-          </span>
-        )}
+      }
+      chip={<StatusChip status={task.status} onChangeStatus={newStatus => onChangeStatus(task, newStatus)} />}
+      leading={source && (
         <span style={{
-          fontSize: 14, fontWeight: 600, color: 'var(--text1)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
-          textDecoration: isComplete ? 'line-through' : 'none',
-          opacity: isComplete ? 0.6 : 1,
+          fontSize: 11, borderRadius: 20, padding: '2px 8px', display: 'inline-flex',
+          alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',
+          ...SOURCE_ACTION_STYLE[source.action],
         }}>
-          {displayTitle}
+          {source.icon} {source.label}
         </span>
-      </div>
-
-      <div className="task-list-row-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        {initials && (
-          <span title={task.assigned_to} style={{
+      )}
+      title={displayTitle}
+      titleStyle={{
+        textDecoration: isComplete ? 'line-through' : 'none',
+        opacity: isComplete ? 0.6 : 1,
+      }}
+      meta={[
+        initials && (
+          <span key="initials" title={task.assigned_to} style={{
             width: 24, height: 24, borderRadius: '50%', background: 'var(--surface2)',
             color: 'var(--text2)', fontSize: 11, fontWeight: 700,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             {initials}
           </span>
-        )}
-        {dateStr && (
-          <span style={{
+        ),
+        dateStr && (
+          <span key="date" style={{
             fontSize: 13, whiteSpace: 'nowrap',
             color: overdue ? 'var(--danger)' : 'var(--text3)',
             fontWeight: overdue ? 700 : 400,
           }}>
             {dateStr}
           </span>
-        )}
-        <span style={{
+        ),
+        <span key="priority" style={{
           fontSize: 12, background: badge.bg, color: badge.color,
           borderRadius: 20, padding: '2px 9px', fontWeight: 600, whiteSpace: 'nowrap',
         }}>
           {task.priority || 'Medium'}
-        </span>
-        <RowMenu task={task} onEdit={onEdit} onOpenComments={onOpenComments} onDelete={onDelete} />
-      </div>
-    </div>
+        </span>,
+      ]}
+      menu={<RowMenu task={task} onEdit={onEdit} onOpenComments={onOpenComments} onDelete={onDelete} />}
+    />
   );
 }
 
@@ -508,14 +499,7 @@ function TaskListView({
 }) {
   return (
     <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-      <style>{`
-        @media (max-width: 640px) {
-          .task-list-row { flex-wrap: wrap; }
-          .task-list-row .task-list-row-primary,
-          .task-list-row .task-list-row-meta { flex: 1 1 100%; }
-          .task-list-row .task-list-row-meta { margin-top: 4px; }
-        }
-      `}</style>
+      <style>{LIST_ROW_RESPONSIVE_CSS}</style>
 
       <ListGroupHeader label="In progress" count={inProgress.length} tone="info" />
       {inProgress.length === 0
