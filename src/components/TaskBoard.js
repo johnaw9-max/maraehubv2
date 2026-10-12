@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
@@ -242,6 +242,326 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
   );
 }
 
+// ─── LIST VIEW ────────────────────────────────────────────────────────────────
+// Compact one-row-per-task alternative to the kanban board, grouped by
+// urgency rather than status. Every row reuses the exact same handlers
+// TaskCard already passes through (onEdit/onDelete/onChangeStatus/
+// onOpenComments) -- this view only changes how a task is displayed and
+// clicked, never what clicking it does, so RISK: acknowledgement and every
+// other onTaskCompleted branch behave identically to the kanban board.
+//
+// Status lives on the chip (StatusChip below), not in the '···' menu --
+// its labels ("Done"/"Cancelled") are list-view-specific and deliberately
+// not the same strings as COLUMNS' kanban header labels ("Completed").
+
+function getInitials(name) {
+  if (!name) return null;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function MenuItem({ label, onClick, danger, active }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', width: '100%', padding: '8px 14px',
+        background: active ? 'var(--surface2)' : 'transparent', border: 'none', cursor: 'pointer',
+        fontSize: 13, fontWeight: active ? 700 : 500,
+        color: danger ? 'var(--danger)' : 'var(--text1)', textAlign: 'left',
+        fontFamily: 'DM Sans, sans-serif',
+      }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface2)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = active ? 'var(--surface2)' : 'transparent'; }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// Row '···' menu. Status moved to the chip below (2nd revision of this
+// preview), so this is back to three plain actions -- Edit/Comments/Delete
+// call the identical handlers TaskCard's own buttons use.
+function RowMenu({ task, onEdit, onOpenComments, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  return (
+    <span ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        title="More actions"
+        aria-label="More actions"
+        style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          fontSize: 18, padding: '2px 8px', color: 'var(--text3)', lineHeight: 1,
+        }}
+      >
+        ···
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute', top: 'calc(100% + 4px)', right: 0, zIndex: 960,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.16)', minWidth: 160, overflow: 'hidden', padding: '4px 0',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <MenuItem label="Edit" onClick={() => { onEdit(task); setOpen(false); }} />
+          <MenuItem label="Comments" onClick={() => { onOpenComments(task); setOpen(false); }} />
+          <MenuItem label="Delete" danger onClick={() => { onDelete(task.id); setOpen(false); }} />
+        </div>
+      )}
+    </span>
+  );
+}
+
+// Status chip -- Open (grey) / In progress (blue) / Done (green) /
+// Cancelled (grey). Deliberately its own small palette, not StatusPill's
+// shared STATUS_TO_COLOR map (which has no blue and colors 'open' orange),
+// since the user asked for this specific grey/blue scheme for the list
+// view. Tapping it opens the same four options regardless of the task's
+// current status, including from the completed/cancelled group -- that's
+// what lets a row reopen itself. Button is 32px tall to meet the tap
+// target. onChangeStatus is the same changeTaskStatus the checkbox and
+// kanban's StatusPill already call, so RISK: acknowledgement etc. is
+// unchanged -- choosing "Done" on a RISK: task still only acknowledges it.
+const STATUS_CHIP_OPTIONS = [
+  { key: 'open',        label: 'Open',        bg: '#f5f0e8', color: '#6b6058' },
+  { key: 'in-progress', label: 'In progress', bg: '#e8eef8', color: '#1a4a8a' },
+  { key: 'completed',   label: 'Done',        bg: '#e8f4ef', color: '#1a4a3a' },
+  { key: 'cancelled',   label: 'Cancelled',   bg: '#f5f0e8', color: '#6b6058' },
+];
+
+function StatusChip({ status, onChangeStatus }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const cfg = STATUS_CHIP_OPTIONS.find(o => o.key === status) || STATUS_CHIP_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  return (
+    <span ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+        aria-label={`Status: ${cfg.label}. Tap to change.`}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          minHeight: 32, padding: '4px 12px', fontSize: 12, fontWeight: 700,
+          borderRadius: 20, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+          background: cfg.bg, color: cfg.color, fontFamily: 'DM Sans, sans-serif',
+        }}
+      >
+        {cfg.label}
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 960,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.16)', minWidth: 160, overflow: 'hidden', padding: '4px 0',
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          {STATUS_CHIP_OPTIONS.map(opt => (
+            <MenuItem
+              key={opt.key}
+              label={opt.label}
+              active={opt.key === status}
+              onClick={() => { onChangeStatus(opt.key); setOpen(false); }}
+            />
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function TaskListRow({ task, onEdit, onDelete, onChangeStatus, onOpenComments }) {
+  const overdue = isOverdue(task);
+  const dateStr = fmtDate(task.due_date);
+  const badge = PRIORITY_BADGE[task.priority] || PRIORITY_BADGE.Medium;
+  const source = taskSource(task.title);
+  const displayTitle = source ? task.title.slice(source.prefix.length) : task.title;
+  const initials = getInitials(task.assigned_to);
+  const isComplete = task.status === 'completed';
+
+  return (
+    <div
+      className="task-list-row"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--surface)',
+      }}
+    >
+      <div className="task-list-row-primary" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 auto', minWidth: 0 }}>
+        <input
+          type="checkbox"
+          checked={isComplete}
+          onChange={e => onChangeStatus(task, e.target.checked ? 'completed' : 'open')}
+          aria-label={isComplete ? 'Mark task incomplete' : 'Mark task complete'}
+          style={{ width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+        />
+        <StatusChip status={task.status} onChangeStatus={newStatus => onChangeStatus(task, newStatus)} />
+        {source && (
+          <span style={{
+            fontSize: 11, borderRadius: 20, padding: '2px 8px', display: 'inline-flex',
+            alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',
+            ...SOURCE_ACTION_STYLE[source.action],
+          }}>
+            {source.icon} {source.label}
+          </span>
+        )}
+        <span style={{
+          fontSize: 14, fontWeight: 600, color: 'var(--text1)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+          textDecoration: isComplete ? 'line-through' : 'none',
+          opacity: isComplete ? 0.6 : 1,
+        }}>
+          {displayTitle}
+        </span>
+      </div>
+
+      <div className="task-list-row-meta" style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        {initials && (
+          <span title={task.assigned_to} style={{
+            width: 24, height: 24, borderRadius: '50%', background: 'var(--surface2)',
+            color: 'var(--text2)', fontSize: 11, fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            {initials}
+          </span>
+        )}
+        {dateStr && (
+          <span style={{
+            fontSize: 13, whiteSpace: 'nowrap',
+            color: overdue ? 'var(--danger)' : 'var(--text3)',
+            fontWeight: overdue ? 700 : 400,
+          }}>
+            {dateStr}
+          </span>
+        )}
+        <span style={{
+          fontSize: 12, background: badge.bg, color: badge.color,
+          borderRadius: 20, padding: '2px 9px', fontWeight: 600, whiteSpace: 'nowrap',
+        }}>
+          {task.priority || 'Medium'}
+        </span>
+        <RowMenu task={task} onEdit={onEdit} onOpenComments={onOpenComments} onDelete={onDelete} />
+      </div>
+    </div>
+  );
+}
+
+const GROUP_HEADER_TONES = {
+  default: { bg: 'var(--surface2)', color: 'var(--text2)' },
+  danger:  { bg: '#faeae7',         color: 'var(--danger)' },
+  info:    { bg: '#e8eef8',         color: '#1a4a8a' },
+};
+
+function ListGroupHeader({ label, count, tone = 'default' }) {
+  const t = GROUP_HEADER_TONES[tone] || GROUP_HEADER_TONES.default;
+  return (
+    <div style={{ padding: '10px 14px', background: t.bg, borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontFamily: 'Playfair Display, serif', fontSize: 13, fontWeight: 600, color: t.color }}>
+        {label} ({count})
+      </span>
+    </div>
+  );
+}
+
+function ListEmptyRow({ text }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '20px 8px', color: 'var(--text3)', fontSize: 14 }}>
+      {text}
+    </div>
+  );
+}
+
+function TaskListView({
+  inProgress, needsAttention, comingUp, listCompleted, showListCompleted, onToggleShowCompleted,
+  onEdit, onDelete, onChangeStatus, onOpenComments,
+}) {
+  return (
+    <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .task-list-row { flex-wrap: wrap; }
+          .task-list-row .task-list-row-primary,
+          .task-list-row .task-list-row-meta { flex: 1 1 100%; }
+          .task-list-row .task-list-row-meta { margin-top: 4px; }
+        }
+      `}</style>
+
+      <ListGroupHeader label="In progress" count={inProgress.length} tone="info" />
+      {inProgress.length === 0
+        ? <ListEmptyRow text="Nothing in progress" />
+        : inProgress.map(task => (
+          <TaskListRow key={task.id} task={task} onEdit={onEdit} onDelete={onDelete} onChangeStatus={onChangeStatus} onOpenComments={onOpenComments} />
+        ))}
+
+      <ListGroupHeader label="Needs attention" count={needsAttention.length} tone="danger" />
+      {needsAttention.length === 0
+        ? <ListEmptyRow text="Nothing overdue" />
+        : needsAttention.map(task => (
+          <TaskListRow key={task.id} task={task} onEdit={onEdit} onDelete={onDelete} onChangeStatus={onChangeStatus} onOpenComments={onOpenComments} />
+        ))}
+
+      <ListGroupHeader label="Coming up" count={comingUp.length} />
+      {comingUp.length === 0
+        ? <ListEmptyRow text="No upcoming tasks" />
+        : comingUp.map(task => (
+          <TaskListRow key={task.id} task={task} onEdit={onEdit} onDelete={onDelete} onChangeStatus={onChangeStatus} onOpenComments={onOpenComments} />
+        ))}
+
+      {listCompleted.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={onToggleShowCompleted}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              background: 'var(--surface2)', border: 'none', borderTop: '1px solid var(--border)',
+              padding: '10px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif', textAlign: 'left',
+            }}
+          >
+            <span>{showListCompleted ? '▲' : '▼'}</span>
+            <span>Show completed ({listCompleted.length})</span>
+          </button>
+          {showListCompleted && listCompleted.map(task => (
+            <TaskListRow key={task.id} task={task} onEdit={onEdit} onDelete={onDelete} onChangeStatus={onChangeStatus} onOpenComments={onOpenComments} />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function TaskBoard() {
@@ -259,6 +579,10 @@ export default function TaskBoard() {
   const [commentCounts, setCommentCounts] = useState({});
   const [commentTask, setCommentTask] = useState(null);
   const [sortMode, setSortMode] = useSortPreference('tasks', 'urgency');
+  // List | Board toggle, remembered per browser like the sort preference
+  // above (same hook, reused rather than duplicated). List is the default.
+  const [viewMode, setViewMode] = useSortPreference('tasks_view', 'list');
+  const [showListCompleted, setShowListCompleted] = useState(false);
 
   useEffect(() => { fetchTasks(); fetchCommentCounts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setTasks(prev => [...prev].sort(compareTasksByMode(sortMode))); }, [sortMode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -308,6 +632,25 @@ export default function TaskBoard() {
     if (search.trim()) return [];
     return filtered.filter(t => t.status === 'completed' && !t.workflow_instance_id).slice(ARCHIVE_THRESHOLD);
   }, [filtered, search]);
+
+  // List view's own grouping -- independent of the kanban board's status
+  // columns and archive threshold above. Order within each group follows
+  // the already-sorted `filtered` array (same sortMode), not a fresh sort.
+  // In-progress tasks live only in their own top group, even if overdue --
+  // excluded from needsAttention/comingUp below on purpose.
+  const inProgress = useMemo(() => filtered.filter(t => t.status === 'in-progress'), [filtered]);
+  const needsAttention = useMemo(
+    () => filtered.filter(t => t.status !== 'in-progress' && isOverdue(t)),
+    [filtered]
+  );
+  const comingUp = useMemo(
+    () => filtered.filter(t => !isOverdue(t) && !['completed', 'cancelled', 'in-progress'].includes(t.status)),
+    [filtered]
+  );
+  const listCompleted = useMemo(
+    () => filtered.filter(t => ['completed', 'cancelled'].includes(t.status)),
+    [filtered]
+  );
 
   function openAdd() {
     setForm(EMPTY_FORM);
@@ -453,6 +796,30 @@ export default function TaskBoard() {
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </span>
         )}
+        <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            style={{
+              padding: '7px 14px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: viewMode === 'list' ? 'var(--brand)' : 'var(--surface2)',
+              color: viewMode === 'list' ? '#fff' : 'var(--text2)',
+            }}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('board')}
+            style={{
+              padding: '7px 14px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: viewMode === 'board' ? 'var(--brand)' : 'var(--surface2)',
+              color: viewMode === 'board' ? '#fff' : 'var(--text2)',
+            }}
+          >
+            Board
+          </button>
+        </div>
         <SortSelect value={sortMode} onChange={setSortMode} options={TASK_SORT_OPTIONS} />
         <div style={{ marginLeft: 'auto' }}>
           <button className="btn-primary" onClick={openAdd} style={{ padding: '10px 20px' }}>
@@ -461,9 +828,22 @@ export default function TaskBoard() {
         </div>
       </div>
 
-      {/* ── KANBAN BOARD ───────────────────────────────────────────────────── */}
+      {/* ── TASK LIST / KANBAN BOARD ──────────────────────────────────────── */}
       {loading ? (
         <div className="loading">Loading tasks...</div>
+      ) : viewMode === 'list' ? (
+        <TaskListView
+          inProgress={inProgress}
+          needsAttention={needsAttention}
+          comingUp={comingUp}
+          listCompleted={listCompleted}
+          showListCompleted={showListCompleted}
+          onToggleShowCompleted={() => setShowListCompleted(s => !s)}
+          onEdit={openEdit}
+          onDelete={setConfirmDeleteId}
+          onChangeStatus={changeTaskStatus}
+          onOpenComments={setCommentTask}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           {COLUMNS.map((col, colIndex) => {
@@ -516,8 +896,9 @@ export default function TaskBoard() {
         </div>
       )}
 
-      {/* ── ARCHIVE SECTION ───────────────────────────────────────────────── */}
-      {archivedTasks.length > 0 && (
+      {/* ── ARCHIVE SECTION (board view only -- list view has its own
+           "Show completed" collapse above) ────────────────────────────── */}
+      {viewMode === 'board' && archivedTasks.length > 0 && (
         <div style={{ marginTop: 20 }}>
           <button
             type="button"
