@@ -6,6 +6,7 @@ import useEntities from '../lib/useEntities';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
 import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { isResolutionOpen } from '../lib/resolutionStatus';
+import { functionErrorMessage } from '../lib/functionErrorMessage';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -558,7 +559,11 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       body: { maraeName, roughNotes },
     });
     setDraftLoading(false);
-    if (error) { setDraftError(error.message || 'Could not reach AI service'); return; }
+    if (error) {
+      const msg = await functionErrorMessage(error, 'Could not reach AI service');
+      setDraftError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
+      return;
+    }
     if (data?.error) { setDraftError(data.error); return; }
     setAiDraft(data.draft);
     setLocalMinutes(data.draft.minutes);

@@ -116,6 +116,20 @@ serve(async (req) => {
     return json({ draft });
 
   } catch (err) {
+    // Anthropic APIError exposes a numeric .status -- 401 (invalid/revoked
+    // key), 403 (permission denied), or a 400 whose message mentions
+    // "credit balance" (Anthropic's wording for insufficient funds) are
+    // the auth/billing cases the frontend shows a clean message for
+    // instead of this generic shape (14yhc7kw74b).
+    const anthropicErr = err as { status?: number; message?: string };
+    if (
+      anthropicErr?.status === 401 ||
+      anthropicErr?.status === 403 ||
+      (anthropicErr?.status === 400 && anthropicErr.message?.includes('credit balance'))
+    ) {
+      console.error('[draft-minutes] Anthropic auth/billing error, status:', anthropicErr.status);
+      return json({ error: 'ai_auth_or_billing' }, anthropicErr.status);
+    }
     console.error('[draft-minutes] unexpected error:', (err as Error).message);
     return json({ error: (err as Error).message }, 500);
   }

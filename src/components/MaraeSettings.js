@@ -4,6 +4,7 @@ import { fetchXeroFinancials } from '../lib/xero';
 import PrivacyPolicy from './PrivacyPolicy';
 import RoleSetupModal from './RoleSetup';
 import { fetchAssignableItems, fetchTrusteeDecisions, reassignItems } from '../lib/trusteeWorkload';
+import { functionErrorMessage } from '../lib/functionErrorMessage';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
@@ -444,22 +445,6 @@ export default function MaraeSettings({ profile, isAdmin }) {
     setEditingEntityName('');
     await fetchEntities();
     setRenamingEntity(false);
-  }
-
-  // supabase-js's error.message on a non-2xx Edge Function response is
-  // always the generic "Edge Function returned a non-2xx status code" --
-  // the function's real, specific message (e.g. "already registered")
-  // lives in the response body instead, at error.context (confirmed
-  // 2026-09-24 investigating a real Add Trustee report that turned out
-  // to be this exact swallowing, not a backend/deployment problem).
-  async function functionErrorMessage(error, fallback) {
-    if (error?.context && typeof error.context.json === 'function') {
-      try {
-        const body = await error.context.clone().json();
-        if (body?.error) return body.error;
-      } catch { /* response wasn't JSON */ }
-    }
-    return error?.message || fallback;
   }
 
   async function sendInvite() {

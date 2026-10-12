@@ -8,6 +8,7 @@ import { syncEntryForAmountChange } from '../lib/glPosting';
 import { matchGrantToGoals } from '../lib/grantMatching';
 import { renderReportText } from '../lib/renderReportText';
 import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
+import { functionErrorMessage } from '../lib/functionErrorMessage';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 
@@ -155,7 +156,11 @@ export default function GrantsTracker() {
       body: { maraeName: maraeSettings?.marae_name || 'this marae', context },
     });
     setDraftLoading(false);
-    if (error) { setDraftError(error.message || 'Could not reach AI service'); return; }
+    if (error) {
+      const msg = await functionErrorMessage(error, 'Could not reach AI service');
+      setDraftError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
+      return;
+    }
     setDraftText(data?.draft || '');
     setShowDraftModal(true);
   }
