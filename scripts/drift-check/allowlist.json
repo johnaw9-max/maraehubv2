@@ -1,0 +1,18 @@
+{
+  "_comment": "Intentional per-marae differences from the reference project. Each entry suppresses exactly one (category, item, marae) drift finding -- it is still computed and checked, just excluded from the drift count and shown in its own 'Allowed differences' section instead of flagging the run. marae may be a project name from registry.json, or '*' to apply to every marae. Every entry needs a real reason -- do not add one speculatively just to silence a finding you have not actually looked at. Entries below were seeded from this run's first real output, each cross-checked against an existing documented source (scripts/marae-registry.json's excluded_functions/excluded_jobs, or a migration file's own header) -- not guessed.",
+  "entries": [
+    { "category": "edge_function", "item": "get-tineka-session", "marae": "terere", "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design. (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "get-tineka-session", "marae": "test", "reason": "Opeke-only by its own file header: mints Tineka sessions for the founder, called from Opeke only by design. (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "lock-monthly-kpi-snapshot", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "xero-callback", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "xero-financials", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "get-trustee-login-activity", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "google-calendar-callback", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "sync-hui-to-calendar", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "edge_function", "item": "stripe-webhook", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_functions)" },
+    { "category": "cron_job", "item": "maraehub-lock-kpi-snapshot", "marae": "terere", "reason": "secrets not yet provisioned (scripts/marae-registry.json excluded_jobs)" },
+    { "category": "edge_function", "item": "community-auto-login", "marae": "test", "reason": "hardcoded to Opeke's community account; generalise first (14yhc7kum12; scripts/marae-registry.json excluded_functions)" },
+    { "category": "function", "item": "update_last_sign_in()", "marae": "test", "reason": "Tineka-only infra, documented in supabase/migrations/20260724000000_fix_update_last_sign_in_search_path.sql -- never existed on Opeke by design." },
+    { "category": "column", "item": "profiles.last_sign_in_at", "marae": "test", "reason": "Populated by update_last_sign_in(), same Tineka-only migration (20260724000000_fix_update_last_sign_in_search_path.sql)." }
+  ]
+}

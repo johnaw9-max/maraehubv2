@@ -1,0 +1,66 @@
+{
+  "_comment": "Intentional per-marae differences for integrity-audit.js (repo-on-main vs one marae). Each entry suppresses exactly one (category, item, marae) finding from the FAIL criteria -- it is still computed and still shown in the check's evidence text (marked 'allowlisted'), just not counted as a failure. marae may be a project name from scripts/marae-registry.json, or '*' for every marae. Every entry needs a real, specific reason confirmed by direct investigation -- do not add one speculatively to silence a finding you have not actually looked at. This is deliberately separate from scripts/marae-registry.json's excluded_functions/excluded_jobs: that file controls what SHOULD be deployed/scheduled; this file controls which already-computed findings are expected and not worth re-flagging on every run.",
+  "categories": ["secret_name (missing)", "unexpected_secret", "excluded_function_deployed", "advisor_finding"],
+  "entries": [
+    {
+      "category": "secret_name",
+      "item": "CRONITOR_PING_URL",
+      "marae": "terere",
+      "reason": "Optional self-liveness monitor for check-deadlines only; cosmetic, no functional dependency. Not yet provisioned on Terere. Confirmed present on tineka (test) and Opeke, so NOT marae '*'."
+    },
+    {
+      "category": "secret_name",
+      "item": "RESEND_TEST_EMAIL",
+      "marae": "terere",
+      "reason": "Correctly absent for a real paying customer -- this secret exists only to redirect transactional email away from real addresses in non-production environments."
+    },
+    {
+      "category": "secret_name",
+      "item": "RESEND_TEST_EMAIL",
+      "marae": "opeke",
+      "reason": "Correctly absent for production, same reasoning as Terere. Deliberately NOT applied to tineka (test) -- test is the one project where this redirect would matter most, so its absence there stays a real finding."
+    },
+    {
+      "category": "secret_name",
+      "item": "APP_URL",
+      "marae": "opeke",
+      "reason": "Missing name is harmless specifically on Opeke: notify-trustees' hardcoded fallback URL already equals Opeke's real production URL, so trustee emails still link correctly. Deliberately NOT applied to Terere -- there the same gap is a real bug (emails link back to Opeke's domain instead of Terere's)."
+    },
+    {
+      "category": "unexpected_secret",
+      "item": "COMMUNITY_LOGIN_TOKEN",
+      "marae": "tineka",
+      "reason": "Leftover secret from an earlier configuration; its function (community-auto-login) is correctly excluded and not deployed on tineka (test) per scripts/marae-registry.json -- harmless orphan, not a security exposure."
+    },
+    {
+      "category": "advisor_finding",
+      "item": "function_search_path_mutable",
+      "marae": "*",
+      "reason": "Long-standing platform-level advisor WARN present identically across all three projects (same rule set). Informational per current methodology, not yet remediated as its own initiative -- tracked, not hidden: still shown in evidence, just not gating."
+    },
+    {
+      "category": "advisor_finding",
+      "item": "anon_security_definer_function_executable",
+      "marae": "*",
+      "reason": "Same as function_search_path_mutable: long-standing, identical across all three projects, informational for now."
+    },
+    {
+      "category": "advisor_finding",
+      "item": "authenticated_security_definer_function_executable",
+      "marae": "*",
+      "reason": "Same as function_search_path_mutable: long-standing, identical across all three projects, informational for now."
+    },
+    {
+      "category": "advisor_finding",
+      "item": "auth_leaked_password_protection",
+      "marae": "*",
+      "reason": "Same as function_search_path_mutable: long-standing, identical across all three projects, informational for now."
+    },
+    {
+      "category": "advisor_finding",
+      "item": "extension_in_public",
+      "marae": "terere",
+      "reason": "pg_net extension installed in the public schema on Terere only -- confirmed absent on tineka (test) and Opeke by direct advisor runs on both, so NOT marae '*'. Informational for now, not yet remediated."
+    }
+  ]
+}

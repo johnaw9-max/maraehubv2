@@ -1,0 +1,9 @@
+{
+  "_comment": "Project refs only -- no secrets. One entry has role 'reference' (the schema source of truth other maraes are compared against); every other entry has role 'marae'. Add a new marae by adding one object here; drift-check.js picks it up automatically on the next run.",
+  "projects": [
+    { "name": "opeke", "ref": "cbeenkpjpnhmtqtnjiyd", "role": "reference" },
+    { "name": "terere", "ref": "fwtxbirekiyhbxqdctkq", "role": "marae" },
+    { "name": "test", "ref": "zfefukxaliuximizjkwa", "role": "marae" },
+    { "name": "iwi-hub", "ref": "autzrcqblmxgiuibbvfa", "role": "marae" }
+  ]
+}
