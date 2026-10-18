@@ -13,7 +13,9 @@
 // See README.md for usage. Run with --help for flags.
 
 const { spawnSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ROOT = __dirname;
@@ -169,14 +171,32 @@ function fetchCatalog(ref) {
 }
 
 // ── CATEGORY 5: EDGE FUNCTIONS ─────────────────────────────────────────────
+//
+// Compares a hash of the actual downloaded source text, not the platform's
+// own `ezbr_sha256` bundle hash. The bundle hash changes with build
+// metadata (e.g. bundler non-determinism) even when the source is
+// byte-identical, which produced false "different" findings in the first
+// version of this check. Downloading once per project and hashing the
+// real `index.ts` content is slower but reports drift that's actually
+// there.
 
 function fetchEdgeFunctions(ref) {
   const { data, error } = cliListJSON(['functions', 'list'], ref);
   if (error) return { error };
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'drift-check-fn-'));
+  const dlRes = run('npx', ['supabase', 'functions', 'download', '--project-ref', ref, '--workdir', tmpDir, '--use-api'], ref);
   const map = new Map();
   for (const fn of data) {
-    map.set(fn.name, `status=${fn.status}|verify_jwt=${fn.verify_jwt}|sha256=${fn.ezbr_sha256}`);
+    let sourceHash = 'unavailable (download failed)';
+    if (dlRes.ok) {
+      const srcFile = path.join(tmpDir, 'supabase', 'functions', fn.name, 'index.ts');
+      if (fs.existsSync(srcFile)) {
+        sourceHash = crypto.createHash('sha256').update(fs.readFileSync(srcFile, 'utf8')).digest('hex').slice(0, 16);
+      }
+    }
+    map.set(fn.name, `status=${fn.status}|verify_jwt=${fn.verify_jwt}|source_sha256=${sourceHash}`);
   }
+  fs.rmSync(tmpDir, { recursive: true, force: true });
   return { map };
 }
 
