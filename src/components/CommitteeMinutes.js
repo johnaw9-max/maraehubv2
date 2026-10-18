@@ -71,7 +71,22 @@ function fmt(d) {
 
 function daysUntil(d) {
   if (!d) return null;
-  return Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
+  // `d` is a date-only string (e.g. "2026-10-10"), which Date parses as UTC
+  // midnight. Diffing that directly against `new Date()` (the current
+  // instant) mixes a UTC calendar boundary with NZ wall-clock time, so a
+  // date can read a day short/long depending on time of day and NZDT/NZST.
+  // Anchor "today" to the NZ calendar date instead, so both sides of the
+  // subtraction are UTC-midnight timestamps of their respective dates.
+  const nzToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Pacific/Auckland' });
+  return Math.round((new Date(d) - new Date(nzToday)) / (1000 * 60 * 60 * 24));
+}
+
+// Shows `value` via `setter`, auto-clearing after `ms` (or immediately when
+// a fresh call passes `null`, e.g. at the start of the next save attempt).
+function flashMessage(setter, timerRef, value, ms = 3000) {
+  if (timerRef.current) clearTimeout(timerRef.current);
+  setter(value);
+  if (value) timerRef.current = setTimeout(() => setter(null), ms);
 }
 
 function StatusBadge({ status, colors }) {
@@ -353,11 +368,17 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const [saving, setSaving] = useState(false);
   const [resError, setResError] = useState('');
   const [actError, setActError] = useState('');
+  const [resMessage, setResMessage] = useState(null); // 'Saved' | null -- failures stay on resError
+  const [actMessage, setActMessage] = useState(null); // 'Saved' | null -- failures stay on actError
+  const resMsgTimerRef = useRef(null);
+  const actMsgTimerRef = useRef(null);
   const actionsSectionRef = useRef(null);
 
   const [maraeName, setMaraeName] = useState('');
   const [localMinutes, setLocalMinutes] = useState(meeting.minutes || '');
   const [minutesSaving, setMinutesSaving] = useState(false);
+  const [minutesMessage, setMinutesMessage] = useState(null); // { type: 'success'|'error', text } | null
+  const minutesMsgTimerRef = useRef(null);
   const [showDraftPanel, setShowDraftPanel] = useState(false);
   const [roughNotes, setRoughNotes] = useState('');
   const [draftLoading, setDraftLoading] = useState(false);
@@ -422,7 +443,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
 
   async function saveResolution(form) {
     if (!form.description.trim()) { setResError('Description is required'); return; }
-    setSaving(true); setResError('');
+    setSaving(true); setResError(''); flashMessage(setResMessage, resMsgTimerRef, null);
     const payload = {
       meeting_id: meeting.id,
       resolution_number: form.resolution_number.trim() || null,
@@ -432,11 +453,13 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       notes: form.notes.trim() || null,
       linked_document_id: form.linked_document_id || null,
     };
-    const { error } = editResId
-      ? await supabase.from('resolutions').update(payload).eq('id', editResId)
-      : await supabase.from('resolutions').insert(payload);
-    if (error) { setResError(error.message); setSaving(false); return; }
+    const { data, error } = editResId
+      ? await supabase.from('resolutions').update(payload).eq('id', editResId).select()
+      : await supabase.from('resolutions').insert(payload).select();
+    if (error) { setResError(`Could not save: ${error.message}`); setSaving(false); return; }
+    if (!data || data.length === 0) { setResError('Could not save: you may not have permission'); setSaving(false); return; }
     setShowResForm(false); setEditResId(null); setResForm(null); setSaving(false);
+    flashMessage(setResMessage, resMsgTimerRef, 'Saved');
     fetchDetail();
   }
 
@@ -448,7 +471,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
 
   async function saveAction(form) {
     if (!form.description.trim()) { setActError('Description is required'); return; }
-    setSaving(true); setActError('');
+    setSaving(true); setActError(''); flashMessage(setActMessage, actMsgTimerRef, null);
     const payload = {
       meeting_id: meeting.id,
       description: form.description.trim(),
@@ -457,14 +480,15 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       status: form.status,
       resolution_id: form.resolution_id || null,
     };
-    let savedAction = null;
-    let error;
+    let data, error;
     if (editActId) {
-      ({ error } = await supabase.from('meeting_actions').update(payload).eq('id', editActId));
+      ({ data, error } = await supabase.from('meeting_actions').update(payload).eq('id', editActId).select());
     } else {
-      ({ data: savedAction, error } = await supabase.from('meeting_actions').insert(payload).select().single());
+      ({ data, error } = await supabase.from('meeting_actions').insert(payload).select());
     }
-    if (error) { setActError(error.message); setSaving(false); return; }
+    if (error) { setActError(`Could not save: ${error.message}`); setSaving(false); return; }
+    if (!data || data.length === 0) { setActError('Could not save: you may not have permission'); setSaving(false); return; }
+    const savedAction = data[0];
 
     // Close the linked overdue task if this action was marked Completed from
     // its own screen -- matches the same real behavior already proven when
@@ -497,6 +521,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
     }
 
     setShowActForm(false); setEditActId(null); setActForm(null); setSaving(false);
+    flashMessage(setActMessage, actMsgTimerRef, 'Saved');
     fetchDetail();
   }
 
@@ -571,9 +596,13 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
 
   async function saveDraftMinutes() {
     setMinutesSaving(true);
-    const { error } = await supabase.from('meetings').update({ minutes: localMinutes }).eq('id', meeting.id);
+    flashMessage(setMinutesMessage, minutesMsgTimerRef, null);
+    const { data, error } = await supabase.from('meetings').update({ minutes: localMinutes }).eq('id', meeting.id).select();
     setMinutesSaving(false);
-    if (!error) meeting.minutes = localMinutes; // keep in sync if the trustee navigates away and back within this session
+    if (error) { flashMessage(setMinutesMessage, minutesMsgTimerRef, { type: 'error', text: `Could not save: ${error.message}` }); return; }
+    if (!data || data.length === 0) { flashMessage(setMinutesMessage, minutesMsgTimerRef, { type: 'error', text: 'Could not save: you may not have permission' }); return; }
+    meeting.minutes = localMinutes; // keep in sync if the trustee navigates away and back within this session
+    flashMessage(setMinutesMessage, minutesMsgTimerRef, { type: 'success', text: 'Saved' });
   }
 
   function addSuggestedResolution(r) {
@@ -754,9 +783,14 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
                       onChange={e => setLocalMinutes(e.target.value)}
                       style={{ resize: 'vertical', marginBottom: 8 }}
                     />
-                    <button className="btn-secondary" onClick={saveDraftMinutes} disabled={minutesSaving} style={{ fontSize: 12, marginBottom: 18 }}>
+                    <button className="btn-secondary" onClick={saveDraftMinutes} disabled={minutesSaving} style={{ fontSize: 12, marginBottom: 8 }}>
                       {minutesSaving ? 'Saving…' : 'Save as Minutes'}
                     </button>
+                    {minutesMessage && (
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: minutesMessage.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>
+                        {minutesMessage.text}
+                      </div>
+                    )}
 
                     {aiDraft.resolutions.length > 0 && (
                       <div style={{ marginBottom: 16 }}>
@@ -809,6 +843,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
               </div>
               <button className="btn-primary" style={{ fontSize: 12 }} onClick={() => { setResForm(null); setEditResId(null); setResError(''); setShowResForm(true); }}>+ Add Resolution</button>
             </div>
+            {resMessage && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: 'var(--success)' }}>{resMessage}</div>}
 
             {showResForm && (
               <ResolutionForm
@@ -869,6 +904,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
               </div>
               <button className="btn-primary" style={{ fontSize: 12 }} onClick={() => { setActForm(null); setEditActId(null); setActError(''); setShowActForm(true); }}>+ Add Action</button>
             </div>
+            {actMessage && <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: 'var(--success)' }}>{actMessage}</div>}
 
             {showActForm && (
               <ActionForm
