@@ -28,6 +28,7 @@ const SERVICE_KEY      = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY') ?? '';
 const FROM_ADDRESS     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@resend.dev>';
 const APP_URL          = Deno.env.get('APP_URL') ?? 'https://maraehubv2.vercel.app';
+const APP_DOMAIN       = APP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
 const TEST_EMAIL       = Deno.env.get('RESEND_TEST_EMAIL') ?? '';
 
 const CORS = {
@@ -78,7 +79,7 @@ function emailHtml(title: string, intro: string, rows: string[]): string {
   </td></tr>
   <tr><td style="padding:16px 32px;border-top:1px solid #f0ebe3;font-size:12px;color:#9a9088;line-height:1.6;">
     Nō reira, tēnā koutou, tēnā koutou, tēnā koutou katoa.<br>
-    <a href="${APP_URL}" style="color:#1a4a3a;text-decoration:none;">MaraeHub</a> · maraehub.co.nz<br>
+    <a href="${APP_URL}" style="color:#1a4a3a;text-decoration:none;">MaraeHub</a> · ${APP_DOMAIN}<br>
     <a href="${APP_URL}/?tab=settings#email-notifications" style="color:#9a9088;text-decoration:underline;">Manage your email preferences</a>
   </td></tr>
 </table>
