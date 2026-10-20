@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useSortPreference } from '../lib/useSortPreference';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 const CATEGORIES = ['General', 'Urgent', 'Event', 'Maintenance'];
 const CAT_COLORS = {
@@ -74,6 +77,10 @@ export default function NoticeboardManager({ isTrustee, profile }) {
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   const filtered = filter === 'all' ? notices : notices.filter(n => n.category === filter);
+  // Compact/Detailed view, same shared ViewToggle Compliance uses.
+  // Default 'detailed' -- the existing cards are unchanged for anyone
+  // who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('notices_view', 'detailed');
 
   return (
     <div>
@@ -102,6 +109,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
             {cat === 'all' ? 'All Notices' : cat}
           </button>
         ))}
+        <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
       </div>
 
       {isTrustee && showForm && (
@@ -129,12 +137,44 @@ export default function NoticeboardManager({ isTrustee, profile }) {
         </div>
       )}
 
+      {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
+
       {loading ? (
         <div className="loading">Loading notices...</div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">
           <div className="emoji">📢</div>
           <div>No notices yet{filter !== 'all' ? ` in ${filter}` : ''}.</div>
+        </div>
+      ) : itemsViewMode === 'compact' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(n => {
+            const style = CAT_COLORS[n.category] || CAT_COLORS.General;
+            return (
+              <div key={n.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <ListRow
+                  chip={<span style={{ fontSize: 11, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: style.bg, color: style.color, flexShrink: 0, whiteSpace: 'nowrap' }}>{n.category}</span>}
+                  title={n.title}
+                  meta={[
+                    <span key="author" style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                      {n.author} · {formatDate(n.created_at)}
+                    </span>,
+                  ]}
+                  menu={isTrustee ? (
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => { setForm({ title: n.title || '', body: n.body || '', category: n.category || 'General' }); setEditId(n.id); setError(''); setShowForm(true); }}
+                        style={{ fontSize: 13, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                      >
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 15 }}>✕</button>
+                    </span>
+                  ) : null}
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
