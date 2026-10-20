@@ -5,6 +5,9 @@ import BookingFeedback from './BookingFeedback';
 import BookingInvoice from './BookingInvoice';
 import { sendNotification, bookingStatusBody, bookingConfirmedBody } from '../lib/notify';
 import StatusPill from './StatusPill';
+import { useSortPreference } from '../lib/useSortPreference';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
 
@@ -202,6 +205,10 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     : null;
 
   const filteredBookings = bookings.filter(b => entityFilter === 'all' || b.entity_id === entityFilter || b.entity_id === null);
+  // Compact/Detailed view, same shared ViewToggle Compliance uses.
+  // Default 'detailed' -- the existing cards are unchanged for anyone
+  // who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('bookings_view', 'detailed');
 
   return (
     <div>
@@ -228,9 +235,11 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
           {isTrustee && (
             <button className="btn-primary" onClick={openAddModal} style={{ marginLeft: 8 }}>+ Add Booking</button>
           )}
+          <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
         </div>
       </div>
 
+      {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
 
       {loading ? (
         <div className="loading">Loading bookings...</div>
@@ -238,6 +247,55 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
         <div className="empty-state">
           <div className="emoji">📅</div>
           <div>No bookings found</div>
+        </div>
+      ) : itemsViewMode === 'compact' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filteredBookings.map(b => {
+            const entityName = b.entity_id ? entities.find(e => e.id === b.entity_id)?.name : null;
+            return (
+              <div key={b.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <ListRow
+                  chip={
+                    <StatusPill
+                      status={b.status}
+                      options={canApprove ? BOOKING_STATUSES : undefined}
+                      onStatusChange={canApprove ? s => updateStatus(b, s) : undefined}
+                    />
+                  }
+                  title={b.occasion}
+                  meta={[
+                    <span key="dates" style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                      {formatDate(b.start_date)} → {formatDate(b.end_date)}
+                    </span>,
+                    <span key="guests" style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                      👥 {b.guests}
+                    </span>,
+                    entityName && (
+                      <span key="entity" style={{ fontSize: 12, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {entityName}
+                      </span>
+                    ),
+                  ]}
+                  menu={
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {canApprove && b.status === 'pending' && (
+                        <>
+                          <button className="btn-success" style={{ fontSize: 13, padding: '4px 10px' }} onClick={() => updateStatus(b, 'approved')}>✓ Approve</button>
+                          <button className="btn-danger" style={{ fontSize: 13, padding: '4px 10px' }} onClick={() => updateStatus(b, 'declined')}>✗ Decline</button>
+                        </>
+                      )}
+                      {canApprove && b.status !== 'pending' && (
+                        <button onClick={() => updateStatus(b, 'pending')} style={{ fontSize: 13, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Reset</button>
+                      )}
+                      {canApprove && (
+                        <button onClick={() => deleteBooking(b)} style={{ fontSize: 13, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
+                      )}
+                    </span>
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
