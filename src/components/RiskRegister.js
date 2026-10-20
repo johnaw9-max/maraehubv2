@@ -5,6 +5,8 @@ import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { getUrgencyStatus, compareByUrgency, URGENCY_ORDER } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 const CATEGORIES   = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
 const LIKELIHOODS  = ['Low', 'Medium', 'High'];
@@ -136,6 +138,10 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
   const [statusFilter, setStatusFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
   const [sortMode, setSortMode] = useSortPreference('risks', 'urgency');
+  // Compact/Detailed view, same shared ViewToggle Compliance uses.
+  // Default 'detailed' -- the existing table is unchanged for anyone
+  // who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('risk_view', 'detailed');
   const [linkedItemName, setLinkedItemName] = useState('');
   const [remediationTemplate, setRemediationTemplate] = useState(null);
   const [activeWorkflowRiskIds, setActiveWorkflowRiskIds] = useState(new Set());
@@ -383,14 +389,55 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
           </select>
         )}
         <SortSelect value={sortMode} onChange={setSortMode} options={RISK_SORT_OPTIONS} />
+        <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
       </div>
 
-      {/* ── TABLE ── */}
+      {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
+
+      {/* ── LIST (COMPACT) / TABLE (DETAILED) ── */}
       {filtered.length === 0 ? (
         <div className="panel" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text3)' }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>🛡️</div>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No risks recorded</div>
           <div style={{ fontSize: 14 }}>Click "+ Add Risk" to start building your register</div>
+        </div>
+      ) : itemsViewMode === 'compact' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(r => {
+            const rp = RATING_PILL[r.risk_rating] || RATING_PILL.Low;
+            const sp = STATUS_PILL[r.status]      || STATUS_PILL['Open'];
+            const entityName = r.entity_id ? entities.find(e => e.id === r.entity_id)?.name : null;
+            return (
+              <div key={r.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <ListRow
+                  chip={
+                    <span style={{ ...rp, padding: '2px 9px', borderRadius: 20, fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+                      {r.risk_rating || '—'}
+                    </span>
+                  }
+                  leading={r.risk_rating === 'High' && r.status !== 'Closed' ? <span style={{ flexShrink: 0 }}>⚠️</span> : null}
+                  title={r.risk_description}
+                  meta={[
+                    <span key="cat" style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                      {r.category}{entityName ? ` · ${entityName}` : ''}
+                    </span>,
+                    <span key="review" style={{ fontSize: 13, whiteSpace: 'nowrap', ...reviewDateStyle(r) }}>
+                      {fmt(r.review_date)}
+                    </span>,
+                    <span key="status" style={{ ...sp, padding: '2px 9px', borderRadius: 20, fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {r.status}
+                    </span>,
+                  ]}
+                  menu={
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button className="btn-secondary" style={{ fontSize: 13, padding: '4px 10px' }} onClick={() => openEdit(r)}>Edit</button>
+                      <button onClick={() => deleteRisk(r.id)} style={{ fontSize: 13, padding: '4px 10px', background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)', borderRadius: 6, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>Delete</button>
+                    </span>
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="panel" style={{ padding: 0, overflow: 'auto' }}>
