@@ -2052,7 +2052,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <GroupHeading title="Marae Status" />
 
       {/* ── TWO-COLUMN: COMPLIANCE + GOALS (14yhc7kp7xg Step 4 layout check — comparable shape: both a 5-stat grid plus up to 3 flagged items) ────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20, marginBottom: 20 }}>
 
       {/* ── COMPLIANCE TRACKER ─────────────────────────────────────────── */}
       <StatusCard
@@ -2242,7 +2242,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
 
       {/* ── TWO-COLUMN: RISK + FINANCIAL HEALTH (14yhc7kp7xg Step 4 layout check) ────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20, marginBottom: 20 }}>
 
       {/* ── RISK REGISTER (folded into Compliance) ─────────────────────── */}
       <StatusCard
@@ -2399,7 +2399,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
 
       {/* ── TWO-COLUMN: GRANTS + SERVICE REMINDERS (ASSETS) ────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20, marginBottom: 20 }}>
 
         {/* ── GRANTS PIPELINE ────────────────────────────────────────── */}
         <StatusCard icon="💰" title="Grants Pipeline" level={grantsLevel} number={grantsNumber} message={grantsMessage}>
@@ -2566,7 +2566,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       </div>
 
       {/* ── TWO-COLUMN: WORKFLOW ACTIVITY + WORKLOAD BY TRUSTEE (14yhc7kp7xg Step 4 layout check) ────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20 }}>
 
       {/* ── WORKFLOW ACTIVITY — moved here as part of Marae Status in the 14yhc7kp7xg Step 3 reorg ── */}
       {d.workflowInstances.length > 0 && (
@@ -2677,7 +2677,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
            Risk/Goals, closing the unbounded-height gap instead of avoiding
            it. periodProjects itself stays unsliced -- the AI report text
            generation above still needs the full list. ────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20, marginBottom: 20 }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* ── UPCOMING BOOKINGS ──────────────────────────────────────── */}
@@ -2789,7 +2789,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       <GroupHeading title="Marae Health" />
 
       {/* ── TWO-COLUMN: PERFORMANCE HISTORY + MARAE HEALTH SCORE (14yhc7kp7xg — added on request; known caveat: Performance History grows one row per locked month, Health Score is fixed-size, so this pair will drift out of balance over time) ────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 20 }}>
 
       {/* ── HEALTH SCORE ──────────────────────────────────────────────── */}
       <div className="panel" style={{ marginBottom: 20 }}>
