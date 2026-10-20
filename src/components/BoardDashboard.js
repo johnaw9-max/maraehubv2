@@ -402,7 +402,12 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const periodApprovedGrants = d.grants.filter(g => g.status === 'approved' && inPeriod(g.deadline));
   const periodProjects      = d.projects.filter(p => p.status === 'active');
   const periodUpcoming      = periodBookings.filter(b => b.start_date >= todayStr).slice(0, 5);
-  const periodPipeline      = d.grants.filter(g => !['approved','declined'].includes(g.status) && inPeriod(g.deadline));
+  // Not actually period-scoped, despite living in this block: an open
+  // application is a current-state fact, not a period-bound activity, so
+  // Period only applies to periodApprovedGrants (money secured in a
+  // period) above. Period-filtering this list hid genuinely open grants
+  // whose deadline had already passed.
+  const periodPipeline      = d.grants.filter(g => !['approved','declined'].includes(g.status));
 
   // Stage 2 (86d41pc93) StatusCard. New section-level logic -- Grants Pipeline
   // previously had no aggregate red/amber/green status at all, only per-item
@@ -2398,9 +2403,8 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
 
         {/* ── GRANTS PIPELINE ────────────────────────────────────────── */}
         <StatusCard icon="💰" title="Grants Pipeline" level={grantsLevel} number={grantsNumber} message={grantsMessage}>
-          <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: periodPipeline.length > 0 ? 8 : 0 }}>{pl}</div>
           {periodPipeline.length === 0 ? (
-            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active grant applications in this period</div>
+            <div style={{ fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' }}>No active grant applications</div>
           ) : <>{periodPipeline.slice(0, 3).map(g => {
             const ss = STATUS_STYLES[g.status] || STATUS_STYLES.researching;
             const daysLeft = g.deadline ? Math.ceil((new Date(g.deadline + 'T12:00:00') - today) / (1000 * 60 * 60 * 24)) : null;
