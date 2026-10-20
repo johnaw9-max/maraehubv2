@@ -8,6 +8,7 @@ import { getItemComplianceStatus } from '../lib/complianceStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
+import ViewToggle from './ViewToggle';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -1061,30 +1062,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </select>
             )}
             <SortSelect value={sortMode} onChange={setSortMode} options={COMPLIANCE_SORT_OPTIONS} />
-            <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-              <button
-                type="button"
-                onClick={() => setItemsViewMode('compact')}
-                style={{
-                  padding: '7px 14px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: itemsViewMode === 'compact' ? 'var(--brand)' : 'var(--surface2)',
-                  color: itemsViewMode === 'compact' ? '#fff' : 'var(--text2)',
-                }}
-              >
-                Compact
-              </button>
-              <button
-                type="button"
-                onClick={() => setItemsViewMode('detailed')}
-                style={{
-                  padding: '7px 14px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: itemsViewMode === 'detailed' ? 'var(--brand)' : 'var(--surface2)',
-                  color: itemsViewMode === 'detailed' ? '#fff' : 'var(--text2)',
-                }}
-              >
-                Detailed
-              </button>
-            </div>
+            <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
           </div>
 
           {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
