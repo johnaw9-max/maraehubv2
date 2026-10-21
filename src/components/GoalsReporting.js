@@ -6,6 +6,8 @@ import { ensureTask, ensureUpcomingTask } from '../lib/taskSync';
 import { getUrgencyStatus } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 // Consistent Sort (14yhc7kpea4) Step 4, Part 2. Goals renders as
 // red/orange/green/completed tiers, not a flat list -- the tier grouping
@@ -215,6 +217,10 @@ export default function GoalsReporting() {
   const [moduleFilter, setModuleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortMode, setSortMode] = useSortPreference('goals', 'urgency');
+  // Compact/Detailed view, same shared ViewToggle Compliance uses.
+  // Default 'detailed' -- the existing cards are unchanged for anyone
+  // who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('goals_view', 'detailed');
   const [showCompleted, setShowCompleted] = useState(false);
 
   const [showModal, setShowModal]     = useState(false);
@@ -543,6 +549,44 @@ export default function GoalsReporting() {
     );
   }
 
+  function renderCompactGoalRow(goal) {
+    const eff = getEffectiveProgress(goal);
+    const tl = getTrafficLight(goal, eff);
+    const tlCfg = TRAFFIC_LIGHT_CFG[tl];
+    const focusArea = FOCUS_AREAS[goal.focus_area] || FOCUS_AREAS.General;
+    return (
+      <div key={goal.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <ListRow
+          chip={
+            <span style={{ fontSize: 12, background: tlCfg.bg, color: tlCfg.dot, borderRadius: 20, padding: '2px 9px', fontWeight: 600, flexShrink: 0, whiteSpace: 'nowrap' }}>
+              ● {tlCfg.label}
+            </span>
+          }
+          title={goal.name}
+          meta={[
+            <span key="focus" style={{ fontSize: 12, fontWeight: 600, background: focusArea.bg, color: focusArea.color, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>
+              {focusArea.icon} {focusArea.label}
+            </span>,
+            goal.target_date && (
+              <span key="target" style={{ fontSize: 13, whiteSpace: 'nowrap', color: tl === 'red' ? 'var(--danger)' : 'var(--text3)', fontWeight: tl === 'red' ? 700 : 400 }}>
+                Target: {fmt(goal.target_date)}
+              </span>
+            ),
+            <span key="pct" style={{ fontSize: 13, fontWeight: 700, color: tlCfg.dot, whiteSpace: 'nowrap' }}>
+              {eff}%
+            </span>,
+          ]}
+          menu={
+            <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button onClick={() => openEdit(goal)} style={{ fontSize: 13, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+              <button onClick={() => deleteGoal(goal)} style={{ fontSize: 13, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Delete</button>
+            </span>
+          }
+        />
+      </div>
+    );
+  }
+
   // ── RENDER ────────────────────────────────────────────────────────────────
 
   return (
@@ -729,6 +773,7 @@ export default function GoalsReporting() {
               ))}
             </select>
             <SortSelect value={sortMode} onChange={setSortMode} options={GOAL_SORT_OPTIONS} />
+            <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
             {[{ key: 'all', label: 'All Statuses' }, ...Object.entries(STATUS_CFG).map(([k, v]) => ({ key: k, label: v.label }))].map(s => (
@@ -748,12 +793,14 @@ export default function GoalsReporting() {
             ))}
           </div>
 
+          {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
+
           {/* Goals list */}
           {filteredGoals.length === 0 ? (
             <div className="empty-state"><div className="emoji">🎯</div><div>No goals match your filters</div></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {visibleGoals.map(renderGoalRow)}
+              {visibleGoals.map(itemsViewMode === 'compact' ? renderCompactGoalRow : renderGoalRow)}
             </div>
           )}
 
@@ -776,7 +823,7 @@ export default function GoalsReporting() {
               </button>
               {showCompleted && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                  {completedGoals.map(renderGoalRow)}
+                  {completedGoals.map(itemsViewMode === 'compact' ? renderCompactGoalRow : renderGoalRow)}
                 </div>
               )}
             </div>

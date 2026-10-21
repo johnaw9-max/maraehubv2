@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useSortPreference } from '../lib/useSortPreference';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -313,6 +316,11 @@ export default function ContactsManager({ onStartWorkflow }) {
   ];
 
   const totalFiltered = filteredUsers.length + filteredContractors.length;
+  // Compact/Detailed view for the Members list only -- Contractors'
+  // card grid is a different enough shape that it isn't touched here.
+  // Default 'detailed' -- the existing cards are unchanged for anyone
+  // who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('contacts_view', 'detailed');
 
   return (
     <div>
@@ -356,6 +364,7 @@ export default function ContactsManager({ onStartWorkflow }) {
               + Add Contractor
             </button>
           )}
+          <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
         </div>
       </div>
 
@@ -547,7 +556,41 @@ export default function ContactsManager({ onStartWorkflow }) {
                   Members ({filteredUsers.length})
                 </div>
               )}
-              {filteredUsers.map(u => {
+              {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
+              {itemsViewMode === 'compact' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredUsers.map(u => {
+                    const isTrustee = u.role === 'trustee';
+                    return (
+                      <div key={u.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                        <ListRow
+                          chip={
+                            <span style={{ fontSize: 11, borderRadius: 20, padding: '2px 9px', fontWeight: 600, background: isTrustee ? '#e8f4ef' : '#e8eef8', color: isTrustee ? '#1a4a3a' : '#1a4a8a', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                              {isTrustee ? 'Trustee' : 'Community'}
+                            </span>
+                          }
+                          leading={u.is_fire_warden ? <span style={{ fontSize: 11, flexShrink: 0 }}>🔥</span> : null}
+                          title={u.full_name || '—'}
+                          meta={[
+                            <span key="email" style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                              {u.email}{u.created_at ? ` · Added ${fmt(u.created_at)}` : ''}
+                            </span>,
+                          ]}
+                          menu={
+                            <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <button onClick={() => openEditUser(u)} style={{ fontSize: 13, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Edit</button>
+                              <button onClick={() => handleUpdateRole(u.id, isTrustee ? 'community' : 'trustee')} style={{ fontSize: 13, color: 'var(--text2)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
+                                {isTrustee ? 'Make Community' : 'Make Trustee'}
+                              </button>
+                              <button onClick={() => setConfirmDelete({ id: u.id, type: 'user', name: u.full_name })} style={{ fontSize: 13, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Remove</button>
+                            </span>
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : filteredUsers.map(u => {
                 const isTrustee = u.role === 'trustee';
                 const ini = u.full_name ? u.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
                 return (

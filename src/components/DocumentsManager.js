@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import CharterGenerator from './CharterGenerator';
 import HSPolicyGenerator from './HSPolicyGenerator';
 import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
+import { useSortPreference } from '../lib/useSortPreference';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
  
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
  
@@ -163,7 +166,11 @@ export default function DocumentsManager() {
  
   const filtered = (filter === 'all' ? docs : docs.filter(d => d.category === filter))
     .filter(d => entityFilter === 'all' || d.entity_id === entityFilter || d.entity_id === null);
- 
+  // Compact/Detailed view, same shared ViewToggle Compliance uses.
+  // Default 'detailed' -- the existing cards are unchanged for anyone
+  // who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('documents_view', 'detailed');
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -209,7 +216,10 @@ export default function DocumentsManager() {
             {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
           </select>
         )}
+        <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
       </div>
+
+      {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
 
       {/* DOCUMENT LIST */}
       {loading ? (
@@ -221,6 +231,44 @@ export default function DocumentsManager() {
           <button className="btn-primary" style={{ marginTop: 16 }} onClick={() => setShowModal(true)}>
             + Upload First Document
           </button>
+        </div>
+      ) : itemsViewMode === 'compact' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(doc => {
+            const ext = doc.file_type || getExt(doc.file_name || '');
+            const catStyle = CAT_COLORS[doc.category] || CAT_COLORS['Other'];
+            const entityName = doc.entity_id ? entities.find(e => e.id === doc.entity_id)?.name : null;
+            return (
+              <div key={doc.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <ListRow
+                  leading={<span style={{ fontSize: 16, flexShrink: 0 }}>{EXT_ICONS[ext] || '📄'}</span>}
+                  chip={<span style={{ fontSize: 11, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: catStyle.bg, color: catStyle.color, flexShrink: 0, whiteSpace: 'nowrap' }}>{doc.category}</span>}
+                  title={doc.title}
+                  meta={[
+                    entityName && (
+                      <span key="entity" style={{ fontSize: 11, borderRadius: 20, padding: '2px 8px', fontWeight: 600, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                        {entityName}
+                      </span>
+                    ),
+                    <span key="date" style={{ fontSize: 13, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                      {formatDate(doc.created_at)}
+                    </span>,
+                  ]}
+                  menu={
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      {doc.title === CHARTER_DOCUMENT_TITLE && (
+                        <button onClick={() => setEditingCharterDoc(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">✏️</button>
+                      )}
+                      {doc.file_url && (
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</a>
+                      )}
+                      <button onClick={() => handleDelete(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">✕</button>
+                    </span>
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

@@ -11,6 +11,8 @@ import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
+import ViewToggle from './ViewToggle';
+import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
 const GRANT_URGENCY_OPTS = { dateField: 'deadline', dueSoonDays: 14, doneStatuses: ['approved', 'declined'] };
 
@@ -76,6 +78,10 @@ export default function GrantsTracker() {
   const [expandedId, setExpandedId] = useState(null);
   const [maraeSettings, setMaraeSettings] = useState(null);
   const [sortMode, setSortMode] = useSortPreference('grants', 'urgency');
+  // Compact/Detailed view, same shared ViewToggle Compliance uses.
+  // Default 'detailed' -- the existing collapsed-header/click-to-expand
+  // cards are unchanged for anyone who never touches the toggle.
+  const [itemsViewMode, setItemsViewMode] = useSortPreference('grants_view', 'detailed');
 
   // AI Grant Drafting (14yhc7kpjbd, Step 7). draftGoalId is the trustee's
   // explicit confirmation of which goal an application is for -- per the
@@ -487,7 +493,10 @@ export default function GrantsTracker() {
             )}
           </button>
         ))}
+        <ViewToggle mode={itemsViewMode} onChange={setItemsViewMode} />
       </div>
+
+      {itemsViewMode === 'compact' && <style>{LIST_ROW_RESPONSIVE_CSS}</style>}
 
       {/* GRANTS LIST */}
       {loading ? (
@@ -496,6 +505,42 @@ export default function GrantsTracker() {
         <div className="empty-state">
           <div className="emoji">💰</div>
           <div>{filterStatus === 'all' ? 'No grants yet — add your first one above' : `No grants with status "${filterStatus}"`}</div>
+        </div>
+      ) : itemsViewMode === 'compact' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(g => {
+            const days = daysUntil(g.deadline);
+            const isUrgent = days !== null && days >= 0 && days <= 14 && !['approved', 'declined'].includes(g.status);
+            return (
+              <div key={g.id} className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+                <ListRow
+                  chip={<StatusPill status={g.status} options={STATUSES} onStatusChange={s => handleStatusChange(g.id, s)} />}
+                  title={g.name}
+                  meta={[
+                    <span key="funder" style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                      {g.funder}{g.category ? ` · ${g.category}` : ''}
+                    </span>,
+                    g.deadline && (
+                      <span key="deadline" style={{ fontSize: 13, whiteSpace: 'nowrap', color: isUrgent ? 'var(--warning)' : 'var(--text3)', fontWeight: isUrgent ? 700 : 400 }}>
+                        {fmt(g.deadline)}{isUrgent && ` (${days === 0 ? 'today!' : days + 'd'})`}
+                      </span>
+                    ),
+                    g.amount && (
+                      <span key="amount" style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', color: g.status === 'approved' ? 'var(--brand)' : 'var(--text2)' }}>
+                        {fmtMoney(g.amount)}
+                      </span>
+                    ),
+                  ]}
+                  menu={
+                    <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button onClick={() => openEdit(g)} style={{ fontSize: 13, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Edit</button>
+                      <button onClick={() => handleDelete(g.id, g.name)} style={{ fontSize: 13, color: 'var(--danger)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>Remove</button>
+                    </span>
+                  }
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         filtered.map(g => {
