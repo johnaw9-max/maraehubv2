@@ -1123,6 +1123,8 @@ serve(async (req) => {
       reason: 'migration_tracking_drift check\'s own RPC - version strings only, no PII, but locked to service_role from creation anyway, same discipline as every RPC this project has added.' },
     { function: 'get_storage_security_posture', grantees: ['postgres', 'service_role'],
       reason: 'This check\'s own Check-C RPC (storage.objects policies + bucket public flags, 14yhc7kv4t3 follow-up) - locked to service_role from creation, 11 Oct 2026. Same self-referential gap every prior Check-RPC in this allowlist hit during its own build.' },
+    { function: 'is_trustee', grantees: ['postgres', 'service_role', 'authenticated'],
+      reason: 'Referenced directly inside the profiles RLS policies (20261029000000) - authenticated needs EXECUTE for trustee-roster reads/writes to work under RLS at all. anon/public revoked 30 Oct 2026 (20261030000000) - it had kept Postgres\'s default PUBLIC grant since creation and was never explicitly locked down until this fix, same gap get_meeting_entity_id had before 12 Aug 2026.' },
   ];
 
   function sameGrantSet(a: string[], b: string[]): boolean {
