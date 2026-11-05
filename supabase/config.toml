@@ -3,6 +3,14 @@ project_id = "cbeenkpjpnhmtqtnjiyd"
 [functions.send-notification]
 verify_jwt = false
 
+# Phase 1 (P1-01): notify-hirer authenticates callers in its own code
+# (signed-in session or this project's secret key). Gateway JWT check stays
+# off because public-booking-request calls it with SUPABASE_SERVICE_ROLE_KEY,
+# which is an sb_secret_ (non-JWT) key on newer projects. Matches the live
+# setting on the test project (verify_jwt false) as of 5 Nov 2026.
+[functions.notify-hirer]
+verify_jwt = false
+
 [functions.mark-action-done]
 verify_jwt = false
 

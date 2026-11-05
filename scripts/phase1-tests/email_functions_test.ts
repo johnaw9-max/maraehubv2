@@ -7,6 +7,9 @@ const SERVICE = 'eyJ.fake-service-role-key-for-tests-only.sig';
 const ANON    = 'eyJ.fake-anon-key-for-tests-only.sig';
 const CRON    = 'sb_secret_fake_check_deadlines_key_0001';
 const OTHER_SECRET = 'sb_secret_fake_other_valid_key_0002';
+const b64 = (o: unknown) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+const OTHER_SERVICE_JWT = `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', ref: 'testref' })}.sig-valid`;
+const FORGED_SERVICE_JWT = `eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'service_role', ref: 'testref' })}.sig-forged`;
 Deno.env.set('SUPABASE_URL', 'https://testref.supabase.co');
 Deno.env.set('SUPABASE_SERVICE_ROLE_KEY', SERVICE);
 Deno.env.set('CHECK_DEADLINES_SECRET_KEY', CRON);
@@ -71,7 +74,10 @@ globalThis.fetch = (async (input: any, init?: any) => {
   }
   if (url.includes('/auth/v1/admin/users')) {
     const key = init?.headers?.apikey;
-    return new Response('{}', { status: key === OTHER_SECRET ? 200 : 401 });
+    const bearer = (init?.headers?.Authorization ?? '').replace(/^Bearer /, '');
+    // Mirrors real Auth: sb_secret_ via apikey; legacy JWT must also be the bearer.
+    const ok = key === OTHER_SECRET || (key === OTHER_SERVICE_JWT && bearer === OTHER_SERVICE_JWT);
+    return new Response('{}', { status: ok ? 200 : 401 });
   }
   throw new Error('unexpected fetch ' + url);
 }) as typeof fetch;
@@ -114,6 +120,18 @@ Deno.test('SN-5 unknown sb_secret_ key is refused after probe', async () => {
 Deno.test('SN-6 another genuine project secret key is accepted via probe', async () => {
   fresh(); const r = await sendNotification(req({ apikey: OTHER_SECRET }, msg));
   assertEquals(r.status, 200);
+});
+Deno.test('SN-6b a genuine service key that differs from the injected copy is accepted via probe', async () => {
+  fresh(); const r = await sendNotification(req({ authorization: `Bearer ${OTHER_SERVICE_JWT}` }, msg));
+  assertEquals(r.status, 200);
+});
+Deno.test('SN-6c a forged service-role JWT is refused by the probe', async () => {
+  fresh(); const r = await sendNotification(req({ authorization: `Bearer ${FORGED_SERVICE_JWT}` }, msg));
+  assertEquals(r.status, 401); assertEquals(sent.length, 0);
+});
+Deno.test('SN-6d the anon key is never probed or accepted', async () => {
+  fresh(); const r = await sendNotification(req({ authorization: `Bearer eyJhbGciOiJIUzI1NiJ9.${b64({ role: 'anon' })}.sig` }, msg));
+  assertEquals(r.status, 401);
 });
 Deno.test('SN-7 more than 50 recipients refused', async () => {
   fresh(); const to = Array.from({ length: 51 }, (_, i) => `p${i}@x.nz`);
