@@ -1,5 +1,5 @@
 -- Phase 1, item 1 (P1-01): send log for notify-hirer rate limiting.
--- PROPOSED — not applied anywhere. Apply to TEST first, after John approves D-03.
+-- PROPOSED — not applied anywhere. Move into supabase/migrations and apply to TEST first, after John approves D-03.
 --
 -- Stores counts only: who sent (user id, or null for server callers), what
 -- kind of caller, how many recipients, when. No email addresses, subjects or

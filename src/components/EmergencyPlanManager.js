@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { StoredFileLink, signedHrefs } from '../lib/secureFiles';
 import { loadGoogleMapsScript } from '../lib/googleMapsLoader';
 import FormError from './FormError';
 
@@ -500,14 +501,17 @@ export default function EmergencyPlanManager() {
         <td>${c.document_url ? 'Yes' : 'No'}</td>
       </tr>`).join('');
 
-    const eventRows = responseEvents.map(e => `
+    // Phase 1 (P1-02): evidence links in the printable summary use 1-hour
+    // signed links (falls back to the saved address in Release 1).
+    const evidenceHrefs = await signedHrefs('emergency-response-evidence', responseEvents.map(e => e.document_url));
+    const eventRows = responseEvents.map((e, i) => `
       <tr>
         <td style="white-space:nowrap">${fmtDate(e.event_date)}</td>
         <td>${e.event_name}</td>
         <td>${e.description}</td>
         <td style="text-align:right">${e.people_served != null ? e.people_served : '—'}</td>
         <td style="text-align:right">${e.duration_days != null ? e.duration_days : '—'}</td>
-        <td>${e.document_url ? `<a href="${e.document_url}" target="_blank" rel="noopener noreferrer">Evidence</a>` : '—'}</td>
+        <td>${evidenceHrefs[i] ? `<a href="${evidenceHrefs[i]}" target="_blank" rel="noopener noreferrer">Evidence</a>` : '—'}</td>
       </tr>`).join('');
 
     const win = window.open('', '_blank');
@@ -892,7 +896,7 @@ ${specialisedSection}
                       <div style={{ fontSize: 13, color: 'var(--text3)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                         {event.people_served != null && <span>👥 ~{event.people_served} people served</span>}
                         {event.duration_days != null && <span>📅 {event.duration_days} day{event.duration_days !== 1 ? 's' : ''}</span>}
-                        {event.document_url && <a href={event.document_url} target="_blank" rel="noopener noreferrer">📎 Evidence</a>}
+                        {event.document_url && <StoredFileLink bucket="emergency-response-evidence" value={event.document_url}>📎 Evidence</StoredFileLink>}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

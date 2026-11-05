@@ -1,5 +1,5 @@
 // Phase 1, item 1 (P1-01) — tests for send-notification and notify-hirer.
-// Run: deno test --allow-env --allow-read --import-map=scripts/phase1-tests/import_map.json scripts/phase1-tests/email_functions_test.ts
+// Run from repo root: deno test --no-check --allow-env --allow-read --import-map=scripts/phase1-tests/import_map.json scripts/phase1-tests/email_functions_test.ts
 // Uses fake keys, a fake database and a fake Resend; sends nothing and touches no project.
 import { assertEquals, assert } from './assert.ts';
 
