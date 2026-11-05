@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { StoredFileLink, openStoredFile } from '../lib/secureFiles';
+import { StoredFileLink } from '../lib/secureFiles';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
@@ -182,9 +182,9 @@ function CMenuItem({ label, onClick, danger, href }) {
   if (href) {
     // Phase 1 (P1-02): stored compliance files open via a short-lived signed link.
     return (
-      <a href="#" style={style} onClick={e => { e.preventDefault(); e.stopPropagation(); openStoredFile('compliance-docs', href); }}>
+      <StoredFileLink bucket="compliance-docs" value={href} style={style} onClick={e => e.stopPropagation()}>
         {label}
-      </a>
+      </StoredFileLink>
     );
   }
   return (

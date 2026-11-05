@@ -8,6 +8,15 @@ drop policy if exists "p1 trustee files: insert" on storage.objects;
 drop policy if exists "p1 trustee files: update" on storage.objects;
 drop policy if exists "p1 trustee files: delete" on storage.objects;
 
+-- Make re-running safe.
+drop policy if exists "compliance-docs: allow all uploads"             on storage.objects;
+drop policy if exists "finance-receipts: allow all uploads"            on storage.objects;
+drop policy if exists "emergency-response-evidence: allow all uploads" on storage.objects;
+drop policy if exists "documents: authenticated insert" on storage.objects;
+drop policy if exists "documents: authenticated update" on storage.objects;
+drop policy if exists "documents: authenticated delete" on storage.objects;
+drop policy if exists "documents: authenticated read"   on storage.objects;
+
 update storage.buckets set public = true
  where id in ('documents', 'compliance-docs', 'finance-receipts', 'emergency-response-evidence');
 

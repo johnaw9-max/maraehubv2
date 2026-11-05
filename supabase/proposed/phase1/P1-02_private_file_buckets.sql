@@ -34,6 +34,11 @@ drop policy if exists "documents: authenticated update"                 on stora
 drop policy if exists "documents: authenticated delete"                 on storage.objects;
 drop policy if exists "documents: authenticated read"                   on storage.objects;
 drop policy if exists "documents: public read"                          on storage.objects;
+-- Make re-running safe.
+drop policy if exists "p1 trustee files: read"   on storage.objects;
+drop policy if exists "p1 trustee files: insert" on storage.objects;
+drop policy if exists "p1 trustee files: update" on storage.objects;
+drop policy if exists "p1 trustee files: delete" on storage.objects;
 
 create policy "p1 trustee files: read" on storage.objects for select to authenticated
   using (bucket_id in ('documents','compliance-docs','finance-receipts','emergency-response-evidence')

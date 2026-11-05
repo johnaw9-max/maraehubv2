@@ -67,7 +67,24 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { maraeName, roughNotes } = body;
+    const { maraeName, roughNotes, aiConsent } = body;
+
+    // Phase 1, item 9 (P1-09): the trustee must tick the notice each time,
+    // and the marae's admin can switch AI drafting off. If the setting
+    // column has not been added yet, AI drafting stays available (no
+    // interruption from a missed migration).
+    if (aiConsent !== true) {
+      return json({ error: 'Please tick the box to confirm you want these notes sent to the AI service. If you do not see the box, refresh the page.' }, 400);
+    }
+    const { data: aiSetting, error: aiSettingError } = await callerClient
+      .from('marae_settings')
+      .select('ai_drafting_enabled')
+      .limit(1)
+      .maybeSingle();
+    if (!aiSettingError && aiSetting && aiSetting.ai_drafting_enabled === false) {
+      return json({ error: "AI drafting is switched off for this marae. An admin can turn it on in Settings." }, 403);
+    }
+
     if (typeof maraeName !== 'string' || !maraeName.trim()) {
       return json({ error: 'maraeName is required' }, 400);
     }
@@ -104,12 +121,13 @@ serve(async (req) => {
     try {
       draft = JSON.parse(unfenced);
     } catch {
-      console.error('[draft-minutes] AI response was not valid JSON:', raw);
+      // Length only: the reply contains the marae's minutes (Phase 1).
+      console.error('[draft-minutes] AI response was not valid JSON, length:', raw.length);
       return json({ error: 'The AI response could not be read as a draft. Please try again.' }, 500);
     }
 
     if (typeof draft.minutes !== 'string' || !Array.isArray(draft.resolutions) || !Array.isArray(draft.actions)) {
-      console.error('[draft-minutes] AI response had the wrong shape:', draft);
+      console.error('[draft-minutes] AI response had the wrong shape');
       return json({ error: 'The AI response was not in the expected format. Please try again.' }, 500);
     }
 

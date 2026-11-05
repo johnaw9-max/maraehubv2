@@ -384,6 +384,10 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState('');
   const [aiDraft, setAiDraft] = useState(null); // { minutes, resolutions, actions } | null
+  // Phase 1, item 9 (P1-09): per-use confirmation before notes go to the AI
+  // service, and the marae admin's on/off setting (null/missing = on).
+  const [aiConsent, setAiConsent] = useState(false);
+  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(true);
 
   // Voice dictation for roughNotes (English only -- real, honest limitation,
   // not a bilingual solution; see the caveat text rendered near the button).
@@ -403,6 +407,9 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   useEffect(() => {
     supabase.from('marae_settings').select('marae_name').single()
       .then(({ data }) => setMaraeName(data?.marae_name || 'Our Marae'));
+    // Separate query so a project without the new column still loads the name.
+    supabase.from('marae_settings').select('ai_drafting_enabled').limit(1).maybeSingle()
+      .then(({ data, error }) => { if (!error && data && data.ai_drafting_enabled === false) setAiDraftingEnabled(false); });
   }, []);
 
   useEffect(() => {
@@ -576,14 +583,15 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   }, []);
 
   async function generateDraft() {
-    if (!roughNotes.trim()) return;
+    if (!roughNotes.trim() || !aiConsent || !aiDraftingEnabled) return;
     setDraftLoading(true);
     setDraftError('');
     setAiDraft(null);
     const { data, error } = await supabase.functions.invoke('draft-minutes', {
-      body: { maraeName, roughNotes },
+      body: { maraeName, roughNotes, aiConsent: true },
     });
     setDraftLoading(false);
+    setAiConsent(false); // confirm again before each send
     if (error) {
       const msg = await functionErrorMessage(error, 'Could not reach AI service');
       setDraftError(msg === 'ai_auth_or_billing' ? "The AI service isn't available right now. The founder has been notified." : msg);
@@ -728,7 +736,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       {loadingDetail ? <div className="loading">Loading...</div> : (
         <>
           {/* ── DRAFT FROM HUI NOTES (AI) ── */}
-          <div style={{ marginBottom: 24 }}>
+          {aiDraftingEnabled && <div style={{ marginBottom: 24 }}>
             <button
               onClick={() => setShowDraftPanel(s => !s)}
               style={{ fontSize: 13, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
@@ -768,8 +776,21 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
                   placeholder="e.g. Discussed the roof leak, agreed to get 2 quotes. Jane to follow up with the plumber by next Friday..."
                   style={{ resize: 'vertical', marginBottom: 10 }}
                 />
+                <div data-testid="ai-notice" style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, lineHeight: 1.55 }}>
+                  <strong>Before you send:</strong> your notes will be sent to Anthropic's Claude AI service, which may process them outside New Zealand, to prepare a draft. Do not include sensitive personal, whānau, tangi or dispute details. You can write the minutes yourself instead.
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 8, cursor: 'pointer', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      data-testid="ai-consent"
+                      checked={aiConsent}
+                      onChange={e => setAiConsent(e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    I understand and want to send these notes to the AI service
+                  </label>
+                </div>
                 {draftError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{draftError}</div>}
-                <button className="btn-primary" onClick={generateDraft} disabled={draftLoading || !roughNotes.trim()} style={{ fontSize: 13 }}>
+                <button className="btn-primary" onClick={generateDraft} disabled={draftLoading || !roughNotes.trim() || !aiConsent} style={{ fontSize: 13 }}>
                   {draftLoading ? '⏳ Drafting…' : '✨ Draft with AI'}
                 </button>
 
@@ -819,7 +840,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
                 )}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* ── SECTION 1: MEETING MINUTES ── */}
           <div style={{ marginBottom: 32 }}>
@@ -1615,3 +1636,6 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
     </div>
   );
 }
+
+// Exported for tests only (Phase 1, P1-09 consent tests).
+export { MeetingDetail };
