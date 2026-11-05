@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { StoredFileLink } from '../lib/secureFiles';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
@@ -179,10 +180,11 @@ function CMenuItem({ label, onClick, danger, href }) {
     textAlign: 'left', fontFamily: 'DM Sans, sans-serif', textDecoration: 'none',
   };
   if (href) {
+    // Phase 1 (P1-02): stored compliance files open via a short-lived signed link.
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" style={style} onClick={e => e.stopPropagation()}>
+      <StoredFileLink bucket="compliance-docs" value={href} style={style} onClick={e => e.stopPropagation()}>
         {label}
-      </a>
+      </StoredFileLink>
     );
   }
   return (
@@ -793,12 +795,12 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </button>
             )}
             {item.document_url && (
-              <a href={item.document_url} target="_blank" rel="noopener noreferrer"
+              <StoredFileLink bucket="compliance-docs" value={item.document_url}
                 style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
                 title={item.document_name || 'View document'}
               >
                 📎 Doc
-              </a>
+              </StoredFileLink>
             )}
             <button
               onClick={() => handleMarkDone(item)}
@@ -1148,11 +1150,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexDirection: 'column' }}>
                         {inc.document_url && (
-                          <a href={inc.document_url} target="_blank" rel="noopener noreferrer"
+                          <StoredFileLink bucket="compliance-docs" value={inc.document_url}
                             style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
                           >
                             📎 Doc
-                          </a>
+                          </StoredFileLink>
                         )}
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
@@ -1308,7 +1310,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 <label className="form-label">Document</label>
                 {editItem?.document_name && !itemFile && (
                   <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6 }}>
-                    Current: <a href={editItem.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>{editItem.document_name}</a>
+                    Current: <StoredFileLink bucket="compliance-docs" value={editItem.document_url} style={{ color: 'var(--brand)' }}>{editItem.document_name}</StoredFileLink>
                   </div>
                 )}
                 <input type="file" ref={itemFileRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
@@ -1421,7 +1423,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 <label className="form-label">Document</label>
                 {editIncident?.document_name && !incidentFile && (
                   <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6 }}>
-                    Current: <a href={editIncident.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>{editIncident.document_name}</a>
+                    Current: <StoredFileLink bucket="compliance-docs" value={editIncident.document_url} style={{ color: 'var(--brand)' }}>{editIncident.document_name}</StoredFileLink>
                   </div>
                 )}
                 <input type="file" ref={incidentFileRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"

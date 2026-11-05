@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
 import { supabase } from '../lib/supabase';
+import { StoredFileLink, removeStoredFile } from '../lib/secureFiles';
 import CharterGenerator from './CharterGenerator';
 import HSPolicyGenerator from './HSPolicyGenerator';
 import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
@@ -154,10 +155,10 @@ export default function DocumentsManager() {
  
   async function handleDelete(doc) {
     if (!window.confirm(`Delete "${doc.title}"?`)) return;
-    if (doc.file_url) {
-      const path = doc.file_url.split('/maraehub/')[1];
-      if (path) await supabase.storage.from('documents').remove([path]);
-    }
+    // Phase 1 (P1-02): the old split('/maraehub/') never matched a real
+    // storage address, so deleting a document left the file in storage and
+    // still reachable at its public link. Parse the path properly instead.
+    if (doc.file_url) await removeStoredFile('documents', doc.file_url);
     await supabase.from('documents').delete().eq('id', doc.id);
     fetchDocs();
   }
@@ -260,7 +261,7 @@ export default function DocumentsManager() {
                         <button onClick={() => setEditingCharterDoc(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">✏️</button>
                       )}
                       {doc.file_url && (
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</a>
+                        <StoredFileLink bucket="documents" value={doc.file_url} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</StoredFileLink>
                       )}
                       <button onClick={() => handleDelete(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">✕</button>
                     </span>
@@ -325,9 +326,9 @@ export default function DocumentsManager() {
                       title="Edit">✏️</button>
                   )}
                   {doc.file_url && (
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                    <StoredFileLink bucket="documents" value={doc.file_url}
                       style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 15, color: 'var(--brand)' }}
-                      title="Download">⬇</a>
+                      title="Download">⬇</StoredFileLink>
                   )}
                   <button onClick={() => handleDelete(doc)}
                     style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--danger)' }}

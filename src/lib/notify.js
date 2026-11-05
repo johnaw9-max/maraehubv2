@@ -1,8 +1,12 @@
-import { supabase, supabaseAnonKey } from './supabase';
+import { supabase } from './supabase';
 
 /**
- * Fire-and-forget email notification via the send-notification Edge Function.
+ * Fire-and-forget email notification via the notify-hirer Edge Function.
  * Never throws — failures are logged but don't block the UI.
+ *
+ * Phase 1 (P1-01): no Authorization override. supabase-js sends the signed-in
+ * user's session, which notify-hirer now requires. The public anon key is
+ * refused by the function.
  *
  * @param {string|string[]} to      Recipient email(s)
  * @param {string}          subject Email subject
@@ -12,7 +16,6 @@ export async function sendNotification(to, subject, body) {
   try {
   const { error } = await supabase.functions.invoke('notify-hirer', {
       body: { to, subject, body },
-      headers: { Authorization: `Bearer ${supabaseAnonKey}` },
     });
     if (error) console.error('[notify]', error.message);
   } catch (err) {

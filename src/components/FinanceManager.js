@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
+import { StoredFileLink } from '../lib/secureFiles';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import BankReconciliation from './BankReconciliation';
@@ -1312,7 +1313,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                         <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{fmt(row.date)}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text1)', maxWidth: 200 }}>
                           <div style={{ fontWeight: 500 }}>{row.description}</div>
-                          {row.receipt_url && <a href={row.receipt_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: 'var(--brand)' }}>📎 Receipt</a>}
+                          {row.receipt_url && <StoredFileLink bucket="finance-receipts" value={row.receipt_url} style={{ fontSize: 10, color: 'var(--brand)' }}>📎 Receipt</StoredFileLink>}
                           {complianceLinksByExpense[row.id] && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>🆘 Linked: {complianceLinksByExpense[row.id]}</span></div>}
                           {entityName && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                         </td>

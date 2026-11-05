@@ -53,6 +53,8 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [activeSubTab, setActiveSubTab] = useState('settings');
   const [form, setForm] = useState(EMPTY_FORM);
   const [settingsId, setSettingsId] = useState(null);
+  // Phase 1 (P1-09): null = column not added yet on this project → switch hidden.
+  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -280,6 +282,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
         reminders_paused: data.reminders_paused === true,
         gst_registered: data.gst_registered === true,
       });
+      // Kept out of `form` so Save never sends a column a project may not have yet.
+      // D-09: opt-in, so only an explicit true counts as on.
+      setAiDraftingEnabled('ai_drafting_enabled' in data ? data.ai_drafting_enabled === true : null);
     }
     setLoading(false);
   }
@@ -899,6 +904,50 @@ export default function MaraeSettings({ profile, isAdmin }) {
               }} />
               <span style={{
                 position: 'absolute', top: 3, left: form.gst_registered ? 23 : 3,
+                width: 18, height: 18, background: '#fff', borderRadius: '50%',
+                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }} />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI DRAFTING (admin only) — Phase 1, item 9 (P1-09) ── */}
+      {isAdmin && aiDraftingEnabled !== null && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            AI Drafting
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+            Off unless an admin turns it on. When on, trustees can use "Draft from Hui Notes" to turn rough notes into draft minutes. Notes are sent to Anthropic's Claude AI service, which may process them outside New Zealand, and each trustee must confirm before every send. Leave off if your marae prefers that hui notes never leave MaraeHub. Writing minutes by hand is not affected.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>Allow AI drafting for our marae</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 1 }}>
+                {aiDraftingEnabled ? 'On — trustees can draft minutes with AI after confirming.' : 'Off — the AI drafting option is hidden for everyone.'}
+              </div>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                data-testid="ai-drafting-toggle"
+                checked={aiDraftingEnabled}
+                onChange={async e => {
+                  const enabled = e.target.checked;
+                  setAiDraftingEnabled(enabled);
+                  if (!settingsId) return;
+                  const { error: aiErr } = await supabase.from('marae_settings').update({ ai_drafting_enabled: enabled }).eq('id', settingsId);
+                  if (aiErr) setAiDraftingEnabled(!enabled);
+                }}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', inset: 0, borderRadius: 24, transition: 'background 0.2s',
+                background: aiDraftingEnabled ? 'var(--brand)' : '#d0cbc4',
+              }} />
+              <span style={{
+                position: 'absolute', top: 3, left: aiDraftingEnabled ? 23 : 3,
                 width: 18, height: 18, background: '#fff', borderRadius: '50%',
                 transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
               }} />

@@ -1,5 +1,16 @@
 import React from 'react';
 
+// Phase 1, item 8 (P1-08). Wording approved for correction by John Williams,
+// 5 Nov 2026; draft in the Phase 1 report. Recommend a lawyer reviews it.
+// When P1-02 Release 2 is tested and live, replace FILE_ACCESS_TODAY with
+// FILE_ACCESS_AFTER_P1_02. When the storage region is verified (P1-04),
+// name it in the providers section.
+const FILE_ACCESS_TODAY =
+  "Files you upload (documents, compliance evidence, receipts) are stored separately. Only signed-in trustees can upload, replace or delete them, but at present anyone who has the direct link to a specific file can open it, like a shared Google Drive link. Please don't share file links outside your trustees. We are changing this so files can only be opened by signed-in trustees of your marae.";
+// eslint-disable-next-line no-unused-vars
+const FILE_ACCESS_AFTER_P1_02 =
+  'Files you upload are protected so they can only be opened by signed-in trustees of your marae, through links that expire after a short time.';
+
 const SECTIONS = [
   {
     heading: 'Your marae owns your data',
@@ -10,12 +21,16 @@ const SECTIONS = [
     body: 'Your information is never sold, rented, or provided to advertisers, data brokers, or any third party for commercial gain.',
   },
   {
-    heading: 'We never share your data without reason',
-    body: "Your marae's information is only accessed by your authorised trustees and, where necessary, by MaraeHub support staff to maintain the platform or resolve technical issues you've raised.",
+    heading: 'Who processes your information for us',
+    body: "MaraeHub uses a small number of service providers to run the platform. They process your marae's information on MaraeHub's instructions and only to provide your service, not for their own purposes. They are: Supabase (database, sign-in and file storage), Vercel (delivers the website), Resend (sends reminder and booking emails), Sentry (error reports, so we can fix problems) and, only when a trustee chooses to use an AI feature, Anthropic (see \"AI features\" below). Connections your marae switches on, such as Xero or Google Calendar, send information to those services at your direction. Some of these providers store or process information outside New Zealand.",
   },
   {
-    heading: 'Only authorised users can view your data',
-    body: "Access is restricted to the trustees you've approved through your marae's trustee permission system.",
+    heading: 'AI features',
+    body: "Some features can prepare a draft for you using AI, such as turning rough hui notes into draft minutes. When a trustee chooses to use one, the text they supply and basic details about your marae are sent to Anthropic's Claude AI service, which may process them outside New Zealand. AI drafting is off unless your marae's admin turns it on, and MaraeHub asks for confirmation each time before notes are sent. Please don't include sensitive personal, whānau, tangi or dispute details in notes sent to AI. AI output is only a draft: nothing is saved to your records until a trustee reviews and saves it.",
+  },
+  {
+    heading: 'Who can see your data',
+    body: "Your marae's records are accessed by the trustees you approve and, where needed to keep the platform running or to resolve an issue you've raised, by MaraeHub's founder. Access to records is restricted through your marae's trustee permission system and enforced by the database. " + FILE_ACCESS_TODAY,
   },
   {
     heading: 'You can request your data at any time',
@@ -31,7 +46,7 @@ const SECTIONS = [
   },
   {
     heading: 'Leaving MaraeHub',
-    body: 'If your marae ever chooses to stop using MaraeHub, your data remains your property and can be exported or deleted on request.',
+    body: 'If your marae ever chooses to stop using MaraeHub, your data remains your property. You can ask us to export or delete it, and we handle those requests directly with you.',
   },
 ];
 
@@ -81,7 +96,7 @@ export default function PrivacyPolicy() {
 
       <div style={{ marginTop: 8, padding: '12px 16px', background: 'var(--cream2)', borderRadius: 10, fontSize: 12, color: 'var(--text3)', lineHeight: 1.6 }}>
         Questions about your privacy? Contact us at{' '}
-        <span style={{ color: 'var(--brand-light)', fontWeight: 600 }}>maraehub@gmail.com</span>
+        <span style={{ color: 'var(--brand-light)', fontWeight: 600 }}>johnaw9@gmail.com</span>
       </div>
     </div>
   );

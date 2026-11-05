@@ -148,7 +148,7 @@ test('compact row has no "Start Workflow" item when classification isn\'t workfl
   expect(startBtn).toBeUndefined();
 });
 
-test('compact row "View Document" links to the item\'s document_url', async () => {
+test('compact row "View Document" opens the item\'s document_url', async () => {
   const container = await renderTracker({}, [DOCUMENT_ITEM, EP_MARKER]);
 
   const row = findRow(container, 'Document Linked Item');
@@ -157,9 +157,15 @@ test('compact row "View Document" links to the item\'s document_url', async () =
 
   const link = Array.from(row.querySelectorAll('a')).find(a => a.textContent.includes('View Document'));
   expect(link).toBeTruthy();
-  expect(link.getAttribute('href')).toBe('https://example.com/fire-cert.pdf');
-  expect(link.getAttribute('target')).toBe('_blank');
-  expect(link.getAttribute('rel')).toContain('noopener');
+  // Phase 1 (P1-02): stored files open via openStoredFile (signed link for
+  // our own storage; external links like this one open unchanged).
+  const fakeWin = { location: { href: 'about:blank' }, opener: {}, close: jest.fn() };
+  const openSpy = jest.spyOn(window, 'open').mockReturnValue(fakeWin);
+  await act(async () => { Simulate.click(link); });
+  expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+  expect(fakeWin.location.href).toBe('https://example.com/fire-cert.pdf');
+  expect(fakeWin.opener).toBeNull();
+  openSpy.mockRestore();
 });
 
 test('the Incident Register section mounts with the new code', async () => {

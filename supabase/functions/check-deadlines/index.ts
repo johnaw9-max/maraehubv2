@@ -85,12 +85,14 @@ function footer(): string {
 
 async function notify(to: string[], subject: string, body: string) {
   if (to.length === 0) return;
-  // send-notification has verify_jwt = false and does not check Authorization
-  // itself, so no auth header is needed here.
+  // Phase 1 (P1-01): send-notification now refuses callers without one of
+  // this project's secret keys. verify_jwt is false for it (sb_secret_ keys
+  // are not JWTs), so the key goes on the apikey header and is checked in code.
   await fetch(NOTIFY_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      apikey: SECRET_KEY,
     },
     body: JSON.stringify({ to, subject, body }),
   });
