@@ -69,10 +69,10 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { maraeName, roughNotes, aiConsent } = body;
 
-    // Phase 1, item 9 (P1-09): the trustee must tick the notice each time,
-    // and the marae's admin can switch AI drafting off. If the setting
-    // column has not been added yet, AI drafting stays available (no
-    // interruption from a missed migration).
+    // Phase 1, item 9 (P1-09), D-09 decided by John 5 Nov 2026: AI drafting
+    // is OPT-IN. It runs only when this marae's admin has turned it on
+    // (ai_drafting_enabled = true). Missing column or any read error = off.
+    // The trustee must also tick the notice before every send.
     if (aiConsent !== true) {
       return json({ error: 'Please tick the box to confirm you want these notes sent to the AI service. If you do not see the box, refresh the page.' }, 400);
     }
@@ -81,8 +81,8 @@ serve(async (req) => {
       .select('ai_drafting_enabled')
       .limit(1)
       .maybeSingle();
-    if (!aiSettingError && aiSetting && aiSetting.ai_drafting_enabled === false) {
-      return json({ error: "AI drafting is switched off for this marae. An admin can turn it on in Settings." }, 403);
+    if (aiSettingError || aiSetting?.ai_drafting_enabled !== true) {
+      return json({ error: "AI drafting is not turned on for this marae. An admin can turn it on in Settings." }, 403);
     }
 
     if (typeof maraeName !== 'string' || !maraeName.trim()) {

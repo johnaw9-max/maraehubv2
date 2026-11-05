@@ -88,3 +88,9 @@ test('when the admin has switched AI drafting off, the option is not shown', asy
   const c = await render();
   expect(findButton(c, 'Draft from Hui Notes')).toBeUndefined();
 });
+
+test('opt-in (D-09): before the setting exists or is turned on, the option is not shown', async () => {
+  __setAiSetting(null);
+  const c = await render();
+  expect(findButton(c, 'Draft from Hui Notes')).toBeUndefined();
+});

@@ -385,9 +385,10 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const [draftError, setDraftError] = useState('');
   const [aiDraft, setAiDraft] = useState(null); // { minutes, resolutions, actions } | null
   // Phase 1, item 9 (P1-09): per-use confirmation before notes go to the AI
-  // service, and the marae admin's on/off setting (null/missing = on).
+  // service. D-09: opt-in — shown only when the marae admin has turned it on
+  // (missing column or false = hidden).
   const [aiConsent, setAiConsent] = useState(false);
-  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(true);
+  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(false);
 
   // Voice dictation for roughNotes (English only -- real, honest limitation,
   // not a bilingual solution; see the caveat text rendered near the button).
@@ -409,7 +410,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       .then(({ data }) => setMaraeName(data?.marae_name || 'Our Marae'));
     // Separate query so a project without the new column still loads the name.
     supabase.from('marae_settings').select('ai_drafting_enabled').limit(1).maybeSingle()
-      .then(({ data, error }) => { if (!error && data && data.ai_drafting_enabled === false) setAiDraftingEnabled(false); });
+      .then(({ data, error }) => setAiDraftingEnabled(!error && data?.ai_drafting_enabled === true));
   }, []);
 
   useEffect(() => {

@@ -14,8 +14,8 @@ confirmation to `draft-minutes`. So the website goes first.
 
 | Step | What | Interrupts anything? | Rollback |
 |---|---|---|---|
-| 1 | Merge the PR (Vercel deploys the website) | No. Works with the old functions: emails, file links and AI drafting behave as today, plus the AI notice and tick box. | Revert the merge commit |
-| 2 | Test project: apply `P1-01_notification_send_log.sql` and `P1-09_ai_drafting_setting.sql` | No. Both functions run without these. | Matching `_rollback.sql` |
+| 1 | Merge the PR (Vercel deploys the website) | Emails and file links: no change, works with the old functions. **AI drafting: hidden on every marae** (D-09 opt-in) until P1-09 is applied there and an admin turns it on. | Vercel "Instant Rollback" to the previous production deployment, or revert the merge commit |
+| 2 | Test project: apply `P1-01_notification_send_log.sql` and `P1-09_ai_drafting_setting.sql` | No. notify-hirer runs without the log table. P1-09 adds the setting OFF (opt-in); the admin switch then appears in Settings. | Matching `_rollback.sql` |
 | 3 | Test project: deploy `check-deadlines` **before or with** `send-notification` | If `send-notification` goes first, daily admin alerts stop until `check-deadlines` is deployed | Redeploy the previous version from `main@8420d9f` |
 | 4 | Test project: deploy `notify-hirer`, `draft-minutes` | Booking/action emails from browser tabs opened **before step 1** fail until refreshed | Redeploy the previous version |
 | 5 | Run the live checks in "Tests on the test project" below | – | – |
@@ -57,9 +57,10 @@ Files (P1-02 Release 1, then Release 2):
 2. Delete a test document: the file is gone from Storage.
 3. After Release 2: the old public address returns an error in a private window; files still open in the app; a community account cannot open them.
 
-AI (P1-09):
-1. Draft with AI is disabled until the box is ticked; the box clears after each draft.
-2. Admin turns AI drafting off: the option disappears for all trustees; a direct call to draft-minutes returns 403.
+AI (P1-09, opt-in per D-09):
+1. Before an admin turns it on: no "Draft from Hui Notes" option; a direct call to draft-minutes returns 403.
+2. Admin turns it on: the option appears; Draft with AI is disabled until the box is ticked; the box clears after each draft.
+3. Admin turns it off again: the option disappears; a direct call returns 403. A standard trustee does not see the switch.
 3. Writing minutes by hand still saves.
 
 Iwi Hub (P1-03): calling iwi-pull-snapshot with any body returns 410.

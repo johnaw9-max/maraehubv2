@@ -26,7 +26,7 @@ const SECTIONS = [
   },
   {
     heading: 'AI features',
-    body: "Some features can prepare a draft for you using AI, such as turning rough hui notes into draft minutes. When a trustee chooses to use one, the text they supply and basic details about your marae are sent to Anthropic's Claude AI service, which may process them outside New Zealand. MaraeHub asks for confirmation before notes are sent, and your marae's admin can switch AI drafting off. Please don't include sensitive personal, whānau, tangi or dispute details in notes sent to AI. AI output is only a draft: nothing is saved to your records until a trustee reviews and saves it.",
+    body: "Some features can prepare a draft for you using AI, such as turning rough hui notes into draft minutes. When a trustee chooses to use one, the text they supply and basic details about your marae are sent to Anthropic's Claude AI service, which may process them outside New Zealand. AI drafting is off unless your marae's admin turns it on, and MaraeHub asks for confirmation each time before notes are sent. Please don't include sensitive personal, whānau, tangi or dispute details in notes sent to AI. AI output is only a draft: nothing is saved to your records until a trustee reviews and saves it.",
   },
   {
     heading: 'Who can see your data',

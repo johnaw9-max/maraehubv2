@@ -43,11 +43,17 @@ Deno.test('AI-3 admin switched AI off: refused even with confirmation, nothing s
   const r = await handler(req({ ...notes, aiConsent: true }));
   assertEquals(r.status, 403); assertEquals(calls(), before);
 });
-Deno.test('AI-4 setting column not yet added: AI drafting still works (no interruption)', async () => {
+Deno.test('AI-4 opt-in: setting column not yet added → refused, nothing sent', async () => {
   setting = null; settingError = { message: 'column does not exist' }; const before = calls();
   const r = await handler(req({ ...notes, aiConsent: true }));
-  assertEquals(r.status, 200); assertEquals(calls(), before + 1);
+  assertEquals(r.status, 403); assertEquals(calls(), before);
   settingError = null; setting = { ai_drafting_enabled: true };
+});
+Deno.test('AI-6 opt-in: no settings row / value not set → refused, nothing sent', async () => {
+  setting = null; const before = calls();
+  const r = await handler(req({ ...notes, aiConsent: true }));
+  assertEquals(r.status, 403); assertEquals(calls(), before);
+  setting = { ai_drafting_enabled: true };
 });
 Deno.test('AI-5 community members still refused (unchanged)', async () => {
   role = 'community'; const before = calls();

@@ -106,8 +106,8 @@ end $$;
 \i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting.sql
 \i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting.sql
 do $$ begin
-  if (select ai_drafting_enabled from public.marae_settings limit 1) is not true then raise exception 'P1-09: existing marae not defaulted on'; end if;
-  raise notice 'PASS P1-09-a: existing marae default to AI drafting ON (no interruption); re-run safe';
+  if (select ai_drafting_enabled from public.marae_settings limit 1) is not false then raise exception 'P1-09: existing marae not defaulted off'; end if;
+  raise notice 'PASS P1-09-a: opt-in (D-09) - existing marae default to AI drafting OFF; re-run safe';
 end $$;
 \i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting_rollback.sql
 do $$ begin

@@ -283,7 +283,8 @@ export default function MaraeSettings({ profile, isAdmin }) {
         gst_registered: data.gst_registered === true,
       });
       // Kept out of `form` so Save never sends a column a project may not have yet.
-      setAiDraftingEnabled('ai_drafting_enabled' in data ? data.ai_drafting_enabled !== false : null);
+      // D-09: opt-in, so only an explicit true counts as on.
+      setAiDraftingEnabled('ai_drafting_enabled' in data ? data.ai_drafting_enabled === true : null);
     }
     setLoading(false);
   }
@@ -918,7 +919,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
             AI Drafting
           </div>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-            When on, trustees can use "Draft from Hui Notes" to turn rough notes into draft minutes. Notes are sent to Anthropic's Claude AI service, which may process them outside New Zealand, and each trustee must confirm before every send. Turn off if your marae prefers that hui notes never leave MaraeHub. Writing minutes by hand is not affected.
+            Off unless an admin turns it on. When on, trustees can use "Draft from Hui Notes" to turn rough notes into draft minutes. Notes are sent to Anthropic's Claude AI service, which may process them outside New Zealand, and each trustee must confirm before every send. Leave off if your marae prefers that hui notes never leave MaraeHub. Writing minutes by hand is not affected.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <div>
