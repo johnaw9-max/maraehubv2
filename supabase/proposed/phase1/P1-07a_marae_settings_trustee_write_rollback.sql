@@ -1,4 +1,6 @@
--- Rollback for P1-07a_marae_settings_trustee_write.sql (restores the broad policy).
+-- Rollback for M2. Restores one broad rule. NOTE: on the test project the original
+-- policy name is "marae_settings: authenticated full access"; on Terere/Ōpeke it
+-- is "allow_authenticated". Set :old_name accordingly (behaviour is identical).
 begin;
 drop policy if exists "marae_settings: signed-in read"   on public.marae_settings;
 drop policy if exists "marae_settings: trustee insert"   on public.marae_settings;

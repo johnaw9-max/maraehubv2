@@ -21,8 +21,10 @@ confirmation to `draft-minutes`. So the website goes first.
 | 5 | Run the live checks in "Tests on the test project" below | – | – |
 | 6 | Repeat 2–5 for Terere, then Ōpeke | – | – |
 | 7 | Iwi Hub project only: deploy `iwi-pull-snapshot`, then rotate any marae key ever pasted into it | Iwi Hub snapshot pulls stop (no marae feature uses them) | Not recommended |
-| 8 | After D-04 approval: `P1-02_private_file_buckets.sql` | Old file addresses stop opening outside the app (by design). Printed evidence links last 1 hour. | `P1-02_private_file_buckets_rollback.sql` (one step) |
-| 9 | After the live RLS check confirms it: `P1-07a_marae_settings_trustee_write.sql` | No; community members never edit settings in the app | Matching `_rollback.sql` |
+| 8a | M3 `P1-02a_trustee_only_file_policies.sql` (buckets stay public) | Community members lose file upload/delete/link access (they have no file screens in the app) | `P1-02a_..._rollback.sql` |
+| 8b | M4 `P1-02b_make_file_buckets_private.sql` (after M3, and only where PR #3 is live) | Old public file addresses stop opening; app uses 1-hour signed links | `P1-02b_..._rollback.sql` |
+| 9 | M2 `P1-07a_marae_settings_trustee_write.sql` | No; community members never edit settings in the app | Matching `_rollback.sql` (policy name differs on test) |
+| 10 | M1 `P1-07b_notification_log_service_role_only.sql` | No; only edge functions (service role) use the table | Matching `_rollback.sql` |
 
 To apply a proposed migration: copy it into `supabase/migrations/` with a new
 timestamp name, run the repo's normal migration process (test project first),

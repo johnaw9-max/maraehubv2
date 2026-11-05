@@ -8,6 +8,7 @@ do $$ begin
   if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
 end $$;
 
+do $$ begin if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if; end $$;
 create schema auth;
 create table auth.users (id uuid primary key);
 create function auth.uid() returns uuid language sql stable
@@ -26,8 +27,24 @@ grant select on storage.buckets to anon, authenticated;
 
 create table public.profiles (id uuid primary key references auth.users(id), email text, role text, trustee_role text default 'standard');
 alter table public.profiles enable row level security;
-create policy "own profile" on public.profiles for select to authenticated using (id = auth.uid());
-grant select on public.profiles to authenticated;
+-- Mirrors the live test project (5 Nov 2026): own-row read, trustee read/update, role-protection trigger.
+create function public.is_trustee() returns boolean language sql stable security definer set search_path = public
+  as $$ select exists (select 1 from public.profiles where id = auth.uid() and role = 'trustee') $$;
+revoke execute on function public.is_trustee() from public, anon;
+grant execute on function public.is_trustee() to authenticated;
+create policy "profiles: read own row" on public.profiles for select to authenticated using (id = auth.uid());
+create policy "profiles: trustees read" on public.profiles for select to authenticated using (public.is_trustee());
+create policy "profiles: own row or trustee can update" on public.profiles for update to authenticated
+  using ((id = auth.uid()) or public.is_trustee()) with check ((id = auth.uid()) or public.is_trustee());
+create function public.profiles_protect_permission_fields() returns trigger language plpgsql as $$
+begin
+  if (new.role is distinct from old.role or new.trustee_role is distinct from old.trustee_role) and auth.uid() = old.id then
+    raise exception 'You cannot change your own role or trustee_role.';
+  end if;
+  return new;
+end $$;
+create trigger protect_profiles_permission_fields before update on public.profiles for each row execute function public.profiles_protect_permission_fields();
+grant select, update on public.profiles to authenticated;
 
 create table public.marae_settings (id uuid primary key default gen_random_uuid(), marae_name text, payment_details text);
 alter table public.marae_settings enable row level security;
@@ -52,4 +69,4 @@ insert into public.marae_settings (marae_name, payment_details) values ('Test Ma
 create table public.notification_log (id uuid primary key default gen_random_uuid(), notification_type text, entity_id text, entity_key text, trustee_id uuid, sent_at timestamptz default now());
 alter table public.notification_log enable row level security;
 create policy "Service role full access to notification_log" on public.notification_log for all to public using (true) with check (true);
-grant select, insert, update, delete on public.notification_log to anon, authenticated;
+grant all on public.notification_log to anon, authenticated, service_role;

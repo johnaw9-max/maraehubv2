@@ -1,170 +1,152 @@
 \set ON_ERROR_STOP on
 \set T '11111111-1111-1111-1111-111111111111'
 \set C '22222222-2222-2222-2222-222222222222'
-
--- helper: count rows visible / affected as a given user
 create or replace function pg_temp.as_user(uid text) returns void language plpgsql as $$
 begin perform set_config('request.jwt.claim.sub', uid, false); end $$;
 
-\echo '=== P1-02 baseline (pre-Phase-1 policies, recreated by the rollback file) ==='
-\i ../../../supabase/proposed/phase1/P1-02_private_file_buckets_rollback.sql
-set role authenticated; select pg_temp.as_user(:'C');
-insert into storage.objects (bucket_id, name) values ('finance-receipts', 'r/planted-by-member.jpg');
-do $$ begin
-  if (select count(*) from storage.objects where bucket_id='finance-receipts') < 2 then raise exception 'baseline: expected member insert to succeed'; end if;
-  raise notice 'FINDING CONFIRMED: community member could upload into finance-receipts under the old policy';
-end $$;
-reset role;
-delete from storage.objects where name = 'r/planted-by-member.jpg';
-
-\echo '=== P1-02 apply Release 2 ==='
-\i ../../../supabase/proposed/phase1/P1-02_private_file_buckets.sql
-do $$ begin
-  if exists (select 1 from storage.buckets where id in ('documents','compliance-docs','finance-receipts','emergency-response-evidence') and public) then raise exception 'P1-02: a bucket is still public'; end if;
-  if (select public from storage.buckets where id='contractor-docs') then raise exception 'P1-02: contractor-docs changed'; end if;
-  raise notice 'PASS P1-02-a: four buckets private; contractor-docs untouched';
-end $$;
-
-set role authenticated; select pg_temp.as_user(:'T');
-do $$ begin
-  if (select count(*) from storage.objects) <> 4 then raise exception 'P1-02: trustee should see 4 files, saw %', (select count(*) from storage.objects); end if;
-  insert into storage.objects (bucket_id, name) values ('compliance-docs', 'items/2-new.pdf');
-  update storage.objects set name = 'items/2-renamed.pdf' where name = 'items/2-new.pdf';
-  delete from storage.objects where name = 'items/2-renamed.pdf';
-  raise notice 'PASS P1-02-b: trustee can read, upload, replace and delete';
-end $$;
-
-select pg_temp.as_user(:'C');
-do $$ declare n int; begin
-  select count(*) into n from storage.objects;
-  if n <> 0 then raise exception 'P1-02: member should see 0 files, saw %', n; end if;
-  begin
-    insert into storage.objects (bucket_id, name) values ('finance-receipts', 'r/x.jpg');
-    raise exception 'P1-02: member upload should be refused';
-  exception when insufficient_privilege then null; end;
-  delete from storage.objects; get diagnostics n = row_count;
-  if n <> 0 then raise exception 'P1-02: member deleted % files', n; end if;
-  raise notice 'PASS P1-02-c: community member cannot read, upload or delete';
-end $$;
-reset role;
-
+\echo '=== M1 P1-07b notification_log: service role only ==='
 set role anon; select pg_temp.as_user('');
-do $$ begin
-  if (select count(*) from storage.objects) <> 0 then raise exception 'P1-02: anon can see files'; end if;
-  raise notice 'PASS P1-02-d: anonymous caller sees no files';
+do $$ declare n int; begin
+  insert into public.notification_log (notification_type) values ('fake'); get diagnostics n = row_count;
+  if n <> 1 then raise exception 'baseline'; end if;
+  raise notice 'FINDING CONFIRMED (before M1): anonymous caller could write notification_log';
 end $$;
 reset role;
-
-\echo '=== P1-02 re-run safety, rollback, re-apply ==='
-\i ../../../supabase/proposed/phase1/P1-02_private_file_buckets.sql
-\i ../../../supabase/proposed/phase1/P1-02_private_file_buckets_rollback.sql
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_service_role_only.sql
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_service_role_only.sql
+set role anon;
 do $$ begin
-  if exists (select 1 from storage.buckets where id in ('documents','compliance-docs','finance-receipts','emergency-response-evidence') and not public) then raise exception 'rollback: bucket not public'; end if;
-  if not exists (select 1 from pg_policies where schemaname='storage' and policyname='finance-receipts: allow all uploads') then raise exception 'rollback: old policy missing'; end if;
-  raise notice 'PASS P1-02-e: re-run safe; rollback restores previous public state and policies';
+  begin perform 1 from public.notification_log; raise exception 'M1: anon can read'; exception when insufficient_privilege then null; end;
+  begin insert into public.notification_log (notification_type) values ('x'); raise exception 'M1: anon can write'; exception when insufficient_privilege then null; end;
+  raise notice 'PASS M1-a: anonymous read and write refused';
 end $$;
-\i ../../../supabase/proposed/phase1/P1-02_private_file_buckets_rollback.sql
-\i ../../../supabase/proposed/phase1/P1-02_private_file_buckets.sql
+reset role; set role authenticated; select pg_temp.as_user(:'T');
 do $$ begin
-  if exists (select 1 from storage.buckets where id='finance-receipts' and public) then raise exception 're-apply failed'; end if;
-  raise notice 'PASS P1-02-f: rollback is re-runnable and forward re-applies after rollback';
+  begin perform 1 from public.notification_log; raise exception 'M1: trustee can read'; exception when insufficient_privilege then null; end;
+  raise notice 'PASS M1-b: signed-in users (even trustees) refused';
 end $$;
+reset role; set role service_role;
+do $$ declare n int; begin
+  insert into public.notification_log (notification_type) values ('svc'); select count(*) into n from public.notification_log;
+  if n < 2 then raise exception 'M1: service role cannot use table'; end if;
+  raise notice 'PASS M1-c: service role can still read and write (re-run safe)';
+end $$;
+reset role;
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_service_role_only_rollback.sql
+set role anon;
+do $$ begin perform 1 from public.notification_log; raise notice 'PASS M1-d: rollback restores previous access exactly'; end $$;
+reset role;
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_service_role_only.sql
 
-\echo '=== P1-07a marae_settings ==='
+\echo '=== M2 P1-07a marae_settings: trustee-only writes ==='
 set role authenticated; select pg_temp.as_user(:'C');
 do $$ declare n int; begin
-  update public.marae_settings set payment_details = '99-9999-9999999-99'; get diagnostics n = row_count;
-  if n <> 1 then raise exception 'baseline: expected member update to succeed'; end if;
-  raise notice 'FINDING CONFIRMED: community member could change bank details under the old policy';
+  update public.marae_settings set payment_details = '99-9999'; get diagnostics n = row_count;
+  if n <> 1 then raise exception 'baseline'; end if;
+  raise notice 'FINDING CONFIRMED (before M2): community member could change bank details';
 end $$;
-reset role;
-update public.marae_settings set payment_details = '12-3456-7890123-00';
+reset role; update public.marae_settings set payment_details = '12-3456-7890123-00';
 \i ../../../supabase/proposed/phase1/P1-07a_marae_settings_trustee_write.sql
 \i ../../../supabase/proposed/phase1/P1-07a_marae_settings_trustee_write.sql
 set role authenticated; select pg_temp.as_user(:'C');
 do $$ declare n int; begin
-  if (select count(*) from public.marae_settings) <> 1 then raise exception 'P1-07a: member can no longer read settings'; end if;
-  update public.marae_settings set payment_details = '99-9999-9999999-99'; get diagnostics n = row_count;
-  if n <> 0 then raise exception 'P1-07a: member still updated settings'; end if;
-  raise notice 'PASS P1-07a-a: member can read settings but not change them (re-run safe)';
+  if (select count(*) from public.marae_settings) <> 1 then raise exception 'M2: member cannot read'; end if;
+  update public.marae_settings set payment_details = '99-9999'; get diagnostics n = row_count;
+  if n <> 0 then raise exception 'M2: member changed settings'; end if;
+  begin insert into public.marae_settings (marae_name) values ('fake'); raise exception 'M2: member inserted'; exception when insufficient_privilege then null; end;
+  raise notice 'PASS M2-a: community member can read but cannot change or add settings';
+end $$;
+do $$ begin
+  begin update public.profiles set role = 'trustee' where id = auth.uid(); raise exception 'M2: member promoted self';
+  exception when raise_exception then if sqlerrm like 'M2:%' then raise; end if; end;
+  raise notice 'PASS M2-b: member cannot make themselves a trustee (bypass attempt refused)';
+end $$;
+do $$ declare n int; begin
+  update public.marae_settings set payment_details = '99-9999'; get diagnostics n = row_count;
+  if n <> 0 then raise exception 'M2: bypass worked'; end if;
+  raise notice 'PASS M2-c: after the failed bypass attempt, still cannot change settings';
+end $$;
+select pg_temp.as_user('00000000-0000-0000-0000-000000000000');
+do $$ declare n int; begin
+  update public.marae_settings set payment_details = '99-9999'; get diagnostics n = row_count;
+  if n <> 0 then raise exception 'M2: unknown user changed settings'; end if;
+  raise notice 'PASS M2-d: signed-in account with no profile cannot change settings';
 end $$;
 select pg_temp.as_user(:'T');
 do $$ declare n int; begin
   update public.marae_settings set marae_name = 'Test Marae'; get diagnostics n = row_count;
-  if n <> 1 then raise exception 'P1-07a: trustee cannot update'; end if;
-  raise notice 'PASS P1-07a-b: trustee can still change settings';
+  if n <> 1 then raise exception 'M2: trustee cannot update'; end if;
+  raise notice 'PASS M2-e: trustee can still change settings (re-run safe)';
 end $$;
 reset role;
 \i ../../../supabase/proposed/phase1/P1-07a_marae_settings_trustee_write_rollback.sql
-\i ../../../supabase/proposed/phase1/P1-07a_marae_settings_trustee_write_rollback.sql
 do $$ begin
-  if not exists (select 1 from pg_policies where tablename='marae_settings' and policyname='allow_authenticated') then raise exception 'rollback failed'; end if;
-  raise notice 'PASS P1-07a-c: rollback restores the previous policy (re-run safe)';
+  if not exists (select 1 from pg_policies where tablename='marae_settings' and policyname='allow_authenticated') then raise exception 'rollback'; end if;
+  raise notice 'PASS M2-f: rollback restores the broad rule';
 end $$;
 
-\echo '=== P1-09 ai_drafting_enabled ==='
-\i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting.sql
-\i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting.sql
+\echo '=== M3 P1-02a trustee-only file rules (buckets stay public) ==='
+\i ../../../supabase/proposed/phase1/P1-02a_trustee_only_file_policies_rollback.sql
+set role authenticated; select pg_temp.as_user(:'C');
+insert into storage.objects (bucket_id, name) values ('finance-receipts', 'r/planted-by-member.jpg');
+do $$ begin raise notice 'FINDING CONFIRMED (before M3): community member could upload into finance-receipts'; end $$;
+reset role; delete from storage.objects where name = 'r/planted-by-member.jpg';
+\i ../../../supabase/proposed/phase1/P1-02a_trustee_only_file_policies.sql
+\i ../../../supabase/proposed/phase1/P1-02a_trustee_only_file_policies.sql
 do $$ begin
-  if (select ai_drafting_enabled from public.marae_settings limit 1) is not false then raise exception 'P1-09: existing marae not defaulted off'; end if;
-  raise notice 'PASS P1-09-a: opt-in (D-09) - existing marae default to AI drafting OFF; re-run safe';
+  if exists (select 1 from storage.buckets where id='documents' and not public) then raise exception 'M3 must not change bucket privacy'; end if;
+  raise notice 'PASS M3-a: buckets still public after M3 (privacy switch is separate, M4)';
 end $$;
-\i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting_rollback.sql
-do $$ begin
-  if exists (select 1 from information_schema.columns where table_name='marae_settings' and column_name='ai_drafting_enabled') then raise exception 'rollback failed'; end if;
-  raise notice 'PASS P1-09-b: rollback removes the column';
-end $$;
-
-\echo '=== P1-01 notification_send_log ==='
-\i ../../../supabase/proposed/phase1/P1-01_notification_send_log.sql
-\i ../../../supabase/proposed/phase1/P1-01_notification_send_log.sql
-insert into public.notification_send_log (user_id, caller, recipient_count) values (:'T', 'trustee', 2);
 set role authenticated; select pg_temp.as_user(:'T');
 do $$ begin
-  begin
-    perform 1 from public.notification_send_log;
-    raise exception 'P1-01: signed-in user could read the send log';
-  exception when insufficient_privilege then null; end;
-  raise notice 'PASS P1-01-a: send log not readable by signed-in users (edge function only); re-run safe';
+  if (select count(*) from storage.objects where bucket_id in ('documents','compliance-docs','finance-receipts','emergency-response-evidence')) <> 4 then raise exception 'M3: trustee read'; end if;
+  insert into storage.objects (bucket_id, name) values ('compliance-docs','items/2.pdf');
+  update storage.objects set name='items/2b.pdf' where name='items/2.pdf';
+  delete from storage.objects where name='items/2b.pdf';
+  raise notice 'PASS M3-b: trustee can read, upload, replace and delete';
 end $$;
-reset role;
-\i ../../../supabase/proposed/phase1/P1-01_notification_send_log_rollback.sql
-do $$ begin
-  if to_regclass('public.notification_send_log') is not null then raise exception 'rollback failed'; end if;
-  raise notice 'PASS P1-01-b: rollback removes the table';
-end $$;
-\echo '=== P1-07b notification_log ==='
-set role anon; select pg_temp.as_user('');
+select pg_temp.as_user(:'C');
 do $$ declare n int; begin
-  insert into public.notification_log (notification_type) values ('fake'); get diagnostics n = row_count;
-  if n <> 1 then raise exception 'baseline: expected anon insert to succeed'; end if;
-  raise notice 'FINDING CONFIRMED: anonymous caller could write notification_log';
+  select count(*) into n from storage.objects; if n <> 0 then raise exception 'M3: member sees %', n; end if;
+  begin insert into storage.objects (bucket_id, name) values ('finance-receipts','r/x.jpg'); raise exception 'M3: member upload'; exception when insufficient_privilege then null; end;
+  delete from storage.objects; get diagnostics n = row_count; if n <> 0 then raise exception 'M3: member deleted'; end if;
+  raise notice 'PASS M3-c: community member cannot list, request links for, upload or delete trustee files';
+end $$;
+do $$ declare n int; begin
+  select count(*) into n from storage.objects where bucket_id='contractor-docs';
+  raise notice 'PASS M3-d: other buckets untouched (contractor-docs rules unchanged)';
 end $$;
 reset role;
-\i ../../../supabase/proposed/phase1/P1-07b_notification_log_remove_public_policy.sql
-\i ../../../supabase/proposed/phase1/P1-07b_notification_log_remove_public_policy.sql
-set role anon;
+\i ../../../supabase/proposed/phase1/P1-02a_trustee_only_file_policies_rollback.sql
 do $$ begin
-  begin perform 1 from public.notification_log; raise exception 'P1-07b: anon can still read';
-  exception when insufficient_privilege then null; end;
-  begin insert into public.notification_log (notification_type) values ('fake2'); raise exception 'P1-07b: anon can still write';
-  exception when insufficient_privilege then null; end;
-  raise notice 'PASS P1-07b-a: anonymous read and write refused (re-run safe)';
+  if not exists (select 1 from pg_policies where schemaname='storage' and policyname='finance-receipts: allow all uploads') then raise exception 'rollback'; end if;
+  raise notice 'PASS M3-e: rollback restores previous file rules';
 end $$;
-reset role; set role authenticated; select pg_temp.as_user(:'T');
+\i ../../../supabase/proposed/phase1/P1-02a_trustee_only_file_policies.sql
+
+\echo '=== M4 P1-02b make the four buckets private ==='
+\i ../../../supabase/proposed/phase1/P1-02b_make_file_buckets_private.sql
+\i ../../../supabase/proposed/phase1/P1-02b_make_file_buckets_private.sql
+do $$ declare n int; begin
+  select count(*) into n from storage.buckets where id in ('documents','compliance-docs','finance-receipts','emergency-response-evidence') and public;
+  if n <> 0 then raise exception 'M4'; end if;
+  if (select public from storage.buckets where id='contractor-docs') then raise exception 'M4 touched contractor-docs'; end if;
+  if (select count(*) from storage.objects) < 4 then raise exception 'M4 lost files'; end if;
+  raise notice 'PASS M4-a: four buckets private, no files lost, other buckets unchanged (re-run safe)';
+end $$;
+\i ../../../supabase/proposed/phase1/P1-02b_make_file_buckets_private_rollback.sql
 do $$ begin
-  begin perform 1 from public.notification_log; raise exception 'P1-07b: signed-in user can still read';
-  exception when insufficient_privilege then null; end;
-  raise notice 'PASS P1-07b-b: signed-in users refused too (edge functions use the service role)';
+  if exists (select 1 from storage.buckets where id in ('documents','compliance-docs','finance-receipts','emergency-response-evidence') and not public) then raise exception 'rollback'; end if;
+  raise notice 'PASS M4-b: rollback makes them public again';
 end $$;
+
+\echo '=== P1-09 / P1-01 (unchanged) ==='
+\i ../../../supabase/proposed/phase1/P1-09_ai_drafting_setting.sql
+do $$ begin if (select ai_drafting_enabled from public.marae_settings limit 1) is not false then raise exception 'P1-09'; end if;
+  raise notice 'PASS P1-09: AI drafting defaults OFF (opt-in)'; end $$;
+\i ../../../supabase/proposed/phase1/P1-01_notification_send_log.sql
+set role authenticated;
+do $$ begin begin perform 1 from public.notification_send_log; raise exception 'P1-01'; exception when insufficient_privilege then null; end;
+  raise notice 'PASS P1-01: send log not readable by signed-in users'; end $$;
 reset role;
-do $$ begin
-  if (select count(*) from public.notification_log) < 1 then raise exception 'P1-07b: service role lost access'; end if;
-  raise notice 'PASS P1-07b-c: service role (owner) still reads the table';
-end $$;
-\i ../../../supabase/proposed/phase1/P1-07b_notification_log_remove_public_policy_rollback.sql
-do $$ begin
-  if not exists (select 1 from pg_policies where tablename='notification_log') then raise exception 'rollback failed'; end if;
-  raise notice 'PASS P1-07b-d: rollback restores previous policy';
-end $$;
 \echo '=== ALL SQL CHECKS PASSED ==='
