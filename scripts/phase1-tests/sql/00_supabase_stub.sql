@@ -47,3 +47,9 @@ insert into storage.objects (bucket_id, name) values
   ('documents','documents/1-plan.pdf'), ('compliance-docs','items/1-wof.pdf'),
   ('finance-receipts','r/1-receipt.jpg'), ('emergency-response-evidence','e/1-photo.jpg');
 insert into public.marae_settings (marae_name, payment_details) values ('Test Marae', '12-3456-7890123-00');
+
+-- notification_log as live on test/Terere/Ōpeke before Phase 1 (open to public role).
+create table public.notification_log (id uuid primary key default gen_random_uuid(), notification_type text, entity_id text, entity_key text, trustee_id uuid, sent_at timestamptz default now());
+alter table public.notification_log enable row level security;
+create policy "Service role full access to notification_log" on public.notification_log for all to public using (true) with check (true);
+grant select, insert, update, delete on public.notification_log to anon, authenticated;

@@ -133,4 +133,38 @@ do $$ begin
   if to_regclass('public.notification_send_log') is not null then raise exception 'rollback failed'; end if;
   raise notice 'PASS P1-01-b: rollback removes the table';
 end $$;
+\echo '=== P1-07b notification_log ==='
+set role anon; select pg_temp.as_user('');
+do $$ declare n int; begin
+  insert into public.notification_log (notification_type) values ('fake'); get diagnostics n = row_count;
+  if n <> 1 then raise exception 'baseline: expected anon insert to succeed'; end if;
+  raise notice 'FINDING CONFIRMED: anonymous caller could write notification_log';
+end $$;
+reset role;
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_remove_public_policy.sql
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_remove_public_policy.sql
+set role anon;
+do $$ begin
+  begin perform 1 from public.notification_log; raise exception 'P1-07b: anon can still read';
+  exception when insufficient_privilege then null; end;
+  begin insert into public.notification_log (notification_type) values ('fake2'); raise exception 'P1-07b: anon can still write';
+  exception when insufficient_privilege then null; end;
+  raise notice 'PASS P1-07b-a: anonymous read and write refused (re-run safe)';
+end $$;
+reset role; set role authenticated; select pg_temp.as_user(:'T');
+do $$ begin
+  begin perform 1 from public.notification_log; raise exception 'P1-07b: signed-in user can still read';
+  exception when insufficient_privilege then null; end;
+  raise notice 'PASS P1-07b-b: signed-in users refused too (edge functions use the service role)';
+end $$;
+reset role;
+do $$ begin
+  if (select count(*) from public.notification_log) < 1 then raise exception 'P1-07b: service role lost access'; end if;
+  raise notice 'PASS P1-07b-c: service role (owner) still reads the table';
+end $$;
+\i ../../../supabase/proposed/phase1/P1-07b_notification_log_remove_public_policy_rollback.sql
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename='notification_log') then raise exception 'rollback failed'; end if;
+  raise notice 'PASS P1-07b-d: rollback restores previous policy';
+end $$;
 \echo '=== ALL SQL CHECKS PASSED ==='
