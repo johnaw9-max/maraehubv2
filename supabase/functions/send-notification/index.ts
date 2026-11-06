@@ -25,7 +25,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`send-notification: user=${user.id} FROM_ADDRESS="${FROM_ADDRESS}" to=${JSON.stringify(to)} subject="${subject}"`);
+    console.log(`send-notification: FROM_ADDRESS="${FROM_ADDRESS}" to=${JSON.stringify(to)} subject="${subject}"`);
 
     if (!RESEND_API_KEY) {
       return new Response(
