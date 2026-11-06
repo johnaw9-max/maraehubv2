@@ -118,10 +118,7 @@ export default function DocumentsManager() {
         // If storage bucket doesn't exist yet, save record without file
         console.warn('Storage upload failed:', uploadError.message);
       } else {
-        const { data: urlData } = supabase.storage
-          .from('documents')
-          .getPublicUrl(path);
-        file_url = urlData?.publicUrl || null;
+        file_url = path;
       }
  
       file_name = file.name;
@@ -161,10 +158,21 @@ export default function DocumentsManager() {
     fetchDocs();
   }
  
+  async function openSignedUrl(bucket, fileRef) {
+    if (!fileRef) return;
+    // Support legacy full URLs (old records) and new path-only storage
+    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
+    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
+    window.open(data.signedUrl, '_blank');
+  }
+
   async function handleDelete(doc) {
     if (!window.confirm(`Delete "${doc.title}"?`)) return;
     if (doc.file_url) {
-      const path = doc.file_url.split('/maraehub/')[1];
+      const path = doc.file_url.startsWith('http')
+        ? doc.file_url.split('/maraehub/')[1]
+        : doc.file_url;
       if (path) await supabase.storage.from('documents').remove([path]);
     }
     await supabase.from('documents').delete().eq('id', doc.id);
@@ -277,7 +285,7 @@ export default function DocumentsManager() {
                         <button onClick={() => setEditingCharterDoc(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">✏️</button>
                       )}
                       {doc.file_url && (
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</a>
+                        <button onClick={() => openSignedUrl('documents', doc.file_url)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</button>
                       )}
                       <button onClick={() => handleDelete(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">✕</button>
                     </span>
@@ -342,9 +350,9 @@ export default function DocumentsManager() {
                       title="Edit">✏️</button>
                   )}
                   {doc.file_url && (
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
-                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', fontSize: 15, color: 'var(--brand)' }}
-                      title="Download">⬇</a>
+                    <button onClick={() => openSignedUrl('documents', doc.file_url)}
+                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--brand)' }}
+                      title="Download">⬇</button>
                   )}
                   <button onClick={() => handleDelete(doc)}
                     style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--danger)' }}

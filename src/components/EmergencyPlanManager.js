@@ -322,8 +322,7 @@ export default function EmergencyPlanManager() {
       const path = `evidence/${Date.now()}-${eventFile.name.replace(/\s+/g, '_')}`;
       const { error: upErr } = await supabase.storage.from('emergency-response-evidence').upload(path, eventFile);
       if (!upErr) {
-        const { data } = supabase.storage.from('emergency-response-evidence').getPublicUrl(path);
-        document_url = data?.publicUrl || null;
+        document_url = path;
         document_name = eventFile.name;
       }
     }
@@ -352,6 +351,14 @@ export default function EmergencyPlanManager() {
     await fetchAll();
     setShowEventModal(false);
     setEventSaving(false);
+  }
+
+  async function openSignedUrl(bucket, fileRef) {
+    if (!fileRef) return;
+    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
+    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
+    window.open(data.signedUrl, '_blank');
   }
 
   async function deleteEvent(id) {
@@ -524,7 +531,7 @@ export default function EmergencyPlanManager() {
         <td>${e.description}</td>
         <td style="text-align:right">${e.people_served != null ? e.people_served : '—'}</td>
         <td style="text-align:right">${e.duration_days != null ? e.duration_days : '—'}</td>
-        <td>${e.document_url ? `<a href="${e.document_url}" target="_blank" rel="noopener noreferrer">Evidence</a>` : '—'}</td>
+        <td>${e.document_url && !e.document_url.startsWith('http') ? '📎 Attached' : e.document_url ? `<a href="${e.document_url}" target="_blank" rel="noopener noreferrer">Evidence</a>` : '—'}</td>
       </tr>`).join('');
 
     const win = window.open('', '_blank');
@@ -909,7 +916,7 @@ ${specialisedSection}
                       <div style={{ fontSize: 13, color: 'var(--text3)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                         {event.people_served != null && <span>👥 ~{event.people_served} people served</span>}
                         {event.duration_days != null && <span>📅 {event.duration_days} day{event.duration_days !== 1 ? 's' : ''}</span>}
-                        {event.document_url && <a href={event.document_url} target="_blank" rel="noopener noreferrer">📎 Evidence</a>}
+                        {event.document_url && <button onClick={() => openSignedUrl('emergency-response-evidence', event.document_url)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 13, padding: 0 }}>📎 Evidence</button>}
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

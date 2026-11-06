@@ -199,7 +199,7 @@ function CMenuItem({ label, onClick, danger, href }) {
   );
 }
 
-function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow }) {
+function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow, onOpenDoc }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -252,7 +252,7 @@ function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow }) {
               }}
             />
           )}
-          {item.document_url && <CMenuItem label="📎 View Document" href={item.document_url} />}
+          {item.document_url && <CMenuItem label="📎 View Document" onClick={() => { onOpenDoc(item.document_url); setOpen(false); }} />}
           <CMenuItem label="Delete" danger onClick={() => { onDelete(item.id); setOpen(false); }} />
         </div>
       )}
@@ -473,8 +473,15 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       console.warn('[ComplianceTracker] storage upload failed:', error.message);
       return { url: null, name: file.name };
     }
-    const { data } = supabase.storage.from('compliance-docs').getPublicUrl(path);
-    return { url: data?.publicUrl || null, name: file.name };
+    return { url: path, name: file.name };
+  }
+
+    async function openSignedUrl(bucket, fileRef) {
+    if (!fileRef) return;
+    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
+    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
+    window.open(data.signedUrl, '_blank');
   }
 
   // ── ITEM CRUD ──────────────────────────────────────────────────────────────
@@ -827,12 +834,12 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </button>
             )}
             {item.document_url && (
-              <a href={item.document_url} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
+              <button onClick={() => openSignedUrl('compliance-docs', item.document_url)}
+                style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
                 title={item.document_name || 'View document'}
               >
                 📎 Doc
-              </a>
+              </button>
             )}
             <button
               onClick={() => handleMarkDone(item)}
@@ -933,7 +940,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </span>
             ),
           ]}
-          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} />}
+          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} onOpenDoc={url => openSignedUrl('compliance-docs', url)} />}
         />
         {isExpanded && (
           <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1182,11 +1189,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexDirection: 'column' }}>
                         {inc.document_url && (
-                          <a href={inc.document_url} target="_blank" rel="noopener noreferrer"
-                            style={{ fontSize: 14, color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
+                          <button onClick={() => openSignedUrl('compliance-docs', inc.document_url)}
+                            style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0 }}
                           >
                             📎 Doc
-                          </a>
+                          </button>
                         )}
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
@@ -1342,7 +1349,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 <label className="form-label">Document</label>
                 {editItem?.document_name && !itemFile && (
                   <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6 }}>
-                    Current: <a href={editItem.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>{editItem.document_name}</a>
+                    Current: <button onClick={() => openSignedUrl('compliance-docs', editItem.document_url)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', padding: 0, fontSize: 'inherit' }}>{editItem.document_name}</button>
                   </div>
                 )}
                 <input type="file" ref={itemFileRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
@@ -1455,7 +1462,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 <label className="form-label">Document</label>
                 {editIncident?.document_name && !incidentFile && (
                   <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 6 }}>
-                    Current: <a href={editIncident.document_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)' }}>{editIncident.document_name}</a>
+                    Current: <button onClick={() => openSignedUrl('compliance-docs', editIncident.document_url)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', padding: 0, fontSize: 'inherit' }}>{editIncident.document_name}</button>
                   </div>
                 )}
                 <input type="file" ref={incidentFileRef} style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"

@@ -454,8 +454,7 @@ export default function FinanceManager() {
       const path = `receipts/${Date.now()}-${receiptFile.name.replace(/\s+/g, '_')}`;
       const { error: upErr } = await supabase.storage.from('finance-receipts').upload(path, receiptFile);
       if (!upErr) {
-        const { data } = supabase.storage.from('finance-receipts').getPublicUrl(path);
-        receipt_url = data?.publicUrl || null;
+        receipt_url = path;
         receipt_name = receiptFile.name;
       }
     }
@@ -488,6 +487,14 @@ export default function FinanceManager() {
       metadata: { amount: payload.amount, date: payload.date, receipt_name: payload.receipt_name },
     });
     setSaving(false); setShowExpenseModal(false); fetchAll();
+  }
+
+  async function openSignedUrl(bucket, fileRef) {
+    if (!fileRef) return;
+    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
+    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
+    window.open(data.signedUrl, '_blank');
   }
 
   async function handleDelete() {
@@ -1341,7 +1348,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                         <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{fmt(row.date)}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text1)', maxWidth: 200 }}>
                           <div style={{ fontWeight: 500 }}>{row.description}</div>
-                          {row.receipt_url && <a href={row.receipt_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: 'var(--brand)' }}>📎 Receipt</a>}
+                          {row.receipt_url && <button onClick={() => openSignedUrl('finance-receipts', row.receipt_url)} style={{ fontSize: 10, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>📎 Receipt</button>}
                           {complianceLinksByExpense[row.id] && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>🆘 Linked: {complianceLinksByExpense[row.id]}</span></div>}
                           {entityName && <div style={{ marginTop: 2 }}><span style={{ fontSize: 11, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                         </td>
