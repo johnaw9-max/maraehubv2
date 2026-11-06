@@ -10,9 +10,14 @@ import { supabase, supabaseAnonKey } from './supabase';
  */
 export async function sendNotification(to, subject, body) {
   try {
-  const { error } = await supabase.functions.invoke('notify-hirer', {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      console.error('[notify] no active session — email not sent');
+      return;
+    }
+    const { error } = await supabase.functions.invoke('notify-hirer', {
       body: { to, subject, body },
-      headers: { Authorization: `Bearer ${supabaseAnonKey}` },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (error) console.error('[notify]', error.message);
   } catch (err) {

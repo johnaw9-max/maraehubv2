@@ -1,7 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? ''
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@resend.dev>'
+const FROM_EMAIL     = Deno.env.get('FROM_EMAIL') ?? 'MaraeHub <onboarding@resend.dev>'
+const SUPABASE_URL   = Deno.env.get('SUPABASE_URL') ?? ''
+const SUPABASE_ANON  = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +13,32 @@ const CORS = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+
+  // ── Auth: require a valid signed session JWT ──────────────────────────────
+  const authHeader = req.headers.get('Authorization') ?? ''
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+
+  if (!token) {
+    return new Response(
+      JSON.stringify({ error: 'Missing Authorization header' }),
+      { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  })
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    console.warn('[notify-hirer] rejected unauthenticated request')
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    )
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   try {
     const { to, subject, body } = await req.json()
@@ -28,6 +57,8 @@ serve(async (req) => {
         { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
+
+    console.log(`[notify-hirer] user=${user.id} to=${to} subject="${subject}"`)
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
