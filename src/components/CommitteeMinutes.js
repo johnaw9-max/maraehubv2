@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
+import { useAiDrafting } from '../lib/useAiDrafting';
 import useProfiles from '../lib/useProfiles';
 import useEntities from '../lib/useEntities';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
@@ -376,6 +377,8 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const actionsSectionRef = useRef(null);
 
   const [maraeName, setMaraeName] = useState('');
+  const [maraeEntityId, setMaraeEntityId] = useState(null);
+  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(false);
   const [localMinutes, setLocalMinutes] = useState(meeting.minutes || '');
   const [minutesSaving, setMinutesSaving] = useState(false);
   const [minutesMessage, setMinutesMessage] = useState(null); // { type: 'success'|'error', text } | null
@@ -402,9 +405,15 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const [calendarSynced, setCalendarSynced] = useState(false);
 
   useEffect(() => {
-    supabase.from('marae_settings').select('marae_name').single()
-      .then(({ data }) => setMaraeName(data?.marae_name || 'Our Marae'));
+    supabase.from('marae_settings').select('id, marae_name, ai_drafting_enabled').single()
+      .then(({ data }) => {
+        setMaraeName(data?.marae_name || 'Our Marae');
+        setMaraeEntityId(data?.id || null);
+        setAiDraftingEnabled(!!data?.ai_drafting_enabled);
+      });
   }, []);
+
+  const { enabled: aiEnabled, ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
 
   useEffect(() => {
     supabase.functions.invoke('google-calendar-callback?action=status', { method: 'GET' })
@@ -588,6 +597,8 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
 
   async function generateDraft() {
     if (!roughNotes.trim()) return;
+    const consented = await requestConsent();
+    if (!consented) return;
     setDraftLoading(true);
     setDraftError('');
     setAiDraft(null);
@@ -1269,6 +1280,7 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
   // LIST VIEW
   return (
     <div>
+      <ConsentModal />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Committee Minutes</h2>

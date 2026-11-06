@@ -11,6 +11,7 @@ const EMPTY_FORM = {
   payment_details: '',
   automation_level: 'assisted',
   reminders_paused: false,
+  ai_drafting_enabled: false,
 
 };
 
@@ -278,6 +279,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
         payment_details: data.payment_details || '',
         automation_level: data.automation_level || 'assisted',
         reminders_paused: data.reminders_paused === true,
+        ai_drafting_enabled: data.ai_drafting_enabled === true,
         gst_registered: data.gst_registered === true,
       });
     }
@@ -857,6 +859,48 @@ export default function MaraeSettings({ profile, isAdmin }) {
               }} />
               <span style={{
                 position: 'absolute', top: 3, left: !form.reminders_paused ? 23 : 3,
+                width: 18, height: 18, background: '#fff', borderRadius: '50%',
+                transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }} />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI DRAFTING (admin only) ── */}
+      {isAdmin && (
+        <div className="panel" style={{ marginTop: 20 }}>
+          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+            AI Drafting
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+            When on, Committee Minutes and Grant Tracker can use AI to generate draft content. Only your marae name and rough notes are sent to the AI — no saved records, financial data, or trustee details. See our <a href="/privacy" style={{ color: 'var(--brand)' }}>Privacy Policy</a> for details.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>Enable AI drafting</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 1 }}>
+                {form.ai_drafting_enabled ? 'Currently on — AI drafting is available in Committee Minutes and Grants.' : 'Currently off — AI drafting features are disabled.'}
+              </div>
+            </div>
+            <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!form.ai_drafting_enabled}
+                onChange={async e => {
+                  const enabled = e.target.checked;
+                  setField('ai_drafting_enabled', enabled);
+                  if (!settingsId) return;
+                  await supabase.from('marae_settings').update({ ai_drafting_enabled: enabled }).eq('id', settingsId);
+                }}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute', inset: 0, borderRadius: 24, transition: 'background 0.2s',
+                background: form.ai_drafting_enabled ? 'var(--brand)' : '#d0cbc4',
+              }} />
+              <span style={{
+                position: 'absolute', top: 3, left: form.ai_drafting_enabled ? 23 : 3,
                 width: 18, height: 18, background: '#fff', borderRadius: '50%',
                 transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
               }} />

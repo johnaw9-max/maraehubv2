@@ -1,6 +1,7 @@
 // MaraeHub Grants Tracker
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAiDrafting } from '../lib/useAiDrafting';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import useProfiles from '../lib/useProfiles';
@@ -77,6 +78,8 @@ export default function GrantsTracker() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
   const [maraeSettings, setMaraeSettings] = useState(null);
+  const [maraeEntityId, setMaraeEntityId] = useState(null);
+  const [aiDraftingEnabled, setAiDraftingEnabled] = useState(false);
   const [sortMode, setSortMode] = useSortPreference('grants', 'urgency');
   // Compact/Detailed view, same shared ViewToggle Compliance uses.
   // Default 'detailed' -- the existing collapsed-header/click-to-expand
@@ -116,9 +119,13 @@ export default function GrantsTracker() {
   }
 
   async function fetchMaraeSettings() {
-    const { data } = await supabase.from('marae_settings').select('marae_name, location, iwi, hapu').maybeSingle();
+    const { data } = await supabase.from('marae_settings').select('id, marae_name, location, iwi, hapu, ai_drafting_enabled').maybeSingle();
     setMaraeSettings(data || null);
+    setMaraeEntityId(data?.id || null);
+    setAiDraftingEnabled(!!data?.ai_drafting_enabled);
   }
+
+  const { enabled: aiEnabled, ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
 
   // Step 6 design: never invent a fact -- every field below is either a real
   // recorded value or an explicit "not recorded" string, so the AI has no
@@ -154,6 +161,8 @@ export default function GrantsTracker() {
   async function generateGrantDraft(grant) {
     const goal = goals.find(x => x.id === draftGoalId);
     if (!goal) return;
+    const consented = await requestConsent();
+    if (!consented) return;
     setDraftLoading(true);
     setDraftError('');
     setDraftText('');
@@ -313,6 +322,7 @@ export default function GrantsTracker() {
 
   return (
     <div>
+      <ConsentModal />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Grants Tracker</h2>
