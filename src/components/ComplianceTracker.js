@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAudit } from '../lib/audit';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
@@ -535,6 +536,14 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       const { error } = await supabase.from('compliance_items').insert(payload);
       if (error) { setItemError(error.message); setItemSaving(false); return; }
     }
+    logAudit({
+      entityId: payload.entity_id,
+      action: itemFile ? 'upload' : (editItem ? 'update' : 'create'),
+      resourceType: 'compliance_doc',
+      resourceId: editItem?.id,
+      resourceName: payload.name,
+      metadata: { status: payload.status, document_name: payload.document_name },
+    });
     await fetchAll();
     setShowItemModal(false);
     setItemSaving(false);
@@ -542,7 +551,15 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   async function deleteItem(id) {
     if (!window.confirm('Delete this compliance item?')) return;
+    const item = items.find(i => i.id === id);
     await supabase.from('compliance_items').delete().eq('id', id);
+    logAudit({
+      entityId: item?.entity_id,
+      action: 'delete',
+      resourceType: 'compliance_doc',
+      resourceId: id,
+      resourceName: item?.name,
+    });
     setItems(prev => prev.filter(i => i.id !== id));
   }
 
@@ -603,6 +620,14 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       const { error } = await supabase.from('incidents').insert(payload);
       if (error) { setIncidentError(error.message); setIncidentSaving(false); return; }
     }
+    logAudit({
+      entityId: incidentForm.entity_id,
+      action: incidentFile ? 'upload' : (editIncident ? 'update' : 'create'),
+      resourceType: 'incident',
+      resourceId: editIncident?.id,
+      resourceName: payload.title,
+      metadata: { severity: payload.severity, incident_date: payload.incident_date },
+    });
     await fetchAll();
     setShowIncidentModal(false);
     setIncidentSaving(false);
@@ -610,7 +635,16 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   async function deleteIncident(id) {
     if (!window.confirm('Delete this incident record?')) return;
+    const inc = incidents.find(i => i.id === id);
     await supabase.from('incidents').delete().eq('id', id);
+    logAudit({
+      entityId: inc?.entity_id,
+      action: 'delete',
+      resourceType: 'incident',
+      resourceId: id,
+      resourceName: inc?.title,
+      metadata: { severity: inc?.severity },
+    });
     setIncidents(prev => prev.filter(i => i.id !== id));
   }
 

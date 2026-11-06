@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAudit } from '../lib/audit';
 import { loadGoogleMapsScript } from '../lib/googleMapsLoader';
 import FormError from './FormError';
 
@@ -340,6 +341,14 @@ export default function EmergencyPlanManager() {
       ? await supabase.from('emergency_response_events').update(payload).eq('id', editEvent.id)
       : await supabase.from('emergency_response_events').insert(payload);
     if (error) { setEventError(error.message); setEventSaving(false); return; }
+    logAudit({
+      entityId: payload.entity_id,
+      action: eventFile ? 'upload' : (editEvent ? 'update' : 'create'),
+      resourceType: 'incident',
+      resourceId: editEvent?.id,
+      resourceName: payload.event_name,
+      metadata: { event_date: payload.event_date, document_name: payload.document_name },
+    });
     await fetchAll();
     setShowEventModal(false);
     setEventSaving(false);
@@ -347,7 +356,15 @@ export default function EmergencyPlanManager() {
 
   async function deleteEvent(id) {
     if (!window.confirm('Remove this response record? This is real evidence of what the marae has done — consider carefully before deleting.')) return;
+    const ev = responseEvents.find(e => e.id === id);
     await supabase.from('emergency_response_events').delete().eq('id', id);
+    logAudit({
+      entityId: ev?.entity_id,
+      action: 'delete',
+      resourceType: 'incident',
+      resourceId: id,
+      resourceName: ev?.event_name,
+    });
     setResponseEvents(prev => prev.filter(e => e.id !== id));
   }
 

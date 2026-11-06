@@ -1,6 +1,7 @@
 // MaraeHub Committee Minutes & Resolutions
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAudit } from '../lib/audit';
 import useProfiles from '../lib/useProfiles';
 import useEntities from '../lib/useEntities';
 import { sendNotification, getEmailByName, meetingActionBody } from '../lib/notify';
@@ -438,7 +439,17 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   async function handleOpenAttachment() {
     if (!meeting.attachment_url) return;
     const { data } = await supabase.storage.from('meeting-attachments').createSignedUrl(meeting.attachment_url, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    if (data?.signedUrl) {
+      logAudit({
+        entityId: meeting.entity_id,
+        action: 'download',
+        resourceType: 'document',
+        resourceId: meeting.id,
+        resourceName: meeting.attachment_url?.split('/').pop(),
+        metadata: { meeting_title: meeting.title },
+      });
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    }
   }
 
   async function saveResolution(form) {

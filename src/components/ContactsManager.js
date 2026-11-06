@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAudit } from '../lib/audit';
 import { useSortPreference } from '../lib/useSortPreference';
 import ViewToggle from './ViewToggle';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
@@ -196,6 +197,7 @@ export default function ContactsManager({ onStartWorkflow }) {
         if (err) { setError(err.message); setSaving(false); return; }
       }
       setSuccess('Details updated.');
+      logAudit({ entityId: null, action: 'update', resourceType: 'trustee', resourceId: editUserId, resourceName: userForm.full_name.trim(), metadata: { role: userForm.role } });
     } else {
       if (userForm.email.trim()) {
         if (!userForm.password || userForm.password.length < 6) { setError('Password min 6 chars'); setSaving(false); return; }
@@ -203,10 +205,12 @@ export default function ContactsManager({ onStartWorkflow }) {
         if (se) { setError(se.message); setSaving(false); return; }
         if (sd?.user) {
           await supabase.from('profiles').insert({ id: sd.user.id, full_name: userForm.full_name.trim(), email: userForm.email.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null, is_fire_warden: userForm.is_fire_warden });
+          logAudit({ entityId: null, action: 'create', resourceType: 'trustee', resourceId: sd.user.id, resourceName: userForm.full_name.trim(), metadata: { role: userForm.role, email: userForm.email.trim() } });
         }
       } else {
         const { error: err } = await supabase.from('contacts').insert({ full_name: userForm.full_name.trim(), role: userForm.role, phone: userForm.phone.trim() || null, notes: userForm.notes.trim() || null, is_fire_warden: userForm.is_fire_warden });
         if (err) { setError(err.message); setSaving(false); return; }
+        logAudit({ entityId: null, action: 'create', resourceType: 'trustee', resourceName: userForm.full_name.trim(), metadata: { role: userForm.role } });
       }
       setSuccess(userForm.full_name + ' added.');
     }
@@ -215,7 +219,9 @@ export default function ContactsManager({ onStartWorkflow }) {
   }
 
   async function handleUpdateRole(id, role) {
+    const person = [...profiles, ...contacts].find(p => p.id === id);
     await supabase.from(tableFor(id)).update({ role }).eq('id', id);
+    logAudit({ entityId: null, action: 'update', resourceType: 'trustee', resourceId: id, resourceName: person?.full_name, metadata: { new_role: role } });
     fetchAll();
   }
 

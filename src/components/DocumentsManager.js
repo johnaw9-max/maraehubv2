@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
 import { supabase } from '../lib/supabase';
+import { logAudit } from '../lib/audit';
 import CharterGenerator from './CharterGenerator';
 import HSPolicyGenerator from './HSPolicyGenerator';
 import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
@@ -138,13 +139,21 @@ export default function DocumentsManager() {
       file_url,
       entity_id: form.entity_id || null,
     });
- 
+
     if (dbError) {
       setError(dbError.message);
       setUploading(false);
       return;
     }
- 
+
+    logAudit({
+      entityId: form.entity_id,
+      action: file ? 'upload' : 'create',
+      resourceType: 'document',
+      resourceName: form.title.trim(),
+      metadata: { category: form.category, file_name, file_size },
+    });
+
     setShowModal(false);
     setForm(EMPTY_FORM);
     setFile(null);
@@ -159,6 +168,14 @@ export default function DocumentsManager() {
       if (path) await supabase.storage.from('documents').remove([path]);
     }
     await supabase.from('documents').delete().eq('id', doc.id);
+    logAudit({
+      entityId: doc.entity_id,
+      action: 'delete',
+      resourceType: 'document',
+      resourceId: doc.id,
+      resourceName: doc.title,
+      metadata: { category: doc.category, file_name: doc.file_name },
+    });
     fetchDocs();
   }
  

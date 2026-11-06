@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
+import { logAudit } from '../lib/audit';
 import StatusPill from './StatusPill';
 import { ensureTask } from '../lib/taskSync';
 import BankReconciliation from './BankReconciliation';
@@ -407,6 +408,14 @@ export default function FinanceManager() {
     }
     if (error) { setFormError(error.message); setSaving(false); return; }
     if (rowId) await syncEntryForAmountChange({ ...payload, id: rowId }, 'income');
+    logAudit({
+      entityId: payload.entity_id,
+      action: editId ? 'update' : 'create',
+      resourceType: 'finance_income',
+      resourceId: rowId,
+      resourceName: payload.description,
+      metadata: { amount: payload.amount, date: payload.date },
+    });
     setSaving(false); setShowIncomeModal(false); fetchAll();
   }
 
@@ -470,14 +479,34 @@ export default function FinanceManager() {
     }
     if (error) { setFormError(error.message); setSaving(false); return; }
     if (rowId) await syncEntryForAmountChange({ ...payload, id: rowId }, 'expense');
+    logAudit({
+      entityId: payload.entity_id,
+      action: editId ? 'update' : (receiptFile ? 'upload' : 'create'),
+      resourceType: 'finance_receipt',
+      resourceId: rowId,
+      resourceName: payload.description,
+      metadata: { amount: payload.amount, date: payload.date, receipt_name: payload.receipt_name },
+    });
     setSaving(false); setShowExpenseModal(false); fetchAll();
   }
 
   async function handleDelete() {
     if (!confirmDeleteId || !deleteType) return;
     const sourceTable = deleteType === 'income' ? 'finance_income' : 'finance_expenses';
+    const resourceType = deleteType === 'income' ? 'finance_income' : 'finance_receipt';
+    const deletedRow = deleteType === 'income'
+      ? income.find(r => r.id === confirmDeleteId)
+      : expenses.find(r => r.id === confirmDeleteId);
     await voidAllEntriesForRow(sourceTable, confirmDeleteId, 'Deleted by trustee');
     await supabase.from(sourceTable).delete().eq('id', confirmDeleteId);
+    logAudit({
+      entityId: deletedRow?.entity_id,
+      action: 'delete',
+      resourceType,
+      resourceId: confirmDeleteId,
+      resourceName: deletedRow?.description,
+      metadata: { amount: deletedRow?.amount },
+    });
     setConfirmDeleteId(null); setDeleteType('');
     fetchAll();
   }
