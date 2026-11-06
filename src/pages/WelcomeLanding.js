@@ -215,6 +215,10 @@ export default function WelcomeLanding() {
           </div>
         </div>
       </div>
+      <div style={{ background: '#1a4a3a', padding: '20px', textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+        © 2026 MaraeHub NZ Ltd &nbsp;·&nbsp;{' '}
+        <a href="/privacy" style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'underline' }}>Privacy Policy</a>
+      </div>
     </div>
   );
 }

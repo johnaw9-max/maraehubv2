@@ -6,6 +6,7 @@ import CommunityPortal from './pages/CommunityPortal';
 import PublicBookingRequest from './pages/PublicBookingRequest';
 import CommunityAutoLogin from './pages/CommunityAutoLogin';
 import WelcomeLanding from './pages/WelcomeLanding';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 // Lazy-loaded: pulls in supabaseMulti.js (3 extra Supabase clients), which
 // has no reason to exist for anyone except a founder on /founder. Keeping
@@ -88,6 +89,10 @@ export default function App() {
 
   if (window.location.pathname === '/welcome') {
     return <WelcomeLanding />;
+  }
+
+  if (window.location.pathname === '/privacy') {
+    return <PrivacyPolicy />;
   }
 
   if (loading) {
