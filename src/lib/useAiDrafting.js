@@ -101,7 +101,7 @@ export function useAiDrafting(entityId, initialEnabled) {
             </div>
 
             <p style={{ marginBottom: 0 }}>
-              Please do not include sensitive personal, whānau, tangi or dispute details in notes you send. Anthropic's published API terms say customer content is not used to train its models. An administrator can switch AI features off at any time in Marae Settings. See our{' '}
+              Please do not include sensitive personal, whānau, tangi or dispute details in notes you send. MaraeHub uses Anthropic's business API, where Anthropic's published terms say customer content is not used to train its models. Anthropic may keep content for a limited period, and longer if it is flagged for misuse or the law requires it. An administrator can switch AI features off at any time in Marae Settings. See our{' '}
               <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#1a4a3a' }}>Privacy Policy</a> for details.
             </p>
           </div>

@@ -67,7 +67,7 @@ export default function PrivacyPolicy() {
         <Section title="5. AI features">
           <p>MaraeHub includes optional AI-assisted drafting features (such as draft meeting agendas and resolution summaries). These features are <strong>opt-in only</strong> — they are not enabled by default.</p>
           <p>If your marae administrator enables AI drafting, relevant information may be sent to Anthropic's API (which may process it outside New Zealand) to generate a draft: rough notes you type, grant details, or a summary of your records, including names of people responsible and, for administrators, finance figures. A clear warning and consent prompt will appear before any data is sent. You may disable AI features at any time in your Marae Settings.</p>
-          <p>MaraeHub does not use your governance data to train AI models. Anthropic's published API terms say customer content sent through its API is not used to train its models; the exact terms for MaraeHub's account are being confirmed.</p>
+          <p>MaraeHub does not use your governance data to train AI models. MaraeHub reaches Anthropic through its business API, where Anthropic's published terms say customer content is not used to train its models. Anthropic may keep content for a limited period, and longer if it is flagged for misuse or the law requires it. Because AI is switched off until your administrator turns it on, nothing is sent unless your marae chooses it.</p>
         </Section>
 
         <Section title="6. Data retention">
