@@ -874,13 +874,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
             AI Drafting
           </div>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
-            When on, Committee Minutes and Grant Tracker can use AI to generate draft content. Only your marae name and rough notes are sent to the AI — no saved records, financial data, or trustee details. See our <a href="/privacy" style={{ color: 'var(--brand)' }}>Privacy Policy</a> for details.
+            When on, Committee Minutes, Grant Tracker and the Board Dashboard reports can use AI (Anthropic's Claude service, which may process information outside New Zealand) to generate draft content. What is sent depends on the feature: rough notes you type for minutes; grant details for grant drafts; a summary of your records, including names of people responsible and finance figures (administrators only), for reports. Please do not include sensitive personal, whānau, tangi or dispute details. See our <a href="/privacy" style={{ color: 'var(--brand)' }}>Privacy Policy</a> for details.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>Enable AI drafting</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text1)' }}>Enable AI features</div>
               <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 1 }}>
-                {form.ai_drafting_enabled ? 'Currently on — AI drafting is available in Committee Minutes and Grants.' : 'Currently off — AI drafting features are disabled.'}
+                {form.ai_drafting_enabled ? 'Currently on — AI is available in Committee Minutes, Grants and Board Dashboard reports.' : 'Currently off — AI features are disabled.'}
               </div>
             </div>
             <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, flexShrink: 0, cursor: 'pointer' }}>
