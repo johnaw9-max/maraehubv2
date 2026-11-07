@@ -125,7 +125,7 @@ export default function GrantsTracker() {
     setAiDraftingEnabled(!!data?.ai_drafting_enabled);
   }
 
-  const { enabled: aiEnabled, ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
+  const { ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
 
   // Step 6 design: never invent a fact -- every field below is either a real
   // recorded value or an explicit "not recorded" string, so the AI has no
