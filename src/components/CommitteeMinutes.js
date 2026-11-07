@@ -9,6 +9,7 @@ import { sendNotification, getEmailByName, meetingActionBody } from '../lib/noti
 import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { isResolutionOpen } from '../lib/resolutionStatus';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
+import { holdUpdates } from '../lib/updateGuard';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -580,7 +581,8 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       );
       setDictating(false);
     };
-    recognition.onend = () => setDictating(false);
+    const releaseHold = holdUpdates('dictation');
+    recognition.onend = () => { releaseHold(); setDictating(false); };
 
     recognitionRef.current = recognition;
     recognition.start();

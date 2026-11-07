@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { isResolutionOpen } from '../lib/resolutionStatus';
+import { holdUpdates } from '../lib/updateGuard';
 
 // Chairing reference view, not a note-taking tool (Option C, real hui-practice
 // investigation, 2026-09-12). The real workflow this app already assumed --
@@ -51,6 +52,8 @@ export default function HuiModeView({ meetingId, onExit }) {
   }, [meetingId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+  // A live hui: never reload this screen by itself while the chair is using it.
+  useEffect(() => holdUpdates('hui-mode'), []);
 
   const today = new Date().toISOString().split('T')[0];
 
