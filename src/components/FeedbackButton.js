@@ -1,3 +1,4 @@
+import { loadMaraeDisplay } from '../lib/maraeDisplay';
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -12,7 +13,7 @@ export default function FeedbackButton({ profile }) {
   async function handleSubmit() {
     if (!message.trim()) { setError('Please describe the issue or feedback'); return; }
     setSaving(true); setError('');
-    const { data: settings } = await supabase.from('marae_settings').select('marae_name').single();
+    const settings = await loadMaraeDisplay(supabase);
     const { error } = await supabase.from('feedback').insert({
       user_id: profile?.id,
       user_name: profile?.full_name,

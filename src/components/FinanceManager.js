@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { openStorageFile } from '../lib/storageLinks';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
@@ -490,11 +491,8 @@ export default function FinanceManager() {
   }
 
   async function openSignedUrl(bucket, fileRef) {
-    if (!fileRef) return;
-    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
-    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
-    window.open(data.signedUrl, '_blank');
+    const r = await openStorageFile(supabase, bucket, fileRef);
+    if (!r.ok) alert(r.message);
   }
 
   async function handleDelete() {
@@ -1288,7 +1286,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button onClick={() => openEditIncome(row)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', marginRight: 4 }}>Edit</button>
-                          <button onClick={() => { setConfirmDeleteId(row.id); setDeleteType('income'); }} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 7px', cursor: 'pointer' }}>✕</button>
+                          <button onClick={() => { setConfirmDeleteId(row.id); setDeleteType('income'); }} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 7px', cursor: 'pointer' }}>Delete</button>
                         </td>
                       </tr>
                     );
@@ -1363,7 +1361,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <button onClick={() => openEditExpense(row)} style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 9px', cursor: 'pointer', marginRight: 4 }}>Edit</button>
-                          <button onClick={() => { setConfirmDeleteId(row.id); setDeleteType('expenses'); }} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 7px', cursor: 'pointer' }}>✕</button>
+                          <button onClick={() => { setConfirmDeleteId(row.id); setDeleteType('expenses'); }} style={{ fontSize: 11, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '3px 7px', cursor: 'pointer' }}>Delete</button>
                         </td>
                       </tr>
                     );
@@ -1583,7 +1581,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                       </td>
                       <td style={{ padding: '5px 4px', textAlign: 'center' }}>
                         <button onClick={() => removeInvestmentRow(row.id)} disabled={investmentRows.length === 1}
-                          style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: investmentRows.length === 1 ? 'default' : 'pointer', opacity: investmentRows.length === 1 ? 0.3 : 1 }}>✕</button>
+                          style={{ padding: '2px 8px', background: 'none', border: 'none', color: 'var(--danger)', fontSize: 12, cursor: investmentRows.length === 1 ? 'default' : 'pointer', opacity: investmentRows.length === 1 ? 0.3 : 1 }}>Remove</button>
                       </td>
                     </tr>
                   ))}
@@ -1639,7 +1637,7 @@ ${noActivity ? '<p style="font-size:12px;color:#a63020;font-style:italic">No led
                       </td>
                       <td style={{ padding: '5px 4px', textAlign: 'center' }}>
                         <button onClick={() => removeLoanRow(row.id)} disabled={loanRows.length === 1}
-                          style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: 14, cursor: loanRows.length === 1 ? 'default' : 'pointer', opacity: loanRows.length === 1 ? 0.3 : 1 }}>✕</button>
+                          style={{ padding: '2px 8px', background: 'none', border: 'none', color: 'var(--danger)', fontSize: 12, cursor: loanRows.length === 1 ? 'default' : 'pointer', opacity: loanRows.length === 1 ? 0.3 : 1 }}>Remove</button>
                       </td>
                     </tr>
                   ))}

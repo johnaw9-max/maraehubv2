@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { sendNotification, getTrusteeEmails, bookingSubmittedBody } from '../lib/notify';
+import { BOOKING_OCCASIONS, OCCASION_DETAILS } from '../lib/bookingOccasions';
+import { endDateAfterStartChange } from '../lib/bookingDates';
+import { loadUnavailable, firstClash, upcomingRanges } from '../lib/unavailableDates';
 
-const OCCASIONS = [
-  { val: 'Tangi', icon: '🕊️', sub: 'Tangihanga / Funeral' },
-  { val: 'Wedding/Hakari', icon: '💍', sub: 'Celebration feast' },
-  { val: 'Birthday', icon: '🎂', sub: 'Milestone celebration' },
-  { val: 'Hui', icon: '🤝', sub: 'Community meeting' },
-  { val: 'Fundraiser', icon: '🏆', sub: 'Charity / kaupapa event' },
-  { val: 'Whanau Reunion', icon: '👨‍👩‍👧‍👦', sub: 'Family gathering' },
-  { val: 'Other', icon: '✨', sub: 'Something else' },
-];
+const OCCASIONS = BOOKING_OCCASIONS.map(val => ({ val, ...OCCASION_DETAILS[val] }));
 
 const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
+
+function fmtShort(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+}
 
 export default function BookingWizard({ profile, onBooked }) {
   const [step, setStep] = useState(1);
@@ -20,6 +19,15 @@ export default function BookingWizard({ profile, onBooked }) {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
   const [conflictMsg, setConflictMsg] = useState('');
+  const [unavailable, setUnavailable] = useState([]);
+
+  // Dates already taken (dates only, no names or details), loaded once the dates step opens.
+  useEffect(() => {
+    if (step !== 2) return;
+    let cancelled = false;
+    loadUnavailable(supabase).then(r => { if (!cancelled) setUnavailable(r); });
+    return () => { cancelled = true; };
+  }, [step]);
   const [refNum, setRefNum] = useState('');
 
   const [form, setForm] = useState({
@@ -30,6 +38,7 @@ export default function BookingWizard({ profile, onBooked }) {
     overnight: false,
     facilities: [],
     notes: '',
+    organisation: '',
   });
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -50,38 +59,19 @@ export default function BookingWizard({ profile, onBooked }) {
     const start = form.startDate;
     const end = form.endDate || form.startDate;
 
-    // Check existing approved bookings for date overlap
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select('start_date, end_date, occasion')
-      .eq('status', 'approved');
-
-    // Check blocked dates
-    const { data: blocked } = await supabase
-      .from('blocked_dates')
-      .select('from_date, to_date, reason');
-
+    const ranges = unavailable.length ? unavailable : await loadUnavailable(supabase);
     setChecking(false);
-
-    // Manual overlap check for bookings
-    const conflictBooking = (bookings || []).find(b => {
-      const bStart = b.start_date;
-      const bEnd = b.end_date || b.start_date;
-      return bStart && bEnd && start <= bEnd && end >= bStart;
-    });
-
-    // Manual overlap check for blocked dates
-    const conflictBlock = (blocked || []).find(b => {
-      return b.from_date && b.to_date && start <= b.to_date && end >= b.from_date;
-    });
+    const clash = firstClash(ranges, start, end);
+    const conflictBlock = clash && clash.kind === 'blocked';
+    const conflictBooking = clash && clash.kind === 'booked';
 
     if (conflictBlock) {
-      setConflictMsg(`🚫 The marae is unavailable on these dates — ${conflictBlock.reason || 'blocked by the committee'}. Please select different dates.`);
+      setConflictMsg('🚫 The marae is unavailable on these dates. Please select different dates.');
       return false;
     }
 
     if (conflictBooking) {
-      setConflictMsg(`🚫 The marae is already booked for a ${conflictBooking.occasion} on these dates. Please apply for another date.`);
+      setConflictMsg('🚫 The marae is already booked on these dates. Please apply for another date.');
       return false;
     }
 
@@ -112,6 +102,9 @@ export default function BookingWizard({ profile, onBooked }) {
       overnight: form.overnight,
       facilities: form.facilities,
       notes: form.notes,
+      // Only sent when filled in, so submissions keep working on any marae
+      // whose database has not had the organisation column added yet.
+      ...(form.organisation.trim() ? { organisation: form.organisation.trim() } : {}),
       status: 'pending',
       reference: ref,
     });
@@ -214,14 +207,36 @@ export default function BookingWizard({ profile, onBooked }) {
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Start Date</label>
                 <input type="date" className="form-input" value={form.startDate}
-                  onChange={e => { setField('startDate', e.target.value); setConflictMsg(''); }} />
+                  onChange={e => {
+                    const v = e.target.value;
+                    setForm(f => ({ ...f, startDate: v, endDate: endDateAfterStartChange(v, f.endDate) }));
+                    setConflictMsg('');
+                  }} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">End Date</label>
-                <input type="date" className="form-input" value={form.endDate}
+                <input type="date" className="form-input" value={form.endDate} min={form.startDate || undefined}
                   onChange={e => { setField('endDate', e.target.value); setConflictMsg(''); }} />
               </div>
             </div>
+
+            {/* DATES ALREADY TAKEN */}
+            {upcomingRanges(unavailable, new Date().toISOString().slice(0, 10)).length > 0 && (
+              <div style={{ background: 'var(--surface2, #f7f3ec)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Dates already taken</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {upcomingRanges(unavailable, new Date().toISOString().slice(0, 10), 12).map((r, i) => {
+                    const hit = firstClash([r], form.startDate, form.endDate);
+                    return (
+                      <span key={i} style={{ fontSize: 12, padding: '3px 9px', borderRadius: 12, border: '1px solid ' + (hit ? '#f0b8b0' : 'var(--border)'), background: hit ? '#faeae7' : '#fff', color: hit ? 'var(--danger)' : 'var(--text2)' }}>
+                        {fmtShort(r.from)}{r.to !== r.from ? ' – ' + fmtShort(r.to) : ''}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>The committee confirms every booking.</div>
+              </div>
+            )}
 
             {/* CONFLICT MESSAGE */}
             {conflictMsg && (
@@ -284,6 +299,9 @@ export default function BookingWizard({ profile, onBooked }) {
       {step === 3 && (
         <>
           <div className="panel" style={{ marginBottom: 16 }}>
+            <label className="form-label">Organisation / Group (optional)</label>
+            <input className="form-input" maxLength={120} placeholder="e.g. Ngāti Awa Kapa Haka, Smith Whānau Trust"
+              value={form.organisation} onChange={e => setField('organisation', e.target.value)} style={{ marginBottom: 16 }} />
             <label className="form-label">Additional Notes / Tikanga Considerations</label>
             <textarea className="form-input" rows={4} placeholder="Any special requirements or questions for the committee..."
               value={form.notes} onChange={e => setField('notes', e.target.value)} style={{ resize: 'vertical' }} />

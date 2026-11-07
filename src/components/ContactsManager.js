@@ -219,7 +219,7 @@ export default function ContactsManager({ onStartWorkflow }) {
   }
 
   async function handleUpdateRole(id, role) {
-    const person = [...profiles, ...contacts].find(p => p.id === id);
+    const person = users.find(p => p.id === id);
     await supabase.from(tableFor(id)).update({ role }).eq('id', id);
     logAudit({ entityId: null, action: 'update', resourceType: 'trustee', resourceId: id, resourceName: person?.full_name, metadata: { new_role: role } });
     fetchAll();

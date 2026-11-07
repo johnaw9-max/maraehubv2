@@ -712,9 +712,7 @@ export default function GoalsReporting() {
                         <button
                           onClick={() => deleteGoal(goal)}
                           style={{ fontSize: 11, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 5, padding: '2px 8px', cursor: 'pointer' }}
-                        >
-                          🗑
-                        </button>
+                        >Delete</button>
                       </div>
                     </div>
                   </div>

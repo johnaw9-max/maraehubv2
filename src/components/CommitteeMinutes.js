@@ -9,6 +9,7 @@ import { sendNotification, getEmailByName, meetingActionBody } from '../lib/noti
 import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { isResolutionOpen } from '../lib/resolutionStatus';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
+import { holdUpdates } from '../lib/updateGuard';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
 
@@ -413,7 +414,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       });
   }, []);
 
-  const { enabled: aiEnabled, ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
+  const { ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
 
   useEffect(() => {
     supabase.functions.invoke('google-calendar-callback?action=status', { method: 'GET' })
@@ -580,7 +581,8 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       );
       setDictating(false);
     };
-    recognition.onend = () => setDictating(false);
+    const releaseHold = holdUpdates('dictation');
+    recognition.onend = () => { releaseHold(); setDictating(false); };
 
     recognitionRef.current = recognition;
     recognition.start();
@@ -671,6 +673,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
 
   return (
     <div>
+      <ConsentModal />
       {/* BACK + HEADER */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
@@ -1280,7 +1283,6 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
   // LIST VIEW
   return (
     <div>
-      <ConsentModal />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h2 style={{ fontSize: 22 }}>Committee Minutes</h2>

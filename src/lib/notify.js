@@ -1,4 +1,4 @@
-import { supabase, supabaseAnonKey } from './supabase';
+import { supabase } from './supabase';
 
 /**
  * Fire-and-forget email notification via the send-notification Edge Function.

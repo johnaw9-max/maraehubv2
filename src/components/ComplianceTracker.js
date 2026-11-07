@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { openStorageFile } from '../lib/storageLinks';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import useProfiles from '../lib/useProfiles';
@@ -476,12 +477,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     return { url: path, name: file.name };
   }
 
-    async function openSignedUrl(bucket, fileRef) {
-    if (!fileRef) return;
-    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
-    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
-    window.open(data.signedUrl, '_blank');
+  async function openSignedUrl(bucket, fileRef) {
+    const r = await openStorageFile(supabase, bucket, fileRef);
+    if (!r.ok) alert(r.message);
   }
 
   // ── ITEM CRUD ──────────────────────────────────────────────────────────────
@@ -864,9 +862,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
             <button
               onClick={() => deleteItem(item.id)}
               style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
-            >
-              ✕
-            </button>
+            >Delete</button>
           </div>
         </div>
       </div>
@@ -1211,9 +1207,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                           <button
                             onClick={() => deleteIncident(inc.id)}
                             style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
-                          >
-                            ✕
-                          </button>
+                          >Delete</button>
                         </div>
                       </div>
                     </div>

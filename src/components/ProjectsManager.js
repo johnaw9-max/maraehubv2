@@ -483,10 +483,8 @@ export default function ProjectsManager() {
                     type="button"
                     onClick={() => deleteSubtask(st.id)}
                     title="Remove subtask"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14, padding: 0, lineHeight: 1 }}
-                  >
-                    ×
-                  </button>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 12, padding: '0 4px', lineHeight: 1 }}
+                  >Remove</button>
                 </div>
               );
             })}

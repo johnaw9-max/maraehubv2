@@ -168,7 +168,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
                       >
                         Edit
                       </button>
-                      <button onClick={() => handleDelete(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 15 }}>✕</button>
+                      <button onClick={() => handleDelete(n.id)} style={{ padding: '2px 8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 13 }}>Delete</button>
                     </span>
                   ) : null}
                 />
@@ -195,7 +195,7 @@ export default function NoticeboardManager({ isTrustee, profile }) {
                       >
                         Edit
                       </button>
-                      <button onClick={() => handleDelete(n.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 15 }}>✕</button>
+                      <button onClick={() => handleDelete(n.id)} style={{ padding: '2px 8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 13 }}>Delete</button>
                     </div>
                   )}
                 </div>

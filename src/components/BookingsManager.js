@@ -3,15 +3,18 @@ import { supabase } from '../lib/supabase';
 import BookingChecklist from './BookingChecklist';
 import BookingFeedback from './BookingFeedback';
 import BookingInvoice from './BookingInvoice';
-import { sendNotification, bookingStatusBody, bookingConfirmedBody } from '../lib/notify';
+import { sendNotification, bookingStatusBody, bookingConfirmedBody, getTrusteeEmails } from '../lib/notify';
+import BookingEditModal from './BookingEditModal';
+import { memberCanEdit, memberCancelMode } from '../lib/bookingRules';
 import StatusPill from './StatusPill';
 import { useSortPreference } from '../lib/useSortPreference';
 import ViewToggle from './ViewToggle';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
+import { BOOKING_OCCASIONS } from '../lib/bookingOccasions';
+import { endDateAfterStartChange } from '../lib/bookingDates';
 
 const BOOKING_STATUSES = ['pending', 'approved', 'declined'];
 
-const ADD_OCCASIONS = ['Tangi', 'Wedding/Hakari', 'Birthday', 'Hui', 'Fundraiser', 'Whanau Reunion', 'Other'];
 const ADD_FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
 
 function isPast(booking) {
@@ -41,8 +44,9 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
   const [checklistBooking, setChecklistBooking] = useState(null);
   const [feedbackBooking, setFeedbackBooking] = useState(null);
   const [invoiceBooking, setInvoiceBooking] = useState(null);
+  const [editBooking, setEditBooking] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'', entity_id:'' });
+  const [addForm, setAddForm] = useState({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'', organisation:'', entity_id:'' });
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
 
@@ -146,12 +150,44 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
     fetchBookings();
   }
 
+
+  // Community member cancelling their own booking.
+  //   pending  -> deleted straight away (trustees are told)
+  //   approved -> a cancellation request goes to the trustees, who decide
+  async function cancelOwnBooking(booking) {
+    const mode = memberCancelMode(booking, userId);
+    if (!mode) return;
+    const label = `${booking.occasion}${booking.reference ? ' (' + booking.reference + ')' : ''}`;
+    if (mode === 'delete') {
+      if (!window.confirm(`Cancel your booking request for ${label}? This cannot be undone.`)) return;
+      const { error } = await supabase.from('bookings').delete().eq('id', booking.id);
+      if (error) { window.alert('Could not cancel the booking: ' + error.message); return; }
+      getTrusteeEmails().then(emails => emails.length && sendNotification(
+        emails,
+        `Booking request cancelled — ${booking.occasion} (${booking.reference || ''})`,
+        `Tēnā koutou,\n\nThe person who made this booking request has cancelled it.\n\nOccasion: ${booking.occasion}\nDates: ${formatDate(booking.start_date)} → ${formatDate(booking.end_date)}\nReference: ${booking.reference || ''}`,
+      ));
+    } else {
+      if (!window.confirm(`This booking is approved. Send the committee a request to cancel ${label}?`)) return;
+      const emails = await getTrusteeEmails();
+      if (emails.length) {
+        await sendNotification(
+          emails,
+          `Cancellation requested — ${booking.occasion} (${booking.reference || ''})`,
+          `Tēnā koutou,\n\nThe person who made this booking has asked to cancel it. It is still approved until you act on it.\n\nOccasion: ${booking.occasion}\nDates: ${formatDate(booking.start_date)} → ${formatDate(booking.end_date)}\nReference: ${booking.reference || ''}\n\nPlease log in to MaraeHub to decline or remove the booking.`,
+        );
+      }
+      window.alert('Your cancellation request has been sent to the committee.');
+    }
+    fetchBookings();
+  }
+
   function handleFeedbackSubmitted(bookingId, rating) {
     setFeedback(prev => ({ ...prev, [bookingId]: { booking_id: bookingId, rating_overall: rating } }));
   }
 
   function openAddModal() {
-    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'', entity_id:'' });
+    setAddForm({ occasion:'', startDate:'', endDate:'', guests:50, overnight:false, facilities:[], notes:'', contactName:'', contactPhone:'', contactEmail:'', organisation:'', entity_id:'' });
     setAddError('');
     setShowAddModal(true);
   }
@@ -185,6 +221,9 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
       contact_name: addForm.contactName || null,
       contact_phone: addForm.contactPhone || null,
       contact_email: addForm.contactEmail || null,
+      // Only sent when filled in, so adding a booking keeps working on any marae
+      // whose database has not had the organisation column added yet.
+      ...(addForm.organisation.trim() ? { organisation: addForm.organisation.trim() } : {}),
       status: canApprove ? 'approved' : 'pending',
       reference: ref,
       entity_id: addForm.entity_id || null,
@@ -336,6 +375,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                     <span>👥 {b.guests} guests</span>
                     <span>🌙 {b.overnight ? 'Overnight' : 'Day event'}</span>
                   </div>
+                  {b.organisation && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>🏢 {b.organisation}</div>}
                   {(b.contact_name || b.contact_phone || b.contact_email) && (
                     <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text2)', marginTop: 6, flexWrap: 'wrap' }}>
                       {b.contact_name && <span>👤 {b.contact_name}</span>}
@@ -406,6 +446,22 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                       {checklistDone ? '✓ Checklist' : '☐ Checklist'}
                     </button>
                   )}
+                  {!isTrustee && memberCanEdit(b, userId) && (
+                    <button
+                      onClick={() => setEditBooking(b)}
+                      style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                  {!isTrustee && memberCancelMode(b, userId) && (
+                    <button
+                      onClick={() => cancelOwnBooking(b)}
+                      style={{ fontSize: 11, color: '#c0392b', background: 'none', border: '1px solid #e8b4b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                    >
+                      {memberCancelMode(b, userId) === 'delete' ? 'Cancel booking' : 'Request cancellation'}
+                    </button>
+                  )}
                   {showFeedback && (
                     <button
                       onClick={() => setFeedbackBooking(b)}
@@ -452,6 +508,14 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
         />
       )}
 
+      {editBooking && (
+        <BookingEditModal
+          booking={editBooking}
+          onClose={() => setEditBooking(null)}
+          onSaved={() => { setEditBooking(null); fetchBookings(); }}
+        />
+      )}
+
       {showAddModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddModal(false)}>
           <div className="modal">
@@ -462,7 +526,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
               <label className="form-label">Occasion *</label>
               <select className="form-input" value={addForm.occasion} onChange={e => setAddField('occasion', e.target.value)}>
                 <option value="" disabled>Select an occasion</option>
-                {ADD_OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                {BOOKING_OCCASIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
             </div>
 
@@ -479,12 +543,17 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Start Date *</label>
-                <input type="date" className="form-input" value={addForm.startDate} onChange={e => setAddField('startDate', e.target.value)} />
+                <input type="date" className="form-input" value={addForm.startDate} onChange={e => { const v = e.target.value; setAddForm(f => ({ ...f, startDate: v, endDate: endDateAfterStartChange(v, f.endDate) })); }} />
               </div>
               <div className="form-group">
                 <label className="form-label">End Date *</label>
-                <input type="date" className="form-input" value={addForm.endDate} onChange={e => setAddField('endDate', e.target.value)} />
+                <input type="date" className="form-input" value={addForm.endDate} min={addForm.startDate || undefined} onChange={e => setAddField('endDate', e.target.value)} />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Organisation / Group</label>
+              <input className="form-input" maxLength={120} value={addForm.organisation} onChange={e => setAddField('organisation', e.target.value)} placeholder="Optional – who is booking, e.g. a kapa haka group or whānau trust" />
             </div>
 
             <div className="grid-2">

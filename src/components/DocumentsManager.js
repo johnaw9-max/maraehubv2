@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
+import { openStorageFile, storagePathFromRef } from '../lib/storageLinks';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import CharterGenerator from './CharterGenerator';
@@ -159,20 +160,15 @@ export default function DocumentsManager() {
   }
  
   async function openSignedUrl(bucket, fileRef) {
-    if (!fileRef) return;
-    // Support legacy full URLs (old records) and new path-only storage
-    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
-    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
-    window.open(data.signedUrl, '_blank');
+    const r = await openStorageFile(supabase, bucket, fileRef);
+    if (!r.ok) alert(r.message);
   }
 
   async function handleDelete(doc) {
     if (!window.confirm(`Delete "${doc.title}"?`)) return;
     if (doc.file_url) {
-      const path = doc.file_url.startsWith('http')
-        ? doc.file_url.split('/maraehub/')[1]
-        : doc.file_url;
+      const ref = storagePathFromRef('documents', doc.file_url);
+      const path = ref.kind === 'path' ? ref.path : null;
       if (path) await supabase.storage.from('documents').remove([path]);
     }
     await supabase.from('documents').delete().eq('id', doc.id);
@@ -282,12 +278,12 @@ export default function DocumentsManager() {
                   menu={
                     <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       {doc.title === CHARTER_DOCUMENT_TITLE && (
-                        <button onClick={() => setEditingCharterDoc(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">✏️</button>
+                        <button onClick={() => setEditingCharterDoc(doc)} style={{ height: 28, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">Edit</button>
                       )}
                       {doc.file_url && (
-                        <button onClick={() => openSignedUrl('documents', doc.file_url)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</button>
+                        <button onClick={() => openSignedUrl('documents', doc.file_url)} style={{ height: 28, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--brand)' }} title="Open this document to view it">Open to view</button>
                       )}
-                      <button onClick={() => handleDelete(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">✕</button>
+                      <button onClick={() => handleDelete(doc)} style={{ height: 28, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">Delete</button>
                     </span>
                   }
                 />
@@ -346,17 +342,17 @@ export default function DocumentsManager() {
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   {doc.title === CHARTER_DOCUMENT_TITLE && (
                     <button onClick={() => setEditingCharterDoc(doc)}
-                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--brand)' }}
-                      title="Edit">✏️</button>
+                      style={{ height: 32, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }}
+                      title="Edit">Edit</button>
                   )}
                   {doc.file_url && (
                     <button onClick={() => openSignedUrl('documents', doc.file_url)}
-                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--brand)' }}
-                      title="Download">⬇</button>
+                      style={{ height: 32, padding: '0 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--brand)' }}
+                      title="Open this document to view it">Open to view</button>
                   )}
                   <button onClick={() => handleDelete(doc)}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--danger)' }}
-                    title="Delete">✕</button>
+                    style={{ height: 32, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }}
+                    title="Delete">Delete</button>
                 </div>
               </div>
             );

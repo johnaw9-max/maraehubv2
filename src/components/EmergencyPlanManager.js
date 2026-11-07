@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { openStorageFile } from '../lib/storageLinks';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import { loadGoogleMapsScript } from '../lib/googleMapsLoader';
@@ -354,11 +355,8 @@ export default function EmergencyPlanManager() {
   }
 
   async function openSignedUrl(bucket, fileRef) {
-    if (!fileRef) return;
-    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
-    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
-    window.open(data.signedUrl, '_blank');
+    const r = await openStorageFile(supabase, bucket, fileRef);
+    if (!r.ok) alert(r.message);
   }
 
   async function deleteEvent(id) {
@@ -678,9 +676,7 @@ ${specialisedSection}
           <button onClick={() => openEditPerson(person)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
             Edit
           </button>
-          <button onClick={() => deletePerson(person.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
-            ✕
-          </button>
+          <button onClick={() => deletePerson(person.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
         </div>
       </div>
     );
@@ -923,9 +919,7 @@ ${specialisedSection}
                       <button onClick={() => openEditEvent(event)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
                         Edit
                       </button>
-                      <button onClick={() => deleteEvent(event.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
-                        ✕
-                      </button>
+                      <button onClick={() => deleteEvent(event.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
                     </div>
                   </div>
                 </div>
@@ -1050,9 +1044,7 @@ ${specialisedSection}
                         <button onClick={() => openEditPoint(point)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
                           Edit
                         </button>
-                        <button onClick={() => deletePoint(point.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
-                          ✕
-                        </button>
+                        <button onClick={() => deletePoint(point.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadMaraeDisplay } from '../lib/maraeDisplay';
 
 const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
@@ -8,13 +9,10 @@ export default function Header({ profile, onLogout, activeTab, setActiveTab, tab
   const [maraeLocation, setMaraeLocation] = useState('Manurewa, Auckland');
 
   useEffect(() => {
-    supabase.from('marae_settings').select('marae_name, location').limit(1).single()
-      .then(({ data }) => {
-        if (data) {
-          if (data.marae_name) setMaraeName(data.marae_name);
-          if (data.location) setMaraeLocation(data.location);
-        }
-      });
+    loadMaraeDisplay(supabase).then(data => {
+      if (data.marae_name) setMaraeName(data.marae_name);
+      if (data.location) setMaraeLocation(data.location);
+    });
   }, []);
 
   const initials = profile?.full_name
