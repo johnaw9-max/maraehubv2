@@ -862,9 +862,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
             <button
               onClick={() => deleteItem(item.id)}
               style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
-            >
-              ✕
-            </button>
+            >Delete</button>
           </div>
         </div>
       </div>
@@ -1209,9 +1207,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                           <button
                             onClick={() => deleteIncident(inc.id)}
                             style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
-                          >
-                            ✕
-                          </button>
+                          >Delete</button>
                         </div>
                       </div>
                     </div>

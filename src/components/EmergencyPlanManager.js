@@ -676,9 +676,7 @@ ${specialisedSection}
           <button onClick={() => openEditPerson(person)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
             Edit
           </button>
-          <button onClick={() => deletePerson(person.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
-            ✕
-          </button>
+          <button onClick={() => deletePerson(person.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
         </div>
       </div>
     );
@@ -921,9 +919,7 @@ ${specialisedSection}
                       <button onClick={() => openEditEvent(event)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
                         Edit
                       </button>
-                      <button onClick={() => deleteEvent(event.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
-                        ✕
-                      </button>
+                      <button onClick={() => deleteEvent(event.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
                     </div>
                   </div>
                 </div>
@@ -1048,9 +1044,7 @@ ${specialisedSection}
                         <button onClick={() => openEditPoint(point)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
                           Edit
                         </button>
-                        <button onClick={() => deletePoint(point.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>
-                          ✕
-                        </button>
+                        <button onClick={() => deletePoint(point.id)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
                       </div>
                     </div>
                   </div>

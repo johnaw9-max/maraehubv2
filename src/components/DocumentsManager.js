@@ -278,12 +278,12 @@ export default function DocumentsManager() {
                   menu={
                     <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                       {doc.title === CHARTER_DOCUMENT_TITLE && (
-                        <button onClick={() => setEditingCharterDoc(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">✏️</button>
+                        <button onClick={() => setEditingCharterDoc(doc)} style={{ height: 28, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">Edit</button>
                       )}
                       {doc.file_url && (
                         <button onClick={() => openSignedUrl('documents', doc.file_url)} style={{ height: 28, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--brand)' }} title="Open this document to view it">Open to view</button>
                       )}
-                      <button onClick={() => handleDelete(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">✕</button>
+                      <button onClick={() => handleDelete(doc)} style={{ height: 28, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">Delete</button>
                     </span>
                   }
                 />
@@ -342,8 +342,8 @@ export default function DocumentsManager() {
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   {doc.title === CHARTER_DOCUMENT_TITLE && (
                     <button onClick={() => setEditingCharterDoc(doc)}
-                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--brand)' }}
-                      title="Edit">✏️</button>
+                      style={{ height: 32, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }}
+                      title="Edit">Edit</button>
                   )}
                   {doc.file_url && (
                     <button onClick={() => openSignedUrl('documents', doc.file_url)}
@@ -351,8 +351,8 @@ export default function DocumentsManager() {
                       title="Open this document to view it">Open to view</button>
                   )}
                   <button onClick={() => handleDelete(doc)}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--danger)' }}
-                    title="Delete">✕</button>
+                    style={{ height: 32, padding: '0 10px', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }}
+                    title="Delete">Delete</button>
                 </div>
               </div>
             );

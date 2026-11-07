@@ -401,8 +401,8 @@ export default function AssetsManager({ onStartWorkflow }) {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{r.type}</div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => openEditReminder(r)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 13 }}>✏️</button>
-                      <button onClick={() => handleDeleteReminder(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 14 }}>✕</button>
+                      <button onClick={() => openEditReminder(r)} style={{ padding: '2px 8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 12 }}>Edit</button>
+                      <button onClick={() => handleDeleteReminder(r.id)} style={{ padding: '2px 8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 12 }}>Delete</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 12, fontSize: 14, flexWrap: 'wrap', marginBottom: r.notes ? 6 : 0 }}>
