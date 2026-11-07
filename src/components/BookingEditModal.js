@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { sendNotification, getTrusteeEmails } from '../lib/notify';
 import { occasionsFor } from '../lib/bookingOccasions';
 import { endDateAfterStartChange } from '../lib/bookingDates';
-import { editNeedsReapproval, validateBookingEdit, rangesOverlap } from '../lib/bookingRules';
+import { editNeedsReapproval, validateBookingEdit } from '../lib/bookingRules';
+import { loadUnavailable, firstClash } from '../lib/unavailableDates';
 
 const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
 
@@ -46,15 +47,13 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
     setError('');
 
     // Date clash check against other approved bookings and blocked dates.
-    const [{ data: approved }, { data: blocked }] = await Promise.all([
-      supabase.from('bookings').select('id, start_date, end_date').eq('status', 'approved'),
-      supabase.from('blocked_dates').select('from_date, to_date, reason'),
-    ]);
-    const clash = (approved || []).some(b => b.id !== booking.id && rangesOverlap(form.startDate, form.endDate, b.start_date, b.end_date));
-    const blockedClash = (blocked || []).find(b => rangesOverlap(form.startDate, form.endDate, b.from_date, b.to_date));
+    const ranges = await loadUnavailable(supabase, booking.id);
+    const hit = firstClash(ranges, form.startDate, form.endDate);
+    const blockedClash = hit && hit.kind === 'blocked';
+    const clash = hit && hit.kind === 'booked';
     if (blockedClash) {
       setSaving(false);
-      setError(`The marae is unavailable on those dates — ${blockedClash.reason || 'blocked by the committee'}. Please choose different dates.`);
+      setError('The marae is unavailable on those dates. Please choose different dates.');
       return;
     }
     if (clash) {

@@ -1099,6 +1099,8 @@ serve(async (req) => {
       reason: 'Returns real trustee PII - locked 12 Aug 2026, closed a confirmed live exploit on Opeke' },
     { function: 'check_cron_job_last_success', grantees: ['postgres', 'service_role'],
       reason: 'Locked 12 Aug 2026 - leaked cron run timing to anon, no legitimate reason found for it to stay open' },
+    { function: 'get_unavailable_dates', grantees: ['postgres', 'service_role', 'authenticated'],
+      reason: 'Returns date ranges only (approved bookings + blocked dates), no names or details. Lets community members see which dates are taken, since they can only read their own bookings. anon/public revoked. Added 8 Nov 2026.' },
     { function: 'get_meeting_entity_id', grantees: ['postgres', 'service_role', 'authenticated'],
       reason: 'Confirmed via pg_policies: referenced directly inside resolutions/meeting_actions RLS policies. authenticated needs EXECUTE for real trustee queries against those tables to work under RLS at all. anon/public revoked 12 Aug 2026 - no anon-role policy anywhere references either table.' },
     { function: 'handle_new_auth_user', grantees: ['postgres', 'service_role', 'anon', 'authenticated', 'PUBLIC'],
