@@ -62,6 +62,18 @@ serve(async (req) => {
     }
 
     // ---- Parse and validate the request body ----
+    // D-09 (opt-in): AI features run only when this marae's admin has turned them on.
+    // Enforced here, where the data would leave, not just in the app. A missing
+    // column or any read error counts as off.
+    const { data: aiSetting, error: aiSettingError } = await callerClient
+      .from('marae_settings')
+      .select('ai_drafting_enabled')
+      .limit(1)
+      .maybeSingle();
+    if (aiSettingError || aiSetting?.ai_drafting_enabled !== true) {
+      return json({ error: 'AI features are not turned on for this marae. An administrator can turn them on in Marae Settings.' }, 403);
+    }
+
     const body = await req.json().catch(() => ({}));
     const { maraeName, context } = body;
     if (typeof maraeName !== 'string' || !maraeName.trim()) {

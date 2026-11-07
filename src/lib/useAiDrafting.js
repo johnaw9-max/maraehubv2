@@ -21,6 +21,7 @@ export function useAiDrafting(entityId, initialEnabled) {
   const [enabled, setEnabled]   = useState(!!initialEnabled);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving]     = useState(false);
+  const [saveError, setSaveError] = useState('');
   // resolveRef holds the Promise resolve from requestConsent()
   const [resolveRef, setResolveRef] = useState(null);
 
@@ -38,11 +39,19 @@ export function useAiDrafting(entityId, initialEnabled) {
   async function handleAccept() {
     if (!entityId) { resolveRef?.(false); setShowModal(false); return; }
     setSaving(true);
-    await supabase
+    setSaveError('');
+    const { data, error } = await supabase
       .from('marae_settings')
       .update({ ai_drafting_enabled: true })
-      .eq('id', entityId);
+      .eq('id', entityId)
+      .select('id');
     setSaving(false);
+    // Only an administrator can change this setting. If nothing was saved, do not
+    // pretend it was: the server would refuse the request anyway.
+    if (error || !data || data.length === 0) {
+      setSaveError('Only an administrator can turn on AI features for this marae. Please ask one to turn them on in Marae Settings.');
+      return;
+    }
     setEnabled(true);
     setShowModal(false);
     resolveRef?.(true);
@@ -96,6 +105,10 @@ export function useAiDrafting(entityId, initialEnabled) {
               <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#1a4a3a' }}>Privacy Policy</a> for details.
             </p>
           </div>
+
+          {saveError && (
+            <div role="alert" style={{ margin: '0 24px 12px', padding: '10px 12px', background: '#fdecea', border: '1px solid #f5c6c0', borderRadius: 8, fontSize: 13, color: '#8a2a1f' }}>{saveError}</div>
+          )}
 
           {/* Footer */}
           <div style={{ padding: '0 24px 24px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
