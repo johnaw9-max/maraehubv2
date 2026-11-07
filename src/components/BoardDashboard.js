@@ -8,6 +8,7 @@ import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
 import { renderReportText } from '../lib/renderReportText';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
+import { useAiDrafting } from '../lib/useAiDrafting';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -263,6 +264,13 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [period, setPeriod]   = useState('month');
   // eslint-disable-next-line no-unused-vars
   const [aiLoading, setAiLoading] = useState(false);
+  // AI consent (D-09): all four AI report buttons are gated by the same per-marae opt-in as Minutes and Grants.
+  const [aiSettings, setAiSettings] = useState({ id: null, enabled: false });
+  useEffect(() => {
+    supabase.from('marae_settings').select('id, ai_drafting_enabled').maybeSingle()
+      .then(({ data }) => { if (data) setAiSettings({ id: data.id, enabled: !!data.ai_drafting_enabled }); });
+  }, []);
+  const { ConsentModal, requestConsent } = useAiDrafting(aiSettings.id, aiSettings.enabled);
   const [aiReport, setAiReport]   = useState('');
   const [aiError, setAiError]     = useState('');
   const [showReport, setShowReport] = useState(false);
@@ -1039,6 +1047,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   // ─── AI REPORT ─────────────────────────────────────────────────────────────
 
   async function generateReport() {
+    if (!(await requestConsent())) return;
     setAiLoading(true);
     setAiError('');
     setAiReport('');
@@ -1131,6 +1140,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   // while being told "no data."
 
   async function generateFinancialReport() {
+    if (!(await requestConsent())) return;
     setFinAiLoading(true);
     setFinAiError('');
     setFinAiReport('');
@@ -1266,6 +1276,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   // for the model to paraphrase as a marae-specific assessment by mistake.
 
   async function generateComplianceReport() {
+    if (!(await requestConsent())) return;
     setCompAiLoading(true);
     setCompAiError('');
     setCompAiReport('');
@@ -1337,6 +1348,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   }
 
   async function generateTasksReport() {
+    if (!(await requestConsent())) return;
     setTasksAiLoading(true);
     setTasksAiError('');
     setTasksAiReport('');
@@ -1540,6 +1552,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
 
   return (
     <div>
+      <ConsentModal />
       <style>{`
         @media print {
           .no-print { display: none !important; }

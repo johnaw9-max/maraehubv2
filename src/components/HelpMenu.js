@@ -70,6 +70,9 @@ const HELP_TOPICS = {
       category: 'Bookings',
       icon: '📅',
       items: [
+        { q: 'Can people see which dates are already taken when they request a booking?', a: 'Yes. When someone is choosing dates, the dates already booked or blocked are shown to them so they can pick a free day. They see only the dates, never who booked them. If the dates chosen clash, they are asked to pick different ones.' },
+        { q: 'What kinds of event can people request?', a: 'The request form includes Hura Kōhatu, Whānau Gathering and Noho Marae / Noho Wānanga as well as the usual options, and people can add an organisation name if they are booking for a group.' },
+        { q: 'Can someone change or cancel their own booking request?', a: 'Yes, from My Bookings. While a request is still pending they can edit it or cancel it themselves. Once it is approved they can still edit it if the event is in the future, but it goes back to pending so the trustees can approve the change, and to cancel they send the trustees a cancellation request. Trustees then decline or delete the booking. Declined bookings and events that have finished can only be viewed.' },
         { q: 'How do I approve a booking?', a: 'Go to the Bookings tab. You will see all pending requests. Click the green "Approve" button to confirm a booking, or the red "Decline" button to reject it. The community member will need to check back to see the status.' },
         { q: 'How do I block dates so no one can book?', a: 'Go to the Calendar tab and click "Block Dates" in the top right. Enter the dates and a reason (e.g. Maintenance, Private event). Blocked dates show in red on the calendar and prevent community members from booking those days.' },
         { q: 'Can I see all upcoming bookings?', a: 'Yes — go to the Calendar tab to see a visual overview of all approved bookings and blocked dates. You can also go to the Bookings tab and filter by status (pending, approved, declined).' },
@@ -197,10 +200,10 @@ const HELP_TOPICS = {
             'Vercel — hosts and delivers the MaraeHub application itself',
             'Xero (optional) — if you choose to connect it, syncs your real accounting data directly into Finance',
             'Google Calendar (optional, personal) — if you choose to connect your own Google account, lets you add individual hui dates to your own calendar. This is a personal connection per trustee, not marae-wide, and nothing is shared between trustees\' calendars',
-            'Anthropic (Claude) — powers the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report on Board View, and the Draft Application (AI) button in Grants, using only the same real data already recorded in MaraeHub — it never invents facts, and flags anything it does not have with a placeholder instead',
+            'Anthropic (Claude) — only if your marae\'s administrator turns AI features on. It powers Draft with AI in Minutes, Draft Application (AI) in Grants, and the four AI reports on Board View. It may process information outside New Zealand. The text or summary of your records for that feature is sent when a trustee clicks the button, and the draft is never saved to your records until a trustee reviews it',
           ]},
           { text: "Your marae's records — compliance items, finance, risk register, minutes, and more — live in their own separate database, never mixed with any other marae's data, and are only accessible to trustees genuinely authorised for your marae, enforced at the database level, not just hidden on a screen." },
-          { text: "Files you upload (documents, compliance evidence, receipts) are stored separately: only logged-in trustees can upload, replace, or delete them, but anyone with a direct link to a specific file can view it — the same way a shared Google Drive link works. Your data is encrypted both in storage and when it's being accessed." },
+          { text: "Files you upload (documents, compliance evidence, receipts) are stored separately: they are kept private. Only signed-in users of your marae can open them, and each file opens through a temporary link that stops working after about an hour. Only trustees can upload, replace, or delete them. Your data is encrypted both in storage and when it's being accessed." },
         ] },
         { q: 'Does MaraeHub watch for suspicious login activity?', a: [
           { text: 'Yes. A daily automated check looks for any single account with an unusually high number of failed sign-in attempts in a short window — a common early sign of an automated attack trying to guess a password.' },
@@ -234,6 +237,7 @@ const HELP_TOPICS = {
       category: 'Documents',
       icon: '📁',
       items: [
+        { q: 'How do I open a document? Do I need to download it first?', a: 'No download needed. Click the "Open to view" button on the document. It opens in a new tab, ready to read, and you can save a copy from there if you want one. The link is private and temporary, so it will stop working after about an hour. Just click "Open to view" again to get a fresh one.' },
         { q: 'How do I upload a document?', a: [
           { items: [
             'Go to the Documents tab and click "+ Upload Document".',
@@ -493,6 +497,7 @@ const HELP_TOPICS = {
       category: 'AI Reports',
       icon: '✨',
       items: [
+        { q: 'Why does it ask me to enable AI features before it will write a report?', a: 'AI features are off for every marae until an administrator turns them on. This is your marae\'s choice, not ours. An administrator can turn them on, or off again, any time in Settings under "AI Drafting" (Enable AI features). The same switch covers Draft with AI in Minutes, Draft Application (AI) in Grants and the four AI reports. If you are not an administrator, ask one to switch it on. Please do not include sensitive personal, whānau, tangi or dispute details in notes you send.' },
         { q: 'What are the AI Governance Report, AI Financial Report, AI Compliance Report, and AI Actions & Tasks Report?', a: 'Four buttons at the top of Board View that use AI to write a plain-English narrative report — an opening summary, what needs attention, and specific recommendations, not just a formatted document of your numbers.' },
         { q: 'How is this different from the Financial Report and Governance Report buttons?', a: 'Financial Report and Governance Report produce a formatted document with your real numbers, ready to print or hand out as-is. The four AI reports use that same real data to write a narrative analysis in plain English, with recommendations — a different kind of document for a different purpose.' },
         { q: 'What does the AI Financial Report cover?', a: 'Income, expenses, budget variance, deficit or surplus, and any unusual spending worth flagging, followed by 3-5 recommendations in priority order. If your marae has not recorded any income or expenses yet, it says so honestly rather than generating an empty analysis.' },
@@ -729,6 +734,8 @@ const HELP_TOPICS = {
       category: 'Getting Started',
       icon: '🚀',
       items: [
+        { q: 'Do I need to refresh the page to get the latest version of MaraeHub?', a: 'No. MaraeHub updates itself. When a new version is available it refreshes quietly while you are not typing or in the middle of something, and never during Hui Mode or voice dictation. If you are busy, a small banner appears so you can update when you are ready.' },
+        { q: 'It says it could not load my account. What do I do?', a: 'MaraeHub already tries a second time on its own. If you still see the message, tap Try again. If it keeps happening, sign out, sign in again, and let your administrator know.' },
         { q: 'What is the Marae Setup wizard?', a: 'When you first log in, MaraeHub guides you through a 5-step setup to configure your marae — name, location, iwi, hapū, and key details. This helps personalise your dashboard from day one.' },
         { q: 'What are the 5 setup steps?', a: [
           { items: [

@@ -21,6 +21,7 @@ export function useAiDrafting(entityId, initialEnabled) {
   const [enabled, setEnabled]   = useState(!!initialEnabled);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving]     = useState(false);
+  const [saveError, setSaveError] = useState('');
   // resolveRef holds the Promise resolve from requestConsent()
   const [resolveRef, setResolveRef] = useState(null);
 
@@ -38,11 +39,19 @@ export function useAiDrafting(entityId, initialEnabled) {
   async function handleAccept() {
     if (!entityId) { resolveRef?.(false); setShowModal(false); return; }
     setSaving(true);
-    await supabase
+    setSaveError('');
+    const { data, error } = await supabase
       .from('marae_settings')
       .update({ ai_drafting_enabled: true })
-      .eq('id', entityId);
+      .eq('id', entityId)
+      .select('id');
     setSaving(false);
+    // Only an administrator can change this setting. If nothing was saved, do not
+    // pretend it was: the server would refuse the request anyway.
+    if (error || !data || data.length === 0) {
+      setSaveError('Only an administrator can turn on AI features for this marae. Please ask one to turn them on in Marae Settings.');
+      return;
+    }
     setEnabled(true);
     setShowModal(false);
     resolveRef?.(true);
@@ -68,7 +77,7 @@ export function useAiDrafting(entityId, initialEnabled) {
           {/* Header */}
           <div style={{ background: '#1a4a3a', padding: '20px 24px' }}>
             <div style={{ color: '#c8902a', fontWeight: 800, fontSize: 16, marginBottom: 4 }}>
-              AI Drafting — Enable for this Marae?
+              AI features — Enable for this Marae?
             </div>
             <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>
               This feature is opt-in. Please read before enabling.
@@ -78,31 +87,28 @@ export function useAiDrafting(entityId, initialEnabled) {
           {/* Body */}
           <div style={{ padding: '24px', fontSize: 14, lineHeight: 1.75, color: '#2a2520' }}>
             <p style={{ marginTop: 0 }}>
-              AI drafting uses <strong>Anthropic's Claude API</strong> to generate draft text from the notes you provide.
+              AI features use <strong>Anthropic's Claude service</strong>, which may process information outside New Zealand, to write draft text. They only run when a trustee clicks a button, and nothing is saved to your records until a trustee reviews it.
             </p>
 
             <div style={{ background: '#fdf8ee', border: '1px solid #c8902a40', borderLeft: '4px solid #c8902a', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
               <strong style={{ color: '#a06010' }}>What gets sent to Anthropic:</strong>
               <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                <li>Your marae's name</li>
-                <li>The rough notes or context you type before generating a draft</li>
-              </ul>
-            </div>
-
-            <div style={{ background: '#e8f4ef', border: '1px solid #1a4a3a30', borderLeft: '4px solid #1a4a3a', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
-              <strong style={{ color: '#1a4a3a' }}>What is NOT sent:</strong>
-              <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
-                <li>Meeting minutes, resolutions, or records already saved</li>
-                <li>Financial records or compliance documents</li>
-                <li>Trustee personal details</li>
+                <li>Your marae's name (and location, iwi and hapū for grant drafts)</li>
+                <li>Minutes drafting: the rough notes you type</li>
+                <li>Grant drafts: the grant's funder, amount and notes, and the goal it is for</li>
+                <li>AI reports: a summary of your records, such as task and goal titles, the names of people responsible, grant funders and amounts, finance figures (administrators only), and compliance and risk titles</li>
               </ul>
             </div>
 
             <p style={{ marginBottom: 0 }}>
-              Your data is <strong>never used to train AI models</strong>. You can disable this at any time in Marae Settings. See our{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#1a4a3a' }}>Privacy Policy</a> for full details.
+              Please do not include sensitive personal, whānau, tangi or dispute details in notes you send. Anthropic's published API terms say customer content is not used to train its models. An administrator can switch AI features off at any time in Marae Settings. See our{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#1a4a3a' }}>Privacy Policy</a> for details.
             </p>
           </div>
+
+          {saveError && (
+            <div role="alert" style={{ margin: '0 24px 12px', padding: '10px 12px', background: '#fdecea', border: '1px solid #f5c6c0', borderRadius: 8, fontSize: 13, color: '#8a2a1f' }}>{saveError}</div>
+          )}
 
           {/* Footer */}
           <div style={{ padding: '0 24px 24px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -117,7 +123,7 @@ export function useAiDrafting(entityId, initialEnabled) {
               disabled={saving}
               style={{ padding: '10px 22px', background: '#1a4a3a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
             >
-              {saving ? 'Enabling…' : 'Enable AI drafting'}
+              {saving ? 'Enabling…' : 'Enable AI features'}
             </button>
           </div>
         </div>
