@@ -281,7 +281,7 @@ export default function DocumentsManager() {
                         <button onClick={() => setEditingCharterDoc(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Edit">✏️</button>
                       )}
                       {doc.file_url && (
-                        <button onClick={() => openSignedUrl('documents', doc.file_url)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--brand)' }} title="Download">⬇</button>
+                        <button onClick={() => openSignedUrl('documents', doc.file_url)} style={{ height: 28, padding: '0 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--brand)' }} title="Open this document">Open</button>
                       )}
                       <button onClick={() => handleDelete(doc)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, color: 'var(--danger)' }} title="Delete">✕</button>
                     </span>
@@ -347,8 +347,8 @@ export default function DocumentsManager() {
                   )}
                   {doc.file_url && (
                     <button onClick={() => openSignedUrl('documents', doc.file_url)}
-                      style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--brand)' }}
-                      title="Download">⬇</button>
+                      style={{ height: 32, padding: '0 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--brand)' }}
+                      title="Open this document">Open</button>
                   )}
                   <button onClick={() => handleDelete(doc)}
                     style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 15, color: 'var(--danger)' }}
