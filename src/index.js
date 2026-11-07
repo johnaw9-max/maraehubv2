@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App';
+import NewVersionBanner from './components/NewVersionBanner';
 
 Sentry.init({
   dsn: process.env.REACT_APP_SENTRY_DSN,
@@ -47,6 +48,7 @@ root.render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={<ErrorFallback />} onError={handleAppError}>
       <App />
+      <NewVersionBanner />
     </Sentry.ErrorBoundary>
   </React.StrictMode>
 );
