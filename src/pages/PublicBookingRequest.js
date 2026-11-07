@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { supabase, supabaseAnonKey } from '../lib/supabase';
+import { BOOKING_OCCASIONS as OCCASIONS } from '../lib/bookingOccasions';
+import { endDateAfterStartChange } from '../lib/bookingDates';
 
-const OCCASIONS = ['Tangi', 'Wedding/Hakari', 'Birthday', 'Hui', 'Fundraiser', 'Whanau Reunion', 'Other'];
 const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
 
 export default function PublicBookingRequest() {
   const [form, setForm] = useState({
     occasion: '', startDate: '', endDate: '', guests: 50, overnight: false,
-    facilities: [], notes: '', contactName: '', contactPhone: '', contactEmail: '',
+    facilities: [], notes: '', contactName: '', contactPhone: '', contactEmail: '', organisation: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -78,12 +79,17 @@ export default function PublicBookingRequest() {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Start Date *</label>
-              <input type="date" className="form-input" value={form.startDate} onChange={e => setField('startDate', e.target.value)} required />
+              <input type="date" className="form-input" value={form.startDate} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, startDate: v, endDate: endDateAfterStartChange(v, f.endDate) })); }} required />
             </div>
             <div className="form-group">
               <label className="form-label">End Date *</label>
-              <input type="date" className="form-input" value={form.endDate} onChange={e => setField('endDate', e.target.value)} required />
+              <input type="date" className="form-input" value={form.endDate} min={form.startDate || undefined} onChange={e => setField('endDate', e.target.value)} required />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Organisation / Group</label>
+            <input className="form-input" maxLength={120} value={form.organisation} onChange={e => setField('organisation', e.target.value)} placeholder="Optional – e.g. a kapa haka group or whānau trust" />
           </div>
 
           <div className="grid-2">

@@ -6,7 +6,13 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const OCCASIONS = ['Tangi', 'Wedding/Hakari', 'Birthday', 'Hui', 'Fundraiser', 'Whanau Reunion', 'Other'];
+// Keep in step with src/lib/bookingOccasions.js. 'Whanau Reunion' stays accepted so a
+// booking form left open in a browser tab from before the change still submits.
+const OCCASIONS = [
+  'Tangi', 'Wedding/Hakari', 'Birthday', 'Hui', 'Fundraiser',
+  'Hura Kōhatu', 'Whānau Gathering', 'Noho Marae/Noho Wānanga', 'Other',
+  'Whanau Reunion',
+];
 
 function fmtDate(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -24,7 +30,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
-    const { occasion, startDate, endDate, guests, overnight, facilities, notes, contactName, contactPhone, contactEmail } = body;
+    const { occasion, startDate, endDate, guests, overnight, facilities, notes, contactName, contactPhone, contactEmail, organisation } = body;
 
     // Server-side validation — never trust the anon client
     if (!OCCASIONS.includes(occasion)) return json({ error: 'Invalid occasion' }, 400);
@@ -33,6 +39,7 @@ serve(async (req) => {
     const g = parseInt(guests);
     if (!Number.isFinite(g) || g < 0) return json({ error: 'Invalid guest count' }, 400);
     if (notes && notes.length > 500) return json({ error: 'Notes must be 500 characters or fewer' }, 400);
+    if (organisation && (typeof organisation !== 'string' || organisation.length > 120)) return json({ error: 'Organisation must be 120 characters or fewer' }, 400);
 
     // Conflict check — same overlap logic as BookingWizard.checkAvailability()
     const { data: existing } = await admin.from('bookings').select('start_date, end_date').eq('status', 'approved');
@@ -55,6 +62,9 @@ serve(async (req) => {
       contact_name: contactName.trim(),
       contact_phone: contactPhone?.trim() || null,
       contact_email: contactEmail?.trim() || null,
+      // Only included when given, so this works on a marae whose database has not
+      // had the organisation column added yet.
+      ...(organisation?.trim() ? { organisation: organisation.trim() } : {}),
       status: 'pending', // forced server-side, never from the client
       reference,
     });
@@ -72,6 +82,7 @@ serve(async (req) => {
             `Tēnā koutou,\n\n` +
             `A new booking request was submitted via the public form and is awaiting your review.\n\n` +
             `Occasion: ${occasion}\n` +
+            (organisation?.trim() ? `Organisation: ${organisation.trim()}\n` : '') +
             `Contact: ${contactName}${contactPhone ? ' / ' + contactPhone : ''}\n` +
             `Dates: ${fmtDate(startDate)} → ${fmtDate(endDate)}\n` +
             `Guests: ${g}\n` +

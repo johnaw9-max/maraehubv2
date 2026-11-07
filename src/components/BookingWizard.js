@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { sendNotification, getTrusteeEmails, bookingSubmittedBody } from '../lib/notify';
+import { BOOKING_OCCASIONS, OCCASION_DETAILS } from '../lib/bookingOccasions';
+import { endDateAfterStartChange } from '../lib/bookingDates';
 
-const OCCASIONS = [
-  { val: 'Tangi', icon: '🕊️', sub: 'Tangihanga / Funeral' },
-  { val: 'Wedding/Hakari', icon: '💍', sub: 'Celebration feast' },
-  { val: 'Birthday', icon: '🎂', sub: 'Milestone celebration' },
-  { val: 'Hui', icon: '🤝', sub: 'Community meeting' },
-  { val: 'Fundraiser', icon: '🏆', sub: 'Charity / kaupapa event' },
-  { val: 'Whanau Reunion', icon: '👨‍👩‍👧‍👦', sub: 'Family gathering' },
-  { val: 'Other', icon: '✨', sub: 'Something else' },
-];
+const OCCASIONS = BOOKING_OCCASIONS.map(val => ({ val, ...OCCASION_DETAILS[val] }));
 
 const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
 
@@ -30,6 +24,7 @@ export default function BookingWizard({ profile, onBooked }) {
     overnight: false,
     facilities: [],
     notes: '',
+    organisation: '',
   });
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -112,6 +107,9 @@ export default function BookingWizard({ profile, onBooked }) {
       overnight: form.overnight,
       facilities: form.facilities,
       notes: form.notes,
+      // Only sent when filled in, so submissions keep working on any marae
+      // whose database has not had the organisation column added yet.
+      ...(form.organisation.trim() ? { organisation: form.organisation.trim() } : {}),
       status: 'pending',
       reference: ref,
     });
@@ -214,11 +212,15 @@ export default function BookingWizard({ profile, onBooked }) {
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Start Date</label>
                 <input type="date" className="form-input" value={form.startDate}
-                  onChange={e => { setField('startDate', e.target.value); setConflictMsg(''); }} />
+                  onChange={e => {
+                    const v = e.target.value;
+                    setForm(f => ({ ...f, startDate: v, endDate: endDateAfterStartChange(v, f.endDate) }));
+                    setConflictMsg('');
+                  }} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">End Date</label>
-                <input type="date" className="form-input" value={form.endDate}
+                <input type="date" className="form-input" value={form.endDate} min={form.startDate || undefined}
                   onChange={e => { setField('endDate', e.target.value); setConflictMsg(''); }} />
               </div>
             </div>
@@ -284,6 +286,9 @@ export default function BookingWizard({ profile, onBooked }) {
       {step === 3 && (
         <>
           <div className="panel" style={{ marginBottom: 16 }}>
+            <label className="form-label">Organisation / Group (optional)</label>
+            <input className="form-input" maxLength={120} placeholder="e.g. Ngāti Awa Kapa Haka, Smith Whānau Trust"
+              value={form.organisation} onChange={e => setField('organisation', e.target.value)} style={{ marginBottom: 16 }} />
             <label className="form-label">Additional Notes / Tikanga Considerations</label>
             <textarea className="form-input" rows={4} placeholder="Any special requirements or questions for the committee..."
               value={form.notes} onChange={e => setField('notes', e.target.value)} style={{ resize: 'vertical' }} />
