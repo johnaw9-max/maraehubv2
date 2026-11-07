@@ -59,11 +59,21 @@ export default function App() {
   async function fetchProfile(userId, authEmail) {
     setLoading(true);
     setProfileError(null);
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
+    if (error) {
+      // A momentary hiccup (slow network, session still settling) should not strand
+      // someone on an error screen: try once more after a short pause.
+      await new Promise(r => setTimeout(r, 1500));
+      ({ data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single());
+    }
     if (error) {
       console.error('[App] fetchProfile failed:', error.message);
       setProfileError(error.message);
@@ -111,11 +121,12 @@ export default function App() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
         <div style={{ width: 48, height: 48, background: '#1a4a3a', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'serif', fontWeight: 700, fontSize: 22, color: '#c8902a' }}>M</div>
         <div style={{ color: '#7a7268', fontSize: 14, textAlign: 'center', maxWidth: 320 }}>
-          Could not load your profile. Please refresh the page or sign out and back in.
+          We could not load your account just now. This is usually a short connection problem.
+          Please tap Try again. If it keeps happening, sign out and sign back in.
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => fetchProfile(session.user.id)} style={{ padding: '8px 20px', background: '#1a4a3a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
-            Retry
+            Try again
           </button>
           <button onClick={handleLogout} style={{ padding: '8px 20px', background: 'none', color: '#7a7268', border: '1px solid #e0dbd4', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
             Sign Out

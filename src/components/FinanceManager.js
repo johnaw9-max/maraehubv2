@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { openStorageFile } from '../lib/storageLinks';
 import Papa from 'papaparse';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
@@ -490,11 +491,8 @@ export default function FinanceManager() {
   }
 
   async function openSignedUrl(bucket, fileRef) {
-    if (!fileRef) return;
-    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
-    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
-    window.open(data.signedUrl, '_blank');
+    const r = await openStorageFile(supabase, bucket, fileRef);
+    if (!r.ok) alert(r.message);
   }
 
   async function handleDelete() {

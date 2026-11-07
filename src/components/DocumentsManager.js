@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
+import { openStorageFile, storagePathFromRef } from '../lib/storageLinks';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import CharterGenerator from './CharterGenerator';
@@ -159,20 +160,15 @@ export default function DocumentsManager() {
   }
  
   async function openSignedUrl(bucket, fileRef) {
-    if (!fileRef) return;
-    // Support legacy full URLs (old records) and new path-only storage
-    if (fileRef.startsWith('http')) { window.open(fileRef, '_blank'); return; }
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(fileRef, 3600);
-    if (error || !data?.signedUrl) { alert('Could not open file. Please try again.'); return; }
-    window.open(data.signedUrl, '_blank');
+    const r = await openStorageFile(supabase, bucket, fileRef);
+    if (!r.ok) alert(r.message);
   }
 
   async function handleDelete(doc) {
     if (!window.confirm(`Delete "${doc.title}"?`)) return;
     if (doc.file_url) {
-      const path = doc.file_url.startsWith('http')
-        ? doc.file_url.split('/maraehub/')[1]
-        : doc.file_url;
+      const ref = storagePathFromRef('documents', doc.file_url);
+      const path = ref.kind === 'path' ? ref.path : null;
       if (path) await supabase.storage.from('documents').remove([path]);
     }
     await supabase.from('documents').delete().eq('id', doc.id);
