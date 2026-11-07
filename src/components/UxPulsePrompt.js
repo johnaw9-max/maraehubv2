@@ -1,3 +1,4 @@
+import { loadMaraeDisplay } from '../lib/maraeDisplay';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -41,7 +42,7 @@ export default function UxPulsePrompt({ profile }) {
 
   async function submit(rating, message) {
     setSaving(true);
-    const { data: settings } = await supabase.from('marae_settings').select('marae_name').single();
+    const settings = await loadMaraeDisplay(supabase);
     const { error } = await supabase.from('feedback').insert({
       user_id: profile?.id,
       user_name: profile?.full_name,
