@@ -235,15 +235,34 @@ input, select, textarea {
     background: none; border: none; color: rgba(255,255,255,0.85); font-size: 15px;
   }
 
-  .main { padding: 16px 14px; }
+  /* Extra room at the bottom so the floating Help and Feedback buttons never
+     sit on top of the last thing on the page. */
+  .main { padding: 16px 14px 96px; }
 
   /* Pages lay out their panels with side-by-side columns written directly into
-     the page code (e.g. two panels across, a 200px label column, three tiles
-     across). On a phone those run off the edge, so stack them in one column.
-     Small 2- and 5-across tile rows are left alone because they fit. */
-  .main [style*="grid-template-columns"]:not([style*="repeat(2"]):not([style*="repeat(5"]) {
+     the page code. On a phone, stack only the known wide layouts in one column:
+     two panels across ("minmax(0..." matches both browsers' spelling), a 200px
+     label column, and three or four panels across (the Projects board). Everything else is left alone: the
+     Calendar's seven days, 2- and 5-across tile rows. */
+  .main [style*="grid-template-columns: minmax(0"],
+  .main [style*="grid-template-columns: 200px"],
+  .main [style*="grid-template-columns: repeat(3,"],
+  .main [style*="grid-template-columns: repeat(4,"][style*="align-items: start"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
+  /* Other four-across tile rows (e.g. the Minutes summary): two across. */
+  .main [style*="grid-template-columns: repeat(4,"]:not([style*="align-items: start"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Help and Feedback float over the page; keep them small and in the corners. */
+  [style*="position: fixed"][style*="bottom: 24px"] { bottom: 12px !important; }
+  [style*="position: fixed"][style*="bottom: 24px"][style*="left: 24px"] { left: 12px !important; }
+  [style*="position: fixed"][style*="bottom: 24px"][style*="right: 24px"] { right: 12px !important; }
+
+  /* The row of summary tiles at the top of most pages (3 to 5 across on a
+     laptop): two across on a phone, not one tall card each. */
+  .kpi-bar { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
 
   /* Same idea for rows of buttons, filters and tabs (All / Pending / Approved,
      Compact / Detailed, the Finance tabs, "+ Add"): let them wrap onto a second
