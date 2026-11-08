@@ -201,6 +201,11 @@ serve(async (req) => {
 
   const trusteeEmails = (trustees ?? []).map((t: { email: string }) => t.email).filter(Boolean);
 
+  // Admin-controlled pause (same flag notify-trustees reads) -- guards only
+  // the overdue-action block below, not the other checks in this function.
+  const { data: settingsRow } = await db.from('marae_settings').select('reminders_paused').limit(1).single();
+  const remindersPaused = settingsRow?.reminders_paused === true;
+
   // ── Grant deadline emails ───────────────────────────────────────────────────
   const { data: grants } = await db
     .from('grants')
@@ -255,108 +260,110 @@ serve(async (req) => {
   // last_reminded_at (null, or older than the same 7-day window) rather than
   // a fresh column per run, so this can't resend daily forever for an item
   // that's still overdue and unresolved — at most once per 7-day window.
-  const overdueCutoff  = offsetDate(-7);
-  const reminderCutoff = new Date();
-  reminderCutoff.setDate(reminderCutoff.getDate() - 7);
-  const reminderCutoffISO = reminderCutoff.toISOString();
-
-  const { data: overdueActions } = await db
-    .from('meeting_actions')
-    .select('id, description, assigned_to, due_date, last_reminded_at, meetings(title, meeting_type)')
-    .lte('due_date', overdueCutoff)
-    .not('status', 'eq', 'Completed')
-    .or(`last_reminded_at.is.null,last_reminded_at.lt.${reminderCutoffISO}`);
-
   const actionReminderLog: string[] = [];
   const actionSkippedLog:  string[] = [];
 
-  for (const action of overdueActions ?? []) {
-    const meeting = action.meetings as { title: string; meeting_type: string } | null;
+  if (!remindersPaused) {
+    const overdueCutoff  = offsetDate(-7);
+    const reminderCutoff = new Date();
+    reminderCutoff.setDate(reminderCutoff.getDate() - 7);
+    const reminderCutoffISO = reminderCutoff.toISOString();
 
-    if (!action.assigned_to) {
-      actionSkippedLog.push(`SKIP (no assignee) — "${action.description}"`);
-      await notify(
-        trusteeEmails,
-        `Action reminder could not be sent — check assignee`,
-        `Tēnā koutou,\n\n` +
-        `MaraeHub could not send an overdue-action reminder for the item below, ` +
-        `because it has no assignee on file.\n\n` +
-        `Action: ${action.description}\n` +
-        `Assigned to: (none)\n` +
-        `Due: ${fmtDate(action.due_date)}\n\n` +
-        `Please assign this action to someone, or mark it complete if it's no longer relevant.` +
-        footer(),
-      );
-      await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
-      continue;
-    }
+    const { data: overdueActions } = await db
+      .from('meeting_actions')
+      .select('id, description, assigned_to, due_date, last_reminded_at, meetings(title, meeting_type)')
+      .lte('due_date', overdueCutoff)
+      .not('status', 'eq', 'Completed')
+      .or(`last_reminded_at.is.null,last_reminded_at.lt.${reminderCutoffISO}`);
 
-    const name = action.assigned_to.trim();
-    const [profileRes, contactRes] = await Promise.all([
-      db.from('profiles').select('id, email, role').eq('full_name', name).maybeSingle(),
-      db.from('contacts').select('email').eq('full_name', name).maybeSingle(),
-    ]);
-    const email = profileRes.data?.email || contactRes.data?.email || null;
-    const isTrustee = profileRes.data?.role === 'trustee';
+    for (const action of overdueActions ?? []) {
+      const meeting = action.meetings as { title: string; meeting_type: string } | null;
 
-    if (!email) {
-      actionSkippedLog.push(`SKIP (no email found for "${name}") — "${action.description}"`);
-      await notify(
-        trusteeEmails,
-        `Action reminder could not be sent — check assignee`,
-        `Tēnā koutou,\n\n` +
-        `MaraeHub could not send an overdue-action reminder for the item below, ` +
-        `because no email address could be found for the assignee on file.\n\n` +
-        `Action: ${action.description}\n` +
-        `Assigned to: "${name}"\n` +
-        `Due: ${fmtDate(action.due_date)}\n\n` +
-        `Please check that this name matches a trustee or contact's full name exactly, ` +
-        `or reassign the action to someone with an email on file.` +
-        footer(),
-      );
-      await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
-      continue;
-    }
-
-    const daysOverdue = Math.round(
-      (new Date(today + 'T12:00:00').getTime() - new Date(action.due_date + 'T12:00:00').getTime()) / 86400000
-    );
-
-    // Mark-done link (ClickUp 86d3tjb94): only issued when the assignee
-    // resolved to a real trustee (profiles row, role='trustee'), not a
-    // contacts row. Token issuance failing degrades gracefully — the
-    // reminder still sends with the original log-in instruction, same as
-    // it always has.
-    let actionInstruction = `Please log in to MaraeHub to update this action or mark it complete.`;
-    if (isTrustee && profileRes.data?.id) {
-      const { data: tokenId, error: tokenErr } = await db.rpc('issue_action_reminder_token', {
-        p_meeting_action_id: action.id,
-        p_trustee_id:        profileRes.data.id,
-        p_resolved_name:     name,
-        p_resolved_email:    email,
-      });
-      if (tokenErr) {
-        actionSkippedLog.push(`WARN (token issue failed) — "${action.description}": ${tokenErr.message}`);
-      } else if (tokenId) {
-        const markDoneUrl = `${SUPABASE_URL}/functions/v1/mark-action-done?token=${tokenId}`;
-        actionInstruction =
-          `Tap here to mark this done: ${markDoneUrl}\n\n` +
-          `Or, if you'd rather, log in to MaraeHub to update it yourself.`;
+      if (!action.assigned_to) {
+        actionSkippedLog.push(`SKIP (no assignee) — "${action.description}"`);
+        await notify(
+          trusteeEmails,
+          `Action reminder could not be sent — check assignee`,
+          `Tēnā koutou,\n\n` +
+          `MaraeHub could not send an overdue-action reminder for the item below, ` +
+          `because it has no assignee on file.\n\n` +
+          `Action: ${action.description}\n` +
+          `Assigned to: (none)\n` +
+          `Due: ${fmtDate(action.due_date)}\n\n` +
+          `Please assign this action to someone, or mark it complete if it's no longer relevant.` +
+          footer(),
+        );
+        await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
+        continue;
       }
+
+      const name = action.assigned_to.trim();
+      const [profileRes, contactRes] = await Promise.all([
+        db.from('profiles').select('id, email, role').eq('full_name', name).maybeSingle(),
+        db.from('contacts').select('email').eq('full_name', name).maybeSingle(),
+      ]);
+      const email = profileRes.data?.email || contactRes.data?.email || null;
+      const isTrustee = profileRes.data?.role === 'trustee';
+
+      if (!email) {
+        actionSkippedLog.push(`SKIP (no email found for "${name}") — "${action.description}"`);
+        await notify(
+          trusteeEmails,
+          `Action reminder could not be sent — check assignee`,
+          `Tēnā koutou,\n\n` +
+          `MaraeHub could not send an overdue-action reminder for the item below, ` +
+          `because no email address could be found for the assignee on file.\n\n` +
+          `Action: ${action.description}\n` +
+          `Assigned to: "${name}"\n` +
+          `Due: ${fmtDate(action.due_date)}\n\n` +
+          `Please check that this name matches a trustee or contact's full name exactly, ` +
+          `or reassign the action to someone with an email on file.` +
+          footer(),
+        );
+        await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
+        continue;
+      }
+
+      const daysOverdue = Math.round(
+        (new Date(today + 'T12:00:00').getTime() - new Date(action.due_date + 'T12:00:00').getTime()) / 86400000
+      );
+
+      // Mark-done link (ClickUp 86d3tjb94): only issued when the assignee
+      // resolved to a real trustee (profiles row, role='trustee'), not a
+      // contacts row. Token issuance failing degrades gracefully — the
+      // reminder still sends with the original log-in instruction, same as
+      // it always has.
+      let actionInstruction = `Please log in to MaraeHub to update this action or mark it complete.`;
+      if (isTrustee && profileRes.data?.id) {
+        const { data: tokenId, error: tokenErr } = await db.rpc('issue_action_reminder_token', {
+          p_meeting_action_id: action.id,
+          p_trustee_id:        profileRes.data.id,
+          p_resolved_name:     name,
+          p_resolved_email:    email,
+        });
+        if (tokenErr) {
+          actionSkippedLog.push(`WARN (token issue failed) — "${action.description}": ${tokenErr.message}`);
+        } else if (tokenId) {
+          const markDoneUrl = `${SUPABASE_URL}/functions/v1/mark-action-done?token=${tokenId}`;
+          actionInstruction =
+            `Tap here to mark this done: ${markDoneUrl}\n\n` +
+            `Or, if you'd rather, log in to MaraeHub to update it yourself.`;
+        }
+      }
+
+      const body =
+        `Tēnā koe ${name},\n\n` +
+        `This is a reminder that an action assigned to you from a meeting is now ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue.\n\n` +
+        `Meeting: ${meeting?.title ?? 'Unknown meeting'}\n` +
+        `Action: ${action.description}\n` +
+        `Due: ${fmtDate(action.due_date)}\n\n` +
+        actionInstruction +
+        footer();
+
+      await notify([email], `Overdue action reminder — ${action.description}`, body);
+      actionReminderLog.push(`SENT — "${action.description}" to ${name} (${email})`);
+      await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
     }
-
-    const body =
-      `Tēnā koe ${name},\n\n` +
-      `This is a reminder that an action assigned to you from a meeting is now ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue.\n\n` +
-      `Meeting: ${meeting?.title ?? 'Unknown meeting'}\n` +
-      `Action: ${action.description}\n` +
-      `Due: ${fmtDate(action.due_date)}\n\n` +
-      actionInstruction +
-      footer();
-
-    await notify([email], `Overdue action reminder — ${action.description}`, body);
-    actionReminderLog.push(`SENT — "${action.description}" to ${name} (${email})`);
-    await db.from('meeting_actions').update({ last_reminded_at: new Date().toISOString() }).eq('id', action.id);
   }
 
   // ── Overdue compliance item reminders (immediate, weekly resend) ───────────
