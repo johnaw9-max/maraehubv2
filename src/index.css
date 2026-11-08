@@ -250,6 +250,18 @@ input, select, textarea {
   .main [style*="grid-template-columns: repeat(4,"][style*="align-items: start"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
+  /* Wide tables (Goals, Project tasks): on a phone each row becomes a small card,
+     the first cell (status dot / number) on the left and the rest stacked. */
+  .main .stack-head { display: none !important; }
+  .main .stack-row {
+    grid-template-columns: 28px minmax(0, 1fr) !important;
+    row-gap: 6px !important;
+    align-items: start !important;
+  }
+  .main .stack-row > * { grid-column: 2; min-width: 0; }
+  .main .stack-row > :first-child { grid-column: 1; grid-row: 1; }
+  .main .stack-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+  .main .stack-form > :first-child { grid-column: 1 / -1; }
   /* Rows that put a name on the left and a badge/buttons on the right (Compliance
      and Service Reminders on the Board View): on a phone the buttons stack under
      the name instead of pushing the panel off the screen. */

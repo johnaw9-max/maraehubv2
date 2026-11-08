@@ -625,7 +625,7 @@ export default function GoalsReporting() {
         <>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
             {/* Table header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '40px 2fr 150px 160px 100px 125px 125px', gap: 0, background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
+            <div className="stack-head" style={{ display: 'grid', gridTemplateColumns: '40px 2fr 150px 160px 100px 125px 125px', gap: 0, background: 'var(--surface2)', borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
               {['', 'Goal', 'Focus / Module', 'Progress', 'Status', 'Target Date', 'Responsible'].map((h, i) => (
                 <div key={i} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</div>
               ))}
@@ -648,6 +648,7 @@ export default function GoalsReporting() {
                 return (
                   <div
                     key={goal.id}
+                    className="stack-row"
                     style={{ display: 'grid', gridTemplateColumns: '40px 2fr 150px 160px 100px 125px 125px', gap: 0, padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center', transition: 'background 0.1s' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
