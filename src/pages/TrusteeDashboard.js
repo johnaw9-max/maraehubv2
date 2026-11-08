@@ -82,7 +82,7 @@ function KpiBar({ tiles, loading, count }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 12, marginBottom: 20 }}>
+      <div className="kpi-bar" style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, gap: 12, marginBottom: 20 }}>
         {Array.from({ length: n }).map((_, i) => (
           <div key={i} className="panel" style={{ height: 92, background: 'var(--surface2)', opacity: 0.5 }} />
         ))}
@@ -91,7 +91,7 @@ function KpiBar({ tiles, loading, count }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${tiles.length}, 1fr)`, gap: 12, marginBottom: 20 }}>
+    <div className="kpi-bar" style={{ display: 'grid', gridTemplateColumns: `repeat(${tiles.length}, 1fr)`, gap: 12, marginBottom: 20 }}>
       {tiles.map((t, i) => {
         const isText = typeof t.value === 'string' && isNaN(parseFloat(t.value.replace('%', '')));
         const valLen = String(t.value).length;

@@ -161,6 +161,7 @@ input, select, textarea {
   user-select: none;
 }
 .sidebar-group-label:first-child { margin-top: 0; }
+.sidebar-close + .sidebar-group-label { margin-top: 0; }  /* the (phone-only) Close button is now first, keep the first heading flush */
 
 .sidebar-founder { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.15); }
 
@@ -171,6 +172,149 @@ input, select, textarea {
 
 /* MAIN CONTENT */
 .main { padding: 24px 28px; max-width: 1400px; flex: 1; min-width: 0; }
+
+/* PHONE AND NARROW WINDOWS -- the side menu becomes a slide-over drawer behind
+   a "Menu" button, so the page gets the full width instead of being squeezed
+   by a fixed 220px column. Wider screens are untouched: these three pieces are
+   hidden there and the sidebar stays a normal column. */
+.mobile-nav-bar, .sidebar-backdrop, .sidebar-close { display: none; }
+
+@media (max-width: 800px) {
+  /* Top bar: keep the logo, marae name, avatar and Sign Out; drop the extras. */
+  .header { padding: 0 12px; height: 56px; gap: 8px; }
+  .header-left { gap: 0; }
+  .header-left > div:last-child { display: none; }          /* product name + subtitle */
+  .header-right { gap: 8px; min-width: 0; }
+  .header-right > div:first-child { min-width: 0; }
+  .marae-name { font-size: 14px; max-width: 42vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .marae-loc, .role-badge { display: none; }
+  .avatar { width: 32px; height: 32px; font-size: 12px; flex-shrink: 0; }
+  .logout-btn { padding: 6px 10px; white-space: nowrap; flex-shrink: 0; }
+
+  .app-shell { display: block; min-height: 0; }
+
+  /* Menu button bar, stays at the top while the page scrolls, and says which page you are on. */
+  .mobile-nav-bar {
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 50;
+    padding: 6px 12px;
+    background: var(--brand-mid);
+    border-bottom: 2px solid var(--accent);
+  }
+  .mobile-menu-btn {
+    min-height: 44px; padding: 0 16px;
+    background: rgba(255,255,255,0.12); color: #fff;
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 8px;
+    font-size: 15px; font-weight: 600;
+  }
+  .mobile-nav-title {
+    flex: 1; min-width: 0; color: #fff; font-size: 15px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* The menu itself: off-screen until opened. */
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: min(300px, 86vw);
+    z-index: 1000;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
+  }
+  .sidebar.open {
+    transform: none; visibility: visible;
+    transition: transform 0.2s ease, visibility 0s;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+  }
+  .sidebar-item { padding-top: 13px; padding-bottom: 13px; }   /* easier to tap */
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; }
+  .sidebar-close {
+    display: block; width: calc(100% - 36px); margin: 0 18px 8px;
+    min-height: 44px; text-align: left;
+    background: none; border: none; color: rgba(255,255,255,0.85); font-size: 15px;
+  }
+
+  /* Extra room at the bottom so the floating Help and Feedback buttons never
+     sit on top of the last thing on the page. */
+  .main { padding: 16px 14px 96px; }
+
+  /* Pages lay out their panels with side-by-side columns written directly into
+     the page code. On a phone, stack only the known wide layouts in one column:
+     two panels across ("minmax(0..." matches both browsers' spelling), a 200px
+     label column, and three or four panels across (the Projects board). Everything else is left alone: the
+     Calendar's seven days, 2- and 5-across tile rows. */
+  .main [style*="grid-template-columns: minmax(0"],
+  .main [style*="grid-template-columns: 200px"],
+  .main [style*="grid-template-columns: repeat(3,"],
+  .main [style*="grid-template-columns: repeat(4,"][style*="align-items: start"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* Top Priorities rows: text gets the full width, the button drops underneath. */
+  .insight-row { flex-wrap: wrap !important; }
+  .insight-row > div { flex: 1 1 180px !important; min-width: 0; }
+  /* Board View summary tiles: name on one line, the detail under it. */
+  .summary-tile { flex-direction: column !important; align-items: flex-start !important; gap: 2px !important; }
+  /* Period selector: label above, the four choices in a 2 x 2 block. */
+  .period-toggle { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; }
+  .period-seg { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .period-seg > button { border-right: none !important; border-bottom: 1px solid var(--border) !important; }
+  /* Wide tables (Goals, Project tasks): on a phone each row becomes a small card,
+     the first cell (status dot / number) on the left and the rest stacked. */
+  .main .stack-head { display: none !important; }
+  .main .stack-row {
+    grid-template-columns: 28px minmax(0, 1fr) !important;
+    row-gap: 6px !important;
+    align-items: start !important;
+  }
+  .main .stack-row > * { grid-column: 2; min-width: 0; }
+  .main .stack-row > :first-child { grid-column: 1; grid-row: 1; }
+  .main .stack-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+  .main .stack-form > :first-child { grid-column: 1 / -1; }
+  /* Rows that put a name on the left and a badge/buttons on the right (Compliance
+     and Service Reminders on the Board View): on a phone the buttons stack under
+     the name instead of pushing the panel off the screen. */
+  .main [style*="justify-content: space-between"]:has(> [style*="flex-shrink: 0"]) {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .main [style*="justify-content: space-between"]:has(> [style*="flex-shrink: 0"]) > [style*="flex: 1"] {
+    flex: 0 1 auto !important;
+  }
+  .main [style*="justify-content: space-between"] > [style*="flex-shrink: 0"][style*="display: flex"] {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+  }
+  /* Five-across status rows (Compliance and Risk summaries on the Board View):
+     the words ("Never Assessed", "Compliant") cannot shrink enough for five
+     columns, which widened the whole panel past the screen. Three across,
+     wrapping to a second row. */
+  .main [style*="grid-template-columns: repeat(5,"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  /* Other four-across tile rows (e.g. the Minutes summary): two across. */
+  .main [style*="grid-template-columns: repeat(4,"]:not([style*="align-items: start"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Help and Feedback float over the page; keep them small and in the corners. */
+  [style*="position: fixed"][style*="bottom: 24px"] { bottom: 12px !important; }
+  [style*="position: fixed"][style*="bottom: 24px"][style*="left: 24px"] { left: 12px !important; }
+  [style*="position: fixed"][style*="bottom: 24px"][style*="right: 24px"] { right: 12px !important; }
+
+  /* The row of summary tiles at the top of most pages (3 to 5 across on a
+     laptop): two across on a phone, not one tall card each. */
+  .kpi-bar { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+
+  /* Same idea for rows of buttons, filters and tabs (All / Pending / Approved,
+     Compact / Detailed, the Finance tabs, "+ Add"): let them wrap onto a second
+     line instead of running off the edge. Only applies where it would overflow. */
+  .main [style*="display: flex"]:has(> button),
+  .main [style*="display: flex"]:has(> select) { flex-wrap: wrap !important; }
+  .panel-header { flex-wrap: wrap; gap: 8px; }
+}
 
 /* CARDS / PANELS */
 .panel {

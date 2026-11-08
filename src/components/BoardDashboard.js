@@ -229,7 +229,7 @@ function InsightRow({ ins, onNavigate }) {
   // the right test, not a falsy check.
   const hasOwner = ins.owner !== undefined;
   return (
-    <div style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: hasOwner ? 'flex-start' : 'center', gap: 8, ...s }}>
+    <div className="insight-row" style={{ borderRadius: 7, padding: '9px 14px', fontSize: 14, fontWeight: 500, lineHeight: 1.5, display: 'flex', alignItems: hasOwner ? 'flex-start' : 'center', gap: 8, ...s }}>
       <span style={{ flexShrink: 0 }}>{icon}</span>
       <div style={{ flex: 1 }}>
         <span>{stripUrls(ins.text)}</span>
@@ -1562,12 +1562,12 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       `}</style>
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 26, marginBottom: 2 }}>Board Overview</h1>
           <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
-        <div className="no-print" style={{ display: 'flex', gap: 10 }}>
+        <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"
@@ -1641,20 +1641,20 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
         ].map(m => (
           <div
             key={m.label}
-            className="panel"
+            className="panel summary-tile"
             onClick={() => onNavigate && onNavigate(m.navTo)}
             style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: onNavigate ? 'pointer' : 'default', padding: '10px 12px', margin: 0 }}
           >
-            {m.icon} {m.label} {LEVEL_EMOJI[m.level]}
+            <span style={{ whiteSpace: 'nowrap' }}>{m.icon} {m.label} {LEVEL_EMOJI[m.level]}</span>
             <span style={{ fontWeight: 400, color: 'var(--text3)' }}>{m.detail}</span>
           </div>
         ))}
       </div>
 
       {/* ── PERIOD TOGGLE — 14yhc7kp7xg Step 3: moved to page top since it filters content in more than one of the 5 sections below ── */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+      <div className="no-print period-toggle" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Period</span>
-        <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+        <div className="period-seg" style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {PERIODS.map((p, i) => (
             <button
               key={p.key}

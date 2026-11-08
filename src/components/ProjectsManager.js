@@ -436,7 +436,7 @@ export default function ProjectsManager() {
         ) : (
           <div style={{ marginBottom: 16 }}>
             {/* Column headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 125px 110px 95px 32px', gap: 8, padding: '0 0 6px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
+            <div className="stack-head" style={{ display: 'grid', gridTemplateColumns: '28px 1fr 125px 110px 95px 32px', gap: 8, padding: '0 0 6px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
               {['', 'Task', 'Assignee', 'Due Date', 'Priority', ''].map((h, i) => (
                 <div key={i} style={{ fontSize: 14, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</div>
               ))}
@@ -446,7 +446,7 @@ export default function ProjectsManager() {
               const done = st.status === 'Done';
               const ps   = PRIORITY_STYLE[st.priority] || PRIORITY_STYLE.Medium;
               return (
-                <div key={st.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 125px 110px 95px 32px', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
+                <div className="stack-row" key={st.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 125px 110px 95px 32px', gap: 8, alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--cream2)' }}>
                   {/* Checkbox */}
                   <button
                     type="button"
@@ -495,7 +495,7 @@ export default function ProjectsManager() {
         <div style={{ borderTop: subtasks.length > 0 ? '1px solid var(--border)' : 'none', paddingTop: subtasks.length > 0 ? 16 : 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text2)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Add Subtask</div>
           {subtaskError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{subtaskError}</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px', gap: 8, marginBottom: 8 }}>
+          <div className="stack-form" style={{ display: 'grid', gridTemplateColumns: '1fr 160px 130px 110px', gap: 8, marginBottom: 8 }}>
             <input
               type="text"
               className="form-input"
