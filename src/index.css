@@ -250,6 +250,15 @@ input, select, textarea {
   .main [style*="grid-template-columns: repeat(4,"][style*="align-items: start"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
+  /* Top Priorities rows: text gets the full width, the button drops underneath. */
+  .insight-row { flex-wrap: wrap !important; }
+  .insight-row > div { flex: 1 1 180px !important; min-width: 0; }
+  /* Board View summary tiles: name on one line, the detail under it. */
+  .summary-tile { flex-direction: column !important; align-items: flex-start !important; gap: 2px !important; }
+  /* Period selector: label above, the four choices in a 2 x 2 block. */
+  .period-toggle { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; }
+  .period-seg { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .period-seg > button { border-right: none !important; border-bottom: 1px solid var(--border) !important; }
   /* Wide tables (Goals, Project tasks): on a phone each row becomes a small card,
      the first cell (status dot / number) on the left and the rest stacked. */
   .main .stack-head { display: none !important; }
