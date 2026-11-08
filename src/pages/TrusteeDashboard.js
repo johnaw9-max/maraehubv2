@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { isResolutionOpen } from '../lib/resolutionStatus';
 import { isAssetInPoorCondition } from '../lib/assetCondition';
+import { readSavedTab, saveTab } from '../lib/tabMemory';
 import Header from '../components/Header';
 import NavSidebar from '../components/NavSidebar';
 import BookingsManager from '../components/BookingsManager';
@@ -137,7 +138,13 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const visibleNavGroups = isAdmin
     ? NAV_GROUPS
     : NAV_GROUPS.map(g => ({ ...g, tabs: g.tabs.filter(t => t.key !== 'finance') })).filter(g => g.tabs.length > 0);
-  const [activeTab, setActiveTab] = useState('board');
+  // Start on the page the trustee was last on (survives a refresh, a background
+  // update or a trip to another tab). Only pages they can actually see count, so
+  // a standard trustee can never be restored onto Finance.
+  const [activeTab, setActiveTab] = useState(
+    () => readSavedTab(profile?.id, visibleNavGroups.flatMap(g => g.tabs.map(t => t.key))) || 'board'
+  );
+  useEffect(() => { saveTab(profile?.id, activeTab); }, [profile?.id, activeTab]);
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
   const [pendingRisk, setPendingRisk] = useState(null);
   const [boardKey, setBoardKey] = useState(0);
