@@ -250,6 +250,29 @@ input, select, textarea {
   .main [style*="grid-template-columns: repeat(4,"][style*="align-items: start"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
+  /* Rows that put a name on the left and a badge/buttons on the right (Compliance
+     and Service Reminders on the Board View): on a phone the buttons stack under
+     the name instead of pushing the panel off the screen. */
+  .main [style*="justify-content: space-between"]:has(> [style*="flex-shrink: 0"]) {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .main [style*="justify-content: space-between"]:has(> [style*="flex-shrink: 0"]) > [style*="flex: 1"] {
+    flex: 0 1 auto !important;
+  }
+  .main [style*="justify-content: space-between"] > [style*="flex-shrink: 0"][style*="display: flex"] {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+  }
+  /* Five-across status rows (Compliance and Risk summaries on the Board View):
+     the words ("Never Assessed", "Compliant") cannot shrink enough for five
+     columns, which widened the whole panel past the screen. Three across,
+     wrapping to a second row. */
+  .main [style*="grid-template-columns: repeat(5,"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
   /* Other four-across tile rows (e.g. the Minutes summary): two across. */
   .main [style*="grid-template-columns: repeat(4,"]:not([style*="align-items: start"]) {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
