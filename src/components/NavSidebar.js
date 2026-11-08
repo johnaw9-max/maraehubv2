@@ -24,7 +24,7 @@ export default function NavSidebar({ profile, activeTab, setActiveTab, groups, i
   useEffect(() => {
     if (!menuOpen) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
-    const onResize = () => { if (window.innerWidth > 800) setMenuOpen(false); };
+    const onResize = () => { if (window.innerWidth > 960) setMenuOpen(false); };
     document.addEventListener('keydown', onKey);
     window.addEventListener('resize', onResize);
     const previousOverflow = document.body.style.overflow;
