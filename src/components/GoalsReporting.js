@@ -729,7 +729,7 @@ export default function GoalsReporting() {
                 <span style={{ fontSize: 14, color: 'var(--text3)' }}>{v.label}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginLeft: 4 }}>
               <span style={{ fontSize: 14, color: 'var(--brand)', fontWeight: 500 }}>auto-tracked</span>
               <span style={{ fontSize: 14, color: 'var(--text3)' }}> = progress calculated from linked modules</span>
             </div>

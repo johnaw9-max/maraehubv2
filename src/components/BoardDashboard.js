@@ -1562,12 +1562,12 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
       `}</style>
 
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 26, marginBottom: 2 }}>Board Overview</h1>
           <div style={{ fontSize: 14, color: 'var(--text3)' }}>{d.maraeName} · {todayDisplay}</div>
         </div>
-        <div className="no-print" style={{ display: 'flex', gap: 10 }}>
+        <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
           {(d.entities || []).length > 0 && (
             <select
               className="no-print"

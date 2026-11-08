@@ -15,6 +15,32 @@ const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 export default function NavSidebar({ profile, activeTab, setActiveTab, groups, isAdmin, onNavigate }) {
   const [gsStatus, setGsStatus] = useState(null);
 
+  // Phone and narrow-window behaviour: the menu is a slide-over drawer behind
+  // a "Menu" button instead of a fixed column that squeezes the page. On a
+  // wide screen none of this is visible (see the max-width rule in index.css),
+  // so a laptop looks and works exactly as before.
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    const onResize = () => { if (window.innerWidth > 800) setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onResize);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden'; // page behind the drawer should not scroll
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onResize);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [menuOpen]);
+
+  const currentLabel = (groups || []).flatMap(g => g.tabs).find(t => t.key === activeTab)?.label || 'Menu';
+
+  // Picking a page (or a Getting Started item) also closes the drawer.
+  const go = (key) => { setActiveTab(key); setMenuOpen(false); };
+
   // Same real getGettingStartedStatus() source GettingStartedChecklist.js
   // used to use on Board View -- real total is 8 items, not a guessed
   // number. Genuinely moved here, not duplicated: the Board View instance
@@ -27,7 +53,24 @@ export default function NavSidebar({ profile, activeTab, setActiveTab, groups, i
   }, [isAdmin]);
 
   return (
-    <div className="sidebar">
+    <>
+    <div className="mobile-nav-bar">
+      <button
+        type="button"
+        className="mobile-menu-btn"
+        aria-label="Open menu"
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen(true)}
+      >
+        <span aria-hidden="true">☰</span> Menu
+      </button>
+      <div className="mobile-nav-title">{currentLabel}</div>
+    </div>
+    {menuOpen && <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />}
+    <div className={`sidebar ${menuOpen ? 'open' : ''}`} role="navigation" aria-label="Main menu">
+      <button type="button" className="sidebar-close" aria-label="Close menu" onClick={() => setMenuOpen(false)}>
+        ✕ Close
+      </button>
       {groups.map((group, gi) => (
         <React.Fragment key={gi}>
           {group.label && (
@@ -40,7 +83,7 @@ export default function NavSidebar({ profile, activeTab, setActiveTab, groups, i
             <div
               key={tab.key}
               className={`sidebar-item ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => go(tab.key)}
             >
               {tab.label}
             </div>
@@ -76,7 +119,7 @@ export default function NavSidebar({ profile, activeTab, setActiveTab, groups, i
                 {gsStatus.items.map(item => (
                   <div
                     key={item.key}
-                    onClick={() => onNavigate && onNavigate(item.navTo)}
+                    onClick={() => { if (onNavigate) onNavigate(item.navTo); setMenuOpen(false); }}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }}
                   >
                     <span style={{
@@ -104,5 +147,6 @@ export default function NavSidebar({ profile, activeTab, setActiveTab, groups, i
         </div>
       )}
     </div>
+    </>
   );
 }
