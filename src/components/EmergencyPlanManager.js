@@ -84,6 +84,20 @@ const POINT_TYPES = [
 ];
 const EMPTY_POINT_FORM = { point_type: 'water_source', label: '', latitude: '', longitude: '', notes: '', entity_id: '' };
 
+// Welfare Check list: whānau who may need checking on or help in an
+// emergency (e.g. kaumātua). Private information about vulnerable people,
+// so the needs are simple tick-boxes, never medical conditions or diagnoses.
+const WELFARE_NEEDS = [
+  { key: 'mobility',        label: 'Help moving around' },
+  { key: 'power_equipment', label: 'Equipment that needs power' },
+  { key: 'medication',      label: 'Regular medication' },
+  { key: 'lives_alone',     label: 'Lives alone' },
+  { key: 'hearing_sight',   label: 'Hearing or sight' },
+  { key: 'transport',       label: 'Needs transport' },
+  { key: 'other',           label: 'Other (see note)' },
+];
+const EMPTY_WELFARE_FORM = { full_name: '', phone: '', usual_location: '', needs: [], notes: '', checker_id: '', entity_id: '', consent_confirmed: false };
+
 // Client-side only -- ships in the public bundle, same as any Maps
 // JavaScript/Static API key (referrer-restricted in Google Cloud Console,
 // not a secret like the Calendar OAuth credential). Real, honest limitation:
@@ -130,6 +144,19 @@ export default function EmergencyPlanManager() {
   const [personSaving, setPersonSaving] = useState(false);
   const [personError, setPersonError] = useState('');
 
+  // Welfare Check (whānau who may need checking on in an emergency)
+  const [welfare, setWelfare] = useState([]);
+  const [showWelfareModal, setShowWelfareModal] = useState(false);
+  const [editWelfare, setEditWelfare] = useState(null);
+  const [welfareForm, setWelfareForm] = useState(EMPTY_WELFARE_FORM);
+  const [welfareSaving, setWelfareSaving] = useState(false);
+  const [welfareError, setWelfareError] = useState('');
+  // Names + phones only, loaded when the Add form opens, so a trustee can
+  // pick someone already in Contacts instead of typing them again. Nothing
+  // else from Contacts is copied, and the welfare details stay in their own
+  // private table.
+  const [contactChoices, setContactChoices] = useState([]);
+
   // Response History (Post #13 -- real, dated proof of what the marae has
   // actually done, not just what it's prepared for)
   const [responseEvents, setResponseEvents] = useState([]);
@@ -168,13 +195,14 @@ export default function EmergencyPlanManager() {
 
   async function fetchAll() {
     setLoading(true);
-    const [settingsRes, hazardsRes, peopleRes, entRes, eventsRes, pointsRes] = await Promise.all([
+    const [settingsRes, hazardsRes, peopleRes, entRes, eventsRes, pointsRes, welfareRes] = await Promise.all([
       supabase.from('marae_settings').select('id, marae_name, emergency_plan_history, emergency_plan_supported_by, latitude, longitude').limit(1).single(),
       supabase.from('emergency_plan_hazards').select('*'),
       supabase.from('emergency_plan_people').select('*').order('full_name'),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('emergency_response_events').select('*').order('event_date', { ascending: false }),
       supabase.from('emergency_map_points').select('*').order('created_at'),
+      supabase.from('emergency_welfare_checks').select('*').order('full_name'),
     ]);
     if (settingsRes.data) {
       setSettingsId(settingsRes.data.id);
@@ -194,6 +222,7 @@ export default function EmergencyPlanManager() {
     setEntities(entRes.data || []);
     setResponseEvents(eventsRes.data || []);
     setMapPoints(pointsRes.data || []);
+    setWelfare(welfareRes.data || []);
     setLoading(false);
   }
 
@@ -282,6 +311,132 @@ export default function EmergencyPlanManager() {
     if (!window.confirm('Remove this contact?')) return;
     await supabase.from('emergency_plan_people').delete().eq('id', id);
     setPeople(prev => prev.filter(p => p.id !== id));
+  }
+
+  // ── WELFARE CHECK ─────────────────────────────────────────────────────────
+  // Private list of whānau who may need checking on or help in an emergency.
+  // Trustees only (RLS). Audit entries log the action and record id, never
+  // the person's name.
+
+  function localToday() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  async function openAddWelfare() {
+    setEditWelfare(null);
+    setWelfareForm(EMPTY_WELFARE_FORM);
+    setWelfareError('');
+    setContactChoices([]);
+    setShowWelfareModal(true);
+    const [profilesRes, contactsRes] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, phone'),
+      supabase.from('contacts').select('id, full_name, phone'),
+    ]);
+    const choices = [...(profilesRes.data || []), ...(contactsRes.data || [])]
+      .filter(c => (c.full_name || '').trim())
+      .map(c => ({ key: c.id, full_name: c.full_name.trim(), phone: c.phone || '' }))
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    setContactChoices(choices);
+  }
+
+  function openEditWelfare(w) {
+    setEditWelfare(w);
+    setWelfareForm({
+      full_name: w.full_name || '',
+      phone: w.phone || '',
+      usual_location: w.usual_location || '',
+      needs: w.needs || [],
+      notes: w.notes || '',
+      checker_id: w.checker_id || '',
+      entity_id: w.entity_id || '',
+      consent_confirmed: !!w.consent_confirmed,
+    });
+    setWelfareError('');
+    setShowWelfareModal(true);
+  }
+
+  async function handleSaveWelfare() {
+    if (!welfareForm.full_name.trim()) { setWelfareError('Name is required.'); return; }
+    if (!welfareForm.consent_confirmed) { setWelfareError('Please confirm this person (or their whānau) knows they are on this list and has agreed.'); return; }
+    setWelfareSaving(true); setWelfareError('');
+    const payload = {
+      full_name: welfareForm.full_name.trim(),
+      phone: welfareForm.phone.trim() || null,
+      usual_location: welfareForm.usual_location.trim() || null,
+      needs: welfareForm.needs,
+      notes: welfareForm.notes.trim() || null,
+      checker_id: welfareForm.checker_id || null,
+      entity_id: welfareForm.entity_id || null,
+      consent_confirmed: true,
+    };
+    const { data, error } = editWelfare
+      ? await supabase.from('emergency_welfare_checks').update(payload).eq('id', editWelfare.id).select('id').single()
+      : await supabase.from('emergency_welfare_checks').insert(payload).select('id').single();
+    if (error) { setWelfareError(error.message); setWelfareSaving(false); return; }
+    logAudit({
+      entityId: payload.entity_id,
+      action: editWelfare ? 'update' : 'create',
+      resourceType: 'welfare_list',
+      resourceId: data?.id || editWelfare?.id,
+    });
+    await fetchAll();
+    setShowWelfareModal(false);
+    setWelfareSaving(false);
+  }
+
+  async function markWelfareChecked(w) {
+    const today = localToday();
+    const { error } = await supabase.from('emergency_welfare_checks').update({ last_checked: today }).eq('id', w.id);
+    if (error) { alert(error.message); return; }
+    logAudit({ entityId: w.entity_id, action: 'update', resourceType: 'welfare_list', resourceId: w.id, metadata: { checked: today } });
+    setWelfare(prev => prev.map(x => x.id === w.id ? { ...x, last_checked: today } : x));
+  }
+
+  async function deleteWelfare(w) {
+    if (!window.confirm('Remove this person from the welfare list?')) return;
+    const { error } = await supabase.from('emergency_welfare_checks').delete().eq('id', w.id);
+    if (error) { alert(error.message); return; }
+    logAudit({ entityId: w.entity_id, action: 'delete', resourceType: 'welfare_list', resourceId: w.id });
+    setWelfare(prev => prev.filter(x => x.id !== w.id));
+  }
+
+  // Deliberately separate from Print Emergency Guide and the Readiness
+  // Summary: this one names vulnerable people, so it only prints on its own,
+  // from this tab, with a confidentiality note.
+  function printWelfareList() {
+    const checkerName = id => id ? (people.find(p => p.id === id)?.full_name || '') : '';
+    const needLabel = k => WELFARE_NEEDS.find(n => n.key === k)?.label || k;
+    const rows = sortedWelfare.map(w => `<tr>
+<td><strong>${escapeHtml(w.full_name)}</strong></td>
+<td>${escapeHtml(w.phone) || '—'}</td>
+<td>${escapeHtml(w.usual_location) || '—'}</td>
+<td>${(w.needs || []).map(k => escapeHtml(needLabel(k))).join(', ') || '—'}${w.notes ? `<br><span style="color:#666">${escapeHtml(w.notes)}</span>` : ''}</td>
+<td>${escapeHtml(checkerName(w.checker_id)) || '—'}</td>
+<td>${w.last_checked ? escapeHtml(fmtDate(w.last_checked)) : 'Not yet'}</td>
+</tr>`).join('');
+    const win = window.open('', '_blank');
+    if (!win) { alert('Your browser blocked the print window. Please allow pop-ups for this site and try again.'); return; }
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Welfare Check List — ${escapeHtml(maraeName)}</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:900px;margin:30px auto;padding:0 20px;color:#222}
+  h1{font-size:22px;color:#1a4a3a}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:12px}
+  td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:top}
+  .warn{border:2px solid #b00020;padding:10px 14px;font-size:13px;margin:12px 0;color:#b00020;font-weight:bold}
+</style></head><body>
+<h1>Welfare Check List — ${escapeHtml(maraeName)}</h1>
+<p style="color:#666;font-size:13px">Printed ${new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+<div class="warn">CONFIDENTIAL. This list has private information about whānau. Keep it somewhere safe, share it only with trustees and checkers who need it, and shred old copies when you reprint.</div>
+<table>
+<tr><th>Name</th><th>Phone</th><th>Where to find them</th><th>Help needed</th><th>Checked by</th><th>Last checked</th></tr>
+${rows || '<tr><td colspan="6">No one on the list yet</td></tr>'}
+</table>
+<p style="font-size:11px;color:#999;margin-top:24px">Generated by MaraeHub · maraehub.co.nz</p>
+</body></html>`);
+    win.document.close();
+    win.print();
   }
 
   // ── RESPONSE HISTORY ──────────────────────────────────────────────────────
@@ -726,6 +881,8 @@ ${specialisedSection}
 
   // ── RENDER ────────────────────────────────────────────────────────────────
 
+  // Welfare list: people who have never been checked, or checked longest ago, first
+  const sortedWelfare = welfare.slice().sort((a, b) => (a.last_checked || '').localeCompare(b.last_checked || '') || (a.full_name || '').localeCompare(b.full_name || ''));
   const specialisedSkillsPeople = people.filter(p => p.role_category === 'specialised_skill');
   const customSpecialisedSkills = specialisedSkillsPeople.filter(p => !SPECIALISED_SKILLS_FIXED.includes(p.skill_type));
 
@@ -741,6 +898,7 @@ ${specialisedSection}
             { key: 'warnings',       label: '📡 How We\'ll Be Warned' },
             { key: 'skilled_people', label: '👷 Skilled People' },
             { key: 'contacts',       label: '📞 Contacts' },
+            { key: 'welfare',        label: '🤝 Welfare Check' },
             { key: 'response_history', label: '📖 Response History' },
             { key: 'map',              label: '🗺️ Map' },
             { key: 'building',         label: '🏛️ Building Plan' },
@@ -882,6 +1040,71 @@ ${specialisedSection}
       {section === 'contacts' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {CONTACT_LISTS.map(renderPersonList)}
+        </div>
+      )}
+
+      {/* ── WELFARE CHECK ─────────────────────────────────────────────────────
+          Whānau who may need checking on or help in an emergency (e.g.
+          kaumātua). Private: trustees only, tick-box needs, consent
+          required, printed separately from the Emergency Guide. */}
+      {section === 'welfare' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 600 }}>
+              Whānau who may need checking on or help in an emergency, like kaumātua living alone. Add someone only when they, or their whānau, know and agree. Record what help they need, not medical details. Only trustees can see this list.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button className="btn-secondary" onClick={printWelfareList} style={{ fontSize: 14 }}>🖨️ Print list</button>
+              <button className="btn-primary" onClick={openAddWelfare} style={{ fontSize: 14 }}>+ Add Person</button>
+            </div>
+          </div>
+          {sortedWelfare.length === 0 ? (
+            <div className="empty-state"><div className="emoji">🤝</div><div>No one on the welfare list yet</div></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {sortedWelfare.map(w => {
+                const entityName = w.entity_id ? entities.find(e => e.id === w.entity_id)?.name : null;
+                const checker = w.checker_id ? people.find(p => p.id === w.checker_id) : null;
+                return (
+                  <div key={w.id} className="panel" style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 220 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text1)', marginBottom: 4 }}>
+                          {w.full_name}
+                          {w.phone && <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 10 }}>{w.phone}</span>}
+                          {entityName && <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: 10 }}>· {entityName}</span>}
+                        </div>
+                        {w.usual_location && <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 4 }}>📍 {w.usual_location}</div>}
+                        {(w.needs || []).length > 0 && (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                            {w.needs.map(k => (
+                              <span key={k} style={{ fontSize: 12, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '2px 10px', color: 'var(--text2)' }}>
+                                {WELFARE_NEEDS.find(n => n.key === k)?.label || k}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {w.notes && <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 4 }}>{w.notes}</div>}
+                        <div style={{ fontSize: 13, color: 'var(--text3)', display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                          <span>👤 Checked by: {checker ? checker.full_name : 'not assigned'}</span>
+                          <span style={{ color: w.last_checked ? 'var(--text3)' : 'var(--danger)' }}>🕒 Last checked: {w.last_checked ? fmtDate(w.last_checked) : 'not yet'}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+                        <button onClick={() => markWelfareChecked(w)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                          ✓ Checked today
+                        </button>
+                        <button onClick={() => openEditWelfare(w)} style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 }}>
+                          Edit
+                        </button>
+                        <button onClick={() => deleteWelfare(w)} style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}>Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1194,6 +1417,102 @@ ${specialisedSection}
               <button onClick={() => setShowPersonModal(false)} className="btn-secondary">Cancel</button>
               <button onClick={handleSavePerson} className="btn-primary" disabled={personSaving}>
                 {personSaving ? 'Saving...' : editPerson ? 'Save Changes' : 'Add Contact'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── WELFARE MODAL ─────────────────────────────────────────────────── */}
+      {showWelfareModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 560, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, margin: 0, color: 'var(--brand)' }}>
+                {editWelfare ? 'Edit Welfare Record' : 'Add to Welfare List'}
+              </h2>
+              <button onClick={() => setShowWelfareModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text3)', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <FormError message={welfareError} />
+
+            {!editWelfare && contactChoices.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Pick from Contacts (optional)</label>
+                <select
+                  className="form-input"
+                  value=""
+                  onChange={e => {
+                    const c = contactChoices.find(x => x.key === e.target.value);
+                    if (c) setWelfareForm(f => ({ ...f, full_name: c.full_name, phone: c.phone }));
+                  }}
+                >
+                  <option value="">— Choose someone already in Contacts —</option>
+                  {contactChoices.map(c => <option key={c.key} value={c.key}>{c.full_name}</option>)}
+                </select>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Fills in their name and phone only. The welfare details below are kept in this private list, not in Contacts.</div>
+              </div>
+            )}
+
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Name *</label>
+                <input className="form-input" value={welfareForm.full_name} onChange={e => setWelfareForm(f => ({ ...f, full_name: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone</label>
+                <input className="form-input" value={welfareForm.phone} onChange={e => setWelfareForm(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Where to find them</label>
+              <input className="form-input" value={welfareForm.usual_location} onChange={e => setWelfareForm(f => ({ ...f, usual_location: e.target.value }))} placeholder="e.g. 12 Marae Rd, blue house at the end of the road" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Help they may need</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {WELFARE_NEEDS.map(n => (
+                  <label key={n.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text2)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={welfareForm.needs.includes(n.key)}
+                      onChange={e => setWelfareForm(f => ({ ...f, needs: e.target.checked ? [...f.needs, n.key] : f.needs.filter(k => k !== n.key) }))}
+                    />
+                    {n.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Short note</label>
+              <textarea className="form-input" rows={2} value={welfareForm.notes} onChange={e => setWelfareForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Whānau next door has a key. Please don't record medical conditions or diagnoses." style={{ resize: 'vertical' }} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Who will check on them?</label>
+              <select className="form-input" value={welfareForm.checker_id} onChange={e => setWelfareForm(f => ({ ...f, checker_id: e.target.value }))}>
+                <option value="">— Not assigned yet —</option>
+                {people.filter(p => p.role_category === 'emergency_contact').map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+              </select>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Pick from your Emergency Contacts. Add them on the Contacts tab first if they are not listed.</div>
+            </div>
+            {entities.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Entity</label>
+                <select className="form-input" value={welfareForm.entity_id} onChange={e => setWelfareForm(f => ({ ...f, entity_id: e.target.value }))}>
+                  <option value="">— Shared (all entities) —</option>
+                  {entities.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
+                </select>
+              </div>
+            )}
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: 'var(--text1)', cursor: 'pointer', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+              <input type="checkbox" style={{ marginTop: 3 }} checked={welfareForm.consent_confirmed} onChange={e => setWelfareForm(f => ({ ...f, consent_confirmed: e.target.checked }))} />
+              <span>This person (or their whānau) knows they are on this list and has agreed. *</span>
+            </label>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowWelfareModal(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleSaveWelfare} className="btn-primary" disabled={welfareSaving}>
+                {welfareSaving ? 'Saving...' : editWelfare ? 'Save Changes' : 'Add Person'}
               </button>
             </div>
           </div>
