@@ -179,7 +179,7 @@ input, select, textarea {
    hidden there and the sidebar stays a normal column. */
 .mobile-nav-bar, .sidebar-backdrop, .sidebar-close { display: none; }
 
-@media (max-width: 800px) {
+@media (max-width: 960px) {
   /* Top bar: keep the logo, marae name, avatar and Sign Out; drop the extras. */
   .header { padding: 0 12px; height: 56px; gap: 8px; }
   .header-left { gap: 0; }
