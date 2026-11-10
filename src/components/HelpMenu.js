@@ -326,6 +326,7 @@ const HELP_TOPICS = {
           { text: 'A private list of whānau who may need checking on or help in an emergency, like kaumātua living alone. For each person you record their name, phone, where to find them, simple tick-box kinds of help they may need (for example help moving around, or equipment that needs power), who will check on them, and when they were last checked.' },
           { items: [
             'Only trustees can see or change this list. Community members cannot.',
+            'If the person is already in Contacts, use "Pick from Contacts" to fill in their name and phone, so you do not type them twice. Only the name and phone are copied. The welfare details stay in this private list, not in Contacts.',
             'You can only add someone if you confirm they, or their whānau, know they are on the list and have agreed.',
             'Please do not record medical conditions or diagnoses, only the kind of help needed.',
             '"Checked by" is picked from your Emergency Contacts, so add those on the Contacts tab first.',

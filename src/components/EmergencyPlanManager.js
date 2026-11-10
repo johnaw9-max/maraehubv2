@@ -151,6 +151,11 @@ export default function EmergencyPlanManager() {
   const [welfareForm, setWelfareForm] = useState(EMPTY_WELFARE_FORM);
   const [welfareSaving, setWelfareSaving] = useState(false);
   const [welfareError, setWelfareError] = useState('');
+  // Names + phones only, loaded when the Add form opens, so a trustee can
+  // pick someone already in Contacts instead of typing them again. Nothing
+  // else from Contacts is copied, and the welfare details stay in their own
+  // private table.
+  const [contactChoices, setContactChoices] = useState([]);
 
   // Response History (Post #13 -- real, dated proof of what the marae has
   // actually done, not just what it's prepared for)
@@ -318,11 +323,21 @@ export default function EmergencyPlanManager() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  function openAddWelfare() {
+  async function openAddWelfare() {
     setEditWelfare(null);
     setWelfareForm(EMPTY_WELFARE_FORM);
     setWelfareError('');
+    setContactChoices([]);
     setShowWelfareModal(true);
+    const [profilesRes, contactsRes] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, phone'),
+      supabase.from('contacts').select('id, full_name, phone'),
+    ]);
+    const choices = [...(profilesRes.data || []), ...(contactsRes.data || [])]
+      .filter(c => (c.full_name || '').trim())
+      .map(c => ({ key: c.id, full_name: c.full_name.trim(), phone: c.phone || '' }))
+      .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    setContactChoices(choices);
   }
 
   function openEditWelfare(w) {
@@ -1420,6 +1435,24 @@ ${specialisedSection}
             </div>
 
             <FormError message={welfareError} />
+
+            {!editWelfare && contactChoices.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Pick from Contacts (optional)</label>
+                <select
+                  className="form-input"
+                  value=""
+                  onChange={e => {
+                    const c = contactChoices.find(x => x.key === e.target.value);
+                    if (c) setWelfareForm(f => ({ ...f, full_name: c.full_name, phone: c.phone }));
+                  }}
+                >
+                  <option value="">— Choose someone already in Contacts —</option>
+                  {contactChoices.map(c => <option key={c.key} value={c.key}>{c.full_name}</option>)}
+                </select>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Fills in their name and phone only. The welfare details below are kept in this private list, not in Contacts.</div>
+              </div>
+            )}
 
             <div className="grid-2">
               <div className="form-group">
