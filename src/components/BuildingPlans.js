@@ -55,6 +55,23 @@ export const STARTER_LAYOUT = [
 const newRoomId = () => Math.random().toString(36).slice(2, 10);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const MIN_SIZE = 6;
+const SNAP_DISTANCE = 1.5; // percent of the canvas
+const PAGE_GUIDES = [0, 25, 100 / 3, 50, 200 / 3, 75, 100]; // edges, quarters, thirds, centre
+
+// Find the smallest nudge that lines one of a box's edges/centre up with a guide.
+// pos/size are percentages. useCentre=false only tries the far edge (used when resizing).
+export function snapAxis(pos, size, targets, useCentre = true, distance = SNAP_DISTANCE) {
+  const offsets = useCentre ? [0, size / 2, size] : [size];
+  let best = null;
+  offsets.forEach(off => {
+    targets.forEach(t => {
+      const delta = t - (pos + off);
+      if (Math.abs(delta) <= distance && (!best || Math.abs(delta) < Math.abs(best.delta))) best = { delta, guide: t };
+    });
+  });
+  return best;
+}
+const round2 = v => Math.round(v * 100) / 100;
 
 const EMPTY_PIN_FORM = { pin_type: 'first_aid', label: '', notes: '' };
 
@@ -124,6 +141,8 @@ export default function BuildingPlans({ entities = [] }) {
   const [editRooms, setEditRooms] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const dragRef = useRef(null);
+  const [snapOn, setSnapOn] = useState(true);
+  const [guides, setGuides] = useState({ x: null, y: null });
   const plansRef = useRef([]);
   const pinsRef = useRef([]);
 
@@ -261,6 +280,20 @@ export default function BuildingPlans({ entities = [] }) {
     setSelectedRoomId(null);
   }
 
+  // Centre a room on the page, and carry any pins inside it along.
+  function centreRoom(room, axis) {
+    const patch = axis === 'x' ? { x: round2((100 - room.w) / 2) } : { y: round2((100 - room.h) / 2) };
+    const dx = (patch.x ?? room.x) - room.x;
+    const dy = (patch.y ?? room.y) - room.y;
+    const inside = pins.filter(p => p.plan_id === selectedId && p.x_pct >= room.x && p.x_pct <= room.x + room.w && p.y_pct >= room.y && p.y_pct <= room.y + room.h);
+    updateRoom(room.id, patch, true);
+    if (inside.length) {
+      const moved = new Map(inside.map(p => [p.id, { x: round2(clamp(Number(p.x_pct) + dx, 0, 100)), y: round2(clamp(Number(p.y_pct) + dy, 0, 100)) }]));
+      setPins(prev => prev.map(p => moved.has(p.id) ? { ...p, x_pct: moved.get(p.id).x, y_pct: moved.get(p.id).y } : p));
+      moved.forEach((v, id) => { supabase.from('emergency_plan_pins').update({ x_pct: v.x, y_pct: v.y }).eq('id', id); });
+    }
+  }
+
   function startDrag(e, room, mode) {
     if (!editRooms || placing || movingPinId) return;
     e.stopPropagation();
@@ -284,9 +317,34 @@ export default function BuildingPlans({ entities = [] }) {
     const plan = plansRef.current.find(p => p.id === selectedId);
     if (!plan || !Array.isArray(plan.layout)) return;
     const o = d.orig;
-    const patch = d.mode === 'move'
-      ? { x: clamp(o.x + dx, 0, 100 - o.w), y: clamp(o.y + dy, 0, 100 - o.h) }
-      : { w: clamp(o.w + dx, MIN_SIZE, 100 - o.x), h: clamp(o.h + dy, MIN_SIZE, 100 - o.y) };
+    const others = plan.layout.filter(r => r.id !== d.id);
+    const xs = [...PAGE_GUIDES, ...others.flatMap(r => [r.x, r.x + r.w / 2, r.x + r.w])];
+    const ys = [...PAGE_GUIDES, ...others.flatMap(r => [r.y, r.y + r.h / 2, r.y + r.h])];
+    let patch;
+    let gx = null;
+    let gy = null;
+    if (d.mode === 'move') {
+      let nx = clamp(o.x + dx, 0, 100 - o.w);
+      let ny = clamp(o.y + dy, 0, 100 - o.h);
+      if (snapOn) {
+        const sx = snapAxis(nx, o.w, xs, true);
+        const sy = snapAxis(ny, o.h, ys, true);
+        if (sx) { nx = clamp(nx + sx.delta, 0, 100 - o.w); gx = sx.guide; }
+        if (sy) { ny = clamp(ny + sy.delta, 0, 100 - o.h); gy = sy.guide; }
+      }
+      patch = { x: round2(nx), y: round2(ny) };
+    } else {
+      let nw = clamp(o.w + dx, MIN_SIZE, 100 - o.x);
+      let nh = clamp(o.h + dy, MIN_SIZE, 100 - o.y);
+      if (snapOn) {
+        const sx = snapAxis(o.x, nw, xs, false);
+        const sy = snapAxis(o.y, nh, ys, false);
+        if (sx) { nw = clamp(nw + sx.delta, MIN_SIZE, 100 - o.x); gx = sx.guide; }
+        if (sy) { nh = clamp(nh + sy.delta, MIN_SIZE, 100 - o.y); gy = sy.guide; }
+      }
+      patch = { w: round2(nw), h: round2(nh) };
+    }
+    setGuides(g => (g.x === gx && g.y === gy ? g : { x: gx, y: gy }));
     setLocalLayout(selectedId, plan.layout.map(r => r.id === d.id ? { ...r, ...patch } : r));
     if (d.mode === 'move' && d.carried.length) {
       const mx = patch.x - o.x;
@@ -300,6 +358,7 @@ export default function BuildingPlans({ entities = [] }) {
     if (!dragRef.current) return;
     const d = dragRef.current;
     dragRef.current = null;
+    setGuides({ x: null, y: null });
     const plan = plansRef.current.find(p => p.id === selectedId);
     if (plan && Array.isArray(plan.layout)) persistLayout(plan.id, plan.layout);
     if (d && d.carried && d.carried.length) {
@@ -508,7 +567,10 @@ ${planHtml}
 
           {isDrawn && editRooms && (
             <div style={{ background: '#E8F4EF', border: '1px solid #b9ddd0', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 10, display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <span>Drag a box to move it (pins inside it move too). Drag its bottom-right corner to resize. Tap a box to rename it or change its shape.</span>
+              <span>Drag a box to move it (pins inside it move too) and it clicks to the centre, halves, thirds and other boxes. Drag its bottom-right corner to resize. Tap a box to rename it or change its shape.</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={snapOn} onChange={e => setSnapOn(e.target.checked)} /> Snap to centre and edges
+              </label>
               <button onClick={addRoom} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontWeight: 700 }}>+ Add a room</button>
             </div>
           )}
@@ -532,6 +594,8 @@ ${planHtml}
                   )}
                 </div>
               ))}
+              {guides.x !== null && <div style={{ position: 'absolute', left: `${guides.x}%`, top: 0, bottom: 0, borderLeft: '1px dashed var(--brand)', pointerEvents: 'none' }} />}
+              {guides.y !== null && <div style={{ position: 'absolute', top: `${guides.y}%`, left: 0, right: 0, borderTop: '1px dashed var(--brand)', pointerEvents: 'none' }} />}
               {pinButtons}
             </div>
           )}
@@ -559,7 +623,11 @@ ${planHtml}
                   ))}
                 </div>
               </div>
-              <button className="btn-secondary" style={{ fontSize: 12, color: 'var(--danger)' }} onClick={() => removeRoom(selectedRoom.id)}>Remove this room</button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => centreRoom(selectedRoom, 'x')}>↔ Centre sideways</button>
+                <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => centreRoom(selectedRoom, 'y')}>↕ Centre up/down</button>
+                <button className="btn-secondary" style={{ fontSize: 12, color: 'var(--danger)' }} onClick={() => removeRoom(selectedRoom.id)}>Remove this room</button>
+              </div>
             </div>
           )}
 

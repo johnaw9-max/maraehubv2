@@ -22,7 +22,7 @@ jest.mock('../lib/supabase', () => ({
 }));
 
 // eslint-disable-next-line import/first
-import BuildingPlans, { STARTER_LAYOUT } from './BuildingPlans';
+import BuildingPlans, { STARTER_LAYOUT, snapAxis } from './BuildingPlans';
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -118,5 +118,53 @@ test('generator and key box can be pinned, and the key box warns not to type a c
   await act(async () => { canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 })); });
   expect(div.querySelector('select').value).toBe('key_box');
   expect(div.textContent).toContain('Never type a code or password');
+  act(() => root.unmount());
+});
+
+test('snapAxis lines a box up with the page centre, thirds and other boxes, but only when close', () => {
+  const guides = [0, 25, 100 / 3, 50, 200 / 3, 75, 100];
+  // box 30 wide whose centre (34.3 + 15 = 49.3) is near the page centre
+  expect(snapAxis(34.3, 30, guides).guide).toBe(50);
+  expect(snapAxis(34.3, 30, guides).delta).toBeCloseTo(0.7);
+  // far from every guide: no snap
+  expect(snapAxis(10, 8, [0, 50, 100])).toBeNull();
+  // resize mode only looks at the far edge
+  expect(snapAxis(10, 39.5, [50], false).delta).toBeCloseTo(0.5);
+  expect(snapAxis(10, 20, [30, 50], false).guide).toBe(30);
+  // a neighbour's edge works as a guide
+  expect(snapAxis(61.2, 20, [60]).guide).toBe(60);
+});
+
+test('dragging a box close to the centre clicks it to the centre', async () => {
+  mockUpdate.mockClear();
+  const { div, root } = await mount();
+  await act(async () => { btn(div, 'Edit rooms').click(); });
+  const canvas = div.querySelector('[data-testid="plan-canvas"]');
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 500 });
+  const box = [...canvas.children].find(c => c.textContent.includes('Wharenui'));
+  const fire = (el, type, x, y) => el.dispatchEvent(Object.assign(new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }), { pointerId: 1 }));
+  await act(async () => { fire(box, 'pointerdown', 200, 100); });
+  await act(async () => { fire(canvas, 'pointermove', 443, 100); }); // +24.3% sideways, box centre lands at 49.3%
+  await act(async () => { fire(canvas, 'pointerup', 443, 100); });
+  const saved = mockUpdate.mock.calls.find(c => c[0] === 'emergency_building_plans')[1].layout[0];
+  expect(saved.x).toBeCloseTo(35); // 35 + 30/2 = 50
+  act(() => root.unmount());
+});
+
+test('the centre buttons centre a box on the page', async () => {
+  mockUpdate.mockClear();
+  const { div, root } = await mount();
+  await act(async () => { btn(div, 'Edit rooms').click(); });
+  const canvas = div.querySelector('[data-testid="plan-canvas"]');
+  const box = [...canvas.children].find(c => c.textContent.includes('Wharenui'));
+  const fire = (el, type) => el.dispatchEvent(Object.assign(new MouseEvent(type, { bubbles: true, clientX: 0, clientY: 0 }), { pointerId: 1 }));
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 500 });
+  await act(async () => { fire(box, 'pointerdown'); fire(canvas, 'pointerup'); }); // select it without moving
+  await act(async () => { btn(div, 'Centre sideways').click(); });
+  await act(async () => { btn(div, 'Centre up/down').click(); });
+  const layoutCalls = mockUpdate.mock.calls.filter(c => c[0] === 'emergency_building_plans');
+  const last = layoutCalls.at(-1)[1].layout[0];
+  expect(last.x).toBeCloseTo(35); // (100 - 30) / 2
+  expect(last.y).toBeCloseTo(40); // (100 - 20) / 2
   act(() => root.unmount());
 });
