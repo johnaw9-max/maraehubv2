@@ -1,0 +1,99 @@
+{
+  "purpose": "Every legal statement MaraeHub makes, the published page it comes from, and the exact words we rely on. A monthly scheduled task re-reads each monitored page and raises a ClickUp task if the words change or the page cannot be read. It never edits the app. A person decides what a change means.",
+  "lastReviewedBy": "automated baseline check, not a lawyer",
+  "claims": [
+    {
+      "id": "evac-scheme-sleeping",
+      "claim": "A FENZ-approved evacuation scheme may be required for buildings that provide accommodation for six or more people (not counting individual homes).",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://fireandemergency.nz/assets/Documents/Business-and-Landlords/Fire-Safety-Evacuation-Procedures-and-Evacuation-Schemes-Info-Sheet.pdf",
+      "keyPhrase": "accommodation for six or more people",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "evac-scheme-gatherings",
+      "claim": "A scheme may be required for buildings used for gatherings of 100 or more people.",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.fireandemergency.nz/assets/Documents/EvacuationSchemes/Evacuation-scheme-application-reference-guide.pdf",
+      "keyPhrase": "gatherings, for any purpose, for 100 or more people",
+      "checkedOn": "2026-11-10",
+      "monitor": true,
+      "note": "The info sheet words this as 'can hold more than 100 people'. Check both if either changes."
+    },
+    {
+      "id": "evac-scheme-employment",
+      "claim": "A scheme may be required for buildings that provide employment facilities for 10 or more people.",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.fireandemergency.nz/assets/Documents/EvacuationSchemes/Evacuation-scheme-application-reference-guide.pdf",
+      "keyPhrase": "employment facilities for 10 or more people",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "evac-scheme-prosecution",
+      "claim": "A building owner who does not provide or maintain a required scheme can be prosecuted, and FENZ may seek a court order closing the building (Fire and Emergency NZ Act 2017, ss 76(4) and 79).",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.fireandemergency.nz/assets/Documents/EvacuationSchemes/Evacuation-scheme-application-reference-guide.pdf",
+      "keyPhrase": "fails to provide or maintain an approved evacuation scheme",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "first-aid-duty",
+      "claim": "A PCBU must provide first aid for workers (Health and Safety at Work (General Risk and Workplace Management) Regulations 2016, reg 13).",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.worksafe.govt.nz/managing-health-and-safety/businesses/general-requirements-for-workplaces/first-aid",
+      "keyPhrase": "PCBUs have a duty to provide first aid for their workers at work",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "first-aid-equipment",
+      "claim": "Adequate first aid equipment, access to it, and enough trained first aiders are required at a workplace.",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.worksafe.govt.nz/managing-health-and-safety/businesses/general-requirements-for-workplaces/first-aid",
+      "keyPhrase": "must provide adequate first aid equipment for your workplace",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "emergency-plan-duty",
+      "claim": "Organisations covered by the Act must prepare, maintain and implement an emergency plan (Regulations 2016, reg 14).",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.worksafe.govt.nz/managing-health-and-safety/businesses/general-requirements-for-workplaces/first-aid",
+      "keyPhrase": "You must have an emergency plan for your workplace",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "volunteers-only-certain",
+      "claim": "Only certain volunteer organisations fall under the Health and Safety at Work Act 2015.",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://registers.worksafe.govt.nz/managing-health-and-safety/getting-started/understanding-the-law/volunteers/volunteers-key-things-to-know",
+      "keyPhrase": "Only certain volunteer organisations fall under",
+      "checkedOn": "2026-11-10",
+      "monitor": true
+    },
+    {
+      "id": "marae-no-one-rule",
+      "claim": "There is no one fire rule for all marae; it depends on building size, sleeping use and age.",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://www.rnz.co.nz/news/te-manu-korihi/391828/tapu-te-ranga-blaze-sheds-spotlight-on-lack-of-fire-safety-across-all-marae",
+      "keyPhrase": "There was no one rule for all marae",
+      "checkedOn": "2026-11-10",
+      "monitor": true,
+      "note": "2019 news article. Older than the law pages, so treat as background only."
+    },
+    {
+      "id": "fenz-framework-page",
+      "claim": "Background link for the fire safety regulatory framework.",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://fireandemergency.nz/business-and-landlords/fire-safety-regulatory-framework",
+      "keyPhrase": "",
+      "checkedOn": "2026-11-10",
+      "monitor": false,
+      "note": "On 10 Nov 2026 the page text could not be read by automated fetch (metadata only). Not monitored. Check by hand at the yearly review."
+    }
+  ]
+}
