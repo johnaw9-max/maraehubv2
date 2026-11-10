@@ -23,6 +23,8 @@ export const PIN_TYPES = [
   { value: 'gas_shutoff',       label: 'Gas shut-off',        icon: '🔥' },
   { value: 'assembly_point',    label: 'Assembly point',      icon: '📍' },
   { value: 'torch_radio',       label: 'Torch / radio',       icon: '🔦' },
+  { value: 'generator',         label: 'Generator',           icon: '🔋' },
+  { value: 'key_box',           label: 'Key box / keys',      icon: '🔑' },
   { value: 'other',             label: 'Other',               icon: '📌' },
 ];
 const pinMeta = t => PIN_TYPES.find(p => p.value === t) || PIN_TYPES[PIN_TYPES.length - 1];
@@ -668,6 +670,11 @@ ${planHtml}
             </div>
             <div className="form-group">
               <label className="form-label">Notes</label>
+              {pinForm.pin_type === 'key_box' && (
+                <div style={{ fontSize: 12, color: '#8a5a10', background: '#FDF3E3', border: '1px solid #e8cf9f', borderRadius: 6, padding: '6px 10px', marginBottom: 6 }}>
+                  Say where the key is kept, for example "red box above the fridge". Never type a code or password here. A printed plan can be seen by anyone.
+                </div>
+              )}
               <textarea className="form-input" rows={2} value={pinForm.notes} onChange={e => setPinForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Key is in the red box" style={{ resize: 'vertical' }} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>

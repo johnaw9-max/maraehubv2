@@ -42,6 +42,8 @@ export const PIN_COMPLIANCE = {
   water_shutoff:     { basis: 'good',  why: 'So anyone can stop a burst pipe or flood quickly.' },
   gas_shutoff:       { basis: 'good',  why: 'So anyone can isolate gas quickly, if you have it.' },
   torch_radio:       { basis: 'good',  why: 'Useful when the power and phones are out.' },
+  generator:         { basis: 'good',  why: 'Know where it is, who can start it, and keep fuel safe and away from buildings.' },
+  key_box:           { basis: 'good',  why: 'So the right person can get the generator, gate and building keys fast. Record where, never the code.' },
 };
 
 export const SOURCES = [
