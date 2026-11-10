@@ -5,15 +5,17 @@ import { act } from 'react-dom/test-utils';
 const mockInsert = jest.fn();
 const mockUpdate = jest.fn();
 const mockRoom = { id: 'r1', name: 'Wharenui', x: 10, y: 10, w: 30, h: 20, shape: 'rect', color: '#DDEBF7' };
+const mockPin = { id: 'pin-in', plan_id: 'plan-d', pin_type: 'exit', label: 'Front door', x_pct: 20, y_pct: 15, notes: null };
+const mockPinOut = { id: 'pin-out', plan_id: 'plan-d', pin_type: 'exit', label: 'Gate', x_pct: 80, y_pct: 80, notes: null };
 const mockDrawn = { id: 'plan-d', entity_id: null, name: 'Our marae', image_path: null, layout: [mockRoom] };
 
 jest.mock('../lib/audit', () => ({ logAudit: jest.fn() }));
 jest.mock('../lib/supabase', () => ({
   supabase: {
     from: table => ({
-      select: () => ({ order: () => Promise.resolve({ data: table === 'emergency_building_plans' ? [mockDrawn] : [], error: null }) }),
+      select: () => ({ order: () => Promise.resolve({ data: table === 'emergency_building_plans' ? [mockDrawn] : [mockPin, mockPinOut], error: null }) }),
       insert: (...a) => mockInsert(...a),
-      update: (...a) => { mockUpdate(...a); return { eq: () => Promise.resolve({ error: null }) }; },
+      update: (...a) => { mockUpdate(table, ...a); return { eq: () => Promise.resolve({ error: null }) }; },
     }),
     storage: { from: () => ({ createSignedUrl: jest.fn() }) },
   },
@@ -72,10 +74,16 @@ test('dragging a room moves it and saves the new position', async () => {
   await act(async () => { fire(box, 'pointerdown', 200, 100); });
   await act(async () => { fire(canvas, 'pointermove', 300, 150); }); // +10% x, +10% y
   await act(async () => { fire(canvas, 'pointerup', 300, 150); });
-  const saved = mockUpdate.mock.calls.at(-1)[0].layout[0];
+  const layoutCall = mockUpdate.mock.calls.find(c => c[0] === 'emergency_building_plans');
+  const saved = layoutCall[1].layout[0];
   expect(saved.x).toBeCloseTo(20);
   expect(saved.y).toBeCloseTo(20);
   expect(saved.w).toBe(30);
+  // the pin inside the room moved by the same amount; the pin outside did not
+  const pinCalls = mockUpdate.mock.calls.filter(c => c[0] === 'emergency_plan_pins');
+  expect(pinCalls).toHaveLength(1);
+  expect(pinCalls[0][1].x_pct).toBeCloseTo(30);
+  expect(pinCalls[0][1].y_pct).toBeCloseTo(25);
   act(() => root.unmount());
 });
 
