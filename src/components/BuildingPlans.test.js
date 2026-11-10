@@ -20,7 +20,7 @@ jest.mock('../lib/supabase', () => ({
 // eslint-disable-next-line import/first
 import BuildingPlans from './BuildingPlans';
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+global.IS_REACT_ACT_ENVIRONMENT = true;
 
 async function mount() {
   const div = document.createElement('div');
