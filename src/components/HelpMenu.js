@@ -162,6 +162,7 @@ const HELP_TOPICS = {
       category: 'Contacts',
       icon: '👥',
       items: [
+        { q: 'Can I mark someone in Contacts as vulnerable or needing help in an emergency?', a: 'No, deliberately. Use Emergency Plan → Welfare Check instead. It is a separate list that only trustees can see, it needs consent, and it keeps medical details out. You can pick a person from Contacts to fill in their name and phone, and nothing is added to their Contacts record.' },
         { q: 'How do I add a new trustee or community member?', a: [
           { text: 'Go to the Contacts tab and click "+ Add User".' },
           { header: 'Enter:', items: [
@@ -333,6 +334,14 @@ const HELP_TOPICS = {
             'Click "✓ Checked today" after someone has been checked on. People who have not been checked, or were checked longest ago, show first.',
           ]},
           { text: 'The "Print list" button prints the list on its own, marked confidential. It is deliberately not part of Print Emergency Guide or the Emergency Readiness Summary, so names are never printed by accident. Keep any printed copy somewhere safe and shred old ones.' },
+        ] },
+        { q: 'Why are people on the Welfare Check not marked on the Contacts list?', a: [
+          { text: 'On purpose. Contacts is the general directory of people who log in or do a job for the marae, so it is seen in more places (filters, detailed view, any print). Whether someone needs help in an emergency is private, so it lives only in the trustees-only Welfare Check list.' },
+          { items: [
+            'A badge such as 🔥 Fire Warden says what a person can do for the marae. Needing help is different, and is never shown on Contacts.',
+            'Kaumātua often have no login or email, so they do not need a Contacts entry at all.',
+            'If someone is in both lists, use "Pick from Contacts" in the Welfare Check. It copies their name and phone once and adds nothing to their Contacts record.',
+          ]},
         ] },
         { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History, Map, Building Plan and Welfare Check sections above. The Building Plan is a simple sketch with pins, a starting point rather than a full site plan. The Welfare Check tab is a simple version of the official template\'s confidential vulnerable-persons section, not a copy of it. The rest of the official template (service providers, infrastructure, inventory, yearly targets, and the emergency contact tree) is planned but not built.' },
       ]
