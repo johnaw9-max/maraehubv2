@@ -18,7 +18,7 @@ export const LEGAL_NOTES = [
   },
   {
     title: 'Fire evacuation scheme',
-    text: 'Some buildings must have a FENZ-approved evacuation scheme, for example those that sleep people, hold over 100 members of the public, employ 10 or more people, or hold certain hazardous substances. If a building owner does not provide or maintain a required scheme, they can be prosecuted (Fire and Emergency NZ Act 2017, sections 76 and 79). Several buildings on one site can share one scheme application.',
+    text: 'Some buildings must have a FENZ-approved evacuation scheme. FENZ lists buildings that provide accommodation for six or more people (not counting individual homes), are used for gatherings of 100 or more people, provide employment for 10 or more people, or hold more than set amounts of hazardous substances. A wharenui used for overnight stays can easily pass the accommodation threshold. If a building owner does not provide or maintain a required scheme, they can be prosecuted and FENZ may seek a court order closing the building until a scheme is approved (Fire and Emergency NZ Act 2017, sections 76 and 79). Several buildings on one site can share one scheme application.',
   },
   {
     title: 'First aid',
