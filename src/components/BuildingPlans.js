@@ -125,6 +125,7 @@ export default function BuildingPlans({ entities = [] }) {
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const dragRef = useRef(null);
   const plansRef = useRef([]);
+  const pinsRef = useRef([]);
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -149,6 +150,7 @@ export default function BuildingPlans({ entities = [] }) {
   }
 
   plansRef.current = plans;
+  pinsRef.current = pins;
   const selectedPlan = plans.find(p => p.id === selectedId) || null;
   const isDrawn = !!(selectedPlan && !selectedPlan.image_path);
   const layout = (selectedPlan && Array.isArray(selectedPlan.layout)) ? selectedPlan.layout : [];
@@ -264,7 +266,12 @@ export default function BuildingPlans({ entities = [] }) {
     e.stopPropagation();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     setSelectedRoomId(room.id);
-    dragRef.current = { id: room.id, mode, sx: e.clientX, sy: e.clientY, orig: { x: room.x, y: room.y, w: room.w, h: room.h } };
+    // Pins sitting inside a room travel with it when the room is moved.
+    const carried = mode === 'move'
+      ? pinsRef.current.filter(p => p.plan_id === selectedId && p.x_pct >= room.x && p.x_pct <= room.x + room.w && p.y_pct >= room.y && p.y_pct <= room.y + room.h)
+          .map(p => ({ id: p.id, x: Number(p.x_pct), y: Number(p.y_pct) }))
+      : [];
+    dragRef.current = { id: room.id, mode, sx: e.clientX, sy: e.clientY, orig: { x: room.x, y: room.y, w: room.w, h: room.h }, carried };
   }
 
   function onDragMove(e) {
@@ -281,13 +288,30 @@ export default function BuildingPlans({ entities = [] }) {
       ? { x: clamp(o.x + dx, 0, 100 - o.w), y: clamp(o.y + dy, 0, 100 - o.h) }
       : { w: clamp(o.w + dx, MIN_SIZE, 100 - o.x), h: clamp(o.h + dy, MIN_SIZE, 100 - o.y) };
     setLocalLayout(selectedId, plan.layout.map(r => r.id === d.id ? { ...r, ...patch } : r));
+    if (d.mode === 'move' && d.carried.length) {
+      const mx = patch.x - o.x;
+      const my = patch.y - o.y;
+      const moved = new Map(d.carried.map(c => [c.id, { x: Math.round(clamp(c.x + mx, 0, 100) * 100) / 100, y: Math.round(clamp(c.y + my, 0, 100) * 100) / 100 }]));
+      setPins(prev => prev.map(p => moved.has(p.id) ? { ...p, x_pct: moved.get(p.id).x, y_pct: moved.get(p.id).y } : p));
+    }
   }
 
   function endDrag() {
     if (!dragRef.current) return;
+    const d = dragRef.current;
     dragRef.current = null;
     const plan = plansRef.current.find(p => p.id === selectedId);
     if (plan && Array.isArray(plan.layout)) persistLayout(plan.id, plan.layout);
+    if (d && d.carried && d.carried.length) {
+      d.carried.forEach(c => {
+        const p = pinsRef.current.find(x => x.id === c.id);
+        if (p && (Number(p.x_pct) !== c.x || Number(p.y_pct) !== c.y)) {
+          supabase.from('emergency_plan_pins').update({ x_pct: p.x_pct, y_pct: p.y_pct }).eq('id', p.id).then(({ error }) => {
+            if (error) setLoadError('Could not save a pin position. Please refresh and check your pins.');
+          });
+        }
+      });
+    }
   }
 
   // ── Pins ────────────────────────────────────────────────────────────────
@@ -484,7 +508,7 @@ ${planHtml}
 
           {isDrawn && editRooms && (
             <div style={{ background: '#E8F4EF', border: '1px solid #b9ddd0', borderRadius: 8, padding: '8px 12px', fontSize: 13, marginBottom: 10, display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <span>Drag a box to move it. Drag its bottom-right corner to resize. Tap a box to rename it or change its shape.</span>
+              <span>Drag a box to move it (pins inside it move too). Drag its bottom-right corner to resize. Tap a box to rename it or change its shape.</span>
               <button onClick={addRoom} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', fontWeight: 700 }}>+ Add a room</button>
             </div>
           )}

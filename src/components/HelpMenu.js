@@ -299,7 +299,7 @@ const HELP_TOPICS = {
         { q: 'What is the Building Plan tab?', a: [
           { text: 'Emergency Plan → Building Plan is a simple plan of your marae with pins for the things people need to find fast. You do not need an existing floor plan.' },
           { list: [
-            'No plan? Tap "Draw a simple plan" and start from a typical marae (wharenui, wharekai, kitchen, toilets, marae ātea, carpark and more). Tap "Edit rooms" to drag, resize, rename, reshape, add or remove boxes.',
+            'No plan? Tap "Draw a simple plan" and start from a typical marae (wharenui, wharekai, kitchen, toilets, marae ātea, carpark and more). Tap "Edit rooms" to drag, resize, rename, reshape, add or remove boxes. Pins sitting inside a box move with it.',
             'Got a plan? Upload a photo, scan or screenshot (JPG or PNG). It is shrunk automatically so it uses very little storage.',
             'Tap a safety item (fire extinguisher, first aid kit, shut-offs, generator, key box, exits and more), then tap the plan where it is. Tap a pin to edit, move or remove it.',
             'Print plan gives a paper copy with numbered pins and a key.',
