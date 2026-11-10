@@ -284,7 +284,7 @@ const HELP_TOPICS = {
       items: [
         { q: 'What is the Emergency Plan module, and how is it different from "Emergency Preparedness" in Compliance?', a: 'Compliance Tracker\'s "Emergency Preparedness" category tracks 10 generic checklist items (renewal dates for your Civil Defence plan, generator, water supply, and so on). The separate Emergency Plan tab (Assets & Compliance group) is a full, guided digitisation of the real official Marae Emergency Preparedness Plan (Waikato District Council / Te Puni Kōkiri, Civil Defence Emergency Management) — a genuinely different, more complete document, built directly from the real template.' },
         { q: 'How do I use it?', a: [
-          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus three extra, MaraeHub-specific sections not part of the original template (see Response History, Map and Building Plan below).' },
+          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus four extra, MaraeHub-specific sections not part of the original template (see Response History, Map, Building Plan and Welfare Check below).' },
           { items: [
             'History — the marae\'s own history, in your words.',
             'Hazards — 11 pre-seeded hazard types, each with a Likely Impact and What To Do.',
@@ -322,7 +322,18 @@ const HELP_TOPICS = {
           { text: 'Real, honest limitation: "Muster / Evacuation Point" marks a single rally point, not a routed evacuation path — MaraeHub does not have real path-tracing data to draw an actual route, so a marked point is the honest option rather than a route that looks more precise than it is.' },
           { text: 'The location search box and the map preview both only appear once a Google Maps API key has been configured for MaraeHub. If you see "Search not available" or "Map preview not available", the manual coordinate fields still work, and anything already saved is unaffected — the search and preview just are not connected yet.' },
         ] },
-        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History, Map and Building Plan sections above. The Building Plan is a simple sketch with pins, a starting point rather than a full site plan. The rest of the official template (service providers, infrastructure, inventory, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
+        { q: 'What is the Welfare Check tab, and who can see it?', a: [
+          { text: 'A private list of whānau who may need checking on or help in an emergency, like kaumātua living alone. For each person you record their name, phone, where to find them, simple tick-box kinds of help they may need (for example help moving around, or equipment that needs power), who will check on them, and when they were last checked.' },
+          { items: [
+            'Only trustees can see or change this list. Community members cannot.',
+            'You can only add someone if you confirm they, or their whānau, know they are on the list and have agreed.',
+            'Please do not record medical conditions or diagnoses, only the kind of help needed.',
+            '"Checked by" is picked from your Emergency Contacts, so add those on the Contacts tab first.',
+            'Click "✓ Checked today" after someone has been checked on. People who have not been checked, or were checked longest ago, show first.',
+          ]},
+          { text: 'The "Print list" button prints the list on its own, marked confidential. It is deliberately not part of Print Emergency Guide or the Emergency Readiness Summary, so names are never printed by accident. Keep any printed copy somewhere safe and shred old ones.' },
+        ] },
+        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History, Map, Building Plan and Welfare Check sections above. The Building Plan is a simple sketch with pins, a starting point rather than a full site plan. The Welfare Check tab is a simple version of the official template\'s confidential vulnerable-persons section, not a copy of it. The rest of the official template (service providers, infrastructure, inventory, yearly targets, and the emergency contact tree) is planned but not built.' },
       ]
     },
     {
