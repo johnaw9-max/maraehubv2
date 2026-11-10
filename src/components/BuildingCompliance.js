@@ -72,7 +72,7 @@ export default function BuildingCompliancePanel({ pins, pinTypes }) {
         <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>
           {missingLaw > 0
             ? `${missingLaw} item${missingLaw > 1 ? 's' : ''} the law may require ${missingLaw > 1 ? 'are' : 'is'} not on your plan yet.`
-            : 'The items the law may require are all on your plan.'}
+            : 'The items the law may require each have a pin on your plan. A pin does not prove the item is working or that you comply, so check each one regularly.'}
         </div>
       </button>
 
