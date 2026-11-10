@@ -284,7 +284,7 @@ const HELP_TOPICS = {
       items: [
         { q: 'What is the Emergency Plan module, and how is it different from "Emergency Preparedness" in Compliance?', a: 'Compliance Tracker\'s "Emergency Preparedness" category tracks 10 generic checklist items (renewal dates for your Civil Defence plan, generator, water supply, and so on). The separate Emergency Plan tab (Assets & Compliance group) is a full, guided digitisation of the real official Marae Emergency Preparedness Plan (Waikato District Council / Te Puni Kōkiri, Civil Defence Emergency Management) — a genuinely different, more complete document, built directly from the real template.' },
         { q: 'How do I use it?', a: [
-          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus two extra, MaraeHub-specific sections not part of the original template (see Response History and Map below).' },
+          { text: 'Go to Assets & Compliance → Emergency Plan. Five of the official document\'s sections are live, plus three extra, MaraeHub-specific sections not part of the original template (see Response History, Map and Building Plan below).' },
           { items: [
             'History — the marae\'s own history, in your words.',
             'Hazards — 11 pre-seeded hazard types, each with a Likely Impact and What To Do.',
@@ -322,7 +322,7 @@ const HELP_TOPICS = {
           { text: 'Real, honest limitation: "Muster / Evacuation Point" marks a single rally point, not a routed evacuation path — MaraeHub does not have real path-tracing data to draw an actual route, so a marked point is the honest option rather than a route that looks more precise than it is.' },
           { text: 'The location search box and the map preview both only appear once a Google Maps API key has been configured for MaraeHub. If you see "Search not available" or "Map preview not available", the manual coordinate fields still work, and anything already saved is unaffected — the search and preview just are not connected yet.' },
         ] },
-        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History and Map sections above. The rest of the official template (service providers, infrastructure, inventory, site plan, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
+        { q: 'Is the Emergency Plan tool finished?', a: 'Honestly, not fully — 5 of the real document\'s 14 sections are live, plus the extra Response History, Map and Building Plan sections above. The Building Plan is a simple sketch with pins, a starting point rather than a full site plan. The rest of the official template (service providers, infrastructure, inventory, yearly targets, and two confidential sections for vulnerable persons and emergency contact trees) are planned but not built.' },
       ]
     },
     {
