@@ -168,3 +168,13 @@ test('the centre buttons centre a box on the page', async () => {
   expect(last.y).toBeCloseTo(40); // (100 - 20) / 2
   act(() => root.unmount());
 });
+
+test('checklist rows link to official guidance and show the free FENZ marae visit number', async () => {
+  const { div, root } = await mount();
+  await act(async () => { btn(div, 'What must a marae have?').click(); });
+  const hrefs = [...div.querySelectorAll('a')].map(a => a.getAttribute('href'));
+  expect(hrefs).toContain('https://fireandemergency.nz/home-fire-safety/marae-fire-safety');
+  expect(hrefs.some(h => h.includes('worksafe.govt.nz'))).toBe(true);
+  expect(div.textContent).toContain('0800 MAHUIKA');
+  act(() => root.unmount());
+});

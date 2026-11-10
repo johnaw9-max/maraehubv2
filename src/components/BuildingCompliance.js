@@ -46,7 +46,20 @@ export const PIN_COMPLIANCE = {
   key_box:           { basis: 'good',  why: 'So the right person can get the generator, gate and building keys fast. Record where, never the code.' },
 };
 
+// Official page for each checklist item. Only pages that were read and confirmed are linked;
+// items with no confirmed page show no link rather than a guess.
+export const PIN_LINKS = {
+  first_aid:         { label: 'WorkSafe: first aid', url: 'https://www.worksafe.govt.nz/managing-health-and-safety/businesses/general-requirements-for-workplaces/first-aid' },
+  assembly_point:    { label: 'FENZ: evacuation schemes', url: 'https://fireandemergency.nz/assets/Documents/Business-and-Landlords/Fire-Safety-Evacuation-Procedures-and-Evacuation-Schemes-Info-Sheet.pdf' },
+  exit:              { label: 'FENZ: evacuation schemes', url: 'https://fireandemergency.nz/assets/Documents/Business-and-Landlords/Fire-Safety-Evacuation-Procedures-and-Evacuation-Schemes-Info-Sheet.pdf' },
+  fire_alarm:        { label: 'FENZ: marae fire safety (free visit)', url: 'https://fireandemergency.nz/home-fire-safety/marae-fire-safety' },
+  fire_extinguisher: { label: 'FENZ: marae fire safety (free visit)', url: 'https://fireandemergency.nz/home-fire-safety/marae-fire-safety' },
+};
+
+export const FENZ_MARAE_CONTACT = 'FENZ Māori Liaison Officers will visit your marae to look at fire risks: 0800 MAHUIKA (0800 6248452).';
+
 export const SOURCES = [
+  { label: 'FENZ: marae fire safety (free marae visit)', url: 'https://fireandemergency.nz/home-fire-safety/marae-fire-safety' },
   { label: 'FENZ: fire safety regulatory framework', url: 'https://fireandemergency.nz/business-and-landlords/fire-safety-regulatory-framework' },
   { label: 'FENZ: evacuation scheme application guide', url: 'https://www.fireandemergency.nz/assets/Documents/EvacuationSchemes/Evacuation-scheme-application-reference-guide.pdf' },
   { label: 'FENZ: evacuation procedures and schemes info sheet', url: 'https://fireandemergency.nz/assets/Documents/Business-and-Landlords/Fire-Safety-Evacuation-Procedures-and-Evacuation-Schemes-Info-Sheet.pdf' },
@@ -91,6 +104,11 @@ export default function BuildingCompliancePanel({ pins, pinTypes }) {
                   <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>{r.count ? `${r.count} on plan` : 'not on plan yet'}</span>
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 2 }}>{r.why}</div>
+                {PIN_LINKS[r.value] && (
+                  <a href={PIN_LINKS[r.value].url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 600 }}>
+                    {PIN_LINKS[r.value].label} ↗
+                  </a>
+                )}
               </div>
             </div>
           ))}
@@ -102,6 +120,9 @@ export default function BuildingCompliancePanel({ pins, pinTypes }) {
               <div style={{ fontSize: 13, color: 'var(--text2)' }}>{n.text}</div>
             </div>
           ))}
+          <div style={{ fontSize: 13, background: '#E8F4EF', border: '1px solid #b9ddd0', borderRadius: 8, padding: '8px 12px', margin: '12px 0' }}>
+            <strong>Free help:</strong> {FENZ_MARAE_CONTACT}
+          </div>
           <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', margin: '12px 0' }}>{DISCLAIMER}</div>
           <div style={{ fontSize: 12, color: 'var(--text3)' }}>
             Sources:{' '}

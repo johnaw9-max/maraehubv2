@@ -3,6 +3,16 @@
   "lastReviewedBy": "automated baseline check, not a lawyer",
   "claims": [
     {
+      "id": "fenz-marae-visit",
+      "claim": "FENZ offers marae a visit to assess fire risks, arranged through its Māori Liaison Officers on 0800 MAHUIKA (0800 6248452).",
+      "appFile": "src/components/BuildingCompliance.js",
+      "sourceUrl": "https://fireandemergency.nz/home-fire-safety/marae-fire-safety",
+      "keyPhrase": "see what fire dangers exist in and around your marae",
+      "checkedOn": "2026-11-11",
+      "monitor": true,
+      "note": "Also check the phone number 0800 MAHUIKA (0800 6248452) is still on the page."
+    },
+    {
       "id": "evac-scheme-sleeping",
       "claim": "A FENZ-approved evacuation scheme may be required for buildings that provide accommodation for six or more people (not counting individual homes).",
       "appFile": "src/components/BuildingCompliance.js",
