@@ -296,14 +296,15 @@ const HELP_TOPICS = {
           ]},
         ] },
         { q: 'What is the Building Plan tab?', a: [
-          { text: 'Emergency Plan → Building Plan lets you upload a picture of your floor plan and drop pins on it for the things people need to find fast.' },
+          { text: 'Emergency Plan → Building Plan is a simple plan of your marae with pins for the things people need to find fast. You do not need an existing floor plan.' },
           { list: [
-            'Upload a photo, scan or screenshot of the plan (JPG or PNG). It is shrunk automatically so it uses very little storage.',
-            'Tap "Add a pin", tap the spot on the plan, then choose what it is: first aid kit, defibrillator, fire extinguisher, shut-offs, exit, assembly point and more.',
-            'Tap a pin to edit, move or remove it.',
+            'No plan? Tap "Draw a simple plan" and start from a typical marae (wharenui, wharekai, kitchen, toilets, marae ātea, carpark and more). Tap "Edit rooms" to drag, resize, rename, reshape, add or remove boxes.',
+            'Got a plan? Upload a photo, scan or screenshot (JPG or PNG). It is shrunk automatically so it uses very little storage.',
+            'Tap a safety item (fire extinguisher, first aid kit, shut-offs, exits and more), then tap the plan where it is. Tap a pin to edit, move or remove it.',
             'Print plan gives a paper copy with numbered pins and a key.',
+            '"What must a marae have?" shows a checklist from your pins, what the law says in plain words, and where each statement comes from.',
           ]},
-          { text: 'It is a simple drawing, not to scale. Only trustees can see it. Check the real locations on your regular walk-through.' },
+          { text: 'It is a simple drawing, not to scale. Only trustees can see it. The legal guide is general information, not legal advice. What applies depends on your buildings and how you use them, so check with FENZ and your council. Check the real locations on your regular walk-through.' },
         ] },
         { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not exactly. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents too. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub, and — via the "Emergency Readiness Summary" print button — generating a real, factual document from what you\'ve entered, for your own records or for external use (e.g. supporting a funding application).' },
         { q: 'What does the "Emergency Readiness Summary" actually show?', a: [
