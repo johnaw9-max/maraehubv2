@@ -295,6 +295,16 @@ const HELP_TOPICS = {
             'Map — the marae\'s real location plus hand-added points for water sources, muster/evacuation points, and key assets.',
           ]},
         ] },
+        { q: 'What is the Building Plan tab?', a: [
+          { text: 'Emergency Plan → Building Plan lets you upload a picture of your floor plan and drop pins on it for the things people need to find fast.' },
+          { list: [
+            'Upload a photo, scan or screenshot of the plan (JPG or PNG). It is shrunk automatically so it uses very little storage.',
+            'Tap "Add a pin", tap the spot on the plan, then choose what it is: first aid kit, defibrillator, fire extinguisher, shut-offs, exit, assembly point and more.',
+            'Tap a pin to edit, move or remove it.',
+            'Print plan gives a paper copy with numbered pins and a key.',
+          ]},
+          { text: 'It is a simple drawing, not to scale. Only trustees can see it. Check the real locations on your regular walk-through.' },
+        ] },
         { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not exactly. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents too. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub, and — via the "Emergency Readiness Summary" print button — generating a real, factual document from what you\'ve entered, for your own records or for external use (e.g. supporting a funding application).' },
         { q: 'What does the "Emergency Readiness Summary" actually show?', a: [
           { text: 'A real, factual print-out — deliberately not AI-generated, since a document meant to support a real external funding application needs to be verifiably factual, not paraphrased. It pulls together your History, which hazard types have guidance recorded (clearly labelled as shared regional content, not marae-specific), your Skilled People and Contacts counts, your Emergency Preparedness compliance items and their real check dates, and your Response History.' },

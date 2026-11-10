@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import { loadGoogleMapsScript } from '../lib/googleMapsLoader';
 import FormError from './FormError';
+import BuildingPlans from './BuildingPlans';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -742,6 +743,7 @@ ${specialisedSection}
             { key: 'contacts',       label: '📞 Contacts' },
             { key: 'response_history', label: '📖 Response History' },
             { key: 'map',              label: '🗺️ Map' },
+            { key: 'building',         label: '🏛️ Building Plan' },
           ].map((s, i, arr) => (
             <button
               key={s.key}
@@ -930,6 +932,8 @@ ${specialisedSection}
       )}
 
       {/* ── MAP ───────────────────────────────────────────────────────────── */}
+      {section === 'building' && <BuildingPlans entities={entities} />}
+
       {section === 'map' && (
         <div>
           <div style={{ fontSize: 14, color: 'var(--text3)', maxWidth: 640, marginBottom: 20 }}>
