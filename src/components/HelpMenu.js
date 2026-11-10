@@ -300,11 +300,11 @@ const HELP_TOPICS = {
           { list: [
             'No plan? Tap "Draw a simple plan" and start from a typical marae (wharenui, wharekai, kitchen, toilets, marae ātea, carpark and more). Tap "Edit rooms" to drag, resize, rename, reshape, add or remove boxes.',
             'Got a plan? Upload a photo, scan or screenshot (JPG or PNG). It is shrunk automatically so it uses very little storage.',
-            'Tap a safety item (fire extinguisher, first aid kit, shut-offs, exits and more), then tap the plan where it is. Tap a pin to edit, move or remove it.',
+            'Tap a safety item (fire extinguisher, first aid kit, shut-offs, generator, key box, exits and more), then tap the plan where it is. Tap a pin to edit, move or remove it.',
             'Print plan gives a paper copy with numbered pins and a key.',
             '"What must a marae have?" shows a checklist from your pins, what the law says in plain words, and where each statement comes from.',
           ]},
-          { text: 'It is a simple drawing, not to scale. Only trustees can see it. The legal guide is general information, not legal advice. What applies depends on your buildings and how you use them, so check with FENZ and your council. Check the real locations on your regular walk-through.' },
+          { text: 'It is a simple drawing, not to scale. Only trustees can see it. For key boxes, say where the key is kept and never type a code or password, because a printed plan can be seen by anyone. The legal guide is general information, not legal advice. What applies depends on your buildings and how you use them, so check with FENZ and your council. Check the real locations on your regular walk-through.' },
         ] },
         { q: 'Is this the same as uploading our own Emergency Plan to Documents?', a: 'Not exactly. If you already have a real, Civil Defence-endorsed plan on file, upload it to Documents too. The Emergency Plan tab is for actively building and maintaining a real, living plan directly in MaraeHub, and — via the "Emergency Readiness Summary" print button — generating a real, factual document from what you\'ve entered, for your own records or for external use (e.g. supporting a funding application).' },
         { q: 'What does the "Emergency Readiness Summary" actually show?', a: [

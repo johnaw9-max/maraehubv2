@@ -100,3 +100,15 @@ test('the checklist shows what is missing and cites its sources', async () => {
   expect(div.querySelectorAll('a[href^="https://"]').length).toBeGreaterThanOrEqual(5);
   act(() => root.unmount());
 });
+
+test('generator and key box can be pinned, and the key box warns not to type a code', async () => {
+  const { div, root } = await mount();
+  expect(btn(div, 'Generator')).toBeTruthy();
+  await act(async () => { btn(div, 'Key box / keys').click(); });
+  const canvas = div.querySelector('[data-testid="plan-canvas"]');
+  canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 });
+  await act(async () => { canvas.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 })); });
+  expect(div.querySelector('select').value).toBe('key_box');
+  expect(div.textContent).toContain('Never type a code or password');
+  act(() => root.unmount());
+});
