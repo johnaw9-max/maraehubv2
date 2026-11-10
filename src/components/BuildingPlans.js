@@ -60,6 +60,7 @@ export default function BuildingPlans({ entities = [] }) {
   const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [notReady, setNotReady] = useState(false); // tables not switched on for this marae yet
   const [selectedId, setSelectedId] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [imageError, setImageError] = useState('');
@@ -90,7 +91,10 @@ export default function BuildingPlans({ entities = [] }) {
       supabase.from('emergency_building_plans').select('*').order('created_at'),
       supabase.from('emergency_plan_pins').select('*').order('created_at'),
     ]);
-    if (plansRes.error || pinsRes.error) {
+    const missing = e => e && (e.code === '42P01' || e.code === 'PGRST205' || /does not exist|schema cache/i.test(e.message || ''));
+    if (missing(plansRes.error) || missing(pinsRes.error)) {
+      setNotReady(true);
+    } else if (plansRes.error || pinsRes.error) {
       setLoadError('Could not load the building plans. Please refresh and try again.');
     } else {
       setLoadError('');
@@ -253,6 +257,13 @@ table{border-collapse:collapse;margin-top:16px;width:100%;font-size:13px} td{bor
 
   // ── Render ──────────────────────────────────────────────────────────────
   if (loading) return <div style={{ color: 'var(--text3)', fontSize: 14 }}>Loading...</div>;
+  if (notReady) {
+    return (
+      <div className="panel" style={{ padding: '20px 18px', fontSize: 14, color: 'var(--text3)', maxWidth: 560 }}>
+        The Building Plan is not switched on for your marae yet. It is coming soon.
+      </div>
+    );
+  }
 
   const activePin = planPins.find(p => p.id === activePinId) || null;
   const cursor = (placing || movingPinId) ? 'crosshair' : 'default';
