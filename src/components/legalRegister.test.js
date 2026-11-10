@@ -21,3 +21,9 @@ test('every source link shown in the app is in the register, and the other way r
   const appUrls = new Set(SOURCES.map(s => s.url));
   regUrls.forEach(u => expect(appUrls.has(u)).toBe(true));
 });
+
+test('every item link in the checklist points to a source that is in the register', () => {
+  const { PIN_LINKS } = require('./BuildingCompliance');
+  const regUrls = new Set(register.claims.map(c => c.sourceUrl));
+  Object.values(PIN_LINKS).forEach(l => { expect(l.url).toMatch(/^https:\/\//); expect(regUrls.has(l.url)).toBe(true); });
+});
