@@ -452,14 +452,16 @@ export default function BuildingPlans({ entities = [] }) {
     if (!w) { setLoadError('Your browser blocked the print window. Allow pop-ups for this site and try again.'); return; }
     w.document.write(`<!doctype html><html><head><title>${esc(selectedPlan.name)} — Building Plan</title>
 <style>
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Arial,sans-serif;margin:24px;color:#222}
 h1{font-size:20px;margin:0 0 4px} .sub{color:#666;font-size:12px;margin-bottom:12px}
 .wrap{position:relative;display:inline-block;max-width:100%}
 .wrap img{display:block;max-width:100%;max-height:640px}
 .canvas{position:relative;width:100%;max-width:900px;aspect-ratio:3/2;border:1px solid #bbb;background:#fafafa}
 .room{position:absolute;box-sizing:border-box;border:1.5px solid #666;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;padding:2px;overflow:hidden}
-.pin{position:absolute;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#c0392b;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 0 0 1px #c0392b}
+.pin{position:absolute;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#c0392b;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 0 0 1px #c0392b}
 table{border-collapse:collapse;margin-top:16px;width:100%;font-size:13px} td{border-bottom:1px solid #ddd;padding:6px 8px;vertical-align:top} td.n{font-weight:700;width:28px}
+td{vertical-align:middle}
 .note{margin-top:14px;font-size:11px;color:#777}
 </style></head><body>
 <h1>${esc(selectedPlan.name)}</h1>
