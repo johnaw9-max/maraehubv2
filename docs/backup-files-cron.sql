@@ -1,3 +1,6 @@
+-- Run once per project (replace <PROJECT_REF>), AFTER the function is deployed and the four BACKUP_ secrets are set.
+-- Kept in docs, not supabase/migrations, so the migration-drift check does not expect it as an applied migration.
+-- Applied: Opeke 11 Nov 2026. Terere and test still to do (Terere needs the service_role_key Vault secret first).
 -- Schedules the nightly file backup. Replace <PROJECT_REF> before running
 -- (same pattern as the other cron migrations). Times are UTC:
 --   14:00 UTC = about 3am NZ: copy new and changed files
