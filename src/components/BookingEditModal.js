@@ -5,6 +5,7 @@ import { occasionsFor } from '../lib/bookingOccasions';
 import { endDateAfterStartChange } from '../lib/bookingDates';
 import { editNeedsReapproval, validateBookingEdit } from '../lib/bookingRules';
 import { loadUnavailable, firstClash } from '../lib/unavailableDates';
+import { logAudit } from '../lib/audit';
 
 const FACILITIES = ['Wharenui (main hall)', 'Wharekai (dining hall)', 'Kitchen / Kai preparation', 'Carpark access', 'Ūrupa access', 'AV / sound system'];
 
@@ -17,8 +18,9 @@ const fmt = d => (d ? new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { da
  * nothing else (reference, owner and entity cannot be changed from here, and
  * the database refuses it too).
  */
-export default function BookingEditModal({ booking, onClose, onSaved }) {
-  const reapproval = editNeedsReapproval(booking);
+export default function BookingEditModal({ booking, onClose, onSaved, asTrustee = false }) {
+  // A trustee edits in place: the status stays as it is and nobody is asked to re-approve.
+  const reapproval = !asTrustee && editNeedsReapproval(booking);
   const [form, setForm] = useState({
     occasion: booking.occasion || '',
     startDate: booking.start_date || '',
@@ -28,6 +30,9 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
     facilities: booking.facilities || [],
     notes: booking.notes || '',
     organisation: booking.organisation || '',
+    contactName: booking.contact_name || '',
+    contactPhone: booking.contact_phone || '',
+    contactEmail: booking.contact_email || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -47,7 +52,9 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
     setError('');
 
     // Date clash check against other approved bookings and blocked dates.
-    const ranges = await loadUnavailable(supabase, booking.id);
+    const datesChanged = form.startDate !== booking.start_date || form.endDate !== (booking.end_date || booking.start_date);
+    const checkClash = !asTrustee || (datesChanged && booking.status !== 'declined');
+    const ranges = checkClash ? await loadUnavailable(supabase, booking.id) : [];
     const hit = firstClash(ranges, form.startDate, form.endDate);
     const blockedClash = hit && hit.kind === 'blocked';
     const clash = hit && hit.kind === 'booked';
@@ -70,8 +77,11 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
       overnight: form.overnight,
       facilities: form.facilities,
       notes: form.notes || null,
-      status: 'pending',
     };
+    if (!asTrustee) changes.status = 'pending';
+    if (form.contactName.trim() || booking.contact_name) changes.contact_name = form.contactName.trim() || null;
+    if (form.contactPhone.trim() || booking.contact_phone) changes.contact_phone = form.contactPhone.trim() || null;
+    if (form.contactEmail.trim() || booking.contact_email) changes.contact_email = form.contactEmail.trim() || null;
     // Only include organisation when there is something to save or clear, so
     // editing works on a marae whose database has no organisation column yet.
     if (form.organisation.trim() || booking.organisation) changes.organisation = form.organisation.trim() || null;
@@ -80,6 +90,17 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
     if (updateError) {
       setSaving(false);
       setError('Could not save your changes: ' + updateError.message);
+      return;
+    }
+
+    if (asTrustee) {
+      logAudit({
+        entityId: booking.entity_id, action: 'update', resourceType: 'booking',
+        resourceId: booking.id, resourceName: booking.reference || null,
+        metadata: { edited_by: 'trustee' },
+      });
+      setSaving(false);
+      onSaved();
       return;
     }
 
@@ -128,6 +149,21 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
           <input className="form-input" maxLength={120} value={form.organisation} onChange={e => setField('organisation', e.target.value)} placeholder="Optional" />
         </div>
 
+        <div className="form-group">
+          <label className="form-label">Contact name</label>
+          <input className="form-input" maxLength={120} value={form.contactName} onChange={e => setField('contactName', e.target.value)} />
+        </div>
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="form-label">Contact phone</label>
+            <input className="form-input" maxLength={40} value={form.contactPhone} onChange={e => setField('contactPhone', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Contact email</label>
+            <input type="email" className="form-input" maxLength={160} value={form.contactEmail} onChange={e => setField('contactEmail', e.target.value)} />
+          </div>
+        </div>
+
         <div className="grid-2">
           <div className="form-group">
             <label className="form-label">Start Date *</label>
@@ -173,7 +209,7 @@ export default function BookingEditModal({ booking, onClose, onSaved }) {
 
         <div className="modal-actions">
           <button className="btn-secondary" onClick={onClose}>Close</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : reapproval ? 'Save and resubmit' : 'Save changes'}</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : asTrustee ? 'Save changes' : reapproval ? 'Save and resubmit' : 'Save changes'}</button>
         </div>
       </div>
     </div>
