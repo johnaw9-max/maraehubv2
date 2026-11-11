@@ -322,7 +322,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
-      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name').order('due_date'),
+      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name, stage').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
       // Finance queries are admin-only (86d3uy01x) -- a standard trustee's
       // browser never even requests these tables, not just doesn't render
@@ -782,6 +782,15 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       ].filter(Boolean).join(', ') || 'All goals on track',
     });
   }
+
+  // Stage readiness (Start here / Next / Later): shown only when the register
+  // has staged items. Display-only -- the headline score above is unchanged.
+  const hsStageRows = [1, 2, 3].map(n => {
+    const st = getComplianceStatus(d.compliance.filter(i => i.stage === n));
+    const assessed = st.total - st.neverAssessed.length;
+    return { n, total: st.total, overdue: st.overdue.length, notAssessed: st.neverAssessed.length, compliant: st.compliant.length + st.dueSoon.length, assessed };
+  }).filter(r => r.total > 0);
+  const HS_STAGE_LABEL = { 1: 'Start here', 2: 'Next', 3: 'Later' };
 
   const hsInsufficient = hsCategories.length < 2;
   const hsRawTotal    = hsCategories.reduce((s, c) => s + c.score, 0);
@@ -2852,6 +2861,26 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                 </div>
               ))}
             </div>
+            {hsStageRows.length > 0 && (
+              <div data-testid="hs-stage-breakdown" style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>Compliance by stage</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {hsStageRows.map(r => (
+                    <div key={r.n} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text3)' }}>
+                      <span>{HS_STAGE_LABEL[r.n]}</span>
+                      <span>
+                        {r.compliant} of {r.total} up to date
+                        {r.overdue > 0 && `, ${r.overdue} overdue`}
+                        {r.notAssessed > 0 && `, ${r.notAssessed} not yet assessed`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 6, fontStyle: 'italic' }}>
+                  Based on the information entered by your marae. Not a legal assessment of compliance.
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
