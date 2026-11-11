@@ -46,6 +46,9 @@ const json = (body: unknown, status = 200) =>
 function isServiceRole(req: Request): boolean {
   try {
     const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+    // Newer projects use opaque sb_secret_ keys (not JWTs). Those need verify_jwt=false on the
+    // function, so the only thing accepted is an exact match with this project's own secret key.
+    if (token && token === SERVICE_ROLE_KEY) return true;
     const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
     return payload.role === 'service_role';
   } catch {
