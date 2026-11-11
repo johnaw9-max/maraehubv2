@@ -11,6 +11,7 @@
 // expectedSchema.ts's own generator).
 
 export const MASTER_FUNCTIONS: string[] = [
+  "backup-files-to-s3",
   "ban-trustee",
   "community-auto-login",
   "create-trustee",
@@ -46,6 +47,7 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
   "zfefukxaliuximizjkwa": {
     "name": "tineka",
     "expected_functions": [
+      "backup-files-to-s3",
       "ban-trustee",
       "create-trustee",
       "draft-minutes",
@@ -88,6 +90,7 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
   "fwtxbirekiyhbxqdctkq": {
     "name": "terere",
     "expected_functions": [
+      "backup-files-to-s3",
       "ban-trustee",
       "create-trustee",
       "draft-minutes",
@@ -156,6 +159,7 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
   "cbeenkpjpnhmtqtnjiyd": {
     "name": "opeke",
     "expected_functions": [
+      "backup-files-to-s3",
       "ban-trustee",
       "community-auto-login",
       "create-trustee",
