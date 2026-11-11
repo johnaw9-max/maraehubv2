@@ -446,6 +446,14 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
                       {checklistDone ? '✓ Checklist' : '☐ Checklist'}
                     </button>
                   )}
+                  {canApprove && (
+                    <button
+                      onClick={() => setEditBooking(b)}
+                      style={{ fontSize: 11, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
                   {!isTrustee && memberCanEdit(b, userId) && (
                     <button
                       onClick={() => setEditBooking(b)}
@@ -511,6 +519,7 @@ export default function BookingsManager({ isTrustee, canApprove, userId, onStart
       {editBooking && (
         <BookingEditModal
           booking={editBooking}
+          asTrustee={!!canApprove}
           onClose={() => setEditBooking(null)}
           onSaved={() => { setEditBooking(null); fetchBookings(); }}
         />
