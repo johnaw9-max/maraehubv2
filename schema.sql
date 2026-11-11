@@ -296,7 +296,8 @@ create table if not exists compliance_items (
   risk_prompt_dismissed_at timestamp with time zone,
   linked_service_reminder_id uuid,
   linked_document_id uuid,
-  linked_expense_id uuid
+  linked_expense_id uuid,
+  stage smallint
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);

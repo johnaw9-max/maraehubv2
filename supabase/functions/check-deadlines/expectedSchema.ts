@@ -132,7 +132,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "risk_prompt_dismissed_at",
     "linked_service_reminder_id",
     "linked_document_id",
-    "linked_expense_id"
+    "linked_expense_id",
+    "stage"
   ],
   "contacts": [
     "id",
