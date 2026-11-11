@@ -303,6 +303,7 @@ const HELP_TOPICS = {
             'No plan? Tap "Draw a simple plan" and start from a typical marae (wharenui, wharekai, kitchen, toilets, marae ātea, carpark and more). Tap "Edit rooms" to drag, resize, rename, reshape, add or remove boxes. Pins sitting inside a box move with it. Boxes click into place at the centre, halves, thirds and the edges of other boxes, so you do not have to line them up by eye. Untick "Snap to centre and edges" to move freely, or tap a box and use the Centre buttons.',
             'Got a plan? Upload a photo, scan or screenshot (JPG or PNG). It is shrunk automatically so it uses very little storage.',
             'Tap a safety item (fire extinguisher, first aid kit, shut-offs, generator, key box, exits and more), then tap the plan where it is. Tap a pin to edit, move or remove it.',
+            'Have the item in Assets already? When you add or edit a pin, pick it under "Linked asset". The pin then shows that asset\'s next service date and gets a red, amber or green ring (overdue, due within 30 days, fine). Service dates are still set in Assets, so there is only one place to keep up to date.',
             'Print plan gives a paper copy with numbered pins and a key.',
             '"What must a marae have?" shows a checklist from your pins, what the law says in plain words, and where each statement comes from.',
           ]},

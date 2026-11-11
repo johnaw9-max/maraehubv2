@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import FormError from './FormError';
 import BuildingCompliancePanel from './BuildingCompliance';
+import { assetServiceStatus, STATUS_COLOURS, statusText } from '../lib/planAssetStatus';
 
 // Building Plan: upload a picture of a floor plan, drop pins on it for the things
 // people need to find fast in an emergency. Pins are saved as a percentage of the
@@ -73,7 +74,7 @@ export function snapAxis(pos, size, targets, useCentre = true, distance = SNAP_D
 }
 const round2 = v => Math.round(v * 100) / 100;
 
-const EMPTY_PIN_FORM = { pin_type: 'first_aid', label: '', notes: '' };
+const EMPTY_PIN_FORM = { pin_type: 'first_aid', label: '', notes: '', asset_id: '' };
 
 // Shrink a picture so the longest side is at most MAX_SIDE and save as JPEG.
 async function shrinkImage(file) {
@@ -105,6 +106,8 @@ async function shrinkImage(file) {
 export default function BuildingPlans({ entities = [] }) {
   const [plans, setPlans] = useState([]);
   const [pins, setPins] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [notReady, setNotReady] = useState(false); // tables not switched on for this marae yet
@@ -154,6 +157,15 @@ export default function BuildingPlans({ entities = [] }) {
       supabase.from('emergency_building_plans').select('*').order('created_at'),
       supabase.from('emergency_plan_pins').select('*').order('created_at'),
     ]);
+    // Assets are optional extras: if they cannot be read, pins still work.
+    try {
+      const [aRes, rRes] = await Promise.all([
+        supabase.from('assets').select('id, name').order('name'),
+        supabase.from('service_reminders').select('asset_id, type, due_date').order('due_date'),
+      ]);
+      setAssets(aRes.error ? [] : (aRes.data || []).filter(a => a.name));
+      setReminders(rRes.error ? [] : (rRes.data || []));
+    } catch { setAssets([]); setReminders([]); }
     const missing = e => e && (e.code === '42P01' || e.code === 'PGRST205' || /does not exist|schema cache/i.test(e.message || ''));
     if (missing(plansRes.error) || missing(pinsRes.error)) {
       setNotReady(true);
@@ -402,7 +414,7 @@ export default function BuildingPlans({ entities = [] }) {
   function openEditPin(pin) {
     setEditPin(pin);
     setPendingSpot(null);
-    setPinForm({ pin_type: pin.pin_type, label: pin.label, notes: pin.notes || '' });
+    setPinForm({ pin_type: pin.pin_type, label: pin.label, notes: pin.notes || '', asset_id: pin.asset_id || '' });
     setPinError('');
     setShowPinModal(true);
   }
@@ -411,6 +423,9 @@ export default function BuildingPlans({ entities = [] }) {
     if (!pinForm.label.trim()) { setPinError('Say where it is or what it is, e.g. "Kitchen, by the back door".'); return; }
     setPinSaving(true); setPinError('');
     const base = { pin_type: pinForm.pin_type, label: pinForm.label.trim(), notes: pinForm.notes.trim() || null };
+    // Only send asset_id when there is something to link or the link changed,
+    // so pins keep working on a marae whose database has not got the column yet.
+    if (editPin ? (pinForm.asset_id || '') !== (editPin.asset_id || '') : pinForm.asset_id) base.asset_id = pinForm.asset_id || null;
     const { error } = editPin
       ? await supabase.from('emergency_plan_pins').update(base).eq('id', editPin.id)
       : await supabase.from('emergency_plan_pins').insert({ ...base, plan_id: selectedId, x_pct: pendingSpot.x, y_pct: pendingSpot.y });
@@ -491,7 +506,8 @@ ${planHtml}
       onClick={e => { e.stopPropagation(); if (!placing && !movingPinId) setActivePinId(p.id === activePinId ? null : p.id); }}
       style={{
         position: 'absolute', left: `${p.x_pct}%`, top: `${p.y_pct}%`, transform: 'translate(-50%, -50%)',
-        width: 30, height: 30, borderRadius: '50%', border: p.id === activePinId ? '3px solid var(--brand)' : '2px solid #fff',
+        width: 30, height: 30, borderRadius: '50%',
+        border: p.id === activePinId ? '3px solid var(--brand)' : (p.asset_id && assetServiceStatus(p.asset_id, reminders)?.status !== 'none' ? `3px solid ${STATUS_COLOURS[assetServiceStatus(p.asset_id, reminders).status]}` : '2px solid #fff'),
         background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0,
         opacity: movingPinId === p.id ? 0.4 : 1,
       }}>
@@ -647,6 +663,15 @@ ${planHtml}
               <div style={{ fontWeight: 700, fontSize: 14 }}>{pinMeta(activePin.pin_type).icon} {pinMeta(activePin.pin_type).label}</div>
               <div style={{ fontSize: 14, marginTop: 2 }}>{activePin.label}</div>
               {activePin.notes && <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>{activePin.notes}</div>}
+              {activePin.asset_id && (() => {
+                const st = assetServiceStatus(activePin.asset_id, reminders);
+                const a = assets.find(x => x.id === activePin.asset_id);
+                return (
+                  <div data-testid="pin-asset" style={{ fontSize: 13, marginTop: 6, color: STATUS_COLOURS[st.status], fontWeight: 600 }}>
+                    🔧 {a ? a.name : 'Linked asset'}: {statusText(st)}
+                  </div>
+                );
+              })()}
               <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => openEditPin(activePin)}>Edit</button>
                 <button className="btn-secondary" style={{ fontSize: 12 }} onClick={() => { setMovingPinId(activePin.id); setActivePinId(null); }}>Move</button>
@@ -762,6 +787,16 @@ ${planHtml}
               <label className="form-label">Where / which one? *</label>
               <input className="form-input" value={pinForm.label} onChange={e => setPinForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Kitchen, by the back door" />
             </div>
+            {assets.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Linked asset (optional)</label>
+                <select className="form-input" value={pinForm.asset_id} onChange={e => setPinForm(f => ({ ...f, asset_id: e.target.value }))}>
+                  <option value="">Not linked</option>
+                  {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+                <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>Shows this asset's next service date on the pin. Dates are set in Assets.</div>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Notes</label>
               {pinForm.pin_type === 'key_box' && (
