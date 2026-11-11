@@ -56,13 +56,13 @@ const CLASSIFICATIONS = {
 // versions now live under civil_defence/health_safety; keeping them here
 // would silently recreate the same duplicate pairs on any fresh marae.
 const EP_SEED_ITEMS = [
-  { name: 'Generator — tested, fuelled, serviced',                                     renewal_months: 3,  notes: 'Test under load monthly. Fuel stabiliser if stored long-term. Log every test run.' },
-  { name: 'Water supply — 10,000L tank or alternative checked',                        renewal_months: 6,  notes: 'Inspect tank for leaks, contamination, and pump operation. Confirm potability. Also confirm the tank represents a real reserve above everyday use — see the Drought / Water Shortage hazard in Emergency Plan for the recommended minimum (3L/person/day, 3+ days).' },
-  { name: 'Emergency food and supply kit — stocked and checked',                       renewal_months: 6,  notes: 'Check expiry dates on food and medications. Minimum 72-hour supply for likely occupancy.' },
-  { name: 'Community welfare register — vulnerable whānau who need checking on',       renewal_months: 12, notes: 'List of kaumātua, disabled whānau, and others who may need welfare checks. Keep private and current.' },
-  { name: 'Evacuation routes — identified and communicated to committee',              renewal_months: 12, notes: 'Post maps in the marae. Brief all trustees and key volunteers. Include accessibility routes.' },
-  { name: 'Emergency communications plan — contact community if power/internet down',  renewal_months: 12, notes: 'Document the plan: phone trees, community radio channel, meeting point. Test annually.' },
-  { name: 'Marae structure — roof, walls, foundations checked for storm readiness',    renewal_months: 6,  notes: 'Visual inspection after major weather events. Engage qualified builder for structural assessment annually.' },
+  { name: 'Generator — tested, fuelled, serviced',                                     renewal_months: 3,  notes: 'Test under load monthly. Fuel stabiliser if stored long-term. Log every test run.', legal_basis: 'Good practice', legal_basis_detail: 'Keeps power available in an outage. A generator that has never been run may not start when needed.' },
+  { name: 'Water supply — 10,000L tank or alternative checked',                        renewal_months: 6,  notes: 'Inspect tank for leaks, contamination, and pump operation. Confirm potability. Also confirm the tank represents a real reserve above everyday use — see the Drought / Water Shortage hazard in Emergency Plan for the recommended minimum (3L/person/day, 3+ days).', legal_basis: 'Good practice', legal_basis_detail: 'Emergency water for people staying on the marae. If the marae supplies drinking water to others, Water Services Act 2021 rules also apply.' },
+  { name: 'Emergency food and supply kit — stocked and checked',                       renewal_months: 6,  notes: 'Check expiry dates on food and medications. Minimum 72-hour supply for likely occupancy.', legal_basis: 'Good practice', legal_basis_detail: 'Supports the marae acting as a civil defence centre. Check use-by dates and quantities.' },
+  { name: 'Community welfare register — vulnerable whānau who need checking on',       renewal_months: 12, notes: 'List of kaumātua, disabled whānau, and others who may need welfare checks. Keep private and current.', legal_basis: 'Good practice; Privacy Act 2020 applies', legal_basis_detail: 'Helps the marae look after whanau who need checking on in an emergency. Keep the list limited, get consent and store it securely.' },
+  { name: 'Evacuation routes — identified and communicated to committee',              renewal_months: 12, notes: 'Post maps in the marae. Brief all trustees and key volunteers. Include accessibility routes.', legal_basis: 'Fire and Emergency Act 2017 and FENZ Regulations 2018 if a relevant building; otherwise good practice', legal_basis_detail: 'Everyone with responsibility should know the routes. For a relevant building the evacuation procedure is a legal requirement.' },
+  { name: 'Emergency communications plan — contact community if power/internet down',  renewal_months: 12, notes: 'Document the plan: phone trees, community radio channel, meeting point. Test annually.', legal_basis: 'Good practice', legal_basis_detail: 'A way to reach whanau and the community when power or internet is down.' },
+  { name: 'Marae structure — roof, walls, foundations checked for storm readiness',    renewal_months: 6,  notes: 'Visual inspection after major weather events. Engage qualified builder for structural assessment annually.', legal_basis: 'Good practice', legal_basis_detail: 'Finds storm and flood damage risks early. Building work itself must meet the Building Act 2004; confirm with your council.' },
 ];
 
 // Stages (Start here / Next / Later): lets a volunteer see the few items that
@@ -119,7 +119,7 @@ function compareComplianceByMode(mode) {
 
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '', last_checked_date: '',
-  renewal_months: 12, responsible_name: '', notes: '', entity_id: '',
+  renewal_months: 12, responsible_name: '', notes: '', legal_basis: '', legal_basis_detail: '', entity_id: '',
   linked_service_reminder_id: '', linked_document_id: '', linked_expense_id: '', stage: '',
 };
 
@@ -383,6 +383,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       name: item.name,
       renewal_months: item.renewal_months,
       notes: item.notes,
+      legal_basis: item.legal_basis,
+      legal_basis_detail: item.legal_basis_detail,
     }));
     const { error } = await supabase.from('compliance_items').insert(rows);
     if (!error) {
@@ -510,6 +512,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       renewal_months: item.renewal_months ?? 12,
       responsible_name: item.responsible_name || '',
       notes: item.notes || '',
+      legal_basis: item.legal_basis || '',
+      legal_basis_detail: item.legal_basis_detail || '',
       entity_id: item.entity_id || '',
       linked_service_reminder_id: item.linked_service_reminder_id || '',
       linked_document_id: item.linked_document_id || '',
@@ -538,6 +542,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       renewal_months: itemForm.renewal_months ? Number(itemForm.renewal_months) : null,
       responsible_name: itemForm.responsible_name || null,
       notes: itemForm.notes.trim() || null,
+      legal_basis: itemForm.legal_basis.trim() || null,
+      legal_basis_detail: itemForm.legal_basis_detail.trim() || null,
       entity_id: itemForm.entity_id || null,
       linked_service_reminder_id: itemForm.linked_service_reminder_id || null,
       linked_document_id: itemForm.linked_document_id || null,
@@ -1374,6 +1380,12 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                   <option value="">— Select trustee —</option>
                   {trustees.map(t => <option key={t.full_name} value={t.full_name}>{t.full_name}</option>)}
                 </select>
+              </div>
+
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Why is this here? (law, act or reason)</label>
+                <input className="form-input" data-testid="item-legal-basis" value={itemForm.legal_basis} onChange={e => setItemForm(f => ({ ...f, legal_basis: e.target.value }))} placeholder="e.g. Good practice, or the Act and section" />
+                <textarea className="form-input" rows={2} value={itemForm.legal_basis_detail} onChange={e => setItemForm(f => ({ ...f, legal_basis_detail: e.target.value }))} placeholder="One or two lines on why it matters (optional)" style={{ resize: 'vertical', marginTop: 6 }} />
               </div>
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
