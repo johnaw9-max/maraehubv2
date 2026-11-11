@@ -42,3 +42,22 @@ export function getComplianceStatus(items) {
     isFullyCompliant: overdue.length === 0 && neverAssessed.length === 0,
   };
 }
+
+// Stage-weighted compliance percentage, used only for the Health Score's
+// Compliance category. Start here (stage 1) counts 3x, Next 2x, Later and
+// unstaged 1x, so an overdue life-safety item cannot be hidden behind many
+// healthy good-practice items. With no staged items every weight is 1, so
+// the result equals getComplianceStatus().compliancePct exactly.
+export const STAGE_WEIGHT = { 1: 3, 2: 2, 3: 1 };
+
+export function getWeightedCompliancePct(items) {
+  let good = 0, total = 0;
+  items.forEach(c => {
+    const status = getItemComplianceStatus(c);
+    if (status === 'not_set') return;
+    const w = STAGE_WEIGHT[c.stage] || 1;
+    total += w;
+    if (status === 'compliant') good += w;
+  });
+  return total ? Math.round((good / total) * 100) : null;
+}

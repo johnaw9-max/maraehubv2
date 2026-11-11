@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials, minsAgo } from '../lib/xero';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
-import { getComplianceStatus } from '../lib/complianceStatus';
+import { getComplianceStatus, getWeightedCompliancePct } from '../lib/complianceStatus';
 import { getRiskStatus } from '../lib/riskStatus';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
@@ -700,7 +700,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   if (hsAssessedCompliance >= 3) {
     hsCategories.push({
       name: 'Compliance',
-      score: Math.round(25 * compliancePct / 100),
+      score: Math.round(25 * (getWeightedCompliancePct(d.compliance) ?? compliancePct) / 100),
       max: 25,
       detail: [
         overdueCompliance.length > 0 && `${overdueCompliance.length} overdue`,

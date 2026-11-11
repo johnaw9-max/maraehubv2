@@ -209,7 +209,7 @@ serve(async (_req) => {
     const fyTo   = `${fyYear + 1}-03-31`;
 
     const [compRes, riskRes, assetRes, remRes, goalsRes, taskRes, finIncRes, finExpRes, balanceSheet] = await Promise.all([
-      admin.from('compliance_items').select('id, due_date, last_checked_date'),
+      admin.from('compliance_items').select('id, due_date, last_checked_date, stage'),
       admin.from('risk_register').select('id, status, controls, risk_rating'),
       admin.from('assets').select('id'),
       admin.from('service_reminders').select('id, asset_id, due_date'),
@@ -299,8 +299,14 @@ serve(async (_req) => {
     // every other category matches exactly.
     const hsCategories: { score: number; max: number }[] = [];
 
+    // Stage-weighted for the health score only (Start here 3x, Next 2x, other 1x);
+    // equals compliancePct when no item is staged. Matches getWeightedCompliancePct().
+    const stageW = (c: { stage?: number | null }) => ({ 1: 3, 2: 2, 3: 1 } as Record<number, number>)[c.stage ?? 0] || 1;
+    const wTotal = compliance.filter(c => !neverAssessedCompliance.includes(c)).reduce((s, c) => s + stageW(c), 0);
+    const wGood = compliantCompliance.reduce((s, c) => s + stageW(c), 0);
+    const weightedCompliancePct = wTotal ? Math.round((wGood / wTotal) * 100) : null;
     if (assessedTotal >= 3 && compliancePct !== null) {
-      hsCategories.push({ score: Math.round(25 * compliancePct / 100), max: 25 });
+      hsCategories.push({ score: Math.round(25 * (weightedCompliancePct ?? compliancePct) / 100), max: 25 });
     }
     if (risks.length >= 1 && riskPct !== null) {
       hsCategories.push({ score: Math.round(20 * riskPct / 100), max: 20 });
