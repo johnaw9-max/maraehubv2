@@ -65,6 +65,17 @@ const EP_SEED_ITEMS = [
   { name: 'Marae structure — roof, walls, foundations checked for storm readiness',    renewal_months: 6,  notes: 'Visual inspection after major weather events. Engage qualified builder for structural assessment annually.', legal_basis: 'Good practice', legal_basis_detail: 'Finds storm and flood damage risks early. Building work itself must meet the Building Act 2004; confirm with your council.' },
 ];
 
+// One-word reason label shown beside an item so a trustee can see at a glance
+// whether it is a legal duty or good practice. Derived from legal_basis text;
+// the full reason stays behind Details. Returns null when there is nothing to say.
+function reasonKind(item) {
+  const b = (item.legal_basis || '').trim();
+  if (!b || /^Framework v0\.4/i.test(b)) return null;
+  if (/^Good practice/i.test(b)) return 'Good practice';
+  if (/\bif\b|otherwise/i.test(b)) return 'Legal duty if it applies';
+  return 'Law or official guidance';
+}
+
 // Stages (Start here / Next / Later): lets a volunteer see the few items that
 // matter most first. The tabs only appear once at least one item has a stage,
 // so marae with no staged items see the tracker exactly as before.
@@ -779,6 +790,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               )}
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 3 }}>{item.name}</div>
+            {reasonKind(item) && <div data-testid="reason-kind" style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 3 }}>{reasonKind(item)}</div>}
             {item.name === 'Fire warden arrangements — trained and refreshed' && (
               <div style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 3 }}>
                 🔥 {fireWardens.length > 0 ? `Fire Warden${fireWardens.length > 1 ? 's' : ''}: ${fireWardens.join(', ')}` : 'No Fire Warden set yet — add one in Contacts'}
@@ -933,6 +945,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
           chip={<span style={{ flexShrink: 0 }}><StatusPill status={status} /></span>}
           title={item.name}
           meta={[
+            reasonKind(item) ? (
+              <span key="reason" data-testid="reason-kind" style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{reasonKind(item)}</span>
+            ) : null,
             item.responsible_name ? (
               <span key="owner" title={item.responsible_name} style={{
                 width: 24, height: 24, borderRadius: '50%', background: 'var(--surface2)',
