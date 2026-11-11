@@ -65,6 +65,15 @@ const EP_SEED_ITEMS = [
   { name: 'Marae structure — roof, walls, foundations checked for storm readiness',    renewal_months: 6,  notes: 'Visual inspection after major weather events. Engage qualified builder for structural assessment annually.' },
 ];
 
+// Stages (Start here / Next / Later): lets a volunteer see the few items that
+// matter most first. The tabs only appear once at least one item has a stage,
+// so marae with no staged items see the tracker exactly as before.
+const STAGES = {
+  1: { label: 'Start here', hint: 'Life safety and trustee liability' },
+  2: { label: 'Next',       hint: 'Legal duties of trustees and the building' },
+  3: { label: 'Later',      hint: 'Good practice and improvement' },
+};
+
 const STATUS_CFG = {
   overdue:   { bg: '#faeae7', color: 'var(--danger)', border: '#f0b8b0', label: 'Overdue',   dot: '#d9534f' },
   due_soon:  { bg: '#fdf0dc', color: '#7a4f00',       border: '#e8c880', label: 'Due Soon',  dot: '#c8902a' },
@@ -111,7 +120,7 @@ function compareComplianceByMode(mode) {
 const EMPTY_ITEM = {
   category: 'building', name: '', due_date: '', last_checked_date: '',
   renewal_months: 12, responsible_name: '', notes: '', entity_id: '',
-  linked_service_reminder_id: '', linked_document_id: '', linked_expense_id: '',
+  linked_service_reminder_id: '', linked_document_id: '', linked_expense_id: '', stage: '',
 };
 
 const EMPTY_INCIDENT = {
@@ -275,6 +284,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [section, setSection]   = useState('items');
   const [catFilter, setCatFilter] = useState('all');
   const [classFilter, setClassFilter] = useState('all');
+  // null = not chosen yet: opens on Start here when any item is staged, else All
+  const [stageFilter, setStageFilter] = useState(null);
   const [entityFilter, setEntityFilter] = useState('all');
   const [sortMode, setSortMode] = useSortPreference('compliance', 'urgency');
   // Compact | Detailed toggle (14yhc7kw7dt), remembered per browser like
@@ -503,6 +514,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       linked_service_reminder_id: item.linked_service_reminder_id || '',
       linked_document_id: item.linked_document_id || '',
       linked_expense_id: item.linked_expense_id || '',
+      stage: item.stage || '',
     });
     setItemFile(null); setItemError(''); setShowItemModal(true);
   }
@@ -530,6 +542,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       linked_service_reminder_id: itemForm.linked_service_reminder_id || null,
       linked_document_id: itemForm.linked_document_id || null,
       linked_expense_id: itemForm.linked_expense_id || null,
+      // Only send stage when it is set or being cleared, so saving an item never
+      // depends on the stage column existing in a project that hasn't had it added.
+      ...((itemForm.stage || editItem?.stage) ? { stage: itemForm.stage ? Number(itemForm.stage) : null } : {}),
       document_url, document_name,
       updated_at: new Date().toISOString(),
     };
@@ -673,8 +688,13 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const epNotSet   = epItems.filter(i => getItemComplianceStatus(i) === 'not_set');
   const epAlert    = epOverdue.length + epNotSet.length;
 
+  const hasStages = items.some(i => i.stage);
+  const activeStage = stageFilter ?? (hasStages ? 1 : 'all');
+  const stageCount = n => items.filter(i => i.stage === n).length;
+
   const filteredItems = (catFilter === 'all' ? items : items.filter(i => i.category === catFilter))
     .filter(i => classFilter === 'all' || i.classification === classFilter)
+    .filter(i => !hasStages || activeStage === 'all' || i.stage === activeStage)
     .filter(i => entityFilter === 'all' || i.entity_id === entityFilter || i.entity_id === null)
     .slice()
     .sort(compareComplianceByMode(sortMode));
@@ -1051,6 +1071,33 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       {/* ── COMPLIANCE ITEMS SECTION ─────────────────────────────────────── */}
       {section === 'items' && (
         <>
+          {/* Stage tabs: only shown when items have been staged */}
+          {hasStages && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[1, 2, 3, 'all'].map(k => (
+                  <button
+                    key={k}
+                    data-testid={`stage-tab-${k}`}
+                    onClick={() => setStageFilter(k)}
+                    style={{
+                      padding: '8px 16px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                      borderRadius: 20, border: '1px solid var(--border)',
+                      background: activeStage === k ? 'var(--brand)' : 'var(--surface)',
+                      color: activeStage === k ? '#fff' : 'var(--text2)',
+                      fontFamily: 'DM Sans, sans-serif',
+                    }}
+                  >
+                    {k === 'all' ? `All (${items.length})` : `${STAGES[k].label} (${stageCount(k)})`}
+                  </button>
+                ))}
+              </div>
+              {activeStage !== 'all' && (
+                <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6 }}>{STAGES[activeStage].hint}</div>
+              )}
+            </div>
+          )}
+
           {/* Classification filter — primary grouping */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {[{ key: 'all', label: 'All', icon: '📌' }, ...Object.entries(CLASSIFICATIONS).map(([k, v]) => ({ key: k, label: v.label, icon: v.icon }))].map(c => (
@@ -1310,6 +1357,13 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               <div className="form-group">
                 <label className="form-label">Renewal (months)</label>
                 <input type="number" className="form-input" min="1" max="120" value={itemForm.renewal_months} onChange={e => setItemForm(f => ({ ...f, renewal_months: e.target.value }))} placeholder="12" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Stage (priority)</label>
+                <select className="form-input" data-testid="item-stage" value={itemForm.stage} onChange={e => setItemForm(f => ({ ...f, stage: e.target.value }))}>
+                  <option value="">No stage</option>
+                  {Object.entries(STAGES).map(([k, v]) => <option key={k} value={k}>{k} — {v.label}</option>)}
+                </select>
               </div>
 
               <div className="form-group" />

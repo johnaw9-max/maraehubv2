@@ -262,3 +262,31 @@ test('compact row shows owner initials, or "Unassigned" in muted text when there
   const rowUnassigned = findRow(containerUnassigned, UNASSIGNED_ITEM.name);
   expect(rowUnassigned.textContent).toContain('Unassigned');
 });
+
+// ── Stages (Start here / Next / Later) ──────────────────────────────────────
+describe('compliance stages', () => {
+  const STAGE1 = { ...OVERDUE_ITEM, id: 'st1', name: 'Stage One Item', stage: 1 };
+  const STAGE2 = { ...DUE_SOON_ITEM, id: 'st2', name: 'Stage Two Item', stage: 2 };
+
+  test('no stage tabs when no item has a stage', async () => {
+    const c = await renderTracker({}, [EP_MARKER, OVERDUE_ITEM, DUE_SOON_ITEM]);
+    expect(c.querySelector('[data-testid="stage-tab-1"]')).toBeNull();
+    expect(c.textContent).toContain('Overdue Status Item');
+    expect(c.textContent).toContain('Due Soon Status Item');
+  });
+
+  test('opens on Start here when items are staged, and tabs switch the list', async () => {
+    const c = await renderTracker({}, [EP_MARKER, STAGE1, STAGE2]);
+    expect(c.querySelector('[data-testid="stage-tab-1"]').textContent).toContain('Start here (1)');
+    expect(c.textContent).toContain('Stage One Item');
+    expect(c.textContent).not.toContain('Stage Two Item');
+
+    await act(async () => { Simulate.click(c.querySelector('[data-testid="stage-tab-2"]')); });
+    expect(c.textContent).toContain('Stage Two Item');
+    expect(c.textContent).not.toContain('Stage One Item');
+
+    await act(async () => { Simulate.click(c.querySelector('[data-testid="stage-tab-all"]')); });
+    expect(c.textContent).toContain('Stage One Item');
+    expect(c.textContent).toContain('Stage Two Item');
+  });
+});
