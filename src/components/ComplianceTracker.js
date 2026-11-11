@@ -349,7 +349,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('risk_register').select('compliance_item_id').not('compliance_item_id', 'is', null),
       supabase.from('service_reminders').select('id, type, due_date, assets(name)').order('type'),
-      supabase.from('documents').select('id, title, category').order('title'),
+      supabase.from('documents').select('id, title, category').is('deleted_at', null).order('title'),
       supabase.from('finance_expenses').select('id, description, amount, date').order('date', { ascending: false }),
     ]);
     const allItems = itemsRes.data || [];

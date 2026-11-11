@@ -73,6 +73,7 @@ export default function OnboardingFlow({ onComplete }) {
       .from('documents')
       .select('id')
       .eq('file_url', DEFAULT_DOC_URL)
+      .is('deleted_at', null)
       .limit(1);
     if (existing && existing.length > 0) return;
     await supabase.from('documents').insert({

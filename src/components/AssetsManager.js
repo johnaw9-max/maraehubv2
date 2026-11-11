@@ -52,7 +52,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       supabase.from('service_reminders').select('*').order('due_date', { ascending: true }),
       supabase.from('workflow_templates').select('id, name').order('name'),
       supabase.from('entities').select('id, name').order('name'),
-      supabase.from('documents').select('id, title, category').order('title'),
+      supabase.from('documents').select('id, title, category').is('deleted_at', null).order('title'),
     ]);
     const assetData = assetRes.data || [];
     const reminderData = reminderRes.data || [];
