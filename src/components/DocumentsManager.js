@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'; // updated
-import { openStorageFile, storagePathFromRef } from '../lib/storageLinks';
+import { openStorageFile } from '../lib/storageLinks';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
 import CharterGenerator from './CharterGenerator';
