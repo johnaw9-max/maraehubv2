@@ -1093,7 +1093,7 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
       supabase.from('resolutions').select('*, meetings(id, title, meeting_date, meeting_type)').order('date_passed', { ascending: false }),
       supabase.from('meeting_actions').select('id, status'),
       supabase.from('interest_register').select('*').order('created_at', { ascending: false }),
-      supabase.from('documents').select('id, title, category').order('title'),
+      supabase.from('documents').select('id, title, category').is('deleted_at', null).order('title'),
     ]);
     setMeetings(meetRes.data || []);
     setAllResolutions(resRes.data || []);

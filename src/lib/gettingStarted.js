@@ -68,11 +68,11 @@ export async function getGettingStartedStatus() {
     // boilerplate. emergency_plan_people is the only clean signal for this item.
     supabase.from('emergency_plan_people').select('id', { count: 'exact', head: true }),
     // Excludes the onboarding wizard's own auto-seeded template document.
-    supabase.from('documents').select('id', { count: 'exact', head: true }).neq('file_url', DEFAULT_DOC_URL),
+    supabase.from('documents').select('id', { count: 'exact', head: true }).neq('file_url', DEFAULT_DOC_URL).is('deleted_at', null),
     // meetings, not bookings — bookings conflates venue hire with the onboarding
     // wizard's seeded "Trustee Hui" row; meetings is the app's real governance-hui table.
     supabase.from('meetings').select('id', { count: 'exact', head: true }),
-    supabase.from('documents').select('id', { count: 'exact', head: true }).eq('title', CHARTER_DOCUMENT_TITLE),
+    supabase.from('documents').select('id', { count: 'exact', head: true }).eq('title', CHARTER_DOCUMENT_TITLE).is('deleted_at', null),
   ]);
 
   const realAssets     = (assetsRes.data || []).filter(a => !SEEDED_ASSET_NAMES.includes(a.name));

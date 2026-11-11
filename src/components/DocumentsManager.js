@@ -7,6 +7,7 @@ import HSPolicyGenerator from './HSPolicyGenerator';
 import { CHARTER_DOCUMENT_TITLE } from '../lib/gettingStarted';
 import { useSortPreference } from '../lib/useSortPreference';
 import ViewToggle from './ViewToggle';
+import { TRASH_RETENTION_DAYS, daysLeft, permanentlyDelete, purgeExpired } from '../lib/documentTrash';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
  
 const CATEGORIES = ['Governance', 'Finance', 'Legal', 'Health & Safety', 'Policies', 'Other'];
@@ -42,6 +43,9 @@ export default function DocumentsManager() {
   const [showHSPolicyGenerator, setShowHSPolicyGenerator] = useState(false);
   const [linkedCompliance, setLinkedCompliance] = useState({});
   const [linkedAssets, setLinkedAssets] = useState({});
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashed, setTrashed] = useState([]);
+  const [trashMsg, setTrashMsg] = useState('');
   const fileRef = useRef();
  
   useEffect(() => { fetchDocs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -49,7 +53,7 @@ export default function DocumentsManager() {
   async function fetchDocs() {
     setLoading(true);
     const [docRes, entRes, complianceRes, assetsRes] = await Promise.all([
-      supabase.from('documents').select('*').order('created_at', { ascending: false }),
+      supabase.from('documents').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
       supabase.from('compliance_items').select('id, name, linked_document_id').not('linked_document_id', 'is', null),
       supabase.from('assets').select('id, name, linked_document_id').not('linked_document_id', 'is', null),
@@ -165,22 +169,61 @@ export default function DocumentsManager() {
   }
 
   async function handleDelete(doc) {
-    if (!window.confirm(`Delete "${doc.title}"?`)) return;
-    if (doc.file_url) {
-      const ref = storagePathFromRef('documents', doc.file_url);
-      const path = ref.kind === 'path' ? ref.path : null;
-      if (path) await supabase.storage.from('documents').remove([path]);
-    }
-    await supabase.from('documents').delete().eq('id', doc.id);
+    if (!window.confirm(`Delete "${doc.title}"?\n\nIt moves to Recently deleted and can be restored for ${TRASH_RETENTION_DAYS} days.`)) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error: delError } = await supabase.from('documents')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: user?.id || null })
+      .eq('id', doc.id);
+    if (delError) { alert('Could not delete this document: ' + delError.message); return; }
     logAudit({
       entityId: doc.entity_id,
       action: 'delete',
       resourceType: 'document',
       resourceId: doc.id,
       resourceName: doc.title,
-      metadata: { category: doc.category, file_name: doc.file_name },
+      metadata: { category: doc.category, file_name: doc.file_name, recoverable_days: TRASH_RETENTION_DAYS },
     });
     fetchDocs();
+    if (showTrash) loadTrash();
+  }
+
+  // Recently deleted. Anything past the retention window is permanently removed here,
+  // the next time a trustee opens the library (no scheduled job needed).
+  async function loadTrash() {
+    const { data } = await supabase.from('documents').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false });
+    const rows = data || [];
+    const purged = await purgeExpired(supabase, rows);
+    setTrashed(purged > 0 ? rows.filter(d => daysLeft(d.deleted_at) > 0) : rows);
+  }
+
+  async function openTrash() {
+    setTrashMsg('');
+    setShowTrash(true);
+    await loadTrash();
+  }
+
+  async function handleRestore(doc) {
+    const { error: rErr } = await supabase.from('documents').update({ deleted_at: null, deleted_by: null }).eq('id', doc.id);
+    if (rErr) { setTrashMsg('Could not restore: ' + rErr.message); return; }
+    logAudit({
+      entityId: doc.entity_id, action: 'update', resourceType: 'document', resourceId: doc.id,
+      resourceName: doc.title, metadata: { restored_from_recently_deleted: true },
+    });
+    setTrashMsg(`"${doc.title}" restored.`);
+    await loadTrash();
+    fetchDocs();
+  }
+
+  async function handleDeleteForever(doc) {
+    if (!window.confirm(`Permanently delete "${doc.title}"?\n\nThis cannot be undone.`)) return;
+    const r = await permanentlyDelete(supabase, doc);
+    if (!r.ok) { setTrashMsg('Could not delete: ' + r.message); return; }
+    logAudit({
+      entityId: doc.entity_id, action: 'delete', resourceType: 'document', resourceId: doc.id,
+      resourceName: doc.title, metadata: { permanent: true },
+    });
+    setTrashMsg(`"${doc.title}" permanently deleted.`);
+    await loadTrash();
   }
  
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
@@ -210,6 +253,9 @@ export default function DocumentsManager() {
               📝 Fill Out H&amp;S Policy
             </button>
           )}
+          <button className="btn-secondary" onClick={openTrash}>
+            🗑️ Recently deleted
+          </button>
           <button className="btn-primary" onClick={() => { setShowModal(true); setError(''); setForm(EMPTY_FORM); setFile(null); }}>
             + Upload Document
           </button>
@@ -428,6 +474,33 @@ export default function DocumentsManager() {
                 {uploading ? 'Uploading...' : '+ Save Document'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showTrash && (
+        <div className="modal-overlay" onClick={() => setShowTrash(false)}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginBottom: 6 }}>Recently deleted</h3>
+            <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 14 }}>
+              Deleted documents are kept for {TRASH_RETENTION_DAYS} days. Restore one to put it back, or delete it forever.
+            </p>
+            {trashMsg && <div data-testid="trash-msg" style={{ fontSize: 13, marginBottom: 10, color: 'var(--brand)' }}>{trashMsg}</div>}
+            {trashed.length === 0 ? (
+              <div className="empty-state" style={{ padding: 16 }}>Nothing has been deleted recently.</div>
+            ) : trashed.map(d => (
+              <div key={d.id} data-testid="trash-row" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{d.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                    Deleted {new Date(d.deleted_at).toLocaleDateString('en-NZ')} · {daysLeft(d.deleted_at)} day{daysLeft(d.deleted_at) === 1 ? '' : 's'} left
+                  </div>
+                </div>
+                <button className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => handleRestore(d)}>Restore</button>
+                <button className="btn-secondary" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => handleDeleteForever(d)}>Delete forever</button>
+              </div>
+            ))}
+            <div className="modal-actions"><button className="btn-secondary" onClick={() => setShowTrash(false)}>Close</button></div>
           </div>
         </div>
       )}

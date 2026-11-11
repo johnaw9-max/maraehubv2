@@ -231,6 +231,7 @@ export default function CharterGenerator({ onClose, initialValues }) {
       .from('documents')
       .select('id')
       .eq('title', CHARTER_DOCUMENT_TITLE)
+      .is('deleted_at', null)
       .limit(1);
     if (fetchError) { console.error('Charter checklist record check failed:', fetchError); return; }
     if (existing && existing.length > 0) {
