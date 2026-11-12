@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { buildMonthColumns, buildBoardRows, formatDay } from '../lib/complianceEvidence';
+import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 // One-page board: every compliance item against the last 12 months, showing when it was
 // actually done. Click a row to open its full history, proof and print page.
@@ -27,7 +28,10 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
   const months = buildMonthColumns(todayStr, 12);
   const rows = buildBoardRows(items, completions, months);
 
-  const withRecord = rows.filter(r => r.lastDone && months.some(m => r.monthCounts[m.key])).length;
+  // Headline counts only items that repeat (have a renewal period): "done in the last 12 months"
+  // is only a fair question for something that is meant to be done regularly.
+  const recurring = rows.filter(r => r.item.renewal_months);
+  const withRecord = recurring.filter(r => months.some(m => r.monthCounts[m.key])).length;
 
   // Group by category, keeping the category order the tracker already uses.
   const groups = Object.keys(categories)
@@ -35,22 +39,25 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
     .filter(g => g.rows.length > 0);
 
   const cell = { padding: '6px 4px', textAlign: 'center', borderBottom: '1px solid var(--border)', fontSize: 13 };
+  // Item name stays visible while the months scroll sideways on a phone.
+  const stickyName = { position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1, boxShadow: '1px 0 0 var(--border)' };
 
   if (loading) return <p style={{ color: 'var(--text3)' }}>Loading…</p>;
 
   return (
     <div>
       <p style={{ fontSize: 14, color: 'var(--text2)', margin: '0 0 12px' }}>
-        When each item was actually done over the last 12 months. {withRecord} of {rows.length} items have a record in that time.
-        Tap an item for its full history, proof and a printable evidence page.
+        When each item was actually done over the last 12 months. {withRecord} of {recurring.length} regular checks have a record in that time.
+        A blank row just means nothing has been recorded yet. Tap ✓ Done on an item when it is done, or tap a row to add a past record, see its proof and print an evidence page.
       </p>
       {error && <div style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 10 }}>{error}</div>}
       <div className="panel" style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>
           <thead>
             <tr style={{ background: 'var(--surface2)' }}>
-              <th style={{ ...cell, textAlign: 'left', padding: '8px 12px', minWidth: 240 }}>Item</th>
+              <th style={{ ...cell, ...stickyName, background: 'var(--surface2)', textAlign: 'left', padding: '8px 12px', minWidth: 240 }}>Item</th>
               <th style={{ ...cell, minWidth: 96 }}>Last done</th>
+              <th style={{ ...cell, minWidth: 96 }}>Next due</th>
               {months.map(m => (
                 <th key={m.key} style={{ ...cell, minWidth: 40 }} title={`${m.label} ${m.year}`}>{m.label}</th>
               ))}
@@ -60,7 +67,7 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
             {groups.map(g => (
               <React.Fragment key={g.key}>
                 <tr>
-                  <td colSpan={2 + months.length} style={{ padding: '8px 12px', fontWeight: 700, fontSize: 14, background: g.cat.bg, color: g.cat.color }}>
+                  <td colSpan={3 + months.length} style={{ padding: '8px 12px', fontWeight: 700, fontSize: 14, background: g.cat.bg, color: g.cat.color }}>
                     {g.cat.icon} {g.cat.label}
                   </td>
                 </tr>
@@ -68,10 +75,21 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
                   <tr key={r.item.id} onClick={() => onOpenHistory(r.item)} style={{ cursor: 'pointer' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                    <td style={{ ...cell, textAlign: 'left', padding: '8px 12px' }}>{r.item.name}</td>
-                    <td style={{ ...cell, color: r.lastDone ? 'var(--text2)' : 'var(--danger)', whiteSpace: 'nowrap' }}>
-                      {r.lastDone ? formatDay(r.lastDone) : 'Nothing recorded'}
+                    <td style={{ ...cell, ...stickyName, textAlign: 'left', padding: '8px 12px' }}>{r.item.name}</td>
+                    <td style={{ ...cell, color: r.lastDone ? 'var(--text2)' : 'var(--text3)', whiteSpace: 'nowrap' }}
+                        title={r.lastDone ? '' : 'Nothing recorded yet'}>
+                      {r.lastDone ? formatDay(r.lastDone) : '—'}
                     </td>
+                    {(() => {
+                      const status = getItemComplianceStatus(r.item);
+                      const colour = status === 'overdue' ? 'var(--danger)' : 'var(--text2)';
+                      return (
+                        <td style={{ ...cell, color: r.item.due_date ? colour : 'var(--text3)', fontWeight: status === 'overdue' ? 700 : 400, whiteSpace: 'nowrap' }}
+                            title={status === 'overdue' ? 'Overdue' : ''}>
+                          {r.item.due_date ? formatDay(r.item.due_date) : '—'}
+                        </td>
+                      );
+                    })()}
                     {months.map(m => {
                       const n = r.monthCounts[m.key] || 0;
                       return (
