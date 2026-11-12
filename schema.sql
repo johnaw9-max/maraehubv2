@@ -95,6 +95,40 @@ create policy "Trustees can manage assets within their entities"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
 
 
+-- ── AUDIT_LOG ─────────────────────────────────────────────────────────────
+-- Added 12 Nov 2026 (alert triage, ClickUp 14yhc7kyw77): present on live Opeke, missing from this file.
+create table if not exists audit_log (
+  id uuid not null default gen_random_uuid(),
+  entity_id uuid,
+  user_id uuid not null,
+  user_email text,
+  action text not null,
+  resource_type text not null,
+  resource_id text,
+  resource_name text,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table audit_log add constraint audit_log_pkey PRIMARY KEY (id);
+alter table audit_log add constraint audit_log_action_check CHECK ((action = ANY (ARRAY['view'::text, 'upload'::text, 'download'::text, 'create'::text, 'update'::text, 'delete'::text])));
+
+create index if not exists audit_log_entity_id_idx on audit_log using btree (entity_id, created_at desc);
+create index if not exists audit_log_user_id_idx on audit_log using btree (user_id, created_at desc);
+
+alter table audit_log enable row level security;
+
+create policy "authenticated_insert_audit_log"
+  on audit_log for insert
+  to public
+  with check (((auth.uid() = user_id) AND ((entity_id IS NULL) OR is_entity_member(entity_id))));
+
+create policy "trustees_read_own_entity_audit_log"
+  on audit_log for select
+  to public
+  using (((entity_id IS NULL) OR is_entity_member(entity_id)));
+
+
 -- ── BANK_RECONCILIATIONS ──────────────────────────────────────────────────
 create table if not exists bank_reconciliations (
   id uuid not null default gen_random_uuid(),
@@ -213,7 +247,8 @@ create table if not exists bookings (
   contact_name text,
   contact_phone text,
   contact_email text,
-  entity_id uuid
+  entity_id uuid,
+  organisation text
 );
 
 alter table bookings add constraint bookings_pkey PRIMARY KEY (id);
@@ -403,6 +438,37 @@ create policy "Trustees can manage documents within their entities"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
 
 
+-- ── EMERGENCY_BUILDING_PLANS ──────────────────────────────────────────────
+-- Added 12 Nov 2026 (alert triage, ClickUp 14yhc7kyw77): present on live Opeke, missing from this file.
+create table if not exists emergency_building_plans (
+  id uuid not null default gen_random_uuid(),
+  entity_id uuid,
+  name text not null,
+  image_path text,
+  layout jsonb,
+  notes text,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table emergency_building_plans add constraint emergency_building_plans_pkey PRIMARY KEY (id);
+alter table emergency_building_plans add constraint emergency_building_plans_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table emergency_building_plans add constraint emergency_building_plans_has_content_check CHECK (((image_path IS NOT NULL) OR (layout IS NOT NULL)));
+alter table emergency_building_plans add constraint emergency_building_plans_layout_is_array_check CHECK (((layout IS NULL) OR (jsonb_typeof(layout) = 'array'::text)));
+alter table emergency_building_plans add constraint emergency_building_plans_name_check CHECK ((length(btrim(name)) > 0));
+
+alter table emergency_building_plans enable row level security;
+
+create policy "Trustees can manage building plans within their entities"
+  on emergency_building_plans for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
 -- ── EMERGENCY_PLAN_HAZARDS ────────────────────────────────────────────────
 create table if not exists emergency_plan_hazards (
   id uuid not null default gen_random_uuid(),
@@ -458,6 +524,47 @@ create policy "Trustees can manage emergency plan people within their entities"
   WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
 
 
+-- ── EMERGENCY_PLAN_PINS ───────────────────────────────────────────────────
+-- Added 12 Nov 2026 (alert triage, ClickUp 14yhc7kyw77): present on live Opeke, missing from this file.
+create table if not exists emergency_plan_pins (
+  id uuid not null default gen_random_uuid(),
+  plan_id uuid not null,
+  pin_type text not null,
+  label text not null,
+  x_pct numeric not null,
+  y_pct numeric not null,
+  notes text,
+  created_at timestamp with time zone not null default now(),
+  asset_id uuid
+);
+
+alter table emergency_plan_pins add constraint emergency_plan_pins_pkey PRIMARY KEY (id);
+alter table emergency_plan_pins add constraint emergency_plan_pins_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE SET NULL;
+alter table emergency_plan_pins add constraint emergency_plan_pins_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES emergency_building_plans(id) ON DELETE CASCADE;
+alter table emergency_plan_pins add constraint emergency_plan_pins_label_check CHECK ((length(btrim(label)) > 0));
+alter table emergency_plan_pins add constraint emergency_plan_pins_type_check CHECK ((pin_type = ANY (ARRAY['first_aid'::text, 'defibrillator'::text, 'fire_extinguisher'::text, 'fire_alarm'::text, 'exit'::text, 'power_shutoff'::text, 'water_shutoff'::text, 'gas_shutoff'::text, 'assembly_point'::text, 'torch_radio'::text, 'generator'::text, 'key_box'::text, 'other'::text])));
+alter table emergency_plan_pins add constraint emergency_plan_pins_x_check CHECK (((x_pct >= (0)::numeric) AND (x_pct <= (100)::numeric)));
+alter table emergency_plan_pins add constraint emergency_plan_pins_y_check CHECK (((y_pct >= (0)::numeric) AND (y_pct <= (100)::numeric)));
+
+create index if not exists emergency_plan_pins_plan_id_idx on emergency_plan_pins using btree (plan_id);
+
+alter table emergency_plan_pins enable row level security;
+
+create policy "Trustees can manage plan pins within their entities"
+  on emergency_plan_pins for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND (EXISTS ( SELECT 1
+   FROM emergency_building_plans p
+  WHERE ((p.id = emergency_plan_pins.plan_id) AND is_entity_member(p.entity_id))))))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND (EXISTS ( SELECT 1
+   FROM emergency_building_plans p
+  WHERE ((p.id = emergency_plan_pins.plan_id) AND is_entity_member(p.entity_id))))));
+
+
 -- ── EMERGENCY_RESPONSE_EVENTS ─────────────────────────────────────────────
 create table if not exists emergency_response_events (
   id uuid not null default gen_random_uuid(),
@@ -483,6 +590,41 @@ alter table emergency_response_events enable row level security;
 
 create policy "Trustees can manage emergency response events within their entities"
   on emergency_response_events for all
+  to authenticated
+  using (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)))
+  with check (((EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = 'trustee'::text)))) AND is_entity_member(entity_id)));
+
+
+-- ── EMERGENCY_WELFARE_CHECKS ──────────────────────────────────────────────
+-- Added 12 Nov 2026 (alert triage, ClickUp 14yhc7kyw77): present on live Opeke, missing from this file.
+create table if not exists emergency_welfare_checks (
+  id uuid not null default gen_random_uuid(),
+  full_name text not null,
+  phone text,
+  usual_location text,
+  needs text[] not null default '{}'::text[],
+  notes text,
+  checker_id uuid,
+  last_checked date,
+  consent_confirmed boolean not null default false,
+  entity_id uuid,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table emergency_welfare_checks add constraint emergency_welfare_checks_pkey PRIMARY KEY (id);
+alter table emergency_welfare_checks add constraint emergency_welfare_checks_checker_id_fkey FOREIGN KEY (checker_id) REFERENCES emergency_plan_people(id) ON DELETE SET NULL;
+alter table emergency_welfare_checks add constraint emergency_welfare_checks_entity_id_fkey FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE RESTRICT;
+alter table emergency_welfare_checks add constraint emergency_welfare_checks_consent_check CHECK ((consent_confirmed = true));
+alter table emergency_welfare_checks add constraint emergency_welfare_checks_needs_check CHECK ((needs <@ ARRAY['mobility'::text, 'power_equipment'::text, 'medication'::text, 'lives_alone'::text, 'hearing_sight'::text, 'transport'::text, 'other'::text]));
+
+alter table emergency_welfare_checks enable row level security;
+
+create policy "Trustees can manage welfare checks within their entities"
+  on emergency_welfare_checks for all
   to authenticated
   using (((EXISTS ( SELECT 1
    FROM profiles
@@ -1176,7 +1318,8 @@ create table if not exists marae_settings (
   reminders_paused boolean not null default false,
   gst_registered boolean not null default false,
   latitude numeric,
-  longitude numeric
+  longitude numeric,
+  ai_drafting_enabled boolean not null default false
 );
 
 alter table marae_settings add constraint marae_settings_pkey PRIMARY KEY (id);
