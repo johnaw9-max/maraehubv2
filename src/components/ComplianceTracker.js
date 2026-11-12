@@ -316,6 +316,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   // Completion history (when each item was actually done, with proof)
   const [historyItem, setHistoryItem] = useState(null);
+  // false once we find this marae's database has no history table yet (update not applied):
+  // then the History features hide themselves instead of showing errors.
+  const [historyAvailable, setHistoryAvailable] = useState(true);
   const [historyVersion, setHistoryVersion] = useState(0); // bumps when a history row is added/removed
   const [me, setMe] = useState(null); // { id, full_name, trustee_role }
   const [maraeName, setMaraeName] = useState('');
@@ -354,6 +357,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   // Best-effort: the screen works without either.
   async function loadMeAndMarae() {
     try {
+      const { error: probeErr } = await supabase.from('compliance_completions').select('id').limit(1);
+      if (probeErr) setHistoryAvailable(false);
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.id) {
         const { data: prof } = await supabase.from('profiles').select('id, full_name, trustee_role').eq('id', user.id).maybeSingle();
@@ -933,12 +938,14 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
             >
               ✓ Done
             </button>
-            <button
-              onClick={() => setHistoryItem(item)}
-              style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
-            >
-              History
-            </button>
+            {historyAvailable && (
+              <button
+                onClick={() => setHistoryItem(item)}
+                style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
+              >
+                History
+              </button>
+            )}
             <button
               onClick={() => openEditItem(item)}
               style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
@@ -1025,7 +1032,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </span>
             ),
           ]}
-          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} onOpenDoc={url => openSignedUrl('compliance-docs', url)} onHistory={setHistoryItem} />}
+          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} onOpenDoc={url => openSignedUrl('compliance-docs', url)} onHistory={historyAvailable ? setHistoryItem : undefined} />}
         />
         {isExpanded && (
           <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1108,7 +1115,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {[
             { key: 'items',     label: '📋 Compliance Items' },
-            { key: 'history',   label: '🛠 Maintenance History' },
+            ...(historyAvailable ? [{ key: 'history', label: '🛠 Maintenance History' }] : []),
             { key: 'incidents', label: '⚠️ Incident Register' },
           ].map((s, i) => (
             <button
@@ -1118,7 +1125,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 background: section === s.key ? 'var(--brand)' : 'var(--surface)',
                 color: section === s.key ? '#fff' : 'var(--text2)',
-                border: 'none', borderRight: i < 2 ? '1px solid var(--border)' : 'none',
+                border: 'none', borderRight: i < (historyAvailable ? 2 : 1) ? '1px solid var(--border)' : 'none',
                 fontFamily: 'DM Sans, sans-serif',
               }}
             >
@@ -1139,7 +1146,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       </div>
 
       {/* ── MAINTENANCE HISTORY BOARD ────────────────────────────────────── */}
-      {section === 'history' && (
+      {section === 'history' && historyAvailable && (
         <MaintenanceHistoryBoard
           items={items}
           categories={CATEGORIES}
