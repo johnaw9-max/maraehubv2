@@ -12,6 +12,7 @@ import SortSelect from './SortSelect';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 import ViewToggle from './ViewToggle';
 import ComplianceHistoryModal from './ComplianceHistoryModal';
+import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -314,6 +315,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   // Completion history (when each item was actually done, with proof)
   const [historyItem, setHistoryItem] = useState(null);
+  const [historyVersion, setHistoryVersion] = useState(0); // bumps when a history row is added/removed
   const [me, setMe] = useState(null); // { id, full_name, trustee_role }
   const [maraeName, setMaraeName] = useState('');
 
@@ -464,6 +466,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
         source: 'done_button',
       });
       if (error) console.warn('[ComplianceTracker] history not recorded:', error.message);
+      else setHistoryVersion(v => v + 1);
     } catch (e) {
       console.warn('[ComplianceTracker] history not recorded:', e?.message);
     }
@@ -1113,6 +1116,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
         <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {[
             { key: 'items',     label: '📋 Compliance Items' },
+            { key: 'history',   label: '🛠 Maintenance History' },
             { key: 'incidents', label: '⚠️ Incident Register' },
           ].map((s, i) => (
             <button
@@ -1122,7 +1126,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 padding: '9px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 background: section === s.key ? 'var(--brand)' : 'var(--surface)',
                 color: section === s.key ? '#fff' : 'var(--text2)',
-                border: 'none', borderRight: i === 0 ? '1px solid var(--border)' : 'none',
+                border: 'none', borderRight: i < 2 ? '1px solid var(--border)' : 'none',
                 fontFamily: 'DM Sans, sans-serif',
               }}
             >
@@ -1141,6 +1145,16 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
           </button>
         )}
       </div>
+
+      {/* ── MAINTENANCE HISTORY BOARD ────────────────────────────────────── */}
+      {section === 'history' && (
+        <MaintenanceHistoryBoard
+          items={items}
+          categories={CATEGORIES}
+          refreshKey={historyVersion}
+          onOpenHistory={setHistoryItem}
+        />
+      )}
 
       {/* ── COMPLIANCE ITEMS SECTION ─────────────────────────────────────── */}
       {section === 'items' && (
@@ -1390,6 +1404,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
           onClose={() => setHistoryItem(null)}
           onUpload={uploadDoc}
           onOpenProof={url => openSignedUrl('compliance-docs', url)}
+          onChanged={() => setHistoryVersion(v => v + 1)}
         />
       )}
 

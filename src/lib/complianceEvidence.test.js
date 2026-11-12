@@ -37,3 +37,30 @@ test('evidence page escapes notes and names, and lists every row', () => {
 test('evidence page says so when nothing is recorded', () => {
   expect(buildEvidenceHtml({ itemName: 'X', rows: [], generatedOn: '2026-11-13' })).toContain('No completions recorded yet.');
 });
+
+import { buildMonthColumns, buildBoardRows } from './complianceEvidence';
+
+test('month columns: 12 months ending this month, across a year boundary', () => {
+  const cols = buildMonthColumns('2026-02-10', 12);
+  expect(cols).toHaveLength(12);
+  expect(cols[0].key).toBe('2025-03');
+  expect(cols[11].key).toBe('2026-02');
+  expect(cols[9].label).toBe('Dec');
+});
+
+test('board rows: last done, per-month counts, items with nothing recorded', () => {
+  const months = buildMonthColumns('2026-11-13', 12);
+  const items = [{ id: 'a' }, { id: 'b' }];
+  const comps = [
+    { compliance_item_id: 'a', done_on: '2026-11-01' },
+    { compliance_item_id: 'a', done_on: '2026-11-09' },
+    { compliance_item_id: 'a', done_on: '2025-01-05' }, // before the 12 shown months
+  ];
+  const rows = buildBoardRows(items, comps, months);
+  expect(rows[0].lastDone).toBe('2026-11-09');
+  expect(rows[0].total).toBe(3);
+  expect(rows[0].monthCounts['2026-11']).toBe(2);
+  expect(rows[0].monthCounts['2025-01']).toBeUndefined();
+  expect(rows[1].lastDone).toBeNull();
+  expect(rows[1].total).toBe(0);
+});

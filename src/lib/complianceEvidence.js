@@ -63,3 +63,41 @@ ${body}
 <p class="meta">Generated from MaraeHub on ${escapeHtml(formatDay(generatedOn))}. Records are kept as they were entered; proof files are stored in MaraeHub.</p>
 </body></html>`;
 }
+
+// ── Maintenance History board helpers ─────────────────────────────────────────
+
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// The last `count` months ending with the month of `today` (YYYY-MM-DD), oldest first.
+export function buildMonthColumns(today, count = 12) {
+  const m = /^(\d{4})-(\d{2})/.exec(today);
+  let year = Number(m[1]);
+  let month = Number(m[2]); // 1-12
+  const cols = [];
+  for (let i = 0; i < count; i++) {
+    cols.unshift({ key: `${year}-${String(month).padStart(2, '0')}`, label: MONTH_SHORT[month - 1], year });
+    month -= 1;
+    if (month === 0) { month = 12; year -= 1; }
+  }
+  return cols;
+}
+
+// One row per item: when it was last done (ever) and which of the shown months have a record.
+export function buildBoardRows(items, completions, months) {
+  const shown = new Set(months.map(c => c.key));
+  const byItem = {};
+  for (const c of completions || []) {
+    (byItem[c.compliance_item_id] = byItem[c.compliance_item_id] || []).push(c);
+  }
+  return (items || []).map(item => {
+    const rows = byItem[item.id] || [];
+    let lastDone = null;
+    const monthCounts = {};
+    for (const r of rows) {
+      if (!lastDone || r.done_on > lastDone) lastDone = r.done_on;
+      const key = String(r.done_on).slice(0, 7);
+      if (shown.has(key)) monthCounts[key] = (monthCounts[key] || 0) + 1;
+    }
+    return { item, lastDone, total: rows.length, monthCounts };
+  });
+}
