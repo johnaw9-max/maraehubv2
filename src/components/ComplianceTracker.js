@@ -11,6 +11,7 @@ import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 import ViewToggle from './ViewToggle';
+import { recordCompletion } from '../lib/complianceCompletions';
 import ComplianceHistoryModal from './ComplianceHistoryModal';
 import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 
@@ -444,7 +445,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
-      await recordCompletion(item, todayStr);
+      await recordItemCompletion(item, todayStr);
       await closeLinkedTask(item.id);
       if (item.linked_service_reminder_id) {
         await syncLinkedServiceReminder(item.linked_service_reminder_id);
@@ -455,21 +456,12 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   // Keep a history row each time an item is done, so the marae can later show WHEN it was
   // done and by whom. Best-effort on purpose: "Done" must keep working even if the history
   // table is not there yet (e.g. a marae that has not received the update) or the save fails.
-  async function recordCompletion(item, doneOn) {
-    try {
-      const { error } = await supabase.from('compliance_completions').insert({
-        compliance_item_id: item.id,
-        entity_id: item.entity_id || null,
-        done_on: doneOn,
-        done_by: me?.full_name || null,
-        done_by_user: me?.id || null,
-        source: 'done_button',
-      });
-      if (error) console.warn('[ComplianceTracker] history not recorded:', error.message);
-      else setHistoryVersion(v => v + 1);
-    } catch (e) {
-      console.warn('[ComplianceTracker] history not recorded:', e?.message);
-    }
+  async function recordItemCompletion(item, doneOn) {
+    const ok = await recordCompletion({
+      itemId: item.id, entityId: item.entity_id || null, doneOn,
+      doneBy: me?.full_name || null, doneByUser: me?.id || null,
+    });
+    if (ok) setHistoryVersion(v => v + 1);
   }
 
   // Assets -> Maintenance -> Compliance link (86d44k695). Advances the
