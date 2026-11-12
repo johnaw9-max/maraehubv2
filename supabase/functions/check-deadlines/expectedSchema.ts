@@ -37,6 +37,18 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "entity_id",
     "linked_document_id"
   ],
+  "audit_log": [
+    "id",
+    "entity_id",
+    "user_id",
+    "user_email",
+    "action",
+    "resource_type",
+    "resource_id",
+    "resource_name",
+    "metadata",
+    "created_at"
+  ],
   "bank_reconciliations": [
     "id",
     "filename",
@@ -95,7 +107,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "contact_name",
     "contact_phone",
     "contact_email",
-    "entity_id"
+    "entity_id",
+    "organisation"
   ],
   "check_alert_state": [
     "check_name",
@@ -172,6 +185,15 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "entity_id",
     "charter_fields"
   ],
+  "emergency_building_plans": [
+    "id",
+    "entity_id",
+    "name",
+    "image_path",
+    "layout",
+    "notes",
+    "created_at"
+  ],
   "emergency_plan_hazards": [
     "id",
     "hazard_type",
@@ -189,6 +211,17 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "entity_id",
     "created_at"
   ],
+  "emergency_plan_pins": [
+    "id",
+    "plan_id",
+    "pin_type",
+    "label",
+    "x_pct",
+    "y_pct",
+    "notes",
+    "created_at",
+    "asset_id"
+  ],
   "emergency_response_events": [
     "id",
     "entity_id",
@@ -199,6 +232,19 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "duration_days",
     "document_url",
     "document_name",
+    "created_at"
+  ],
+  "emergency_welfare_checks": [
+    "id",
+    "full_name",
+    "phone",
+    "usual_location",
+    "needs",
+    "notes",
+    "checker_id",
+    "last_checked",
+    "consent_confirmed",
+    "entity_id",
     "created_at"
   ],
   "emergency_map_points": [
@@ -448,7 +494,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "reminders_paused",
     "gst_registered",
     "latitude",
-    "longitude"
+    "longitude",
+    "ai_drafting_enabled"
   ],
   "meeting_actions": [
     "id",

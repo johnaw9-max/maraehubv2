@@ -113,6 +113,46 @@ async function notifyAdmin(subject: string, body: string) {
   await notify(adminEmails, subject, body);
 }
 
+// Quiet-alert rule for the security and schema checks (alert triage 12 Nov
+// 2026, ClickUp 14yhc7kyw77). The checks still RUN daily; the email goes out
+// only when (1) a finding is new since the previous run, or (2) the same
+// findings have stood for 7 days (a weekly reminder). Same weekly pattern the
+// dead-field and migration-tracking checks already use, built on the existing
+// check_alert_state and system_check_log tables so no migration is needed.
+// A new finding is never held back: it alerts the same day.
+function findingKey(f: Record<string, unknown>): string {
+  const grantees = Array.isArray(f.grantees) ? [...(f.grantees as string[])].sort() : null;
+  return JSON.stringify([f.type ?? null, f.table ?? null, f.column ?? null, f.policy ?? null,
+    f.function ?? null, grantees, f.cmd ?? null, f.role ?? null, f.error ?? null]);
+}
+
+async function shouldAlert(
+  // deno-lint-ignore no-explicit-any
+  db: any, checkName: string, findings: Record<string, unknown>[],
+): Promise<boolean> {
+  if (findings.length === 0) return false;
+  const [prevRes, stateRes] = await Promise.all([
+    db.from('system_check_log').select('details').eq('check_name', checkName)
+      .order('run_at', { ascending: false }).limit(1).maybeSingle(),
+    db.from('check_alert_state').select('last_alerted_at').eq('check_name', checkName).maybeSingle(),
+  ]);
+  const prevKeys = new Set(((prevRes.data?.details ?? []) as Record<string, unknown>[]).map(findingKey));
+  const hasNew = findings.some(f => !prevKeys.has(findingKey(f)));
+  const last = stateRes.data?.last_alerted_at;
+  const daysSince = last ? (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60 * 24) : Infinity;
+  const send = hasNew || daysSince >= 7;
+  if (send) await db.from('check_alert_state').upsert({ check_name: checkName, last_alerted_at: new Date().toISOString() });
+  return send;
+}
+
+// Both marae send alerts to the same admin inbox, so an unlabelled email looks
+// like a duplicate. Put the marae name on the subject.
+// deno-lint-ignore no-explicit-any
+async function maraeLabel(db: any): Promise<string> {
+  const { data } = await db.from('marae_settings').select('marae_name').limit(1).maybeSingle();
+  return data?.marae_name ? ` (${data.marae_name})` : '';
+}
+
 // ── Workflow template matching ────────────────────────────────────────────────
 // Mirrors src/lib/workflowEngine.js — keyword map → fuzzy word match → asset
 // category fallback → first available template.
@@ -1055,7 +1095,8 @@ serve(async (req) => {
     !SCHEMA_DRIFT_ALLOWLIST.some(a => a.type === f.type && a.table === f.table && a.column === f.column)
   );
 
-  if (filteredSchemaDriftFindings.length > 0) {
+  if (await shouldAlert(db, 'schema_drift', filteredSchemaDriftFindings)) {
+    const label = await maraeLabel(db);
     const body =
       `Tēnā koutou,\n\n` +
       `MaraeHub's daily schema check found ${filteredSchemaDriftFindings.length} difference${filteredSchemaDriftFindings.length !== 1 ? 's' : ''} between schema.sql and the live database. This shouldn't happen through normal use of the app — worth a look.\n\n` +
@@ -1068,7 +1109,7 @@ serve(async (req) => {
       `\n\nPlease update schema.sql or the live database directly, then regenerate expectedSchema.ts (scripts/generate-expected-schema.js) if schema.sql changed.` +
       footer();
 
-    await notifyAdmin(`Schema drift check — ${filteredSchemaDriftFindings.length} difference${filteredSchemaDriftFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Schema drift check — ${filteredSchemaDriftFindings.length} difference${filteredSchemaDriftFindings.length !== 1 ? 's' : ''} found${label}`, body);
   }
 
   await db.from('system_check_log').insert({
@@ -1114,10 +1155,10 @@ serve(async (req) => {
       reason: 'Returns marae name and location only. marae_settings is trustee-read-only, but community members need the name for the header and feedback forms. anon/public revoked. Added 8 Nov 2026.' },
     { function: 'get_meeting_entity_id', grantees: ['postgres', 'service_role', 'authenticated'],
       reason: 'Confirmed via pg_policies: referenced directly inside resolutions/meeting_actions RLS policies. authenticated needs EXECUTE for real trustee queries against those tables to work under RLS at all. anon/public revoked 12 Aug 2026 - no anon-role policy anywhere references either table.' },
-    { function: 'handle_new_auth_user', grantees: ['postgres', 'service_role', 'anon', 'authenticated', 'PUBLIC'],
-      reason: 'Trigger function - confirmed empirically (direct call attempt) that Postgres refuses non-trigger invocation regardless of grants. Broad grant is structurally inert; left unchanged rather than churned for no real security benefit.' },
-    { function: 'update_last_sign_in', grantees: ['postgres', 'service_role', 'anon', 'authenticated', 'PUBLIC'],
-      reason: 'Same as handle_new_auth_user - trigger function, confirmed empirically uncallable directly regardless of grants. Tineka-only; will simply not appear in this RPC\'s results on Opeke.' },
+    { function: 'handle_new_auth_user', grantees: ['postgres', 'service_role'],
+      reason: 'Trigger function - Postgres refuses non-trigger invocation regardless of grants, and a trigger does not need EXECUTE for the roles that fire it. Live on Opeke, Terere and Test it is already locked to owner + service_role, the tightest setting. Expected grants updated to match 12 Nov 2026 (alert triage); previously listed the old broad grant, which made this check flag the safer setting as a mismatch.' },
+    { function: 'update_last_sign_in', grantees: ['postgres', 'service_role'],
+      reason: 'Same as handle_new_auth_user - trigger function, locked to owner + service_role where it exists (Test only today; absent on Opeke and Terere, see ClickUp 86d426k1j). Expected grants updated 12 Nov 2026.' },
     { function: 'get_anon_granted_policies', grantees: ['postgres', 'service_role'],
       reason: 'This check\'s own Check-A RPC - locked to service_role from creation, 12 Aug 2026' },
     { function: 'get_security_definer_function_grants', grantees: ['postgres', 'service_role'],
@@ -1208,7 +1249,8 @@ serve(async (req) => {
     }
   }
 
-  if (securityFindings.length > 0) {
+  if (await shouldAlert(db, 'security_access_control', securityFindings)) {
+    const label = await maraeLabel(db);
     const body =
       `Tēnā koutou,\n\n` +
       `MaraeHub's daily security check found ${securityFindings.length} issue${securityFindings.length !== 1 ? 's' : ''} with access control. This shouldn't happen through normal use of the app — worth a look.\n\n` +
@@ -1223,7 +1265,7 @@ serve(async (req) => {
       `\n\nPlease review this directly in the database.` +
       footer();
 
-    await notifyAdmin(`Security/access-control check — ${securityFindings.length} issue${securityFindings.length !== 1 ? 's' : ''} found`, body);
+    await notifyAdmin(`Security/access-control check — ${securityFindings.length} issue${securityFindings.length !== 1 ? 's' : ''} found${label}`, body);
   }
 
   await db.from('system_check_log').insert({
