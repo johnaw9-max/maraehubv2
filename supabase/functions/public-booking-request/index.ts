@@ -23,8 +23,12 @@ function fmtDate(d: string) {
 // fields lose line breaks and control characters, so nobody can fake extra lines
 // in the trustee email. Free text (notes) is shown in its own labelled block.
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+// Web addresses typed by a stranger are replaced, so a trustee email can't carry a
+// clickable link from the public form (email apps turn plain-text URLs into links).
+const LINK = /\b(?:https?:\/\/|ftp:\/\/|www\.)\S+/gi;
+const noLinks = (t: string) => t.replace(LINK, '[link removed]');
 const oneLine = (v: unknown, max: number) =>
-  (typeof v === 'string' ? v : '').replace(CONTROL, '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, max);
+  noLinks((typeof v === 'string' ? v : '').replace(CONTROL, '').replace(/[\r\n\t]+/g, ' ')).trim().slice(0, max);
 const EMAIL_RE = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[^\s@<>(),;:"]+$/;
 const PHONE_RE = /^[0-9+()\-\s.]{3,30}$/;
 const DATE_RE  = /^\d{4}-\d{2}-\d{2}$/;
@@ -65,7 +69,7 @@ serve(async (req) => {
 
     const rawNotes = typeof body.notes === 'string' ? body.notes.replace(CONTROL, '').trim() : '';
     if (rawNotes.length > 500) return json({ error: 'Notes must be 500 characters or fewer' }, 400);
-    const notes = rawNotes.replace(/\n{3,}/g, '\n\n');
+    const notes = noLinks(rawNotes).replace(/\n{3,}/g, '\n\n');
 
     if (body.organisation && (typeof body.organisation !== 'string' || body.organisation.length > 120)) return json({ error: 'Organisation must be 120 characters or fewer' }, 400);
     const organisation = oneLine(body.organisation, 120);
