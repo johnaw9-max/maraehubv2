@@ -11,6 +11,7 @@ import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 import ViewToggle from './ViewToggle';
+import ComplianceHistoryModal from './ComplianceHistoryModal';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -220,7 +221,7 @@ function CMenuItem({ label, onClick, danger, href }) {
   );
 }
 
-function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow, onOpenDoc }) {
+function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow, onOpenDoc, onHistory }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -259,6 +260,7 @@ function ComplianceRowMenu({ item, onEdit, onDelete, onStartWorkflow, onOpenDoc 
           }}
         >
           <CMenuItem label="Edit" onClick={() => { onEdit(item); setOpen(false); }} />
+          {onHistory && <CMenuItem label="🕘 History and proof" onClick={() => { onHistory(item); setOpen(false); }} />}
           {canStartWorkflow && (
             <CMenuItem
               label="⚙️ Start Workflow →"
@@ -310,6 +312,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [documents, setDocuments] = useState([]);
   const [expenses, setExpenses] = useState([]);
 
+  // Completion history (when each item was actually done, with proof)
+  const [historyItem, setHistoryItem] = useState(null);
+  const [me, setMe] = useState(null); // { id, full_name, trustee_role }
+  const [maraeName, setMaraeName] = useState('');
+
   // Item modal
   const [showItemModal, setShowItemModal] = useState(false);
   const [editItem, setEditItem]   = useState(null);
@@ -337,7 +344,27 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       await createUpcomingTasks(items);
     });
     fetchFireWardens();
+    loadMeAndMarae();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Who is using this screen (for the history record) and the marae's name (for the evidence page).
+  // Best-effort: the screen works without either.
+  async function loadMeAndMarae() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        const { data: prof } = await supabase.from('profiles').select('id, full_name, trustee_role').eq('id', user.id).maybeSingle();
+        if (prof) setMe(prof);
+      }
+      if (typeof supabase.rpc === 'function') {
+        const { data: disp } = await supabase.rpc('get_marae_display');
+        const row = Array.isArray(disp) ? disp[0] : disp;
+        if (row?.marae_name) setMaraeName(row.marae_name);
+      }
+    } catch (e) {
+      console.warn('[ComplianceTracker] could not load user/marae name:', e?.message);
+    }
+  }
 
   async function fetchFireWardens() {
     const [pRes, cRes] = await Promise.all([
@@ -415,10 +442,30 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
+      await recordCompletion(item, todayStr);
       await closeLinkedTask(item.id);
       if (item.linked_service_reminder_id) {
         await syncLinkedServiceReminder(item.linked_service_reminder_id);
       }
+    }
+  }
+
+  // Keep a history row each time an item is done, so the marae can later show WHEN it was
+  // done and by whom. Best-effort on purpose: "Done" must keep working even if the history
+  // table is not there yet (e.g. a marae that has not received the update) or the save fails.
+  async function recordCompletion(item, doneOn) {
+    try {
+      const { error } = await supabase.from('compliance_completions').insert({
+        compliance_item_id: item.id,
+        entity_id: item.entity_id || null,
+        done_on: doneOn,
+        done_by: me?.full_name || null,
+        done_by_user: me?.id || null,
+        source: 'done_button',
+      });
+      if (error) console.warn('[ComplianceTracker] history not recorded:', error.message);
+    } catch (e) {
+      console.warn('[ComplianceTracker] history not recorded:', e?.message);
     }
   }
 
@@ -892,6 +939,12 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               ✓ Done
             </button>
             <button
+              onClick={() => setHistoryItem(item)}
+              style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
+            >
+              History
+            </button>
+            <button
               onClick={() => openEditItem(item)}
               style={{ fontSize: 14, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontWeight: 600 }}
             >
@@ -977,7 +1030,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </span>
             ),
           ]}
-          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} onOpenDoc={url => openSignedUrl('compliance-docs', url)} />}
+          menu={<ComplianceRowMenu item={item} onEdit={openEditItem} onDelete={deleteItem} onStartWorkflow={onStartWorkflow} onOpenDoc={url => openSignedUrl('compliance-docs', url)} onHistory={setHistoryItem} />}
         />
         {isExpanded && (
           <div style={{ padding: '10px 14px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1328,6 +1381,18 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       )}
 
       {/* ── ITEM MODAL ───────────────────────────────────────────────────── */}
+      {historyItem && (
+        <ComplianceHistoryModal
+          item={historyItem}
+          maraeName={maraeName}
+          isAdmin={me?.trustee_role === 'admin'}
+          currentUserName={me?.full_name || ''}
+          onClose={() => setHistoryItem(null)}
+          onUpload={uploadDoc}
+          onOpenProof={url => openSignedUrl('compliance-docs', url)}
+        />
+      )}
+
       {showItemModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
           <div style={{ background: 'var(--surface)', borderRadius: 14, width: '100%', maxWidth: 560, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.22)' }}>
