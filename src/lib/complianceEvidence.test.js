@@ -97,3 +97,22 @@ test('board print page: escapes names, shows gaps and months', () => {
   expect(html).toContain('11 Oct 2026');
   expect(html).toContain('class="od"');
 });
+
+import { addMonthsISO, itemUpdatesForDone } from './complianceEvidence';
+
+test('addMonthsISO: normal, year rollover, short months', () => {
+  expect(addMonthsISO('2026-11-13', 6)).toBe('2027-05-13');
+  expect(addMonthsISO('2026-11-13', 12)).toBe('2027-11-13');
+  expect(addMonthsISO('2026-08-31', 6)).toBe('2027-02-28');
+  expect(addMonthsISO('2026-01-31', 1)).toBe('2026-02-28');
+  expect(addMonthsISO('bad', 1)).toBeNull();
+});
+
+test('one rule: newest done date updates Last checked and Next due; older goes to history only', () => {
+  const item = { last_checked_date: '2026-09-01', due_date: '2027-03-01', renewal_months: 6 };
+  expect(itemUpdatesForDone(item, '2026-10-11')).toEqual({ last_checked_date: '2026-10-11', due_date: '2027-04-11' });
+  expect(itemUpdatesForDone(item, '2026-09-01')).toEqual({ last_checked_date: '2026-09-01', due_date: '2027-03-01' });
+  expect(itemUpdatesForDone(item, '2026-05-01')).toBeNull();
+  expect(itemUpdatesForDone({ renewal_months: null }, '2026-10-11')).toEqual({ last_checked_date: '2026-10-11' });
+  expect(itemUpdatesForDone({ last_checked_date: null, renewal_months: 12 }, '2026-10-11')).toEqual({ last_checked_date: '2026-10-11', due_date: '2027-10-11' });
+});

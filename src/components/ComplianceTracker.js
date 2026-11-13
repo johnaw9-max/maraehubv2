@@ -613,12 +613,25 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       updated_at: new Date().toISOString(),
     };
 
+    let savedItemId = editItem?.id;
     if (editItem) {
       const { error } = await supabase.from('compliance_items').update(payload).eq('id', editItem.id);
       if (error) { setItemError(error.message); setItemSaving(false); return; }
     } else {
-      const { error } = await supabase.from('compliance_items').insert(payload);
+      const { data: created, error } = await supabase.from('compliance_items').insert(payload).select('id').maybeSingle();
       if (error) { setItemError(error.message); setItemSaving(false); return; }
+      savedItemId = created?.id;
+    }
+    // One rule: a Last checked date typed into the form is also a history record, so the
+    // history and the item never disagree. Best-effort, and never a future date.
+    const todayIso = new Date().toISOString().split('T')[0];
+    if (savedItemId && payload.last_checked_date && payload.last_checked_date <= todayIso
+        && payload.last_checked_date !== editItem?.last_checked_date) {
+      await recordCompletion({
+        itemId: savedItemId, entityId: payload.entity_id || null, doneOn: payload.last_checked_date,
+        doneBy: me?.full_name || null, doneByUser: me?.id || null, source: 'manual_backfill',
+      });
+      setHistoryVersion(v => v + 1);
     }
     logAudit({
       entityId: payload.entity_id,
@@ -1404,7 +1417,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
           onClose={() => setHistoryItem(null)}
           onUpload={uploadDoc}
           onOpenProof={url => openSignedUrl('compliance-docs', url)}
-          onChanged={() => setHistoryVersion(v => v + 1)}
+          onChanged={() => { setHistoryVersion(v => v + 1); fetchAll(); }}
         />
       )}
 
