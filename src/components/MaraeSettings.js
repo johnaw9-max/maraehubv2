@@ -5,6 +5,7 @@ import PrivacyPolicy from './PrivacyPolicy';
 import RoleSetupModal from './RoleSetup';
 import { fetchAssignableItems, fetchTrusteeDecisions, reassignItems } from '../lib/trusteeWorkload';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
+import RecordsExport from './RecordsExport';
 
 const EMPTY_FORM = {
   marae_name: '', location: '', iwi: '', hapu: '', phone: '', email: '', website: '',
@@ -1301,6 +1302,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </div>
         </div>
       )}
+
+      {/* ── A COPY OF OUR RECORDS (admin only) ── */}
+      {isAdmin && <RecordsExport maraeName={form.marae_name} entityId={entities[0]?.id} />}
 
       {/* ── TRUSTEE PERMISSIONS (admin only) ── */}
       {isAdmin && (
