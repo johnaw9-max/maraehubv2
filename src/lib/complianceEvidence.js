@@ -115,3 +115,39 @@ export function buildGapSummary(rows, statusOf) {
   const byName = (a, b) => String(a.name).localeCompare(String(b.name));
   return { overdue: overdue.sort(byName), noRecord: noRecord.sort(byName) };
 }
+
+// Printable one-page summary of the Maintenance History board, for a trustees' meeting.
+// groups: [{ label, rows: [{ name, lastDone, dueDate, overdue, monthCounts }] }]
+export function buildBoardPrintHtml({ maraeName, generatedOn, months, groups, gaps, recurringCount, withRecord }) {
+  const list = (items) => items.map(i => `<li>${escapeHtml(i.name)}</li>`).join('');
+  const gapHtml = (gaps.overdue.length === 0 && gaps.noRecord.length === 0)
+    ? '<p>Nothing is overdue, and every regular check has a record.</p>'
+    : `${gaps.overdue.length ? `<h3>Overdue (${gaps.overdue.length})</h3><ul>${list(gaps.overdue)}</ul>` : ''}
+       ${gaps.noRecord.length ? `<h3>Regular checks with no record yet (${gaps.noRecord.length})</h3>
+       <p class="note">It may have been done but not written down.</p><ul>${list(gaps.noRecord)}</ul>` : ''}`;
+  const head = `<tr><th class="l">Item</th><th>Last done</th><th>Next due</th>${months.map(m => `<th>${escapeHtml(m.label)}</th>`).join('')}</tr>`;
+  const body = groups.map(g => `<tr class="cat"><td colspan="${3 + months.length}">${escapeHtml(g.label)}</td></tr>` +
+    g.rows.map(r => `<tr><td class="l">${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.lastDone ? formatDay(r.lastDone) : '—')}</td>
+      <td class="${r.overdue ? 'od' : ''}">${escapeHtml(r.dueDate ? formatDay(r.dueDate) : '—')}</td>
+      ${months.map(m => { const n = r.monthCounts[m.key] || 0; return `<td class="${n ? 'ok' : ''}">${n ? (n > 1 ? '✓' + n : '✓') : ''}</td>`; }).join('')}
+    </tr>`).join('')).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Maintenance history — ${escapeHtml(maraeName || '')}</title>
+<style>
+  @page{size:A4 landscape;margin:12mm;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:0;}
+  h1{font-size:20px;margin:0 0 2px;} h2{font-size:13px;font-weight:normal;color:#555;margin:0 0 12px;}
+  h3{font-size:14px;margin:10px 0 2px;} ul{margin:2px 0 6px;padding-left:20px;font-size:12px;columns:2;} .note{font-size:11px;color:#666;margin:0;}
+  table{border-collapse:collapse;width:100%;font-size:11px;margin-top:14px;} th,td{border:1px solid #bbb;padding:3px 4px;text-align:center;}
+  th{background:#f0f0f0;} .l{text-align:left;} .cat td{background:#e6e6e6;font-weight:bold;text-align:left;}
+  .ok{background:#e8f4ef;font-weight:bold;} .od{color:#b00020;font-weight:bold;} tr{page-break-inside:avoid;}
+  .meta{font-size:11px;color:#666;margin-top:10px;}
+</style></head><body>
+<h1>Maintenance history</h1>
+<h2>${escapeHtml(maraeName || '')} · ${escapeHtml(formatDay(generatedOn))} · ${recurringCount ? `${withRecord} of ${recurringCount} regular checks have a record in the last 12 months` : ''}</h2>
+<h2 style="color:#222;font-size:15px;margin-bottom:0">Gaps to look at</h2>
+${gapHtml}
+<table><thead>${head}</thead><tbody>${body}</tbody></table>
+<p class="meta">Generated from MaraeHub. A blank month means nothing was recorded, not necessarily that it was not done.</p>
+</body></html>`;
+}

@@ -79,3 +79,21 @@ test('gap summary: overdue first, regular checks never recorded, nothing double 
   expect(g.noRecord.map(i => i.id)).toEqual(['b']);
   expect(buildGapSummary([], () => 'compliant')).toEqual({ overdue: [], noRecord: [] });
 });
+
+import { buildBoardPrintHtml } from './complianceEvidence';
+
+test('board print page: escapes names, shows gaps and months', () => {
+  const html = buildBoardPrintHtml({
+    maraeName: 'Terere <Marae>', generatedOn: '2026-11-13',
+    months: buildMonthColumns('2026-11-13', 12),
+    gaps: { overdue: [{ name: 'Fire <b>alarm' }], noRecord: [] },
+    recurringCount: 5, withRecord: 2,
+    groups: [{ label: 'Fire', rows: [{ name: 'Alarm test', lastDone: '2026-10-11', dueDate: '2026-11-01', overdue: true, monthCounts: { '2026-10': 1 } }] }],
+  });
+  expect(html).toContain('Terere &lt;Marae&gt;');
+  expect(html).toContain('Fire &lt;b&gt;alarm');
+  expect(html).not.toContain('<b>alarm');
+  expect(html).toContain('2 of 5 regular checks');
+  expect(html).toContain('11 Oct 2026');
+  expect(html).toContain('class="od"');
+});

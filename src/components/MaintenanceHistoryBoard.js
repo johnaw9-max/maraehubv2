@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { buildMonthColumns, buildBoardRows, buildGapSummary, formatDay } from '../lib/complianceEvidence';
+import { buildMonthColumns, buildBoardRows, buildGapSummary, buildBoardPrintHtml, formatDay } from '../lib/complianceEvidence';
 import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 // One-page board: every compliance item against the last 12 months, showing when it was
 // actually done. Click a row to open its full history, proof and print page.
-export default function MaintenanceHistoryBoard({ items, categories, refreshKey, onOpenHistory }) {
+export default function MaintenanceHistoryBoard({ items, categories, refreshKey, onOpenHistory, maraeName }) {
   const [completions, setCompletions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,6 +56,24 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
   // Item name stays visible while the months scroll sideways on a phone.
   const stickyName = { position: 'sticky', left: 0, background: 'var(--surface)', zIndex: 1, boxShadow: '1px 0 0 var(--border)' };
 
+  function printBoard() {
+    const html = buildBoardPrintHtml({
+      maraeName, generatedOn: todayStr, months, gaps,
+      recurringCount: recurring.length, withRecord,
+      groups: groups.map(g => ({
+        label: g.cat.label,
+        rows: g.rows.map(r => ({
+          name: r.item.name, lastDone: r.lastDone, dueDate: r.item.due_date,
+          overdue: getItemComplianceStatus(r.item) === 'overdue', monthCounts: r.monthCounts,
+        })),
+      })),
+    });
+    const w = window.open('', '_blank');
+    if (!w) { setError('Your browser blocked the print window. Please allow pop-ups for this site.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    w.focus(); w.print();
+  }
+
   if (loading) return <p style={{ color: 'var(--text3)' }}>Loading…</p>;
 
   return (
@@ -65,7 +83,10 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
         A blank row just means nothing has been recorded yet. Tap ✓ Done on an item when it is done, or tap a row to add a past record, see its proof and print an evidence page.
       </p>
       <div className="panel" style={{ padding: '12px 14px', marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Gaps to look at</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Gaps to look at</div>
+          <button type="button" className="btn btn-secondary" onClick={printBoard}>🖨 Print for meeting</button>
+        </div>
         {gaps.overdue.length === 0 && gaps.noRecord.length === 0 ? (
           <div style={{ fontSize: 14, color: 'var(--text2)' }}>Nothing is overdue, and every regular check has a record.</div>
         ) : (

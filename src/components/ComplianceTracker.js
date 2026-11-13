@@ -1152,6 +1152,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
           categories={CATEGORIES}
           refreshKey={historyVersion}
           onOpenHistory={setHistoryItem}
+          maraeName={maraeName}
         />
       )}
 
