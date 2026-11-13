@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { recordCompletion } from './complianceCompletions';
 import { updateWorkflowProgress } from './workflowEngine';
 
 const RECURRING_MONTHS = { monthly: 1, quarterly: 3, biannual: 6, annual: 12, '2years': 24 };
@@ -227,6 +228,7 @@ export async function onTaskCompleted(task) {
       const updates = { last_checked_date: today, updated_at: new Date().toISOString() };
       if (renewalMonths) updates.due_date = nextDate(renewalMonths);
       await supabase.from('compliance_items').update(updates).eq('id', itemId);
+      await recordCompletion({ itemId, doneOn: today });
     }
     return;
   }
