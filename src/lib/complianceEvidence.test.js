@@ -116,3 +116,37 @@ test('one rule: newest done date updates Last checked and Next due; older goes t
   expect(itemUpdatesForDone({ renewal_months: null }, '2026-10-11')).toEqual({ last_checked_date: '2026-10-11' });
   expect(itemUpdatesForDone({ last_checked_date: null, renewal_months: 12 }, '2026-10-11')).toEqual({ last_checked_date: '2026-10-11', due_date: '2027-10-11' });
 });
+
+import { noRecordChecks, describeNoRecord } from './complianceEvidence';
+
+describe('Board View: regular checks with no record yet', () => {
+  const items = [
+    { id: 'a', name: 'Fire alarm test', renewal_months: 1 },
+    { id: 'b', name: 'Backflow test', renewal_months: 12 },
+    { id: 'c', name: 'Water test', renewal_months: 6 },
+    { id: 'd', name: 'One-off permit', renewal_months: null },
+    { id: 'e', name: 'Overdue check', renewal_months: 3 },
+  ];
+  const statusOf = i => (i.id === 'e' ? 'overdue' : 'compliant');
+
+  test('lists regular checks with no completion, skipping one-offs, recorded items and overdue ones', () => {
+    const list = noRecordChecks(items, [{ compliance_item_id: 'a', done_on: '2026-10-01' }], statusOf);
+    expect(list.map(i => i.id)).toEqual(['b', 'c']); // sorted by name: Backflow, Water
+  });
+
+  test('a record of any age counts as a record', () => {
+    expect(noRecordChecks(items, [{ compliance_item_id: 'b', done_on: '2019-01-01' }], statusOf).map(i => i.id)).toEqual(['a', 'c']);
+  });
+
+  test('says nothing when every regular check has a record', () => {
+    const all = items.map(i => ({ compliance_item_id: i.id, done_on: '2026-10-01' }));
+    expect(describeNoRecord(noRecordChecks(items, all, statusOf))).toBeNull();
+  });
+
+  test('wording: singular, plural, and "and N more"', () => {
+    expect(describeNoRecord([{ name: 'Fire alarm test' }])).toMatch(/^1 regular check has no record yet \(Fire alarm test\)\./);
+    expect(describeNoRecord([{ name: 'A' }, { name: 'B' }])).toMatch(/^2 regular checks have no record yet \(A, B\)\./);
+    expect(describeNoRecord([1, 2, 3, 4, 5].map(n => ({ name: `Item ${n}` })))).toMatch(/\(Item 1, Item 2, Item 3 and 2 more\)/);
+    expect(describeNoRecord([])).toBeNull();
+  });
+});
