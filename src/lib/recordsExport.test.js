@@ -167,3 +167,19 @@ describe('buildRecordsExport', () => {
     expect(readme).toContain('uploaded');
   });
 });
+
+import { copyReminderText } from './recordsExport';
+describe('copyReminderText', () => {
+  const now = new Date('2026-11-14T00:00:00Z');
+  test('never downloaded: says so plainly', () => {
+    expect(copyReminderText(null, now)).toMatch(/does not have its own copy/);
+  });
+  test('recent copy: no reminder', () => {
+    expect(copyReminderText('2026-11-10T00:00:00Z', now)).toBeNull();
+    expect(copyReminderText('2026-10-10T00:00:00Z', now)).toBeNull(); // 35 days: still fine
+  });
+  test('old copy: says how many days and the date', () => {
+    const t = copyReminderText('2026-09-14T00:00:00Z', now);
+    expect(t).toMatch(/downloaded 61 days ago \(14 September 2026\)/);
+  });
+});
