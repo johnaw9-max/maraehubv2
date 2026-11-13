@@ -116,6 +116,22 @@ export function buildGapSummary(rows, statusOf) {
   return { overdue: overdue.sort(byName), noRecord: noRecord.sort(byName) };
 }
 
+// Regular checks (items with a renewal period) that have no completion record at all, and are not
+// already overdue (overdue ones are shown separately). "No record" is not the same as "not done".
+export function noRecordChecks(items, completions, statusOf) {
+  const rows = buildBoardRows(items, completions, []);
+  return buildGapSummary(rows, statusOf).noRecord;
+}
+
+// One plain sentence for the Board View: how many, and the first few names.
+export function describeNoRecord(list, maxNames = 3) {
+  if (!list || list.length === 0) return null;
+  const names = list.slice(0, maxNames).map(i => i.name).join(', ');
+  const more = list.length > maxNames ? ` and ${list.length - maxNames} more` : '';
+  const noun = list.length === 1 ? 'regular check has' : 'regular checks have';
+  return `${list.length} ${noun} no record yet (${names}${more}). It may have been done but not written down; add a past record or mark it done.`;
+}
+
 // Printable one-page summary of the Maintenance History board, for a trustees' meeting.
 // groups: [{ label, rows: [{ name, lastDone, dueDate, overdue, monthCounts }] }]
 export function buildBoardPrintHtml({ maraeName, generatedOn, months, groups, gaps, recurringCount, withRecord }) {

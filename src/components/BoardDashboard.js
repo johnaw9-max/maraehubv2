@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchXeroFinancials, minsAgo } from '../lib/xero';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
-import { getComplianceStatus, getWeightedCompliancePct } from '../lib/complianceStatus';
+import { getComplianceStatus, getWeightedCompliancePct, getItemComplianceStatus } from '../lib/complianceStatus';
+import { noRecordChecks, describeNoRecord } from '../lib/complianceEvidence';
 import { getRiskStatus } from '../lib/riskStatus';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
@@ -322,7 +323,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
-      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name, stage').order('due_date'),
+      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name, stage, renewal_months').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
       // Finance queries are admin-only (86d3uy01x) -- a standard trustee's
       // browser never even requests these tables, not just doesn't render
@@ -347,7 +348,11 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       // only EmergencyPlanManager.js queried this table previously.
       supabase.from('emergency_plan_hazards').select('id, hazard_type, likely_impact, what_to_do, entity_id'),
     ]);
+    // Completion history may not exist on every marae yet. If the table is missing the
+    // 'no record yet' line is simply left out (never guessed), so the Board View keeps working.
+    const compHistRes = await supabase.from('compliance_completions').select('compliance_item_id, done_on');
     setD({
+      completions:       compHistRes.error ? null : (compHistRes.data || []),
       bookings:          bookRes.data   || [],
       projects:          projRes.data   || [],
       actions:           actRes.data    || [],
@@ -969,6 +974,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
   if (soonReminders.length > 0)
     amberInsights.push({ text: `${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`, navTo: 'assets' });
+
+  if (d.completions) {
+    const noRecordText = describeNoRecord(noRecordChecks(d.compliance, d.completions, getItemComplianceStatus));
+    if (noRecordText) amberInsights.push({ text: noRecordText, navTo: 'compliance' });
+  }
 
   if (dueSoonCompliance.length > 0)
     amberInsights.push({ text: `${dueSoonCompliance.length} compliance item${dueSoonCompliance.length !== 1 ? 's' : ''} due within 30 days — schedule renewals soon`, navTo: 'compliance' });
