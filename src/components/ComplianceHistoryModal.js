@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import FormError from './FormError';
-import { sortCompletions, formatDay, sourceLabel, buildEvidenceHtml } from '../lib/complianceEvidence';
+import { sortCompletions, formatDay, sourceLabel, buildEvidenceHtml, itemUpdatesForDone } from '../lib/complianceEvidence';
 
 // History of when a compliance item was actually done, with proof.
 // Append-only for trustees: add a record, view, print. (Admins can remove a mistaken one.)
@@ -47,8 +47,15 @@ export default function ComplianceHistoryModal({ item, maraeName, isAdmin, curre
       done_by: doneBy.trim() || null, done_by_user: user?.id || null,
       note: note.trim() || null, document_url, document_name, source: 'manual_backfill',
     });
+    if (err) { setSaving(false); setError('Could not save this record. Please try again.'); return; }
+    // One rule: if this is the newest record, the item's Last checked / Next due follow it.
+    const updates = itemUpdatesForDone(item, doneOn);
+    if (updates) {
+      const { error: upErr } = await supabase.from('compliance_items')
+        .update({ ...updates, updated_at: new Date().toISOString() }).eq('id', item.id);
+      if (upErr) setError('The record was saved, but the item\'s Next due date could not be updated. Please edit the item to fix it.');
+    }
     setSaving(false);
-    if (err) { setError('Could not save this record. Please try again.'); return; }
     setShowAdd(false); setDoneOn(''); setNote(''); setFile(null);
     await load();
     if (onChanged) onChanged(item.id);

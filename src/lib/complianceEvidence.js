@@ -151,3 +151,28 @@ ${gapHtml}
 <p class="meta">Generated from MaraeHub. A blank month means nothing was recorded, not necessarily that it was not done.</p>
 </body></html>`;
 }
+
+// ── One rule for "this was done on <date>" ────────────────────────────────────
+// Whichever way a date is entered, the item's Last checked / Next due must agree with the
+// history. Returns the item changes to save, or null when the record is older than the
+// item's current Last checked (then it goes into the history only).
+
+// 2026-11-13 + 6 months -> 2027-05-13 (clamped to the last day of a shorter month). No timezone shifts.
+export function addMonthsISO(iso, months) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const total = Number(m[1]) * 12 + (Number(m[2]) - 1) + Number(months);
+  const year = Math.floor(total / 12);
+  const month = (total % 12) + 1;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const day = Math.min(Number(m[3]), lastDay);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+export function itemUpdatesForDone(item, doneOn) {
+  if (!doneOn) return null;
+  if (item.last_checked_date && String(doneOn) < String(item.last_checked_date)) return null;
+  const updates = { last_checked_date: doneOn };
+  if (item.renewal_months) updates.due_date = addMonthsISO(doneOn, item.renewal_months);
+  return updates;
+}

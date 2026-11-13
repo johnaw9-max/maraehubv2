@@ -7,7 +7,7 @@ import { supabase } from './supabase';
 // Best-effort by design: it never throws and never blocks the action that called it, so a
 // marae that has not received the history table yet (or a failed save) loses nothing but the
 // history row. Returns true if a row was saved or one already existed for that day.
-export async function recordCompletion({ itemId, entityId, doneOn, doneBy, doneByUser }) {
+export async function recordCompletion({ itemId, entityId, doneOn, doneBy, doneByUser, source = 'done_button' }) {
   try {
     if (!itemId) return false;
     const day = doneOn || new Date().toISOString().split('T')[0];
@@ -16,7 +16,7 @@ export async function recordCompletion({ itemId, entityId, doneOn, doneBy, doneB
     // (e.g. the task was completed and the Done button was also pressed).
     const { data: existing } = await supabase
       .from('compliance_completions').select('id')
-      .eq('compliance_item_id', itemId).eq('done_on', day).eq('source', 'done_button')
+      .eq('compliance_item_id', itemId).eq('done_on', day).eq('source', source)
       .limit(1);
     if (Array.isArray(existing) && existing.length > 0) return true;
 
@@ -38,7 +38,7 @@ export async function recordCompletion({ itemId, entityId, doneOn, doneBy, doneB
 
     const { error } = await supabase.from('compliance_completions').insert({
       compliance_item_id: itemId, entity_id: entity || null, done_on: day,
-      done_by: name, done_by_user: uid, source: 'done_button',
+      done_by: name, done_by_user: uid, source,
     });
     if (error) { console.warn('[complianceCompletions] history not recorded:', error.message); return false; }
     return true;
