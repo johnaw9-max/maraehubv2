@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { recordCompletion } from '../lib/complianceCompletions';
 import { supabase } from '../lib/supabase';
 import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
@@ -282,6 +283,7 @@ export default function AssetsManager({ onStartWorkflow }) {
       updates.due_date = next.toISOString().split('T')[0];
     }
     await supabase.from('compliance_items').update(updates).eq('id', item.id);
+    await recordCompletion({ itemId: item.id, doneOn: todayStr });
   }
 
   async function handleDeleteReminder(id) {
