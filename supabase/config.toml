@@ -20,3 +20,13 @@ verify_jwt = false
 
 [functions.check-deadlines]
 verify_jwt = false
+
+# These two do their own checking inside the function (notify-hirer: project secret key
+# or a logged-in user, see notify-hirer/auth.ts; invite-trustee: trustee check). They must
+# stay verify_jwt = false on every marae, exactly as on Opeke, because the gateway cannot
+# read sb_secret keys. Without these lines `supabase functions deploy` switches the check ON.
+[functions.notify-hirer]
+verify_jwt = false
+
+[functions.invite-trustee]
+verify_jwt = false
