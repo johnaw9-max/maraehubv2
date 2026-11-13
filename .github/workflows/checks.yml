@@ -1,0 +1,36 @@
+# Automatic checks on every pull request.
+# Every marae runs this same code, so a change must pass the tests and build
+# before it can be merged to main (main deploys to live sites).
+name: Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exactly what package-lock.json says
+        run: npm ci
+      - name: Unit tests
+        run: npx react-scripts test --watchAll=false
+        env:
+          CI: 'true'
+      - name: Production build
+        run: npx react-scripts build
+        env:
+          CI: 'false'
+      - name: Known-vulnerability report (informational, does not block)
+        run: npm audit --audit-level=high
+        continue-on-error: true

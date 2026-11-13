@@ -148,18 +148,26 @@ test('compact row has no "Start Workflow" item when classification isn\'t workfl
   expect(startBtn).toBeUndefined();
 });
 
-test('compact row "View Document" links to the item\'s document_url', async () => {
-  const container = await renderTracker({}, [DOCUMENT_ITEM, EP_MARKER]);
+// Documents are private storage files, so "View Document" opens a signed link
+// on click (openSignedUrl) instead of linking straight to the raw document_url.
+// The menu must offer it only when the item has a document.
+test('compact row menu offers "View Document" as a button, and only when the item has a document', async () => {
+  const container = await renderTracker({}, [DOCUMENT_ITEM, WORKFLOW_ITEM, EP_MARKER]);
 
-  const row = findRow(container, 'Document Linked Item');
-  expect(row).toBeTruthy();
-  await openMenu(row);
+  const docRow = findRow(container, 'Document Linked Item');
+  expect(docRow).toBeTruthy();
+  await openMenu(docRow);
+  const docBtn = Array.from(docRow.querySelectorAll('button')).find(b => b.textContent.includes('View Document'));
+  expect(docBtn).toBeTruthy();
+  // No raw link to the stored file in the row.
+  const rawLink = Array.from(docRow.querySelectorAll('a')).find(a => (a.getAttribute('href') || '').includes('fire-cert.pdf'));
+  expect(rawLink).toBeUndefined();
 
-  const link = Array.from(row.querySelectorAll('a')).find(a => a.textContent.includes('View Document'));
-  expect(link).toBeTruthy();
-  expect(link.getAttribute('href')).toBe('https://example.com/fire-cert.pdf');
-  expect(link.getAttribute('target')).toBe('_blank');
-  expect(link.getAttribute('rel')).toContain('noopener');
+  const wfRow = findRow(container, 'Workflow Linked Item');
+  expect(wfRow).toBeTruthy();
+  await openMenu(wfRow);
+  const noDocBtn = Array.from(wfRow.querySelectorAll('button')).find(b => b.textContent.includes('View Document'));
+  expect(noDocBtn).toBeUndefined();
 });
 
 test('the Incident Register section mounts with the new code', async () => {

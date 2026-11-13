@@ -1,0 +1,16 @@
+# Weekly update proposals. Each one arrives as a pull request, passes the
+# automatic checks, and is tried on Test before anything reaches a live marae.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
