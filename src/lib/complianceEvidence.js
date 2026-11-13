@@ -101,3 +101,17 @@ export function buildBoardRows(items, completions, months) {
     return { item, lastDone, total: rows.length, monthCounts };
   });
 }
+
+// Gap summary for the chairman: what is overdue, and which regular checks have never had
+// a record. "No record" is not the same as "not done", so the wording in the UI stays neutral.
+// statusOf is passed in (getItemComplianceStatus) to keep this file free of other imports.
+export function buildGapSummary(rows, statusOf) {
+  const overdue = [];
+  const noRecord = [];
+  for (const r of rows || []) {
+    if (statusOf(r.item) === 'overdue') overdue.push(r.item);
+    else if (r.item.renewal_months && r.total === 0) noRecord.push(r.item);
+  }
+  const byName = (a, b) => String(a.name).localeCompare(String(b.name));
+  return { overdue: overdue.sort(byName), noRecord: noRecord.sort(byName) };
+}

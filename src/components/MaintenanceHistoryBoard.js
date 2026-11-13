@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { buildMonthColumns, buildBoardRows, formatDay } from '../lib/complianceEvidence';
+import { buildMonthColumns, buildBoardRows, buildGapSummary, formatDay } from '../lib/complianceEvidence';
 import { getItemComplianceStatus } from '../lib/complianceStatus';
 
 // One-page board: every compliance item against the last 12 months, showing when it was
@@ -33,6 +33,20 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
   const recurring = rows.filter(r => r.item.renewal_months);
   const withRecord = recurring.filter(r => months.some(m => r.monthCounts[m.key])).length;
 
+  const gaps = buildGapSummary(rows, getItemComplianceStatus);
+  const MAX_SHOWN = 8;
+  const gapList = (list, colour) => (
+    <>
+      {list.slice(0, MAX_SHOWN).map(i => (
+        <button key={i.id} type="button" onClick={() => onOpenHistory(i)}
+          style={{ border: `1px solid ${colour}`, color: colour, background: 'transparent', borderRadius: 14, padding: '3px 10px', margin: '3px 6px 3px 0', fontSize: 13, cursor: 'pointer' }}>
+          {i.name}
+        </button>
+      ))}
+      {list.length > MAX_SHOWN && <span style={{ fontSize: 13, color: 'var(--text3)' }}>and {list.length - MAX_SHOWN} more in the grid below</span>}
+    </>
+  );
+
   // Group by category, keeping the category order the tracker already uses.
   const groups = Object.keys(categories)
     .map(key => ({ key, cat: categories[key], rows: rows.filter(r => r.item.category === key) }))
@@ -50,6 +64,28 @@ export default function MaintenanceHistoryBoard({ items, categories, refreshKey,
         When each item was actually done over the last 12 months. {withRecord} of {recurring.length} regular checks have a record in that time.
         A blank row just means nothing has been recorded yet. Tap ✓ Done on an item when it is done, or tap a row to add a past record, see its proof and print an evidence page.
       </p>
+      <div className="panel" style={{ padding: '12px 14px', marginBottom: 12 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Gaps to look at</div>
+        {gaps.overdue.length === 0 && gaps.noRecord.length === 0 ? (
+          <div style={{ fontSize: 14, color: 'var(--text2)' }}>Nothing is overdue, and every regular check has a record.</div>
+        ) : (
+          <>
+            {gaps.overdue.length > 0 && (
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 14, color: 'var(--danger)', fontWeight: 600 }}>Overdue ({gaps.overdue.length})</div>
+                {gapList(gaps.overdue, 'var(--danger)')}
+              </div>
+            )}
+            {gaps.noRecord.length > 0 && (
+              <div>
+                <div style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>Regular checks with no record yet ({gaps.noRecord.length})</div>
+                <div style={{ fontSize: 13, color: 'var(--text3)' }}>It may have been done but not written down. Tap one to add a past record, or mark it done.</div>
+                {gapList(gaps.noRecord, 'var(--text2)')}
+              </div>
+            )}
+          </>
+        )}
+      </div>
       {error && <div style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 10 }}>{error}</div>}
       <div className="panel" style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 900 }}>

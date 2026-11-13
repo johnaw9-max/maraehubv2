@@ -64,3 +64,18 @@ test('board rows: last done, per-month counts, items with nothing recorded', () 
   expect(rows[1].lastDone).toBeNull();
   expect(rows[1].total).toBe(0);
 });
+
+import { buildGapSummary } from './complianceEvidence';
+
+test('gap summary: overdue first, regular checks never recorded, nothing double counted', () => {
+  const rows = [
+    { item: { id: 'a', name: 'Fire alarm', renewal_months: 6 }, total: 0 },   // overdue AND no record -> overdue only
+    { item: { id: 'b', name: 'Extinguishers', renewal_months: 12 }, total: 0 }, // no record
+    { item: { id: 'c', name: 'Insurance', renewal_months: 12 }, total: 2 },    // fine
+    { item: { id: 'd', name: 'One-off survey', renewal_months: null }, total: 0 }, // not a regular check
+  ];
+  const g = buildGapSummary(rows, i => (i.id === 'a' ? 'overdue' : 'compliant'));
+  expect(g.overdue.map(i => i.id)).toEqual(['a']);
+  expect(g.noRecord.map(i => i.id)).toEqual(['b']);
+  expect(buildGapSummary([], () => 'compliant')).toEqual({ overdue: [], noRecord: [] });
+});
