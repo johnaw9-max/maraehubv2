@@ -195,3 +195,16 @@ export async function buildRecordsExport({ supabase, maraeName, exportedBy, now 
     results,
   };
 }
+
+// Board View reminder for admin trustees: is the marae's own copy of its records recent?
+// lastISO is when a copy was last downloaded (null if never). Returns null when no reminder is needed.
+export const COPY_REMINDER_DAYS = 35;
+export function copyReminderText(lastISO, now = new Date(), maxDays = COPY_REMINDER_DAYS) {
+  if (!lastISO) {
+    return 'Your marae does not have its own copy of its records yet. Download one in Settings so you always have your records, even if MaraeHub is unavailable.';
+  }
+  const days = Math.floor((now.getTime() - new Date(lastISO).getTime()) / 86400000);
+  if (!(days > maxDays)) return null;
+  const when = new Intl.DateTimeFormat('en-NZ', { timeZone: 'Pacific/Auckland', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(lastISO));
+  return `Your last copy of the records was downloaded ${days} days ago (${when}). Download a fresh one in Settings, ideally before the next hui.`;
+}

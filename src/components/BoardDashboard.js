@@ -4,6 +4,7 @@ import { fetchXeroFinancials, minsAgo } from '../lib/xero';
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import { getComplianceStatus, getWeightedCompliancePct, getItemComplianceStatus } from '../lib/complianceStatus';
 import { noRecordChecks, describeNoRecord } from '../lib/complianceEvidence';
+import { copyReminderText } from '../lib/recordsExport';
 import { getRiskStatus } from '../lib/riskStatus';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
@@ -73,6 +74,7 @@ const NAV_LABELS = {
   projects:   'View Projects →',
   finance:    'View Finance →',
   workflows:  'View Workflows →',
+  settings:   'Open Settings →',
 };
 
 function Stars({ rating }) {
@@ -351,7 +353,14 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     // Completion history may not exist on every marae yet. If the table is missing the
     // 'no record yet' line is simply left out (never guessed), so the Board View keeps working.
     const compHistRes = await supabase.from('compliance_completions').select('compliance_item_id, done_on');
+    // When an admin trustee last downloaded a copy of the records (null = never; undefined = unknown).
+    let lastCopyAt;
+    if (isAdmin) {
+      const copyRes = await supabase.from('audit_log').select('created_at').eq('resource_type', 'records_export').order('created_at', { ascending: false }).limit(1);
+      if (!copyRes.error) lastCopyAt = copyRes.data?.[0]?.created_at || null;
+    }
     setD({
+      lastCopyAt,
       completions:       compHistRes.error ? null : (compHistRes.data || []),
       bookings:          bookRes.data   || [],
       projects:          projRes.data   || [],
@@ -974,6 +983,11 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
   const soonReminders = d.reminders.filter(r => r.due_date && new Date(r.due_date + 'T12:00:00') >= today && new Date(r.due_date + 'T12:00:00') <= in14);
   if (soonReminders.length > 0)
     amberInsights.push({ text: `${soonReminders.length} service reminder${soonReminders.length !== 1 ? 's' : ''} due within 14 days — schedule maintenance soon`, navTo: 'assets' });
+
+  if (isAdmin && d.lastCopyAt !== undefined) {
+    const copyText = copyReminderText(d.lastCopyAt);
+    if (copyText) amberInsights.push({ text: copyText, navTo: 'settings' });
+  }
 
   if (d.completions) {
     const noRecordText = describeNoRecord(noRecordChecks(d.compliance, d.completions, getItemComplianceStatus));
