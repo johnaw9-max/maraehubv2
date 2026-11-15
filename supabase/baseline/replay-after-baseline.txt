@@ -1,0 +1,3 @@
+# Data-only migrations (shared, marae-neutral content) that must run after the baseline, in order.
+# One file name per line. Each must be idempotent and contain no marae-specific data.
+20261011050000_shared_content_seed.sql
