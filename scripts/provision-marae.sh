@@ -72,7 +72,7 @@ if [ "$DRY" = 1 ]; then
   echo "  3 apply supabase/baseline/baseline.sql (through migration $BASE_VERSION)"
   echo "  4 replay: $(echo $REPLAY | tr '\n' ' ')"
   echo "    then $(echo "$LATER" | grep -c .) later migration(s), recording each version"
-  echo "  5 deploy $(ls supabase/functions | grep -vc '^_') edge functions"
+  echo "  5 deploy $(ls supabase/functions | grep -v '^_' | grep -vcE '^(get-tineka-session|iwi-pull-snapshot|community-auto-login)$') edge functions (3 marae-specific ones left out)"
   exit 0
 fi
 
@@ -166,9 +166,21 @@ for f in $LATER; do
 done
 
 # ── 5 functions ──
-echo "5/5 Deploying all edge functions in one go..."
+echo "5/5 Deploying edge functions in one go (marae-specific ones excluded)..."
 if [ "$(sget functions)" != "done" ]; then
-  OUT="$(cd "$REPO_DIR" && npx supabase functions deploy --project-ref "$REF" 2>&1)" \
+  # Marae-specific or hub-specific functions are never default-deployed to a new marae (same
+  # reasons as the registry's excluded_functions for the existing maraes):
+  #   get-tineka-session  built for one specific marae's login
+  #   iwi-pull-snapshot   Iwi Hub only
+  #   community-auto-login  one marae's community login, opt-in only
+  EXCLUDE=" get-tineka-session iwi-pull-snapshot community-auto-login "
+  FNS=""
+  for d in "$REPO_DIR"/supabase/functions/*/; do
+    fn="$(basename "$d")"; case "$fn" in _*) continue ;; esac
+    case "$EXCLUDE" in *" $fn "*) continue ;; esac
+    FNS="$FNS $fn"
+  done
+  OUT="$(cd "$REPO_DIR" && npx supabase functions deploy $FNS --project-ref "$REF" 2>&1)" \
     || fail "function deploy failed ($(echo "$OUT" | tail -3 | tr '\n' ' ')). Run again to retry."
   sset functions done
 fi
@@ -180,6 +192,6 @@ Still to do before it is a real marae (later steps, not done by this script):
   - secrets from the manifest (Step 3), scheduled jobs (Step 4), Vercel project (Step 5)
   - restart the project once in the dashboard, then run provision-shield.sh $NAME $REF
   - add this entry to scripts/marae-registry.json by pull request:
-    {"ref": "$REF", "name": "$NAME", "role": "production", "frontend_project": "<vercel project>"}
+    {"ref": "$REF", "name": "$NAME", "role": "production", "frontend_project": "<vercel project>", "excluded_functions": [get-tineka-session, iwi-pull-snapshot, community-auto-login, each with a reason]}
   - then run: node scripts/drift-check/drift-check.js --only=$NAME
 DONE
