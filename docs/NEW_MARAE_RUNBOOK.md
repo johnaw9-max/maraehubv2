@@ -19,7 +19,7 @@ Run from a clean checkout of `main`, up to date. Each command is safe to run twi
 - Cronitor monitor and its `CRONITOR_PING_URL`; the dedicated login-check user (`LOGIN_CHECK_EMAIL` / `LOGIN_CHECK_PASSWORD`), typed only into the dashboard.
 - Stripe keys, Google/Xero if that marae uses them (`provision-secrets.sh --with calendar,xero`).
 - Backup bucket and keys (`BACKUP_*`), in the same AWS region as the database.
-- First administrator, marae name and entity: NOT automated. Found as a gap on 16 Nov; to be tested in the second rehearsal (open the app against a fresh project and see what a first trustee sees).
+- First administrator and settings row: invite the person in the Supabase dashboard (Authentication > Users > Invite user), then `scripts/provision-first-admin.sh <name> --email <their email> --marae-title "Te Marae o ..."` (promotes them to trustee admin and creates the settings row with the marae's own name; the table's built-in defaults belong to another marae). Entities and the first-run wizard: to be tested in the second rehearsal.
 - Custom domain.
 
 ## After it is live
