@@ -230,7 +230,7 @@ const HELP_TOPICS = {
           { text: "Real, honest scope: it is a snapshot from the day you download it. It does not include the uploaded files themselves (only the list of documents), and it does not include user accounts or login history. It holds private information, so keep it somewhere only trustees can reach." },
         ] },
         { q: 'How are the accounts that run MaraeHub protected?', a: [
-          { text: "The accounts used to run MaraeHub (the software code, the hosting, the database, and the website addresses) are protected with a second sign-in step as well as a password, and the website addresses are set to renew automatically so they cannot lapse by accident." },
+          { text: "The main accounts used to run MaraeHub (the software code, the hosting, the database, and the website addresses) are protected with a second sign-in step as well as a password, and the website addresses are set to renew automatically so they cannot lapse by accident." },
           { text: "Real, honest scope: this protects the accounts MaraeHub uses behind the scenes. Your own trustees' sign-ins to MaraeHub are separate. No system is risk-free, which is why the backups and your own downloadable copy matter." },
         ] },
         { q: "How does MaraeHub keep its own software secure?", a: "MaraeHub's underlying software libraries are monitored for known, published security vulnerabilities through GitHub's Dependabot service, which checks automatically and flags when an update is genuinely needed. When a real vulnerability is found, it gets assessed and fixed — safe, non-breaking fixes are applied as soon as they're available; any fix that would require a larger, riskier change is reviewed deliberately rather than applied automatically." },
