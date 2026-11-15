@@ -129,6 +129,14 @@ else echo "3/5 Baseline already applied, skipping."; fi
 
 # ── 4 seed + later migrations ──
 echo "4/5 Shared seed and later migrations..."
+# a brand-new project has no migration-tracking table yet: create it exactly as Supabase does
+cat > "$SCRATCH_DIR/track.sql" <<'SQL'
+create schema if not exists supabase_migrations;
+create table if not exists supabase_migrations.schema_migrations (
+  version text not null primary key, statements text[], name text,
+  created_by text, idempotency_key text, rollback text[]);
+SQL
+run_sql_file "$SCRATCH_DIR/track.sql" || fail "could not create the migration-tracking table"
 record() { printf "insert into supabase_migrations.schema_migrations (version, name) values ('%s','%s') on conflict do nothing;" "$1" "$2" > "$SCRATCH_DIR/rec.sql"; run_sql_file "$SCRATCH_DIR/rec.sql"; }
 # migrations at or below the baseline version are already represented in it
 for f in $(cd "$MIGRATIONS_DIR" && ls | awk -v b="$BASE_VERSION" '{split($0,a,"_"); if (a[1]<=b) print $0}'); do
