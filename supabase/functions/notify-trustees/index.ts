@@ -21,6 +21,7 @@
  */
 
 import { serve }        from 'https://deno.land/std@0.168.0/http/server.ts';
+import { isProjectSecretKey, extractKeys } from './auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
@@ -118,6 +119,13 @@ function wasSent(log: LogEntry[], type: string, entityId: string, trusteeId: str
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+
+  // Caller must hold a secret key for THIS project (the nightly job does). The public
+  // anon key is not accepted: this function emails every trustee.
+  if (!(await isProjectSecretKey(extractKeys(req)))) {
+    console.warn('notify-trustees: refused unauthenticated call');
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+  }
 
   const db    = createClient(SUPABASE_URL, SERVICE_KEY);
   const today = new Date(); today.setHours(0, 0, 0, 0);

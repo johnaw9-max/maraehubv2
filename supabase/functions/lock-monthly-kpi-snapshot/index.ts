@@ -38,6 +38,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { isProjectSecretKey, extractKeys } from './auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
@@ -188,9 +189,16 @@ async function fetchBalanceSheetSnapshot(admin: any): Promise<{ netAssets: numbe
   }
 }
 
-serve(async (_req) => {
+serve(async (req) => {
   const json = (body: object, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+  // Caller must hold a secret key for THIS project (the monthly job does). The public anon
+  // key is not accepted: this function locks the month's KPI snapshot.
+  if (!(await isProjectSecretKey(extractKeys(req)))) {
+    console.warn('lock-monthly-kpi-snapshot: refused unauthenticated call');
+    return json({ error: 'Unauthorized' }, 401);
+  }
 
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);

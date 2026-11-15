@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.check-deadlines]
 verify_jwt = false
+
+[functions.notify-trustees]
+verify_jwt = false
+
+[functions.lock-monthly-kpi-snapshot]
+verify_jwt = false
