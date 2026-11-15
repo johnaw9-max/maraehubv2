@@ -1464,15 +1464,15 @@ create or replace view public."xero_connection_status" with (security_invoker=tr
 
 -- TRIGGERS
 drop trigger if exists "on_auth_user_created" on auth."users";
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_auth_user();
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 drop trigger if exists "protect_booking_trustee_fields" on public."bookings";
-CREATE TRIGGER protect_booking_trustee_fields BEFORE UPDATE ON public.bookings FOR EACH ROW EXECUTE FUNCTION protect_booking_trustee_fields();
+CREATE TRIGGER protect_booking_trustee_fields BEFORE UPDATE ON public.bookings FOR EACH ROW EXECUTE FUNCTION public.protect_booking_trustee_fields();
 drop trigger if exists "entities_limit_trigger" on public."entities";
-CREATE TRIGGER entities_limit_trigger BEFORE INSERT ON public.entities FOR EACH ROW EXECUTE FUNCTION enforce_entities_limit();
+CREATE TRIGGER entities_limit_trigger BEFORE INSERT ON public.entities FOR EACH ROW EXECUTE FUNCTION public.enforce_entities_limit();
 drop trigger if exists "trg_check_journal_lines_balance" on public."gl_journal_lines";
-CREATE TRIGGER trg_check_journal_lines_balance AFTER INSERT ON public.gl_journal_lines REFERENCING NEW TABLE AS new_lines FOR EACH STATEMENT EXECUTE FUNCTION check_journal_lines_balance();
+CREATE TRIGGER trg_check_journal_lines_balance AFTER INSERT ON public.gl_journal_lines REFERENCING NEW TABLE AS new_lines FOR EACH STATEMENT EXECUTE FUNCTION public.check_journal_lines_balance();
 drop trigger if exists "protect_profiles_permission_fields" on public."profiles";
-CREATE TRIGGER protect_profiles_permission_fields BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION profiles_protect_permission_fields();
+CREATE TRIGGER protect_profiles_permission_fields BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.profiles_protect_permission_fields();
 
 -- ROW LEVEL SECURITY
 alter table public."action_reminder_tokens" enable row level security;
