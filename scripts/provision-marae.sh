@@ -62,7 +62,7 @@ if any(p['name']==n for p in reg['projects']): print(f"❌ '{n}' is already in t
 PY
 
 BASE_VERSION="$(python3 -c "import json;print(json.load(open('$BASELINE_DIR/baseline.meta.json'))['represents_through_migration'])")"
-LATER="$(cd "$MIGRATIONS_DIR" && ls | awk -v b="$BASE_VERSION" '{split($0,a,"_"); if (a[1]>b) print $0}')"
+LATER="$(cd "$MIGRATIONS_DIR" && ls | awk -v b="$BASE_VERSION" '{split($0,a,"_"); if (a[1] ~ /^[0-9]+$/ && a[1]>b) print $0}')"
 REPLAY="$(grep -v '^#' "$BASELINE_DIR/replay-after-baseline.txt" | grep -v '^$')"
 
 if [ "$DRY" = 1 ]; then
@@ -148,7 +148,7 @@ rows=[]
 for f in sorted(os.listdir(d)):
     if not f.endswith('.sql'): continue
     v,_,n=f[:-4].partition('_')
-    if v<=b: rows.append("('%s','%s')"%(v,n.replace("'","''")))
+    if v.isdigit() and v<=b: rows.append("('%s','%s')"%(v,n.replace("'","''")))
 open(out,'w').write("insert into supabase_migrations.schema_migrations (version, name) values\n"+",\n".join(rows)+"\non conflict do nothing;")
 PY
   run_sql_file "$SCRATCH_DIR/rec_all.sql" || fail "could not record the baseline migrations"
