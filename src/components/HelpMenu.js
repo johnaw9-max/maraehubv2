@@ -214,7 +214,24 @@ const HELP_TOPICS = {
         ] },
         { q: 'Does MaraeHub watch for unusually large data exports?', a: [
           { text: "Yes. When someone exports the Finance accountant CSV report, MaraeHub records who exported it and how many rows it contained. A daily automated check flags any single export far larger than normal, so an unusually large pull of financial data doesn't go unnoticed." },
-          { text: "Real, honest scope: this currently covers the Finance CSV export specifically — the only genuine bulk-export feature in MaraeHub today. Other downloads (a single document, a single invoice) are one record at a time, not bulk exports, and aren't covered by this check." },
+          { text: "Real, honest scope: the daily check covers the Finance CSV export specifically. The \"Download a copy of our records\" button in Settings is also recorded (who downloaded it, when, and how many rows) but is not part of this daily check. Other downloads (a single document, a single invoice) are one record at a time, not bulk exports, and aren't covered by this check." },
+        ] },
+        { q: 'Is our marae\'s information backed up?', a: [
+          { text: 'Yes, in two ways:' },
+          { items: [
+            "Your marae's records are backed up automatically every day, and the last 7 daily backups are kept. If something goes badly wrong, your records can be restored to one of those days.",
+            "Files you have uploaded (documents, compliance evidence, receipts) are copied every night to a separate storage area belonging to your marae. Older versions of a file are kept for about 90 days, so a file that is deleted or overwritten by mistake can still be recovered in that time.",
+          ]},
+          { text: "Real, honest scope: backups are kept so that MaraeHub can restore your records. A restore is done by MaraeHub, not by trustees, and it is not instant. A problem that goes unnoticed for more than 7 days could not be rewound using the daily backups alone. That is one reason we also give you your own copy (see the next question)." },
+        ] },
+        { q: 'Can we download our own copy of our records?', a: [
+          { text: 'Yes. An administrator can go to Settings and click "Download a copy of our records". You get one file holding your marae\'s records as spreadsheets: hui and minutes, resolutions, tasks, compliance and its history, assets, bookings, finance and more. A "READ ME FIRST" file inside explains what is in it.' },
+          { text: "It is your own copy, kept outside MaraeHub, so you always hold your records even if MaraeHub were unavailable. Board View reminds administrators to download a fresh copy if it has been a while." },
+          { text: "Real, honest scope: it is a snapshot from the day you download it. It does not include the uploaded files themselves (only the list of documents), and it does not include user accounts or login history. It holds private information, so keep it somewhere only trustees can reach." },
+        ] },
+        { q: 'How are the accounts that run MaraeHub protected?', a: [
+          { text: "The accounts used to run MaraeHub (the software code, the hosting, the database, and the website addresses) are protected with a second sign-in step as well as a password, and the website addresses are set to renew automatically so they cannot lapse by accident." },
+          { text: "Real, honest scope: this protects the accounts MaraeHub uses behind the scenes. Your own trustees' sign-ins to MaraeHub are separate. No system is risk-free, which is why the backups and your own downloadable copy matter." },
         ] },
         { q: "How does MaraeHub keep its own software secure?", a: "MaraeHub's underlying software libraries are monitored for known, published security vulnerabilities through GitHub's Dependabot service, which checks automatically and flags when an update is genuinely needed. When a real vulnerability is found, it gets assessed and fixed — safe, non-breaking fixes are applied as soon as they're available; any fix that would require a larger, riskier change is reviewed deliberately rather than applied automatically." },
       ]
