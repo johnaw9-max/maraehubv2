@@ -80,6 +80,7 @@ mkdir -p "$STATE_DIR" "$SCRATCH_DIR"; chmod 700 "$SCRATCH_DIR"
 trap 'rm -rf "$SCRATCH_DIR"' EXIT
 STATE_FILE="$STATE_DIR/$NAME.json"; [ -f "$STATE_FILE" ] || echo '{}' > "$STATE_FILE"
 TOKEN="$(cat "$ACCESS_TOKEN_FILE")"
+export SUPABASE_ACCESS_TOKEN="$TOKEN"   # so the CLI never asks the keychain for it; never printed
 
 sget() { python3 -c "import json;print(json.load(open('$STATE_FILE')).get('$1',''))"; }
 sset() { python3 - "$STATE_FILE" "$1" "$2" <<'PY'
@@ -138,12 +139,21 @@ create table if not exists supabase_migrations.schema_migrations (
 SQL
 run_sql_file "$SCRATCH_DIR/track.sql" || fail "could not create the migration-tracking table"
 record() { printf "insert into supabase_migrations.schema_migrations (version, name) values ('%s','%s') on conflict do nothing;" "$1" "$2" > "$SCRATCH_DIR/rec.sql"; run_sql_file "$SCRATCH_DIR/rec.sql"; }
-# migrations at or below the baseline version are already represented in it
-for f in $(cd "$MIGRATIONS_DIR" && ls | awk -v b="$BASE_VERSION" '{split($0,a,"_"); if (a[1]<=b) print $0}'); do
-  v="${f%%_*}"; n="${f#*_}"; n="${n%.sql}"
-  [ "$(sget "m_$v")" = "done" ] && continue
-  record "$v" "$n" || fail "could not record migration $v"; sset "m_$v" done
-done
+# migrations at or below the baseline version are already represented in it: record them all in ONE call
+if [ "$(sget tracked_baseline)" != "done" ]; then
+  python3 - "$MIGRATIONS_DIR" "$BASE_VERSION" "$SCRATCH_DIR/rec_all.sql" <<'PY'
+import os,sys
+d,b,out=sys.argv[1:4]
+rows=[]
+for f in sorted(os.listdir(d)):
+    if not f.endswith('.sql'): continue
+    v,_,n=f[:-4].partition('_')
+    if v<=b: rows.append("('%s','%s')"%(v,n.replace("'","''")))
+open(out,'w').write("insert into supabase_migrations.schema_migrations (version, name) values\n"+",\n".join(rows)+"\non conflict do nothing;")
+PY
+  run_sql_file "$SCRATCH_DIR/rec_all.sql" || fail "could not record the baseline migrations"
+  sset tracked_baseline done
+fi
 for f in $REPLAY; do
   [ "$(sget "r_$f")" = "done" ] && continue
   echo "   replay $f"; run_sql_file "$MIGRATIONS_DIR/$f" || fail "replay of $f failed"; sset "r_$f" done
@@ -156,14 +166,12 @@ for f in $LATER; do
 done
 
 # ── 5 functions ──
-echo "5/5 Deploying edge functions..."
-for d in "$REPO_DIR"/supabase/functions/*/; do
-  fn="$(basename "$d")"; case "$fn" in _*) continue ;; esac
-  [ "$(sget "f_$fn")" = "done" ] && continue
-  echo "   deploy $fn"; OUT="$(cd "$REPO_DIR" && npx supabase functions deploy "$fn" --project-ref "$REF" 2>&1)" \
-    || fail "deploy of $fn failed ($(echo "$OUT" | tail -2 | tr '\n' ' ')). Run again to retry."
-  sset "f_$fn" done
-done
+echo "5/5 Deploying all edge functions in one go..."
+if [ "$(sget functions)" != "done" ]; then
+  OUT="$(cd "$REPO_DIR" && npx supabase functions deploy --project-ref "$REF" 2>&1)" \
+    || fail "function deploy failed ($(echo "$OUT" | tail -3 | tr '\n' ' ')). Run again to retry."
+  sset functions done
+fi
 
 cat <<DONE
 
