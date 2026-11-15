@@ -26,6 +26,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.20';
+import { isProjectSecretKey, extractKeys } from './auth.ts';
 
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -42,19 +43,6 @@ const STALE_DAYS     = 2;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-
-function isServiceRole(req: Request): boolean {
-  try {
-    const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
-    // Newer projects use opaque sb_secret_ keys (not JWTs). Those need verify_jwt=false on the
-    // function, so the only thing accepted is an exact match with this project's own secret key.
-    if (token && token === SERVICE_ROLE_KEY) return true;
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload.role === 'service_role';
-  } catch {
-    return false;
-  }
-}
 
 async function alertAdmin(subject: string, body: string) {
   if (!ADMIN_EMAIL) { console.warn(`ADMIN_ALERT_EMAIL not set, skipped alert: ${subject}`); return; }
@@ -113,7 +101,8 @@ async function freshness(admin: any) {
 
 serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-  if (!isServiceRole(req)) return json({ error: 'Unauthorized' }, 401);
+  // This project's secret key (legacy service key or the new sb_secret_ key) only; never the public key.
+  if (!(await isProjectSecretKey(extractKeys(req)))) return json({ error: 'Unauthorized' }, 401);
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   let mode = '';
