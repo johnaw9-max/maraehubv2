@@ -48,7 +48,11 @@ function query(sql, ref) {
   console.log(`$ supabase db query --linked (read-only catalog query)  (project: ${ref})`);
   const res = spawnSync('npx', ['supabase', 'db', 'query', '--linked', '--output', 'json', sql], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 200 });
   if (res.error || res.status !== 0) die(`query failed: ${(res.stderr || String(res.error)).trim().split('\n').slice(-3).join(' ')}`);
-  try { return JSON.parse(res.stdout).rows || []; } catch (e) { die(`could not parse CLI output: ${e.message}`); }
+  let parsed;
+  try { parsed = JSON.parse(res.stdout); } catch (e) { die(`could not parse CLI output: ${e.message}`); }
+  const rows = Array.isArray(parsed) ? parsed : (parsed.rows || parsed.data || parsed.result || null);
+  if (!Array.isArray(rows)) die(`unexpected CLI output shape (keys: ${Object.keys(parsed || {}).join(', ') || 'none'}); first 300 chars: ${res.stdout.slice(0, 300)}`);
+  return rows;
 }
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
@@ -180,6 +184,7 @@ const link = spawnSync('npx', ['supabase', 'link', '--project-ref', ref], { enco
 if (link.status !== 0) die('could not link the reference project with the supabase CLI (run `npx supabase login` once)');
 
 const data = gather(ref);
+if (!data.tables.length || !data.latest) die('the reference project returned no tables or no migration history; refusing to write an empty baseline');
 const sql = build(data, ref);
 const hash = crypto.createHash('sha256').update(sql).digest('hex');
 const meta = { reference_ref: ref, represents_through_migration: data.latest.v, tracked_migrations: Number(data.latest.n), sha256: hash,
