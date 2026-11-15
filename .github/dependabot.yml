@@ -10,6 +10,12 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    # Major version jumps (for example React 19, Recharts 3) change how the app
+    # behaves and the automatic tests cannot show whether screens still look right.
+    # They are done deliberately on the Test site, not proposed automatically.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
