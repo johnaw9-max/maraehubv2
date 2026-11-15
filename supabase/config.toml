@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.lock-monthly-kpi-snapshot]
 verify_jwt = false
+
+[functions.backup-files-to-s3]
+verify_jwt = false
