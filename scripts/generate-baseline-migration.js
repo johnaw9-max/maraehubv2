@@ -150,7 +150,7 @@ function build(r, ref) {
   add('-- TRIGGERS');
   for (const t of r.triggers) {
     add(`drop trigger if exists ${ident(t.name)} on ${t.sch}.${ident(t.tbl)};`);
-    add(`${t.def};`);
+    add(`${t.def.replace(/(EXECUTE (?:FUNCTION|PROCEDURE) )(?!public\.|auth\.|extensions\.|storage\.)([a-z_][a-z0-9_]*)\(/i, '$1public.$2(')};`);
   }
   add('');
   add('-- ROW LEVEL SECURITY');

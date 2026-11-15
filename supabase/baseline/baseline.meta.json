@@ -1,0 +1,12 @@
+{
+  "reference_ref": "cbeenkpjpnhmtqtnjiyd",
+  "represents_through_migration": "20261111191801",
+  "tracked_migrations": 177,
+  "sha256": "60890150792bcad4e7e06c984bfa1cfeb98276e95fcab498d3ed8c5129f6f5b4",
+  "counts": {
+    "tables": 66,
+    "functions": 26,
+    "policies": 124,
+    "buckets": 7
+  }
+}
