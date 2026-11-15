@@ -46,7 +46,7 @@ function referenceRef() {
 
 function query(sql, ref) {
   console.log(`$ supabase db query --linked (read-only catalog query)  (project: ${ref})`);
-  const res = spawnSync('npx', ['supabase', 'db', 'query', '--linked', sql], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 200 });
+  const res = spawnSync('npx', ['supabase', 'db', 'query', '--linked', '--output', 'json', sql], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 200 });
   if (res.error || res.status !== 0) die(`query failed: ${(res.stderr || String(res.error)).trim().split('\n').slice(-3).join(' ')}`);
   try { return JSON.parse(res.stdout).rows || []; } catch (e) { die(`could not parse CLI output: ${e.message}`); }
 }
