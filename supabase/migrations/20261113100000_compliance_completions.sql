@@ -2,6 +2,7 @@
 -- Why: compliance_items keeps only ONE last_checked_date (overwritten each time), so a
 -- marae cannot show an insurer/council/funder WHEN each check was done, by whom, with what proof.
 -- ISO 9001 clause 7.5 (documented information / records): records are kept, not overwritten.
+-- Safe to run twice (policies dropped then recreated; table, index and history insert are guarded).
 -- Design: append-only for trustees (select + insert); only admin trustees may delete (to fix a mistake).
 
 create table if not exists public.compliance_completions (
@@ -25,16 +26,19 @@ create index if not exists idx_compliance_completions_item
 
 alter table public.compliance_completions enable row level security;
 
+drop policy if exists "compliance_completions: trustees read within entity" on public.compliance_completions;
 create policy "compliance_completions: trustees read within entity"
   on public.compliance_completions as permissive for select to authenticated
   using (((exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'trustee'::text))
           and is_entity_member(entity_id)));
 
+drop policy if exists "compliance_completions: trustees insert within entity" on public.compliance_completions;
 create policy "compliance_completions: trustees insert within entity"
   on public.compliance_completions as permissive for insert to authenticated
   with check (((exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'trustee'::text))
                and is_entity_member(entity_id)));
 
+drop policy if exists "compliance_completions: admin trustees delete" on public.compliance_completions;
 create policy "compliance_completions: admin trustees delete"
   on public.compliance_completions as permissive for delete to authenticated
   using ((exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'trustee'::text and profiles.trustee_role = 'admin'::text)));
