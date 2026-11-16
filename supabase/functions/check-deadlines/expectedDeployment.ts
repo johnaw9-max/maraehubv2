@@ -191,5 +191,41 @@ export const EXPECTED_DEPLOYMENT: Record<string, {
       }
     ],
     "excluded_jobs": []
+  },
+  "vftjmyzbhgcqqkqhtzih": {
+    "name": "opeke-syd",
+    "expected_functions": [
+      "backup-files-to-s3",
+      "ban-trustee",
+      "community-auto-login",
+      "create-trustee",
+      "draft-minutes",
+      "generate-compliance-report",
+      "generate-financial-report",
+      "generate-grant-draft",
+      "generate-report",
+      "generate-tasks-report",
+      "get-tineka-session",
+      "get-trustee-login-activity",
+      "google-calendar-callback",
+      "invite-trustee",
+      "lock-monthly-kpi-snapshot",
+      "mark-action-done",
+      "notify-hirer",
+      "notify-trustees",
+      "public-booking-request",
+      "send-notification",
+      "stripe-webhook",
+      "sync-hui-to-calendar",
+      "xero-callback",
+      "xero-financials"
+    ],
+    "excluded_functions": [
+      {
+        "name": "iwi-pull-snapshot",
+        "reason": "Belongs to the separate Iwi Hub project, not any of the three marae projects."
+      }
+    ],
+    "excluded_jobs": []
   }
 };
