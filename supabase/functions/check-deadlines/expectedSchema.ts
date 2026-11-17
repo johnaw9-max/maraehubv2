@@ -183,7 +183,9 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "file_url",
     "created_at",
     "entity_id",
-    "charter_fields"
+    "charter_fields",
+    "deleted_at",
+    "deleted_by"
   ],
   "emergency_building_plans": [
     "id",
@@ -742,5 +744,36 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "synced_at",
     "created_at",
     "updated_at"
+  ],
+  "backup_file_log": [
+    "bucket_id",
+    "object_path",
+    "version_key",
+    "size_bytes",
+    "copied_at"
+  ],
+  "backup_runs": [
+    "id",
+    "started_at",
+    "finished_at",
+    "status",
+    "files_scanned",
+    "files_copied",
+    "files_failed",
+    "bytes_copied",
+    "note"
+  ],
+  "compliance_completions": [
+    "id",
+    "compliance_item_id",
+    "entity_id",
+    "done_on",
+    "done_by",
+    "done_by_user",
+    "note",
+    "document_url",
+    "document_name",
+    "source",
+    "created_at"
   ]
 };
