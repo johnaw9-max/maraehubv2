@@ -36,4 +36,6 @@ Used for the Opeke move from Seoul to Sydney. The old project stays untouched un
 3. Switch at a quiet time, after the chairperson has been told the day and time (about an hour with no saving): run the data copy again with `--wipe` (it asks you to type the target's name), run the files copy, check, then point the website's Vercel project at the new project and update the return addresses (Stripe, Google, Xero), Cronitor and the backup.
 4. Keep the old project about two weeks, then delete it.
 
+**Keep the new project's scheduled jobs PAUSED until the switch.** Once the data is copied, the new project holds the marae's real trustees, so a running nightly job would email them a duplicate of the old project's own. Pause: `select cron.alter_job(jobid, active := false) from cron.job;` on the new project (never the old one). At the switch, after the final copy and once the old project's jobs are paused, turn the new project's on: `select cron.alter_job(jobid, active := true) from cron.job;`
+
 The source is only ever read; the target can never be one of the protected live projects. Tested by `scripts/tests/copy-marae-data.test.js`.
