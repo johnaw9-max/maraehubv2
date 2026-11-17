@@ -151,13 +151,11 @@ async function main() {
   const qt = (p) => q(p.schema) + '.' + q(p.table);
   const colList = (p) => p.cols.map(q).join(', ');
 
-  // ── 2 counts ──
+  // ── 2 counts (one request per project, not one per table) ──
+  const countSql = plan.map((p) => "select '" + p.key + "' as k, count(*)::int as n from " + qt(p)).join(' union all ');
   const counts = {};
-  for (const p of plan) {
-    const a = await sql(SRC, 'select count(*)::int as n from ' + qt(p));
-    const b = await sql(DST, 'select count(*)::int as n from ' + qt(p));
-    counts[p.key] = { src: a[0].n, dst: b[0].n };
-  }
+  const [ca, cb] = [await sql(SRC, countSql), await sql(DST, countSql)];
+  for (const p of plan) counts[p.key] = { src: ca.find((r) => r.k === p.key).n, dst: cb.find((r) => r.k === p.key).n };
   const srcRows = plan.reduce((n, p) => n + counts[p.key].src, 0);
   const dstUsers = counts['auth.users'].dst;
   console.log('Source holds ' + srcRows + ' rows in ' + plan.filter((p) => counts[p.key].src > 0).length + ' of ' + plan.length + ' tables (' + counts['auth.users'].src + ' sign-in users).');
@@ -199,20 +197,21 @@ async function main() {
     }
 
     // ── 5 keep numbering going from the right place ──
-    for (const p of plan) {
-      const seqCols = await sql(DST, "select column_name from information_schema.columns where table_schema=" + "'" + p.schema + "'" + " and table_name='" + p.table + "' and (is_identity='YES' or column_default like 'nextval(%')");
-      for (const c of seqCols) {
-        await sql(DST, 'select setval(pg_get_serial_sequence(\'' + q(p.schema) + '.' + q(p.table) + '\', \'' + c.column_name + '\'), coalesce(max(' + q(c.column_name) + '), 1), max(' + q(c.column_name) + ') is not null) from ' + qt(p) + ' having pg_get_serial_sequence(\'' + q(p.schema) + '.' + q(p.table) + '\', \'' + c.column_name + '\') is not null');
-      }
+    const seqAll = await sql(DST, "select table_schema, table_name, column_name from information_schema.columns where table_schema in ('public','auth') and (is_identity='YES' or column_default like 'nextval(%')");
+    for (const c of seqAll) {
+      const p = plan.find((x) => x.schema === c.table_schema && x.table === c.table_name);
+      if (!p || !counts[p.key].src) continue;
+      await sql(DST, 'select setval(pg_get_serial_sequence(\'' + q(p.schema) + '.' + q(p.table) + '\', \'' + c.column_name + '\'), coalesce(max(' + q(c.column_name) + '), 1), max(' + q(c.column_name) + ') is not null) from ' + qt(p) + ' having pg_get_serial_sequence(\'' + q(p.schema) + '.' + q(p.table) + '\', \'' + c.column_name + '\') is not null');
     }
     console.log('Copied ' + copied + ' rows.');
   }
 
   // ── 6 check: same count and same content, table by table ──
   let bad = 0;
+  const sumSql = plan.map((p) => "select '" + p.key + "' as k, count(*)::int as n, coalesce(md5(string_agg(h, ',' order by h)), '') as c from (select md5(to_jsonb(x)::text) as h from (select " + colList(p) + ' from ' + qt(p) + ') x) s').join(' union all ');
+  const [sa, sb] = [await sql(SRC, sumSql), await sql(DST, sumSql)];
   for (const p of plan) {
-    const sum = 'select count(*)::int as n, coalesce(md5(string_agg(h, \',\' order by h)), \'\') as c from (select md5(to_jsonb(x)::text) as h from (select ' + colList(p) + ' from ' + qt(p) + ') x) s';
-    const [a, b] = [(await sql(SRC, sum))[0], (await sql(DST, sum))[0]];
+    const a = sa.find((r) => r.k === p.key); const b = sb.find((r) => r.k === p.key);
     if (a.n !== b.n || a.c !== b.c) { bad++; console.log('  ❌ ' + p.key + ': source ' + a.n + ' rows, target ' + b.n + ' rows' + (a.n === b.n ? ' (same count, different content)' : '')); }
   }
   const files = 'select coalesce(string_agg(bucket_id || \'/\' || name || \':\' || coalesce(metadata->>\'size\', \'\'), \',\' order by bucket_id, name), \'\') as f, count(*)::int as n from storage.objects';
