@@ -96,10 +96,20 @@ open(sys.argv[3],'w',encoding='utf-8').write(out)
 PY
 R=0
 while IFS= read -r -d '' B && IFS= read -r -d '' NAME; do
-  OUT="$(st rm "ss:///$B/$NAME")" || fail "could not remove a leftover file in bucket $B: $(echo "$OUT" | tail -2 | tr '\n' ' ')"
+  OUT="$(st rm --yes "ss:///$B/$NAME")" || fail "could not remove a leftover file in bucket $B: $(echo "$OUT" | tail -2 | tr '\n' ' ')"
   R=$((R + 1))
 done < "$SCRATCH/remove.list"
-echo "  ${R} leftover files removed"
+list_files "$DST" "$SCRATCH/target2.list" || fail "could not re-read the target's file list"
+python3 - "$SCRATCH/source.list" "$SCRATCH/target2.list" <<'PY' || fail "leftover files are still in the target after removal. Nothing was uploaded."
+import sys
+def recs(p):
+    parts = open(p,'rb').read().decode('utf-8').split('\0')[:-1]
+    return [(parts[i],parts[i+1]) for i in range(0,len(parts),3)]
+keep=set(recs(sys.argv[1]))
+left=[r for r in recs(sys.argv[2]) if r not in keep]
+sys.exit(1 if left else 0)
+PY
+echo "  ${R} leftover files removed (checked: none remain)"
 
 echo "3/4 Uploading to ${TO}…"
 U=0
