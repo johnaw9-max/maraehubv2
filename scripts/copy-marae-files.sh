@@ -61,7 +61,7 @@ echo "Source holds files in these buckets (name, count):"; echo "$LIST" | sed 's
 cd "$SCRATCH/proj" || fail "scratch folder"
 npx --yes supabase init >/dev/null 2>&1 || fail "could not set up the scratch Supabase folder"
 
-echo "1/3 Downloading from $FROM…"
+echo "1/3 Downloading from ${FROM}…"
 LINK_OUT="$(npx supabase link --project-ref "$SRC" 2>&1)" || fail "could not link to the source ($(echo "$LINK_OUT" | tail -2 | tr '\n' ' '))"
 echo "$LIST" | while IFS="$(printf '\t')" read -r B N; do
   mkdir -p "$SCRATCH/files/$B"
@@ -71,7 +71,7 @@ echo "$LIST" | while IFS="$(printf '\t')" read -r B N; do
   echo "  $B: $GOT files"
 done || exit 1
 
-echo "2/3 Uploading to $TO…"
+echo "2/3 Uploading to ${TO}…"
 LINK_OUT="$(npx supabase link --project-ref "$DST" 2>&1)" || fail "could not link to the target ($(echo "$LINK_OUT" | tail -2 | tr '\n' ' '))"
 echo "$LIST" | while IFS="$(printf '\t')" read -r B N; do
   OUT="$(npx supabase --experimental storage cp -r "$SCRATCH/files/$B" "ss:///$B" 2>&1)" || { echo "❌ upload of bucket $B failed: $(echo "$OUT" | tail -2 | tr '\n' ' ')"; exit 1; }
