@@ -26,3 +26,14 @@ Run from a clean checkout of `main`, up to date. Each command is safe to run twi
 - Give the marae's trustees nothing until step 7 passes.
 - Time the whole run and write the real figure on ClickUp 14yhc7kw7b2.
 - A throwaway rehearsal project is deleted with `scripts/delete-rehearsal-project.sh <ref>` (it refuses live projects).
+
+## Moving an existing marae to a new project (same marae, new place)
+
+Used for the Opeke move from Seoul to Sydney. The old project stays untouched until the switch.
+
+1. Build the new project with `scripts/provision-marae.sh <name>` and the same steps as a new marae (secrets, shield, cron, registry entry by pull request). Marae-specific functions the old project runs are deployed by hand.
+2. Rehearse: `node scripts/copy-marae-data.js --from <old> --to <new> --dry-run`, then without `--dry-run`, then `scripts/copy-marae-files.sh <old> <new>`. Every run ends by checking every table (count and content) and every file (name and size).
+3. Switch at a quiet time, after the chairperson has been told the day and time (about an hour with no saving): run the data copy again with `--wipe` (it asks you to type the target's name), run the files copy, check, then point the website's Vercel project at the new project and update the return addresses (Stripe, Google, Xero), Cronitor and the backup.
+4. Keep the old project about two weeks, then delete it.
+
+The source is only ever read; the target can never be one of the protected live projects. Tested by `scripts/tests/copy-marae-data.test.js`.
