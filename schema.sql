@@ -419,7 +419,9 @@ create table if not exists documents (
   file_url text,
   created_at timestamp without time zone default now(),
   entity_id uuid,
-  charter_fields jsonb
+  charter_fields jsonb,
+  deleted_at timestamp with time zone,
+  deleted_by uuid
 );
 
 alter table documents add constraint documents_pkey PRIMARY KEY (id);
@@ -1995,6 +1997,52 @@ alter table meeting_calendar_syncs add constraint meeting_calendar_syncs_trustee
 
 alter table meeting_calendar_syncs enable row level security;
 
+
+-- Added 17 Nov 2026 to catch schema.sql up with migrations 20261111210000 (backup tables)
+-- and 20261113100000 (compliance_completions). Policies/indexes live in those migrations.
+create table if not exists backup_file_log (
+  bucket_id text not null,
+  object_path text not null,
+  version_key text not null,
+  size_bytes bigint,
+  copied_at timestamp with time zone not null default now()
+);
+
+alter table backup_file_log add constraint backup_file_log_pkey PRIMARY KEY (bucket_id, object_path);
+alter table backup_file_log enable row level security;
+
+create table if not exists backup_runs (
+  id uuid not null default gen_random_uuid(),
+  started_at timestamp with time zone not null default now(),
+  finished_at timestamp with time zone,
+  status text not null default 'running'::text,
+  files_scanned integer not null default 0,
+  files_copied integer not null default 0,
+  files_failed integer not null default 0,
+  bytes_copied bigint not null default 0,
+  note text
+);
+
+alter table backup_runs add constraint backup_runs_pkey PRIMARY KEY (id);
+alter table backup_runs enable row level security;
+
+create table if not exists compliance_completions (
+  id uuid not null default gen_random_uuid(),
+  compliance_item_id uuid not null,
+  entity_id uuid,
+  done_on date not null,
+  done_by text,
+  done_by_user uuid,
+  note text,
+  document_url text,
+  document_name text,
+  source text not null default 'done_button'::text,
+  created_at timestamp with time zone not null default now()
+);
+
+alter table compliance_completions add constraint compliance_completions_pkey PRIMARY KEY (id);
+alter table compliance_completions add constraint compliance_completions_compliance_item_id_fkey FOREIGN KEY (compliance_item_id) REFERENCES compliance_items(id) ON DELETE CASCADE;
+alter table compliance_completions enable row level security;
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- FUNCTIONS
