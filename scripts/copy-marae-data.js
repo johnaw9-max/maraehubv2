@@ -214,7 +214,7 @@ async function main() {
     const a = sa.find((r) => r.k === p.key); const b = sb.find((r) => r.k === p.key);
     if (a.n !== b.n || a.c !== b.c) { bad++; console.log('  ❌ ' + p.key + ': source ' + a.n + ' rows, target ' + b.n + ' rows' + (a.n === b.n ? ' (same count, different content)' : '')); }
   }
-  const files = 'select coalesce(string_agg(bucket_id || \'/\' || name || \':\' || coalesce(metadata->>\'size\', \'\'), \',\' order by bucket_id, name), \'\') as f, count(*)::int as n from storage.objects';
+  const files = 'select coalesce(string_agg(bucket_id || \'/\' || name || \':\' || coalesce(metadata->>\'size\', \'\') || \'|\' || coalesce(metadata->>\'mimetype\', \'\'), \',\' order by bucket_id, name), \'\') as f, count(*)::int as n from storage.objects';
   const [fa, fb] = [(await sql(SRC, files))[0], (await sql(DST, files))[0]];
   const filesOk = fa.f === fb.f;
   console.log(bad === 0 ? '✅ Database check passed: ' + plan.length + ' tables match in count and content.' : '❌ Database check FAILED for ' + bad + ' table(s).');
