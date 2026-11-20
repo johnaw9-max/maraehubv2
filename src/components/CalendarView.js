@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadUnavailable } from '../lib/unavailableDates';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -81,12 +82,14 @@ export default function CalendarView({ isTrustee }) {
       setMaraeEmail(settingsRes.data?.email || '');
       setMaraePhone(settingsRes.data?.phone || '');
     } else {
-      const [bookRes, blockRes] = await Promise.all([
-        supabase.from('bookings').select('start_date, end_date, occasion, status').eq('status', 'approved'),
-        supabase.from('blocked_dates').select('*').order('from_date'),
-      ]);
-      setBookings(bookRes.data || []);
-      setBlocked(blockRes.data || []);
+      // Community members cannot read the bookings or blocked_dates tables directly (that is
+      // what left this calendar empty). The same dates-only function the booking form uses
+      // returns the taken dates with no names, occasions or reasons.
+      const ranges = await loadUnavailable(supabase);
+      setBookings(ranges.filter(r => r.kind === 'booked')
+        .map(r => ({ start_date: r.from, end_date: r.to, occasion: 'Booked', status: 'approved' })));
+      setBlocked(ranges.filter(r => r.kind === 'blocked')
+        .map(r => ({ from_date: r.from, to_date: r.to, reason: 'Not available for booking' })));
     }
   }
 
