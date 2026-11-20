@@ -7,8 +7,8 @@
 #
 # Names are the names in scripts/marae-registry.json. Every file is copied by its exact name and
 # file type (taken from the source's own list), never by folder, so names cannot drift. Flow:
-# download each file into a scratch folder, check the count, remove files in the target that are
-# not in the source's list (leftovers of an earlier attempt), upload each file with its file type,
+# download each file into a scratch folder, check the count, remove ALL files in the target
+# (leftovers of an earlier attempt, so the upload never hits "Duplicate"), upload each file with its file type,
 # then run copy-marae-data.js --verify-only, which compares file names, sizes and types.
 #
 # Safety rules (no override flags):
@@ -82,7 +82,7 @@ done < "$SCRATCH/source.list"
 [ "$N" = "$TOTAL" ] || fail "downloaded $N of $TOTAL files. Nothing was uploaded."
 echo "  ${N} files downloaded"
 
-echo "2/4 Clearing leftovers in ${TO} (files not in the source's list)…"
+echo "2/4 Clearing the files already in ${TO} (a fresh copy replaces them all)…"
 LINK_OUT="$(npx supabase link --project-ref "$DST" 2>&1)" || fail "could not link to the target ($(echo "$LINK_OUT" | tail -2 | tr '\n' ' '))"
 list_files "$DST" "$SCRATCH/target.list" || fail "could not read the target's file list"
 python3 - "$SCRATCH/source.list" "$SCRATCH/target.list" "$SCRATCH/remove.list" <<'PY'
@@ -90,8 +90,10 @@ import sys
 def recs(p):
     parts = open(p,'rb').read().decode('utf-8').split('\0')[:-1]
     return [(parts[i],parts[i+1]) for i in range(0,len(parts),3)]
-keep=set(recs(sys.argv[1]))
-out=''.join(b+'\0'+n+'\0' for b,n in recs(sys.argv[2]) if (b,n) not in keep)
+# Remove EVERY file in the target, not only the ones missing from the source's list. The upload
+# below does not overwrite, so a file that is already there (from an earlier copy) made it stop
+# with "Duplicate". The target is only ever emptied here; the source is never touched.
+out=''.join(b+'\0'+n+'\0' for b,n in recs(sys.argv[2]))
 open(sys.argv[3],'w',encoding='utf-8').write(out)
 PY
 R=0
@@ -100,16 +102,15 @@ while IFS= read -r -d '' B && IFS= read -r -d '' NAME; do
   R=$((R + 1))
 done < "$SCRATCH/remove.list"
 list_files "$DST" "$SCRATCH/target2.list" || fail "could not re-read the target's file list"
-python3 - "$SCRATCH/source.list" "$SCRATCH/target2.list" <<'PY' || fail "leftover files are still in the target after removal. Nothing was uploaded."
+python3 - "$SCRATCH/source.list" "$SCRATCH/target2.list" <<'PY' || fail "files are still in the target after removal. Nothing was uploaded."
 import sys
 def recs(p):
     parts = open(p,'rb').read().decode('utf-8').split('\0')[:-1]
     return [(parts[i],parts[i+1]) for i in range(0,len(parts),3)]
-keep=set(recs(sys.argv[1]))
-left=[r for r in recs(sys.argv[2]) if r not in keep]
+left=recs(sys.argv[2])
 sys.exit(1 if left else 0)
 PY
-echo "  ${R} leftover files removed (checked: none remain)"
+echo "  ${R} existing files removed (checked: none remain)"
 
 echo "3/4 Uploading to ${TO}…"
 U=0
