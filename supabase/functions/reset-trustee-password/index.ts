@@ -35,7 +35,7 @@ serve(async (req) => {
       return json({ error: 'Admin Trustee access required' }, 403);
     }
 
-    const { userId } = await req.json();
+    const { userId, customPassword } = await req.json();
     if (!userId) return json({ error: 'userId is required' }, 400);
 
     // Prevent admin from resetting their own password via this route
@@ -43,11 +43,18 @@ serve(async (req) => {
       return json({ error: 'Use Settings → Change Password to update your own password' }, 400);
     }
 
-    // Generate a new temporary password: "Marae" + 8 random alphanumeric chars
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let tempPassword = 'Marae';
-    for (let i = 0; i < 8; i++) {
-      tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+    // Use custom password if provided (min 6 chars), otherwise auto-generate
+    let tempPassword: string;
+    if (customPassword && customPassword.trim().length >= 6) {
+      tempPassword = customPassword.trim();
+    } else if (customPassword && customPassword.trim().length > 0) {
+      return json({ error: 'Password must be at least 6 characters' }, 400);
+    } else {
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      tempPassword = 'Marae';
+      for (let i = 0; i < 8; i++) {
+        tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);

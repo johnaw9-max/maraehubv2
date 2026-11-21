@@ -108,6 +108,8 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [banningId, setBanningId] = useState(null);
   const [resetTarget, setResetTarget] = useState(null);
   const [resetPassword, setResetPassword] = useState('');
+  const [resetCustomPw, setResetCustomPw] = useState('');
+  const [resetConfirmTarget, setResetConfirmTarget] = useState(null);
   const [resettingId, setResettingId] = useState(null);
 
   // Offboarding / handover (86d44q123, Steps 2-4)
@@ -538,12 +540,18 @@ export default function MaraeSettings({ profile, isAdmin }) {
     fetchTrustees();
   }
 
-  async function resetTrusteePassword(trustee) {
+  function openResetModal(trustee) {
+    setResetCustomPw('');
+    setResetConfirmTarget(trustee);
+  }
+
+  async function confirmResetPassword() {
+    const trustee = resetConfirmTarget;
+    if (!trustee) return;
     setResettingId(trustee.id);
-    setResetPassword('');
-    setResetTarget(null);
+    setResetConfirmTarget(null);
     const { data, error } = await supabase.functions.invoke('reset-trustee-password', {
-      body: { userId: trustee.id },
+      body: { userId: trustee.id, customPassword: resetCustomPw.trim() || null },
     });
     setResettingId(null);
     if (error || data?.error) {
@@ -1514,7 +1522,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
                     {!isYou && (
                       <>
                         <button
-                          onClick={() => resetTrusteePassword(t)}
+                          onClick={() => openResetModal(t)}
                           disabled={resettingId === t.id}
                           style={{
                             fontSize: 12, padding: '5px 12px', borderRadius: 6,
@@ -1758,6 +1766,39 @@ export default function MaraeSettings({ profile, isAdmin }) {
                 style={{ marginLeft: 'auto', background: 'var(--danger, #c0392b)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: banningId === offboardTarget.id ? 'default' : 'pointer' }}
               >
                 {banningId === offboardTarget.id ? 'Banning…' : 'Confirm Ban'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetConfirmTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 28, maxWidth: 420, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Reset Password</div>
+            <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 16 }}>
+              Set a new password for <strong>{resetConfirmTarget.full_name || resetConfirmTarget.email}</strong>.
+              Leave blank to auto-generate one.
+            </p>
+            <input
+              type="text"
+              value={resetCustomPw}
+              onChange={e => setResetCustomPw(e.target.value)}
+              placeholder="Type a password, or leave blank to auto-generate"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 14, marginBottom: 20, boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text1)' }}
+            />
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setResetConfirmTarget(null)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 14, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResetPassword}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--accent, #2563eb)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Set Password
               </button>
             </div>
           </div>
