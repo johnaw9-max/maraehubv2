@@ -148,6 +148,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
   const [pendingRisk, setPendingRisk] = useState(null);
   const [boardKey, setBoardKey] = useState(0);
+  // Board View -> Minutes deep link: which hui to open straight away
+  const [minutesFocusId, setMinutesFocusId] = useState(null);
+  const goToTab = (tab, opts) => { if (tab === 'minutes') setMinutesFocusId(opts?.meetingId || null); setActiveTab(tab); };
   const [huiModeMeetingId, setHuiModeMeetingId] = useState(null);
 
   function handleStartWorkflow(suggestion) {
@@ -487,7 +490,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'board' && (
           <>
             {isAdmin && <OnboardingFlow onComplete={() => setBoardKey(k => k + 1)} />}
-            <BoardDashboard key={boardKey} onNavigate={setActiveTab} onStartWorkflow={handleStartWorkflow} isAdmin={isAdmin} />
+            <BoardDashboard key={boardKey} onNavigate={goToTab} onStartWorkflow={handleStartWorkflow} isAdmin={isAdmin} />
           </>
         )}
 
@@ -506,7 +509,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'minutes' && (
           <>
             <KpiBar tiles={kpis.minutes || []} loading={kpiLoading.minutes} count={4} />
-            <CommitteeMinutes onStartHuiMode={setHuiModeMeetingId} />
+            <CommitteeMinutes onStartHuiMode={setHuiModeMeetingId} focusMeetingId={minutesFocusId} onFocusHandled={() => setMinutesFocusId(null)} />
           </>
         )}
 

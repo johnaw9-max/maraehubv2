@@ -534,7 +534,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
       const shortDesc = payload.description.slice(0, 80);
       await ensureTask({
         title: `ACTION: ${shortDesc}`,
-        description: `Meeting action assigned. Due: ${payload.due_date || 'no due date'}. [source_id:${savedAction.id}]`,
+        description: `Meeting action assigned. Hui: ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}. Due: ${payload.due_date || 'no due date'}. [source_id:${savedAction.id}]`,
         assigned_to: payload.assigned_to,
         due_date: payload.due_date,
         priority: 'Medium',
@@ -1057,7 +1057,7 @@ function InterestForm({ initial, onSave, onCancel, saving, error }) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function CommitteeMinutes({ onStartHuiMode }) {
+export default function CommitteeMinutes({ onStartHuiMode, focusMeetingId, onFocusHandled }) {
   const entities = useEntities();
   const [view, setView] = useState('list'); // 'list' | 'form' | 'detail'
   const [meetings, setMeetings] = useState([]);
@@ -1072,6 +1072,8 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
   const [filterType, setFilterType] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
   const [mainTab, setMainTab] = useState('meetings');
+  const [actionSearch, setActionSearch] = useState('');
+  const [actionStatusFilter, setActionStatusFilter] = useState('open');
   const [decisionSearch, setDecisionSearch] = useState('');
   const [decisionStatusFilter, setDecisionStatusFilter] = useState('all');
   const [selectedResolution, setSelectedResolution] = useState(null);
@@ -1086,12 +1088,20 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
 
   useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep link: the Board View can ask Minutes to open one specific hui directly.
+  useEffect(() => {
+    if (!focusMeetingId || loading) return;
+    const target = meetings.find(m => m.id === focusMeetingId);
+    if (target) { setSelectedMeeting(target); setView('detail'); }
+    if (onFocusHandled) onFocusHandled();
+  }, [focusMeetingId, loading, meetings]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function fetchAll() {
     setLoading(true);
     const [meetRes, resRes, actRes, intRes, docsRes] = await Promise.all([
       supabase.from('meetings').select('*').order('meeting_date', { ascending: false }),
       supabase.from('resolutions').select('*, meetings(id, title, meeting_date, meeting_type)').order('date_passed', { ascending: false }),
-      supabase.from('meeting_actions').select('id, status'),
+      supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status, meeting_id, meetings(id, title, meeting_date, meeting_type)').order('due_date', { ascending: true }),
       supabase.from('interest_register').select('*').order('created_at', { ascending: false }),
       supabase.from('documents').select('id, title, category').is('deleted_at', null).order('title'),
     ]);
@@ -1108,7 +1118,7 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
     const todayStr = new Date().toISOString().split('T')[0];
     const { data: overdueActions } = await supabase
       .from('meeting_actions')
-      .select('id, description, assigned_to, due_date')
+      .select('id, description, assigned_to, due_date, meetings(title, meeting_date)')
       .in('status', ['Open', 'In Progress'])
       .lt('due_date', todayStr);
     if (!overdueActions || !overdueActions.length) return;
@@ -1116,7 +1126,7 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
       const shortDesc = (a.description || '').slice(0, 80);
       await ensureTask({
         title: `ACTION: ${shortDesc}`,
-        description: `Meeting action overdue. Due: ${a.due_date}. Follow up immediately. [source_id:${a.id}]`,
+        description: `Meeting action overdue.${a.meetings?.title ? ` Hui: ${a.meetings.title}${a.meetings.meeting_date ? ' (' + a.meetings.meeting_date + ')' : ''}.` : ''} Due: ${a.due_date}. Follow up immediately. [source_id:${a.id}]`,
         assigned_to: a.assigned_to || null,
         due_date: todayStr,
         priority: 'High',
@@ -1307,6 +1317,7 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
       <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)', marginBottom: 20 }}>
         {[
           { key: 'meetings', label: 'Meetings' },
+          { key: 'actions', label: `Actions${openActions ? ` (${openActions} open)` : ''}` },
           { key: 'decisions', label: `Decision Register${allResolutions.length ? ` (${allResolutions.length})` : ''}` },
           { key: 'interests', label: `Interest Register${interests.length ? ` (${interests.length})` : ''}` },
         ].map(t => (
@@ -1510,6 +1521,80 @@ export default function CommitteeMinutes({ onStartHuiMode }) {
       )}
 
       {/* DECISION REGISTER TAB */}
+      {/* ACTIONS TAB: every action from every hui in one list */}
+      {mainTab === 'actions' && (() => {
+        const term = actionSearch.toLowerCase();
+        const shownActions = allActions.filter(a => {
+          const isDone = a.status === 'Completed';
+          const matchStatus = actionStatusFilter === 'all' || (actionStatusFilter === 'open' ? !isDone : isDone);
+          const matchSearch = !term ||
+            (a.description || '').toLowerCase().includes(term) ||
+            (a.assigned_to || '').toLowerCase().includes(term) ||
+            (a.meetings?.title || '').toLowerCase().includes(term);
+          return matchStatus && matchSearch;
+        });
+        const todayIso = new Date().toISOString().split('T')[0];
+        return (
+          <>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <input
+                className="form-input"
+                style={{ flex: 1, minWidth: 200, maxWidth: 320 }}
+                placeholder="Search by action, person or hui..."
+                value={actionSearch}
+                onChange={e => setActionSearch(e.target.value)}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[['open', 'Open'], ['done', 'Completed'], ['all', 'All']].map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setActionStatusFilter(k)}
+                    style={{
+                      fontSize: 12, padding: '6px 12px', borderRadius: 20, cursor: 'pointer',
+                      border: '1px solid var(--border)',
+                      background: actionStatusFilter === k ? 'var(--brand)' : '#fff',
+                      color: actionStatusFilter === k ? '#fff' : 'var(--text2)',
+                    }}
+                  >{label}</button>
+                ))}
+              </div>
+            </div>
+            {shownActions.length === 0 ? (
+              <div className="panel" style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 14 }}>No actions match.</div>
+            ) : shownActions.map(a => {
+              const overdue = a.status !== 'Completed' && a.due_date && a.due_date < todayIso;
+              return (
+                <div key={a.id} className="panel" style={{ marginBottom: 10, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{a.description}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                      {a.assigned_to || 'Unassigned'} · Due {fmt(a.due_date)}{overdue ? ' · overdue' : ''}
+                    </div>
+                    {a.meetings && (
+                      <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
+                        From: {a.meetings.title} · {fmt(a.meetings.meeting_date)}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                    <StatusBadge status={a.status} colors={ACTION_STATUS_COLORS} />
+                    {a.meetings && (
+                      <button
+                        onClick={() => {
+                          const full = meetings.find(m => m.id === a.meeting_id);
+                          if (full) { setSelectedMeeting(full); setView('detail'); }
+                        }}
+                        style={{ fontSize: 12, color: 'var(--brand)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}
+                      >Open hui →</button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        );
+      })()}
+
       {mainTab === 'decisions' && (
         <>
           {/* SEARCH + STATUS FILTER */}
