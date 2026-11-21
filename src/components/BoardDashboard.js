@@ -317,7 +317,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
     const [bookRes, projRes, actRes, resRes, grantRes, remRes, assetRes, taskRes, feedRes, settingsRes, compRes, goalsRes, finIncRes, finExpRes, finBudRes, finBalRes, finHealthRes, tplRes, wfInstRes, wfTaskRes, pendIncRes, irRes, riskRes, kpiRes, entitiesRes, xeroRes, hazRes] = await Promise.all([
       supabase.from('bookings').select('id, occasion, start_date, end_date, guests, status').order('start_date'),
       supabase.from('projects').select('id, name, status, progress, lead, due_date, created_at'),
-      supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status').neq('status', 'Completed'),
+      supabase.from('meeting_actions').select('id, description, assigned_to, due_date, status, meeting_id, meetings(title, meeting_date)').neq('status', 'Completed'),
       supabase.from('resolutions').select('id, resolution_number, description, date_passed, status').order('date_passed'),
       supabase.from('grants').select('id, name, funder, amount, status, deadline, owner').order('deadline'),
       supabase.from('service_reminders').select('id, type, due_date, asset_id, owner').order('due_date'),
@@ -1836,10 +1836,15 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <div style={{ fontSize: 14, color: 'var(--danger)', marginTop: 2 }}>
                     Assigned to {a.assigned_to || 'unassigned'} · Due {fmt(a.due_date)}
                   </div>
+                  {a.meetings?.title && (
+                    <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2 }}>
+                      From: {a.meetings.title}{a.meetings.meeting_date ? ` · ${fmt(a.meetings.meeting_date)}` : ''}
+                    </div>
+                  )}
                 </div>
                 {onNavigate && (
                   <button
-                    onClick={() => onNavigate('minutes')}
+                    onClick={() => onNavigate('minutes', { meetingId: a.meeting_id })}
                     style={{
                       fontSize: 14,
                       background: '#fff',
