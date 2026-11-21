@@ -1820,7 +1820,27 @@ export default function MaraeSettings({ profile, isAdmin }) {
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
-                onClick={() => { navigator.clipboard.writeText(resetPassword); }}
+                onClick={() => {
+                  try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      navigator.clipboard.writeText(resetPassword).catch(() => {
+                        const el = document.createElement('textarea');
+                        el.value = resetPassword;
+                        document.body.appendChild(el);
+                        el.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(el);
+                      });
+                    } else {
+                      const el = document.createElement('textarea');
+                      el.value = resetPassword;
+                      document.body.appendChild(el);
+                      el.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(el);
+                    }
+                  } catch(e) {}
+                }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 14, cursor: 'pointer' }}
               >
                 📋 Copy Password
