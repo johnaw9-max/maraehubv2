@@ -106,6 +106,9 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [editingEntityName, setEditingEntityName] = useState('');
   const [renamingEntity, setRenamingEntity] = useState(false);
   const [banningId, setBanningId] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resettingId, setResettingId] = useState(null);
 
   // Offboarding / handover (86d44q123, Steps 2-4)
   const [offboardTarget, setOffboardTarget] = useState(null);
@@ -533,6 +536,23 @@ export default function MaraeSettings({ profile, isAdmin }) {
     setTrusteePermsSuccess(`${trustee.full_name || trustee.email} has been banned and can no longer log in.`);
     setOffboardTarget(null);
     fetchTrustees();
+  }
+
+  async function resetTrusteePassword(trustee) {
+    setResettingId(trustee.id);
+    setResetPassword('');
+    setResetTarget(null);
+    const { data, error } = await supabase.functions.invoke('reset-trustee-password', {
+      body: { userId: trustee.id },
+    });
+    setResettingId(null);
+    if (error || data?.error) {
+      setTrusteePermsSuccess('');
+      alert(data?.error || error?.message || 'Failed to reset password');
+      return;
+    }
+    setResetPassword(data.tempPassword);
+    setResetTarget(trustee);
   }
 
   async function openHandover(trustee) {
@@ -1492,21 +1512,38 @@ export default function MaraeSettings({ profile, isAdmin }) {
                       ⚙️ Role Setup
                     </button>
                     {!isYou && (
-                      <button
-                        onClick={() => openOffboard(t)}
-                        disabled={banningId === t.id}
-                        style={{
-                          fontSize: 12, padding: '5px 12px', borderRadius: 6,
-                          cursor: banningId === t.id ? 'default' : 'pointer',
-                          border: '1px solid var(--danger, #c0392b)',
-                          background: 'var(--surface)',
-                          color: 'var(--danger, #c0392b)',
-                          fontWeight: 600,
-                          opacity: banningId === t.id ? 0.6 : 1,
-                        }}
-                      >
-                        {banningId === t.id ? 'Banning…' : 'Ban'}
-                      </button>
+                      <>
+                        <button
+                          onClick={() => resetTrusteePassword(t)}
+                          disabled={resettingId === t.id}
+                          style={{
+                            fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                            cursor: resettingId === t.id ? 'default' : 'pointer',
+                            border: '1px solid var(--accent, #2563eb)',
+                            background: 'var(--surface)',
+                            color: 'var(--accent, #2563eb)',
+                            fontWeight: 600,
+                            opacity: resettingId === t.id ? 0.6 : 1,
+                          }}
+                        >
+                          {resettingId === t.id ? 'Resetting…' : '🔑 Reset Password'}
+                        </button>
+                        <button
+                          onClick={() => openOffboard(t)}
+                          disabled={banningId === t.id}
+                          style={{
+                            fontSize: 12, padding: '5px 12px', borderRadius: 6,
+                            cursor: banningId === t.id ? 'default' : 'pointer',
+                            border: '1px solid var(--danger, #c0392b)',
+                            background: 'var(--surface)',
+                            color: 'var(--danger, #c0392b)',
+                            fontWeight: 600,
+                            opacity: banningId === t.id ? 0.6 : 1,
+                          }}
+                        >
+                          {banningId === t.id ? 'Banning…' : 'Ban'}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1721,6 +1758,37 @@ export default function MaraeSettings({ profile, isAdmin }) {
                 style={{ marginLeft: 'auto', background: 'var(--danger, #c0392b)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 14, fontWeight: 600, cursor: banningId === offboardTarget.id ? 'default' : 'pointer' }}
               >
                 {banningId === offboardTarget.id ? 'Banning…' : 'Confirm Ban'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetTarget && resetPassword && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 28, maxWidth: 420, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Password Reset</div>
+            <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 16 }}>
+              A new temporary password has been set for <strong>{resetTarget.full_name || resetTarget.email}</strong>. Share this with them so they can log in and change it from Settings.
+            </p>
+            <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 16px', fontFamily: 'monospace', fontSize: 16, fontWeight: 700, letterSpacing: 1, marginBottom: 20, textAlign: 'center', userSelect: 'all' }}>
+              {resetPassword}
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+              App URL: <strong>{window.location.origin}</strong>
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { navigator.clipboard.writeText(resetPassword); }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 14, cursor: 'pointer' }}
+              >
+                📋 Copy Password
+              </button>
+              <button
+                onClick={() => { setResetTarget(null); setResetPassword(''); }}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--accent, #2563eb)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Done
               </button>
             </div>
           </div>
