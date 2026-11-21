@@ -3,7 +3,7 @@
  *
  * 1. Sends email notifications for:
  *      • Grant deadlines exactly 7 days away
- *      • Service reminders due exactly 7 days away
+ *      • Service reminders: exactly 7 days before, on the due day, and exactly 7 days overdue
  *
  * 2. Auto-starts workflows for service reminders that:
  *      • Are due within 14 days OR already overdue (up to 30 days back)
@@ -268,25 +268,38 @@ serve(async (req) => {
     await notify(trusteeEmails, `Grant deadline in 7 days — ${g.name}`, body);
   }
 
-  // ── Service reminder emails (7-day exact) ───────────────────────────────────
-  const { data: reminders } = await db
-    .from('service_reminders')
-    .select('type, due_date, notes, assets(name)')
-    .eq('due_date', dueDate);
+  // ── Service reminder emails: 7 days before, on the day, and 7 days late ────
+  // Each stage matches one exact date (same pattern as the 7-day email), so a
+  // reminder is emailed at most three times: a heads-up, a nudge on the day it
+  // is due, and one chase a week after. Before this, a service reminder was
+  // emailed once and then never mentioned again, so a missed service (no owner,
+  // nobody logged in) fell silently off the radar.
+  const reminderStages = [
+    { date: dueDate,           subjectPrefix: 'Service reminder due in 7 days', line: 'is due in 7 days.' },
+    { date: offsetDate(0),     subjectPrefix: 'Service due TODAY',              line: 'is due today.' },
+    { date: offsetDate(-7),    subjectPrefix: 'Service now 7 days overdue',     line: 'is now 7 days overdue.' },
+  ];
 
-  for (const r of reminders ?? []) {
-    const assetName = (r.assets as { name: string } | null)?.name ?? 'Unknown asset';
-    const body =
-      `Tēnā koutou,\n\n` +
-      `This is a reminder that the following service is due in 7 days.\n\n` +
-      `Service: ${r.type}\n` +
-      `Asset: ${assetName}\n` +
-      `Due: ${fmtDate(r.due_date)}\n` +
-      (r.notes ? `Notes: ${r.notes}\n` : '') +
-      `\nPlease log in to MaraeHub to update this service reminder once completed.` +
-      footer();
+  for (const stage of reminderStages) {
+    const { data: reminders } = await db
+      .from('service_reminders')
+      .select('type, due_date, notes, assets(name)')
+      .eq('due_date', stage.date);
 
-    await notify(trusteeEmails, `Service reminder due in 7 days — ${r.type} (${assetName})`, body);
+    for (const r of reminders ?? []) {
+      const assetName = (r.assets as { name: string } | null)?.name ?? 'Unknown asset';
+      const body =
+        `Tēnā koutou,\n\n` +
+        `This is a reminder that the following service ${stage.line}\n\n` +
+        `Service: ${r.type}\n` +
+        `Asset: ${assetName}\n` +
+        `Due: ${fmtDate(r.due_date)}\n` +
+        (r.notes ? `Notes: ${r.notes}\n` : '') +
+        `\nPlease log in to MaraeHub to update this service reminder once completed.` +
+        footer();
+
+      await notify(trusteeEmails, `${stage.subjectPrefix} — ${r.type} (${assetName})`, body);
+    }
   }
 
   // ── Overdue meeting action reminders (7+ days overdue, catch-up range) ─────
