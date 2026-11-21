@@ -63,6 +63,11 @@ serve(async (req) => {
       return json({ error: createError.message }, 400);
     }
 
+    // Force email confirmation — email_confirm: true is sometimes ignored by Supabase
+    await adminClient.auth.admin.updateUserById(created.user.id, {
+      email_confirm: true,
+    });
+
     // Upsert trustee profile
     await adminClient.from('profiles').upsert({
       id: created.user.id,
