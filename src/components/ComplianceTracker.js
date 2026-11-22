@@ -6,7 +6,7 @@ import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
 import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync';
-import { getItemComplianceStatus } from '../lib/complianceStatus';
+import { getItemComplianceStatus, isNotApplicable } from '../lib/complianceStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
@@ -309,6 +309,12 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [expandedCompactIds, setExpandedCompactIds] = useState(new Set());
   const [expandedWhy, setExpandedWhy] = useState(null);
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
+  // "Not applicable, with a reason": an item the marae records as not applying to it. Kept, never deleted.
+  const [showNotApplicable, setShowNotApplicable] = useState(false);
+  const [naTarget, setNaTarget] = useState(null);
+  const [naReason, setNaReason] = useState('');
+  const [naSaving, setNaSaving] = useState(false);
+  const [naError, setNaError] = useState('');
   const [linkedComplianceItemIds, setLinkedComplianceItemIds] = useState(new Set());
   const [serviceReminders, setServiceReminders] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -437,6 +443,36 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       const { data } = await supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false });
       if (data) setItems(data);
     }
+  }
+
+  // Record that an item does not apply to this marae. Needs a reason; says who and when. Only offered for items
+  // with no check record yet, so no history is ever hidden.
+  async function handleMarkNotApplicable() {
+    const reason = naReason.trim();
+    if (!naTarget) return;
+    if (reason.length < 5) { setNaError('Please give a reason, in a few words, so the next trustee understands.'); return; }
+    setNaSaving(true); setNaError('');
+    const updates = {
+      not_applicable_reason: reason,
+      not_applicable_by: me?.full_name || null,
+      not_applicable_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('compliance_items').update(updates).eq('id', naTarget.id);
+    setNaSaving(false);
+    if (error) { setNaError('Could not save. Please try again.'); return; }
+    setItems(prev => prev.map(i => i.id === naTarget.id ? { ...i, ...updates } : i));
+    logAudit({ entityId: naTarget.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: naTarget.id, resourceName: naTarget.name, metadata: { not_applicable: true, reason } });
+    setNaTarget(null); setNaReason('');
+  }
+
+  // Put an item back: it does apply after all.
+  async function handleUndoNotApplicable(item) {
+    const updates = { not_applicable_reason: null, not_applicable_by: null, not_applicable_at: null, updated_at: new Date().toISOString() };
+    const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
+    if (error) return;
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
+    logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { not_applicable: false } });
   }
 
   // Mark a compliance item as done/serviced today.
@@ -757,19 +793,23 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   // ── COMPUTED ───────────────────────────────────────────────────────────────
 
-  const counts = { overdue: 0, due_soon: 0, compliant: 0, not_set: 0 };
-  items.forEach(item => counts[getItemComplianceStatus(item)]++);
+  // Items recorded as not applicable stay out of every count and list below (they have their own section).
+  const naItems = items.filter(isNotApplicable);
+  const activeItems = items.filter(i => !isNotApplicable(i));
 
-  const epItems = items.filter(i => i.category === 'emergency_preparedness');
+  const counts = { overdue: 0, due_soon: 0, compliant: 0, not_set: 0 };
+  activeItems.forEach(item => counts[getItemComplianceStatus(item)]++);
+
+  const epItems = activeItems.filter(i => i.category === 'emergency_preparedness');
   const epOverdue  = epItems.filter(i => getItemComplianceStatus(i) === 'overdue');
   const epNotSet   = epItems.filter(i => getItemComplianceStatus(i) === 'not_set');
   const epAlert    = epOverdue.length + epNotSet.length;
 
-  const hasStages = items.some(i => i.stage);
+  const hasStages = activeItems.some(i => i.stage);
   const activeStage = stageFilter ?? (hasStages ? 1 : 'all');
-  const stageCount = n => items.filter(i => i.stage === n).length;
+  const stageCount = n => activeItems.filter(i => i.stage === n).length;
 
-  const filteredItems = (catFilter === 'all' ? items : items.filter(i => i.category === catFilter))
+  const filteredItems = (catFilter === 'all' ? activeItems : activeItems.filter(i => i.category === catFilter))
     .filter(i => classFilter === 'all' || i.classification === classFilter)
     .filter(i => !hasStages || activeStage === 'all' || i.stage === activeStage)
     .filter(i => entityFilter === 'all' || i.entity_id === entityFilter || i.entity_id === null)
@@ -1280,12 +1320,90 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               </button>
               {showNeverAssessed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                  {neverAssessedItems.map(itemsViewMode === 'compact' ? renderCompactItemRow : renderItemRow)}
+                  {neverAssessedItems.map(item => (
+                    <div key={item.id}>
+                      {(itemsViewMode === 'compact' ? renderCompactItemRow : renderItemRow)(item)}
+                      <button
+                        type="button"
+                        data-testid="mark-not-applicable"
+                        onClick={() => { setNaTarget(item); setNaReason(''); setNaError(''); }}
+                        style={{ background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontSize: 13, color: 'var(--text2)', textDecoration: 'underline', fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        This does not apply to us
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
         </>
+      )}
+
+      {/* ── Not applicable, with a reason (kept, never deleted) ─────────────── */}
+      {section === 'items' && naItems.length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => setShowNotApplicable(s => !s)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--text2)', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            <span>{showNotApplicable ? '▲' : '▼'}</span>
+            <span>Not applicable to us — {naItems.length} item{naItems.length !== 1 ? 's' : ''}</span>
+          </button>
+          {showNotApplicable && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              {naItems.map(item => (
+                <div key={item.id} data-testid="not-applicable-item" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px' }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
+                    Reason: {item.not_applicable_reason}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text3, var(--text2))', marginTop: 2 }}>
+                    {item.not_applicable_by ? 'Recorded by ' + item.not_applicable_by + ' on ' : 'Recorded on '}
+                    {new Date(item.not_applicable_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleUndoNotApplicable(item)}
+                    style={{ background: 'none', border: 'none', padding: '6px 0 0', cursor: 'pointer', fontSize: 13, color: 'var(--text2)', textDecoration: 'underline', fontFamily: 'DM Sans, sans-serif' }}
+                  >
+                    It applies after all
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {naTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
+          <div className="card" style={{ maxWidth: 460, width: '100%', padding: 20 }}>
+            <h3 style={{ marginTop: 0 }}>This does not apply to us</h3>
+            <div style={{ fontSize: 14, marginBottom: 10 }}>{naTarget.name}</div>
+            <label style={{ fontSize: 13, fontWeight: 600 }}>Why not? (a few words)</label>
+            <textarea
+              data-testid="not-applicable-reason"
+              className="form-input"
+              rows={3}
+              value={naReason}
+              onChange={e => setNaReason(e.target.value)}
+              placeholder="e.g. We have no employees. Our land is not a Māori reservation."
+              style={{ resize: 'vertical', marginTop: 6, width: '100%' }}
+            />
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>
+              The item is not deleted. It moves to "Not applicable to us" with your reason and the date, and you can put it back at any time.
+            </div>
+            {naError && <div style={{ color: 'var(--danger, #b3261e)', fontSize: 13, marginTop: 8 }}>{naError}</div>}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+              <button type="button" className="btn" onClick={() => { setNaTarget(null); setNaReason(''); setNaError(''); }}>Cancel</button>
+              <button type="button" className="btn btn-primary" data-testid="confirm-not-applicable" disabled={naSaving} onClick={handleMarkNotApplicable}>
+                {naSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── INCIDENT REGISTER SECTION ────────────────────────────────────── */}

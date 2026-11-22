@@ -1,5 +1,10 @@
 import { getUrgencyStatus } from './urgencyStatus';
 
+// An item the marae has recorded as not applying to it (with a reason). Kept, never deleted; hidden from gaps and counts.
+export function isNotApplicable(item) {
+  return !!(item && item.not_applicable_at);
+}
+
 export function getItemComplianceStatus(item) {
   if (item.due_date) {
     const status = getUrgencyStatus(item, { dueSoonDays: 30 });
