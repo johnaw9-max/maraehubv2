@@ -61,7 +61,7 @@ projects_in_order() {
 import json, sys
 registry = json.load(open(sys.argv[1]))
 order = {'test': 0, 'canary': 1, 'production': 2}
-projects = sorted(registry['projects'], key=lambda p: order.get(p['role'], 99))
+projects = sorted([p for p in registry['projects'] if not p.get('retired')], key=lambda p: order.get(p['role'], 99))
 for p in projects:
     print(f\"{p['name']}|{p['ref']}|{p['role']}\")
 " "$REGISTRY_FILE"
