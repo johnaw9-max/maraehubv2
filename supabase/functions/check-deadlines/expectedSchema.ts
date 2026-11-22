@@ -775,5 +775,16 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "document_name",
     "source",
     "created_at"
+  ],
+  "legal_sources": [
+    "key",
+    "name",
+    "kind",
+    "provisions_read",
+    "version_and_date_read",
+    "status",
+    "url",
+    "notes",
+    "checked_on"
   ]
 };

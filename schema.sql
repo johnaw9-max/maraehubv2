@@ -2044,6 +2044,23 @@ alter table compliance_completions add constraint compliance_completions_pkey PR
 alter table compliance_completions add constraint compliance_completions_compliance_item_id_fkey FOREIGN KEY (compliance_item_id) REFERENCES compliance_items(id) ON DELETE CASCADE;
 alter table compliance_completions enable row level security;
 
+-- Added 22 Nov 2026 to catch schema.sql up with migration 20261122200000 (legal_sources).
+-- Policy and seed rows live in that migration.
+create table if not exists legal_sources (
+  key text not null,
+  name text not null,
+  kind text not null,
+  provisions_read text not null,
+  version_and_date_read text not null,
+  status text not null,
+  url text,
+  notes text,
+  checked_on date not null default '2026-11-22'::date
+);
+
+alter table legal_sources add constraint legal_sources_pkey PRIMARY KEY (key);
+alter table legal_sources enable row level security;
+
 -- ──────────────────────────────────────────────────────────────────────────────
 -- FUNCTIONS
 -- ──────────────────────────────────────────────────────────────────────────────
