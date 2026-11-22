@@ -149,7 +149,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "stage",
     "not_applicable_reason",
     "not_applicable_by",
-    "not_applicable_at"
+    "not_applicable_at",
+    "source_keys"
   ],
   "contacts": [
     "id",
