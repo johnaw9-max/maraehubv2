@@ -131,7 +131,7 @@ registry = json.load(open(sys.argv[1]))
 order = {'test': 0, 'canary': 1, 'production': 2}
 up_to = order[sys.argv[2]]
 fn = sys.argv[3] if len(sys.argv) > 3 else ''
-projects = [p for p in registry['projects'] if order.get(p['role'], 99) <= up_to]
+projects = [p for p in registry['projects'] if order.get(p['role'], 99) <= up_to and not p.get('retired')]
 projects.sort(key=lambda p: order.get(p['role'], 99))
 for p in projects:
     excluded, reason = '0', ''

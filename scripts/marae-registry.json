@@ -82,6 +82,8 @@
       "ref": "cbeenkpjpnhmtqtnjiyd",
       "name": "opeke",
       "role": "production",
+      "retired": true,
+      "retired_reason": "Opeke moved from Seoul to Sydney on 22 Nov 2026. This Seoul project is paused and kept only as a fallback; apply-to-all.sh skips it so nothing new is written to it. Remove this flag if it is ever brought back into use.",
       "frontend_project": "maraehubv2",
       "excluded_functions": [
         {
