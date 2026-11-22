@@ -14,6 +14,8 @@ import ViewToggle from './ViewToggle';
 import { recordCompletion } from '../lib/complianceCompletions';
 import ComplianceHistoryModal from './ComplianceHistoryModal';
 import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
+import ItemSources from './ItemSources';
+import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -308,6 +310,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [itemsViewMode, setItemsViewMode] = useSortPreference('compliance_view', 'compact');
   const [expandedCompactIds, setExpandedCompactIds] = useState(new Set());
   const [expandedWhy, setExpandedWhy] = useState(null);
+  const [sourcesByKey, setSourcesByKey] = useState({});
   const [showNeverAssessed, setShowNeverAssessed] = useState(false);
   // "Not applicable, with a reason": an item the marae records as not applying to it. Kept, never deleted.
   const [showNotApplicable, setShowNotApplicable] = useState(false);
@@ -406,7 +409,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   async function fetchAll() {
     setLoading(true);
-    const [itemsRes, incRes, entRes, riskLinksRes, remindersRes, docsRes, expRes] = await Promise.all([
+    const [itemsRes, incRes, entRes, riskLinksRes, remindersRes, docsRes, expRes, srcRes] = await Promise.all([
       supabase.from('compliance_items').select('*').order('due_date', { ascending: true, nullsFirst: false }),
       supabase.from('incidents').select('*').order('incident_date', { ascending: false }),
       supabase.from('entities').select('id, name').order('name'),
@@ -414,8 +417,10 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       supabase.from('service_reminders').select('id, type, due_date, assets(name)').order('type'),
       supabase.from('documents').select('id, title, category').is('deleted_at', null).order('title'),
       supabase.from('finance_expenses').select('id, description, amount, date').order('date', { ascending: false }),
+      supabase.from('legal_sources').select('key, name, provisions_read, version_and_date_read, status, url, notes'),
     ]);
     const allItems = itemsRes.data || [];
+    setSourcesByKey(indexSources(srcRes && !srcRes.error ? srcRes.data : []));
     setItems(allItems);
     setIncidents(incRes.data || []);
     setEntities(entRes.data || []);
@@ -862,13 +867,18 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
               <span style={{ fontSize: 14, fontWeight: 600, background: cls.bg, color: cls.color, borderRadius: 20, padding: '3px 10px' }}>
                 {cls.icon} {cls.label}
               </span>
-              {(item.notes || item.legal_basis) && (
+              {(item.notes || item.legal_basis || hasSources(item)) && (
                 <button
                   onClick={() => setExpandedWhy(id => id === item.id ? null : item.id)}
                   style={{ fontSize: 14, color: 'var(--text3)', background: 'none', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', cursor: 'pointer', fontWeight: 600 }}
                 >
                   ⓘ Details {expandedWhy === item.id ? '▲' : '▼'}
                 </button>
+              )}
+              {sourceTag(item, sourcesByKey) && (
+                <span data-testid="item-source-tag" style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>
+                  {sourceTag(item, sourcesByKey)}
+                </span>
               )}
               {entityName && <span style={{ fontSize: 14, background: 'var(--surface2)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 20, padding: '3px 10px', fontWeight: 600 }}>{entityName}</span>}
               {linkedReminder && (
@@ -937,7 +947,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 </button>
               </div>
             )}
-            {expandedWhy === item.id && (item.notes || item.legal_basis) && (
+            {expandedWhy === item.id && (item.notes || item.legal_basis || hasSources(item)) && (
               <div style={{ fontSize: 14, color: 'var(--text2)', marginTop: 6, padding: '8px 10px', background: 'var(--surface2)', borderRadius: 6 }}>
                 {item.notes && <div style={{ fontStyle: 'italic', color: 'var(--text3)' }}>{item.notes}</div>}
                 {item.legal_basis && (
@@ -946,6 +956,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                     {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
                   </div>
                 )}
+                <ItemSources item={item} sourcesByKey={sourcesByKey} />
               </div>
             )}
           </div>
@@ -1059,6 +1070,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
             reasonKind(item) ? (
               <span key="reason" data-testid="reason-kind" style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{reasonKind(item)}</span>
             ) : null,
+            sourceTag(item, sourcesByKey) ? (
+              <span key="source" data-testid="item-source-tag" style={{ fontSize: 12, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{sourceTag(item, sourcesByKey)}</span>
+            ) : null,
             item.responsible_name ? (
               <span key="owner" title={item.responsible_name} style={{
                 width: 24, height: 24, borderRadius: '50%', background: 'var(--surface2)',
@@ -1110,7 +1124,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 </span>
               )}
             </div>
-            {(item.notes || item.legal_basis) && (
+            {(item.notes || item.legal_basis || hasSources(item)) && (
               <div style={{ fontSize: 14, color: 'var(--text2)' }}>
                 {item.notes && <div style={{ fontStyle: 'italic', color: 'var(--text3)' }}>{item.notes}</div>}
                 {item.legal_basis && (
@@ -1119,6 +1133,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                     {item.legal_basis_detail && <div style={{ marginTop: 3 }}>{item.legal_basis_detail}</div>}
                   </div>
                 )}
+                <ItemSources item={item} sourcesByKey={sourcesByKey} />
               </div>
             )}
           </div>

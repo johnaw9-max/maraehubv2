@@ -349,3 +349,55 @@ describe('mixed staged and unstaged items', () => {
     expect(c.textContent).toContain('Newer staged item');
   });
 });
+
+describe('sources on an item', () => {
+  const BASE = { ...STATUS_BASE, due_date: null, last_checked_date: null, renewal_months: null, responsible_name: null };
+  const SOURCES = [
+    { key: 'BA04', name: 'Building Act 2004', provisions_read: 'ss 105, 108', version_and_date_read: 'as at 8 Oct 2026; read 22 Nov 2026', status: 'Verified – primary source', url: 'https://www.legislation.govt.nz/act/public/2004/0072/latest/whole.html', notes: null },
+    { key: 'MRR94', name: 'Maori Reservations Regulations 1994', provisions_read: 'regs 4, 6, 7', version_and_date_read: 'version 10; read 22 Nov 2026', status: 'Verified – primary source', url: '', notes: null },
+  ];
+
+  async function renderWithSources(items) {
+    __reset();
+    __setResponses({ compliance_items: items, tasks: TASKS_FIXTURE, legal_sources: SOURCES });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => { root.render(<ComplianceTracker />); });
+    containers.push({ root, container });
+    return container;
+  }
+  const open = async (c, name) => {
+    const never = Array.from(c.querySelectorAll('button')).find(b => b.textContent.includes('Never Assessed'));
+    await act(async () => { Simulate.click(never); });
+    const row = findRow(c, name);
+    const clickable = Array.from(row.querySelectorAll('div')).find(d => d.textContent.includes(name) && d.onclick !== undefined) || row.firstChild;
+    await act(async () => { Simulate.click(row.querySelector('[role="button"]') || clickable); });
+  };
+
+  test('shows name, version and date, status and the official link, and tags the row', async () => {
+    const c = await renderWithSources([EP_MARKER, { ...BASE, id: 's1', name: 'Warrant item', legal_basis: 'Building Act 2004', source_keys: ['BA04'] }]);
+    await open(c, 'Warrant item');
+    expect(c.querySelector('[data-testid="item-source-tag"]').textContent).toBe('Source checked');
+    const block = c.querySelector('[data-testid="item-source-BA04"]');
+    expect(block.textContent).toContain('Building Act 2004');
+    expect(block.textContent).toContain('as at 8 Oct 2026; read 22 Nov 2026');
+    expect(block.textContent).toContain('Verified – primary source');
+    expect(block.querySelector('a').getAttribute('href')).toContain('legislation.govt.nz');
+  });
+
+  test('a source with no link says so instead of inventing one', async () => {
+    const c = await renderWithSources([EP_MARKER, { ...BASE, id: 's2', name: 'Reservation item', legal_basis: 'Reg 6', source_keys: ['MRR94'] }]);
+    await open(c, 'Reservation item');
+    const block = c.querySelector('[data-testid="item-source-MRR94"]');
+    expect(block.querySelector('a')).toBeNull();
+    expect(block.textContent).toContain('Official link to be added');
+  });
+
+  test('an item with no sources shows an honest note and no tag, and an old database without the column still works', async () => {
+    const c = await renderWithSources([EP_MARKER, { ...BASE, id: 's3', name: 'Practice item', legal_basis: 'Good practice (no law requires it)' }]);
+    await open(c, 'Practice item');
+    expect(c.querySelector('[data-testid="item-source-tag"]')).toBeNull();
+    expect(c.querySelector('[data-testid="item-sources-none"]').textContent).toContain('No source recorded');
+  });
+});
