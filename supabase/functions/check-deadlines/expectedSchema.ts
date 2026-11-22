@@ -146,7 +146,10 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "linked_service_reminder_id",
     "linked_document_id",
     "linked_expense_id",
-    "stage"
+    "stage",
+    "not_applicable_reason",
+    "not_applicable_by",
+    "not_applicable_at"
   ],
   "contacts": [
     "id",

@@ -332,7 +332,10 @@ create table if not exists compliance_items (
   linked_service_reminder_id uuid,
   linked_document_id uuid,
   linked_expense_id uuid,
-  stage smallint
+  stage smallint,
+  not_applicable_reason text,
+  not_applicable_by text,
+  not_applicable_at timestamp with time zone
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
