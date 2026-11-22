@@ -335,7 +335,8 @@ create table if not exists compliance_items (
   stage smallint,
   not_applicable_reason text,
   not_applicable_by text,
-  not_applicable_at timestamp with time zone
+  not_applicable_at timestamp with time zone,
+  source_keys text[] not null default '{}'
 );
 
 alter table compliance_items add constraint compliance_items_pkey PRIMARY KEY (id);
