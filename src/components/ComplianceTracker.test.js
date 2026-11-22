@@ -284,7 +284,8 @@ describe('compliance stages', () => {
   });
 
   test('opens on Start here when items are staged, and tabs switch the list', async () => {
-    const c = await renderTracker({}, [EP_MARKER, STAGE1, STAGE2]);
+    // every item staged (the marker gets a stage too), so the list opens on Start here
+    const c = await renderTracker({}, [{ ...EP_MARKER, stage: 3 }, STAGE1, STAGE2]);
     expect(c.querySelector('[data-testid="stage-tab-1"]').textContent).toContain('Start here (1)');
     expect(c.textContent).toContain('Stage One Item');
     expect(c.textContent).not.toContain('Stage Two Item');
@@ -296,5 +297,55 @@ describe('compliance stages', () => {
     await act(async () => { Simulate.click(c.querySelector('[data-testid="stage-tab-all"]')); });
     expect(c.textContent).toContain('Stage One Item');
     expect(c.textContent).toContain('Stage Two Item');
+  });
+});
+
+describe('not applicable, with a reason', () => {
+  const NA_BASE = { ...STATUS_BASE, due_date: null, last_checked_date: null, renewal_months: null, responsible_name: null };
+  const NEW_ITEM = { ...NA_BASE, id: 'n1', name: 'Charities annual return item' };
+  const NA_ITEM = { ...NA_BASE, id: 'n2', name: 'Employer duty item', not_applicable_at: '2026-11-22T00:00:00Z', not_applicable_reason: 'We have no employees', not_applicable_by: 'Test Trustee' };
+
+  test('a not-applicable item is out of the never-assessed list and shown, with its reason, in its own section', async () => {
+    const c = await renderTracker({}, [EP_MARKER, NEW_ITEM, NA_ITEM]);
+    expect(c.textContent).toContain('Never Assessed — 1 item');
+    expect(c.textContent).toContain('Not applicable to us — 1 item');
+    // the item sits only in the not-applicable section (collapsed by default, so its reason is not yet on screen)
+    expect(c.textContent).not.toContain('Employer duty item');
+    const toggle = Array.from(c.querySelectorAll('button')).find(b => b.textContent.includes('Not applicable to us'));
+    await act(async () => { Simulate.click(toggle); });
+    expect(c.textContent).toContain('Employer duty item');
+    expect(c.textContent).toContain('We have no employees');
+    expect(c.textContent).toContain('Recorded by Test Trustee');
+  });
+
+  test('marking an item not applicable needs a reason, then saves reason and time without deleting anything', async () => {
+    const c = await renderTracker({}, [EP_MARKER, NEW_ITEM]);
+    const never = Array.from(c.querySelectorAll('button')).find(b => b.textContent.includes('Never Assessed'));
+    await act(async () => { Simulate.click(never); });
+    await act(async () => { Simulate.click(c.querySelector('[data-testid="mark-not-applicable"]')); });
+    // empty reason is refused
+    await act(async () => { Simulate.click(c.querySelector('[data-testid="confirm-not-applicable"]')); });
+    expect(c.textContent).toContain('Please give a reason');
+    expect(__getUpdateCalls().some(u => u.payload.not_applicable_at)).toBe(false);
+    const box = c.querySelector('[data-testid="not-applicable-reason"]');
+    await act(async () => { Simulate.change(box, { target: { value: 'Our land is not a Māori reservation' } }); });
+    await act(async () => { Simulate.click(c.querySelector('[data-testid="confirm-not-applicable"]')); });
+    const call = __getUpdateCalls().find(u => u.payload.not_applicable_at);
+    expect(call).toBeTruthy();
+    expect(call.payload.not_applicable_reason).toBe('Our land is not a Māori reservation');
+    expect(call.payload.due_date).toBeUndefined();
+  });
+});
+
+describe('mixed staged and unstaged items', () => {
+  const BASE = { ...STATUS_BASE, due_date: null, last_checked_date: '2026-11-01', renewal_months: 12, responsible_name: null };
+  test('opens on All so older unstaged items are not hidden behind the Start here tab', async () => {
+    const c = await renderTracker({}, [
+      EP_MARKER,
+      { ...BASE, id: 'm1', name: 'Older item without a stage', stage: null },
+      { ...BASE, id: 'm2', name: 'Newer staged item', stage: 1 },
+    ]);
+    expect(c.textContent).toContain('Older item without a stage');
+    expect(c.textContent).toContain('Newer staged item');
   });
 });

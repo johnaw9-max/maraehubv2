@@ -325,7 +325,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       supabase.from('tasks').select('id, title, due_date, status, priority, assigned_to').neq('status', 'cancelled').neq('status', 'completed'),
       supabase.from('booking_feedback').select('rating_overall, experience, created_at').order('created_at', { ascending: false }),
       supabase.from('marae_settings').select('marae_name').single(),
-      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name, stage, renewal_months').order('due_date'),
+      supabase.from('compliance_items').select('id, name, category, due_date, last_checked_date, entity_id, responsible_name, stage, renewal_months, not_applicable_at').order('due_date'),
       supabase.from('goals').select('id, name, status, target_date, responsible_name').order('target_date'),
       // Finance queries are admin-only (86d3uy01x) -- a standard trustee's
       // browser never even requests these tables, not just doesn't render
@@ -372,7 +372,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
       tasks:             taskRes.data   || [],
       feedback:          feedRes.data   || [],
       maraeName:         settingsRes.data?.marae_name || 'Our Marae',
-      compliance:        compRes.data   || [],
+      compliance:        (compRes.data || []).filter(c => !c.not_applicable_at),
       goals:             goalsRes.data  || [],
       kpiSnapshots:      kpiRes.data    || [],
       entities:          entitiesRes.data || [],

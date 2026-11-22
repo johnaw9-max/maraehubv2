@@ -217,7 +217,7 @@ serve(async (req) => {
     const fyTo   = `${fyYear + 1}-03-31`;
 
     const [compRes, riskRes, assetRes, remRes, goalsRes, taskRes, finIncRes, finExpRes, balanceSheet] = await Promise.all([
-      admin.from('compliance_items').select('id, due_date, last_checked_date, stage'),
+      admin.from('compliance_items').select('id, due_date, last_checked_date, stage').is('not_applicable_at', null),
       admin.from('risk_register').select('id, status, controls, risk_rating'),
       admin.from('assets').select('id'),
       admin.from('service_reminders').select('id, asset_id, due_date'),
