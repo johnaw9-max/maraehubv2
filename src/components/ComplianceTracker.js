@@ -806,7 +806,10 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const epAlert    = epOverdue.length + epNotSet.length;
 
   const hasStages = activeItems.some(i => i.stage);
-  const activeStage = stageFilter ?? (hasStages ? 1 : 'all');
+  // A marae with a mix of staged and unstaged items (older items have no stage) opens on All, so no item is hidden
+  // behind a stage tab it does not belong to. Only a fully staged list opens on 'Start here'.
+  const someUnstaged = activeItems.some(i => !i.stage);
+  const activeStage = stageFilter ?? (hasStages && !someUnstaged ? 1 : 'all');
   const stageCount = n => activeItems.filter(i => i.stage === n).length;
 
   const filteredItems = (catFilter === 'all' ? activeItems : activeItems.filter(i => i.category === catFilter))

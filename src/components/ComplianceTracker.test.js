@@ -284,7 +284,8 @@ describe('compliance stages', () => {
   });
 
   test('opens on Start here when items are staged, and tabs switch the list', async () => {
-    const c = await renderTracker({}, [EP_MARKER, STAGE1, STAGE2]);
+    // every item staged (the marker gets a stage too), so the list opens on Start here
+    const c = await renderTracker({}, [{ ...EP_MARKER, stage: 3 }, STAGE1, STAGE2]);
     expect(c.querySelector('[data-testid="stage-tab-1"]').textContent).toContain('Start here (1)');
     expect(c.textContent).toContain('Stage One Item');
     expect(c.textContent).not.toContain('Stage Two Item');
@@ -333,5 +334,18 @@ describe('not applicable, with a reason', () => {
     expect(call).toBeTruthy();
     expect(call.payload.not_applicable_reason).toBe('Our land is not a Māori reservation');
     expect(call.payload.due_date).toBeUndefined();
+  });
+});
+
+describe('mixed staged and unstaged items', () => {
+  const BASE = { ...STATUS_BASE, due_date: null, last_checked_date: '2026-11-01', renewal_months: 12, responsible_name: null };
+  test('opens on All so older unstaged items are not hidden behind the Start here tab', async () => {
+    const c = await renderTracker({}, [
+      EP_MARKER,
+      { ...BASE, id: 'm1', name: 'Older item without a stage', stage: null },
+      { ...BASE, id: 'm2', name: 'Newer staged item', stage: 1 },
+    ]);
+    expect(c.textContent).toContain('Older item without a stage');
+    expect(c.textContent).toContain('Newer staged item');
   });
 });
