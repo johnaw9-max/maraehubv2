@@ -595,7 +595,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
 
         {/* ── OUR MARAE ──────────────────────────────────────────────────── */}
-        {activeTab === 'our_marae' && <OurMarae isAdmin={isAdmin} />}
+        {activeTab === 'our_marae' && <OurMarae isAdmin={isAdmin} onNavigate={goToTab} />}
       </div>
       </div>
 
