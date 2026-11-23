@@ -77,9 +77,9 @@ export default function OnboardingFlow({ onComplete }) {
       .limit(1);
     if (existing && existing.length > 0) return;
     await supabase.from('documents').insert({
-      title: 'Marae Emergency Preparedness Plan (Waikato District Council Template)',
+      title: 'Marae Emergency Preparedness Plan template (Waikato District Council)',
       category: 'Health & Safety',
-      notes: 'Official government CDEM template, linked directly from Waikato District Council so it always reflects the source\'s current version — not a locally hosted copy.',
+      notes: 'A marae preparedness template published by Waikato District Council. Use it as a starting point and ask your own council\'s civil defence team for the version for your area.',
       file_name: 'marae-preparedness-plan---template.pdf',
       file_type: 'pdf',
       file_url: DEFAULT_DOC_URL,
