@@ -1,10 +1,9 @@
 // OurMarae.js — "Our Marae" trustee reference page
-// Shows: team, tools, upcoming meetings, past minutes, documents, processes & passwords pointer
+// Shows: team, tools, upcoming meetings, and pointers to Minutes and Documents (one home for each fact)
 // Tested on Terere first — designed to work for every marae instance.
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { openStorageFile } from '../lib/storageLinks';
 import OrgChart from './OrgChart';
 
 const TEAL = 'var(--brand)';
@@ -74,19 +73,12 @@ function isUpcoming(dateStr) {
   return new Date(dateStr) >= new Date(new Date().toDateString());
 }
 
-export default function OurMarae({ isAdmin }) {
+export default function OurMarae({ isAdmin, onNavigate }) {
   const [profiles, setProfiles] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Open through a fresh signed link, the same way the Documents tab does. Old records hold a full
-  // public address and newer ones hold only a path; the helper handles both. A plain link would fail.
-  async function openDocument(ref) {
-    const r = await openStorageFile(supabase, 'documents', ref);
-    if (!r.ok) alert(r.message);
-  }
-  const [expandedMeeting, setExpandedMeeting] = useState(null);
   const [maraeName, setMaraeName] = useState('Our Marae');
   const [entities, setEntities] = useState([]);
   const [contacts, setContacts] = useState({});   // advisors only: accountant, lawyer
@@ -123,14 +115,7 @@ export default function OurMarae({ isAdmin }) {
   }, []);
 
   const upcoming = meetings.filter(m => isUpcoming(m.meeting_date)).sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
-  const past = meetings.filter(m => !isUpcoming(m.meeting_date)).slice(0, 5);
-
-  const docsByCategory = documents.reduce((acc, d) => {
-    const cat = d.category || 'General';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(d);
-    return acc;
-  }, {});
+  const past = meetings.filter(m => !isUpcoming(m.meeting_date)).slice(0, 3);
 
   if (loading) return (
     <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>
@@ -268,86 +253,58 @@ export default function OurMarae({ isAdmin }) {
         )}
       </SECTION>
 
-      {/* RECENT DECISIONS */}
+      {/* RECENT MEETINGS — a short pointer only; full minutes live in the Minutes tab (one home) */}
       <SECTION icon="📋" title="Recent Meetings">
         {past.length === 0 ? (
-          <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No past meeting minutes yet. Full minutes are in the Minutes section.</p></CARD>
+          <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No past meetings yet. Add them in the Minutes section.</p></CARD>
         ) : (
-          past.map((m, i) => (
-            <CARD key={i}>
-              <div
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexWrap: 'wrap', gap: 8 }}
-                onClick={() => setExpandedMeeting(expandedMeeting === m.id ? null : m.id)}
-              >
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{m.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                    {formatDate(m.meeting_date)}
-                    {m.chairperson && ` · Chair: ${m.chairperson}`}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <PILL label={m.meeting_type || 'Meeting'} />
-                  <span style={{ fontSize: 13, color: TEAL, fontWeight: 600 }}>{expandedMeeting === m.id ? '▲ Hide' : '▼ View'}</span>
-                </div>
-              </div>
-              {expandedMeeting === m.id && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #e5e7eb' }}>
-                  {m.attendees && (
-                    <div style={{ marginBottom: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>PRESENT: </span>
-                      <span style={{ fontSize: 13 }}>{m.attendees}</span>
-                    </div>
-                  )}
-                  {m.apologies && (
-                    <div style={{ marginBottom: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>APOLOGIES: </span>
-                      <span style={{ fontSize: 13 }}>{m.apologies}</span>
-                    </div>
-                  )}
-                  {m.minutes ? (
-                    <pre style={{
-                      whiteSpace: 'pre-wrap', fontSize: 13, lineHeight: 1.7,
-                      fontFamily: 'inherit', margin: 0, color: 'var(--text1)',
-                      background: '#f8f9fa', borderRadius: 8, padding: 14,
-                    }}>{m.minutes}</pre>
-                  ) : (
-                    <p style={{ color: 'var(--text2)', fontSize: 13, margin: 0 }}>Minutes not yet recorded.</p>
-                  )}
-                </div>
-              )}
-            </CARD>
-          ))
-        )}
-      </SECTION>
-
-      {/* DOCUMENTS */}
-      <SECTION icon="📁" title="Documents">
-        {Object.keys(docsByCategory).length === 0 ? (
-          <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No documents uploaded yet. Use the Documents section to add files.</p></CARD>
-        ) : (
-          Object.entries(docsByCategory).map(([cat, docs]) => (
-            <div key={cat} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{cat}</div>
-              {docs.map((d, i) => (
-                <CARD key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <>
+            {past.map((m) => (
+              <CARD key={m.id}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: onNavigate ? 'pointer' : 'default', flexWrap: 'wrap', gap: 8 }}
+                  onClick={() => onNavigate && onNavigate('minutes', { meetingId: m.id })}
+                >
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{d.title}</div>
-                    {d.notes && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{d.notes}</div>}
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{m.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+                      {formatDate(m.meeting_date)}
+                      {m.chairperson && ` · Chair: ${m.chairperson}`}
+                    </div>
                   </div>
-                  {d.file_url && (
-                    <button type="button" onClick={() => openDocument(d.file_url)}
-                      style={{ fontSize: 13, color: TEAL, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      📄 Open
-                    </button>
-                  )}
-                </CARD>
-              ))}
-            </div>
-          ))
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <PILL label={m.meeting_type || 'Meeting'} />
+                    {onNavigate && <span style={{ fontSize: 13, color: TEAL, fontWeight: 600 }}>Open minutes →</span>}
+                  </div>
+                </div>
+              </CARD>
+            ))}
+            {onNavigate && (
+              <button type="button" onClick={() => onNavigate('minutes')}
+                style={{ fontSize: 13, color: TEAL, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+                All minutes →
+              </button>
+            )}
+          </>
         )}
       </SECTION>
 
+      {/* DOCUMENTS — a pointer only; the files live in the Documents tab (one home) */}
+      <SECTION icon="📁" title="Documents">
+        <CARD style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 14, color: 'var(--text2)' }}>
+            {documents.length === 0
+              ? 'No documents uploaded yet.'
+              : `${documents.length} document${documents.length === 1 ? '' : 's'} stored for your marae.`}
+          </div>
+          {onNavigate && (
+            <button type="button" onClick={() => onNavigate('documents')}
+              style={{ fontSize: 13, color: TEAL, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Open Documents →
+            </button>
+          )}
+        </CARD>
+      </SECTION>
 
     </div>
   );
