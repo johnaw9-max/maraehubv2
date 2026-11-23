@@ -1,4 +1,5 @@
 // MaraeHub Committee Minutes & Resolutions
+import { openStorageFile } from '../lib/storageLinks';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
@@ -448,18 +449,16 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
 
   async function handleOpenAttachment() {
     if (!meeting.attachment_url) return;
-    const { data } = await supabase.storage.from('meeting-attachments').createSignedUrl(meeting.attachment_url, 3600);
-    if (data?.signedUrl) {
-      logAudit({
-        entityId: meeting.entity_id,
-        action: 'download',
-        resourceType: 'document',
-        resourceId: meeting.id,
-        resourceName: meeting.attachment_url?.split('/').pop(),
-        metadata: { meeting_title: meeting.title },
-      });
-      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-    }
+    const r = await openStorageFile(supabase, 'meeting-attachments', meeting.attachment_url);
+    if (!r.ok) { alert(r.message); return; }
+    logAudit({
+      entityId: meeting.entity_id,
+      action: 'download',
+      resourceType: 'document',
+      resourceId: meeting.id,
+      resourceName: meeting.attachment_url?.split('/').pop(),
+      metadata: { meeting_title: meeting.title },
+    });
   }
 
   async function saveResolution(form) {
@@ -747,7 +746,15 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
             <div style={{ fontSize: 13 }}>{meeting.apologies}</div>
           </div>
         )}
-        {meeting.attachment_name && <span onClick={handleOpenAttachment} style={{ fontSize: 10, color: 'var(--brand)', cursor: 'pointer' }}>📎 {meeting.attachment_name}</span>}
+        {meeting.attachment_name && (
+          <div style={{ marginTop: 12 }}>
+            <button type="button" onClick={handleOpenAttachment}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', fontSize: 14, fontWeight: 600, color: '#fff', background: 'var(--brand)', border: 'none', borderRadius: 8, cursor: 'pointer', textAlign: 'left' }}>
+              📎 Open attached minutes
+            </button>
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>{meeting.attachment_name} — Word files download to your device.</div>
+          </div>
+        )}
       </div>
 
       {loadingDetail ? <div className="loading">Loading...</div> : (
