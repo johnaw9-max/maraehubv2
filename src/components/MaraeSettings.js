@@ -13,8 +13,17 @@ const EMPTY_FORM = {
   automation_level: 'assisted',
   reminders_paused: false,
   ai_drafting_enabled: false,
-
 };
+
+const ALL_TOOLS = [
+  { key: 'maraehub',    emoji: '✅', name: 'MaraeHub',       job: 'Compliance & Governance',      who: 'Secretary' },
+  { key: 'marae_online',emoji: '📅', name: 'Marae Online',   job: 'Bookings & Hire',               who: 'Bookings Coordinator' },
+  { key: 'board_pro',   emoji: '📋', name: 'Board Pro',       job: 'Meeting Minutes & Reports',     who: 'Secretary' },
+  { key: 'teams',       emoji: '💬', name: 'Microsoft Teams', job: 'Day-to-Day Communication',      who: 'All Trustees' },
+  { key: 'sharepoint',  emoji: '📁', name: 'SharePoint',      job: 'Document Storage',              who: 'Secretary' },
+  { key: 'xero',        emoji: '💰', name: 'Xero',            job: 'Accounting & Invoicing',        who: 'Treasurer' },
+  { key: 'outlook',     emoji: '📧', name: 'Outlook',         job: 'Shared Email',                  who: 'Secretary' },
+];
 
 const XERO_ERROR_MESSAGES = {
   denied: 'You declined the Xero connection request.',
@@ -59,6 +68,13 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Marae Profile — entities, contacts, tools
+  const [profileEntities, setProfileEntities] = useState([]);  // [{name, type, reg_number, ird_number, charities_number}]
+  const [profileContacts, setProfileContacts] = useState({ chairman_email: '', secretary_email: '', phone: '', address: '', accountant: '', lawyer: '' });
+  const [toolsConfig, setToolsConfig] = useState([]);           // array of tool keys
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
 
   // Xero connection state
   const [xeroStatus, setXeroStatus] = useState(null); // null = loading
@@ -288,8 +304,23 @@ export default function MaraeSettings({ profile, isAdmin }) {
         ai_drafting_enabled: data.ai_drafting_enabled === true,
         gst_registered: data.gst_registered === true,
       });
+      setProfileEntities(data.entities || []);
+      setProfileContacts(data.contacts || { chairman_email: '', secretary_email: '', phone: '', address: '', accountant: '', lawyer: '' });
+      setToolsConfig(data.tools_config || []);
     }
     setLoading(false);
+  }
+
+  async function saveMaraeProfile() {
+    setProfileSaving(true); setProfileSuccess(false);
+    await supabase.from('marae_settings').update({
+      entities: profileEntities,
+      contacts: profileContacts,
+      tools_config: toolsConfig,
+      updated_at: new Date().toISOString(),
+    }).eq('id', settingsId);
+    setProfileSaving(false); setProfileSuccess(true);
+    setTimeout(() => setProfileSuccess(false), 3000);
   }
 
   async function fetchTemplates() {
@@ -803,6 +834,112 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </button>
         </div>
       </div>
+
+      {/* ── MARAE PROFILE ── entities, contacts, tools ── */}
+      {isAdmin && (
+      <div className="panel" style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+          🏛️ Marae Profile
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 20 }}>
+          Fill in once — this information flows through to Our Marae and is available to all trustees.
+        </p>
+
+        {/* ENTITIES */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Legal Entities</div>
+          {profileEntities.map((ent, i) => (
+            <div key={i} style={{ background: '#f8f9fa', borderRadius: 8, padding: 12, marginBottom: 10, position: 'relative' }}>
+              <button onClick={() => setProfileEntities(e => e.filter((_, j) => j !== i))}
+                style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text3)' }}>✕</button>
+              <div className="grid-2" style={{ gap: 10 }}>
+                <div className="form-group" style={{ marginBottom: 8 }}>
+                  <label className="form-label">Entity Name</label>
+                  <input className="form-input" value={ent.name} onChange={e => setProfileEntities(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="e.g. Terere Marae Inc." />
+                </div>
+                <div className="form-group" style={{ marginBottom: 8 }}>
+                  <label className="form-label">Type</label>
+                  <select className="form-input" value={ent.type} onChange={e => setProfileEntities(arr => arr.map((x, j) => j === i ? { ...x, type: e.target.value } : x))}>
+                    <option value="incorporated_society">Incorporated Society</option>
+                    <option value="charitable_trust">Charitable Trust</option>
+                    <option value="land_trust">Land Trust</option>
+                    <option value="trading_trust">Trading Trust</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Registration Number</label>
+                  <input className="form-input" value={ent.reg_number || ''} onChange={e => setProfileEntities(arr => arr.map((x, j) => j === i ? { ...x, reg_number: e.target.value } : x))} placeholder="e.g. 123456" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Charities Number (if registered)</label>
+                  <input className="form-input" value={ent.charities_number || ''} onChange={e => setProfileEntities(arr => arr.map((x, j) => j === i ? { ...x, charities_number: e.target.value } : x))} placeholder="e.g. CC12345" />
+                </div>
+              </div>
+            </div>
+          ))}
+          <button className="btn-secondary" style={{ fontSize: 13 }}
+            onClick={() => setProfileEntities(e => [...e, { name: '', type: 'incorporated_society', reg_number: '', charities_number: '' }])}>
+            + Add Entity
+          </button>
+        </div>
+
+        {/* KEY CONTACTS */}
+        <div style={{ marginBottom: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Key Contacts & Details</div>
+          <div className="grid-2" style={{ gap: 10 }}>
+            <div className="form-group">
+              <label className="form-label">Chairman Email</label>
+              <input className="form-input" type="email" value={profileContacts.chairman_email || ''} onChange={e => setProfileContacts(c => ({ ...c, chairman_email: e.target.value }))} placeholder="chairman@tereremarae.org.nz" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Secretary Email</label>
+              <input className="form-input" type="email" value={profileContacts.secretary_email || ''} onChange={e => setProfileContacts(c => ({ ...c, secretary_email: e.target.value }))} placeholder="secretary@tereremarae.org.nz" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Main Phone</label>
+              <input className="form-input" value={profileContacts.phone || ''} onChange={e => setProfileContacts(c => ({ ...c, phone: e.target.value }))} placeholder="e.g. 09 123 4567" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Physical Address</label>
+              <input className="form-input" value={profileContacts.address || ''} onChange={e => setProfileContacts(c => ({ ...c, address: e.target.value }))} placeholder="e.g. 123 Marae Road, Opotiki 3122" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Accountant</label>
+              <input className="form-input" value={profileContacts.accountant || ''} onChange={e => setProfileContacts(c => ({ ...c, accountant: e.target.value }))} placeholder="Name & phone or email" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Lawyer</label>
+              <input className="form-input" value={profileContacts.lawyer || ''} onChange={e => setProfileContacts(c => ({ ...c, lawyer: e.target.value }))} placeholder="Name & phone or email" />
+            </div>
+          </div>
+        </div>
+
+        {/* TOOLS */}
+        <div style={{ marginBottom: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Digital Tools We Use</div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Tick the tools your marae uses — only these will show in Our Marae.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+            {ALL_TOOLS.map(t => {
+              const on = toolsConfig.includes(t.key);
+              return (
+                <label key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${on ? 'var(--brand)' : 'var(--border)'}`, background: on ? '#e8f4ef' : '#fff', cursor: 'pointer', fontSize: 13 }}>
+                  <input type="checkbox" checked={on} onChange={() => setToolsConfig(tc => on ? tc.filter(k => k !== t.key) : [...tc, t.key])} style={{ accentColor: 'var(--brand)' }} />
+                  <span>{t.emoji} {t.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button className="btn-primary" onClick={saveMaraeProfile} disabled={profileSaving} style={{ padding: '11px 28px', fontSize: 14 }}>
+            {profileSaving ? 'Saving...' : 'Save Marae Profile'}
+          </button>
+          {profileSuccess && <span style={{ color: 'var(--success)', fontSize: 13, fontWeight: 600 }}>✓ Saved</span>}
+        </div>
+      </div>
+      )}
 
       {/* ── EMAIL NOTIFICATIONS ── */}
       <div id="email-notifications" className="panel" style={{ marginTop: 20 }}>

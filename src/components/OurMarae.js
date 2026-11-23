@@ -37,13 +37,23 @@ const PILL = ({ label, color, bg }) => (
   }}>{label}</span>
 );
 
-const TOOLS = [
-  { emoji: '📅', name: 'Marae Online', job: 'Bookings & Hire', who: 'Bookings Coordinator', notFor: 'Compliance, minutes', color: '#e8eef8', textColor: '#1a4a8a' },
-  { emoji: '✅', name: 'MaraeHub', job: 'Compliance & Governance', who: 'Secretary', notFor: 'Bookings', color: '#e8f4ef', textColor: '#1a4a3a' },
-  { emoji: '📋', name: 'Board Pro', job: 'Meeting Minutes & Reports', who: 'Secretary', notFor: 'Compliance, bookings', color: '#f0ecf8', textColor: '#6b42a8' },
-  { emoji: '💬', name: 'Microsoft Teams', job: 'Day-to-Day Communication', who: 'All Trustees', notFor: 'Official records', color: '#fdf0dc', textColor: '#7a4f00' },
-  { emoji: '📁', name: 'SharePoint', job: 'Document Storage', who: 'Secretary', notFor: 'Chat, compliance tracking', color: '#faeae7', textColor: '#a63020' },
-];
+const ALL_TOOLS = {
+  maraehub:    { emoji: '✅', name: 'MaraeHub',       job: 'Compliance & Governance',   who: 'Secretary',              notFor: 'Bookings',              textColor: '#1a4a3a' },
+  marae_online:{ emoji: '📅', name: 'Marae Online',   job: 'Bookings & Hire',            who: 'Bookings Coordinator',   notFor: 'Compliance, minutes',   textColor: '#1a4a8a' },
+  board_pro:   { emoji: '📋', name: 'Board Pro',       job: 'Meeting Minutes & Reports',  who: 'Secretary',              notFor: 'Compliance, bookings',  textColor: '#6b42a8' },
+  teams:       { emoji: '💬', name: 'Microsoft Teams', job: 'Day-to-Day Communication',   who: 'All Trustees',           notFor: 'Official records',      textColor: '#7a4f00' },
+  sharepoint:  { emoji: '📁', name: 'SharePoint',      job: 'Document Storage',           who: 'Secretary',              notFor: 'Chat, compliance',      textColor: '#a63020' },
+  xero:        { emoji: '💰', name: 'Xero',            job: 'Accounting & Invoicing',     who: 'Treasurer',              notFor: 'Compliance, bookings',  textColor: '#1a6a4a' },
+  outlook:     { emoji: '📧', name: 'Outlook',         job: 'Shared Email',               who: 'Secretary',              notFor: 'Task tracking',         textColor: '#1a4a8a' },
+};
+
+const ENTITY_TYPE_LABELS = {
+  incorporated_society: 'Incorporated Society',
+  charitable_trust: 'Charitable Trust',
+  land_trust: 'Land Trust',
+  trading_trust: 'Trading Trust',
+  other: 'Entity',
+};
 
 const ROLE_COLORS = {
   'admin':     { label: 'Admin',     bg: '#e8f4ef', color: '#1a4a3a' },
@@ -69,6 +79,9 @@ export default function OurMarae() {
   const [loading, setLoading] = useState(true);
   const [expandedMeeting, setExpandedMeeting] = useState(null);
   const [maraeName, setMaraeName] = useState('Our Marae');
+  const [entities, setEntities] = useState([]);
+  const [contacts, setContacts] = useState({});
+  const [toolsConfig, setToolsConfig] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -82,6 +95,9 @@ export default function OurMarae() {
       setMeetings(meet || []);
       setDocuments(docs || []);
       if (settings?.marae_name) setMaraeName(settings.marae_name);
+      if (settings?.entities) setEntities(settings.entities || []);
+      if (settings?.contacts) setContacts(settings.contacts || {});
+      if (settings?.tools_config) setToolsConfig(settings.tools_config || []);
       setLoading(false);
     }
     load();
@@ -138,19 +154,56 @@ export default function OurMarae() {
         </div>
       </SECTION>
 
+      {/* ENTITIES */}
+      {entities.length > 0 && (
+        <SECTION icon="🏛️" title="Our Legal Entities">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+            {entities.map((ent, i) => (
+              <CARD key={i}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{ent.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8 }}>{ENTITY_TYPE_LABELS[ent.type] || ent.type}</div>
+                {ent.reg_number && <div style={{ fontSize: 12, marginBottom: 2 }}>📄 Reg: <strong>{ent.reg_number}</strong></div>}
+                {ent.charities_number && <div style={{ fontSize: 12 }}>💛 Charities: <strong>{ent.charities_number}</strong></div>}
+              </CARD>
+            ))}
+          </div>
+        </SECTION>
+      )}
+
+      {/* KEY CONTACTS */}
+      {Object.values(contacts).some(v => v) && (
+        <SECTION icon="📞" title="Key Contacts">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+            {contacts.chairman_email && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Chairman Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{contacts.chairman_email}</div></CARD>}
+            {contacts.secretary_email && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Secretary Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{contacts.secretary_email}</div></CARD>}
+            {contacts.phone && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Main Phone</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.phone}</div></CARD>}
+            {contacts.address && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Address</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.address}</div></CARD>}
+            {contacts.accountant && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Accountant</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.accountant}</div></CARD>}
+            {contacts.lawyer && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Lawyer</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.lawyer}</div></CARD>}
+          </div>
+        </SECTION>
+      )}
+
       {/* OUR TOOLS */}
       <SECTION icon="🛠️" title="Our Digital Tools — Right Tool, Right Job">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-          {TOOLS.map((t, i) => (
-            <CARD key={i} style={{ borderTop: `4px solid ${t.textColor}` }}>
-              <div style={{ fontSize: 20, marginBottom: 6 }}>{t.emoji}</div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: t.textColor, marginBottom: 2 }}>{t.name}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t.job}</div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Managed by: <strong>{t.who}</strong></div>
-              <div style={{ fontSize: 11, color: '#a63020' }}>✗ Not for: {t.notFor}</div>
-            </CARD>
-          ))}
-        </div>
+        {toolsConfig.length === 0 ? (
+          <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No tools configured yet — Admin can set this up in Settings → Marae Profile.</p></CARD>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+            {toolsConfig.map(key => {
+              const t = ALL_TOOLS[key]; if (!t) return null;
+              return (
+                <CARD key={key} style={{ borderTop: `4px solid ${t.textColor}` }}>
+                  <div style={{ fontSize: 20, marginBottom: 6 }}>{t.emoji}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: t.textColor, marginBottom: 2 }}>{t.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t.job}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 6 }}>Managed by: <strong>{t.who}</strong></div>
+                  <div style={{ fontSize: 11, color: '#a63020' }}>✗ Not for: {t.notFor}</div>
+                </CARD>
+              );
+            })}
+          </div>
+        )}
       </SECTION>
 
       {/* UPCOMING MEETINGS */}
