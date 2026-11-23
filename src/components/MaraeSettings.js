@@ -1582,40 +1582,42 @@ export default function MaraeSettings({ profile, isAdmin }) {
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Full Name *</label>
-              <input
-                className="form-input"
-                value={addForm.fullName}
-                onChange={e => setAddForm(f => ({ ...f, fullName: e.target.value }))}
-                placeholder="e.g. Hēni Smith"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email Address *</label>
-              <input
-                type="email"
-                className="form-input"
-                value={addForm.email}
-                onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
-                placeholder="e.g. heni@example.co.nz"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Title / Role</label>
-              <input
-                className="form-input"
-                value={addForm.title}
-                onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Chairman, Secretary, Treasurer, Bookings Coordinator"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Permission Level</label>
-              <select className="form-input" value={addForm.permissionLevel} onChange={e => setAddForm(f => ({ ...f, permissionLevel: e.target.value }))}>
-                <option value="standard">Standard</option>
-                <option value="admin">Admin</option>
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              <div className="form-group">
+                <label className="form-label">Full Name *</label>
+                <input
+                  className="form-input"
+                  value={addForm.fullName}
+                  onChange={e => setAddForm(f => ({ ...f, fullName: e.target.value }))}
+                  placeholder="e.g. Hēni Smith"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email Address *</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={addForm.email}
+                  onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="e.g. heni@example.co.nz"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Title / Role</label>
+                <input
+                  className="form-input"
+                  value={addForm.title}
+                  onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Chairman, Secretary, Treasurer"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Permission Level</label>
+                <select className="form-input" value={addForm.permissionLevel} onChange={e => setAddForm(f => ({ ...f, permissionLevel: e.target.value }))}>
+                  <option value="standard">Standard</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
             </div>
             <button
               className="btn-primary"
