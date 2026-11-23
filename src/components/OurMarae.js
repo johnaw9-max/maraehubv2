@@ -198,18 +198,14 @@ export default function OurMarae({ isAdmin }) {
 
       {/* KEY CONTACTS — built from single sources; no duplicate storage */}
       {(() => {
-        const chairman = profiles.find(p => p.title?.toLowerCase().includes('chair'));
-        const secretary = profiles.find(p => p.title?.toLowerCase().includes('secretary'));
-        const hasAny = maraePhone || maraeEmail || maraeLocation || chairman || secretary || contacts.accountant || contacts.lawyer;
+        const hasAny = maraePhone || maraeEmail || maraeLocation || contacts.accountant || contacts.lawyer;
         if (!hasAny) return null;
         return (
           <SECTION icon="📞" title="Key Contacts">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
               {maraePhone    && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Main Phone</div><div style={{ fontSize: 13, fontWeight: 600 }}>{maraePhone}</div></CARD>}
-              {maraeEmail && maraeEmail !== chairman?.email && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>General Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{maraeEmail}</div></CARD>}
+              {maraeEmail    && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>General Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{maraeEmail}</div></CARD>}
               {maraeLocation && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Location</div><div style={{ fontSize: 13, fontWeight: 600 }}>{maraeLocation}</div></CARD>}
-              {chairman      && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Chairman</div><div style={{ fontSize: 13, fontWeight: 600 }}>{chairman.full_name}</div>{chairman.email && <div style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--text2)' }}>{chairman.email}</div>}</CARD>}
-              {secretary     && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Secretary</div><div style={{ fontSize: 13, fontWeight: 600 }}>{secretary.full_name}</div>{secretary.email && <div style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--text2)' }}>{secretary.email}</div>}</CARD>}
               {contacts.accountant && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Accountant</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.accountant}</div></CARD>}
               {contacts.lawyer     && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Lawyer</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.lawyer}</div></CARD>}
             </div>
