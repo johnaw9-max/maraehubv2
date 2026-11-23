@@ -73,7 +73,7 @@ function isUpcoming(dateStr) {
   return new Date(dateStr) >= new Date(new Date().toDateString());
 }
 
-export default function OurMarae() {
+export default function OurMarae({ isAdmin }) {
   const [profiles, setProfiles] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -139,6 +139,11 @@ export default function OurMarae() {
         <p style={{ margin: '6px 0 0', opacity: 0.85, fontSize: 14 }}>
           Your trustee reference page — team, tools, meetings, documents and processes.
         </p>
+        {isAdmin && (
+          <p style={{ margin: '8px 0 0', opacity: 0.7, fontSize: 12 }}>
+            ✏️ Admin: update this page in <strong>Settings → Marae Profile</strong>
+          </p>
+        )}
       </div>
 
       {/* ORG CHART */}
