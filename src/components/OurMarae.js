@@ -81,7 +81,10 @@ export default function OurMarae() {
   const [expandedMeeting, setExpandedMeeting] = useState(null);
   const [maraeName, setMaraeName] = useState('Our Marae');
   const [entities, setEntities] = useState([]);
-  const [contacts, setContacts] = useState({});
+  const [contacts, setContacts] = useState({});   // advisors only: accountant, lawyer
+  const [maraePhone, setMaraePhone] = useState('');
+  const [maraeEmail, setMaraeEmail] = useState('');
+  const [maraeLocation, setMaraeLocation] = useState('');
   const [toolsConfig, setToolsConfig] = useState([]);
   const [subCommittees, setSubCommittees] = useState([]);
   const [customTools, setCustomTools] = useState([]);
@@ -100,6 +103,9 @@ export default function OurMarae() {
       if (settings?.marae_name) setMaraeName(settings.marae_name);
       if (settings?.entities) setEntities(settings.entities || []);
       if (settings?.contacts) setContacts(settings.contacts || {});
+      if (settings?.phone) setMaraePhone(settings.phone);
+      if (settings?.email) setMaraeEmail(settings.email);
+      if (settings?.location) setMaraeLocation(settings.location);
       if (settings?.tools_config) setToolsConfig(settings.tools_config || []);
       if (settings?.sub_committees) setSubCommittees(settings.sub_committees || []);
       if (settings?.custom_tools) setCustomTools(settings.custom_tools || []);
@@ -185,19 +191,26 @@ export default function OurMarae() {
         </SECTION>
       )}
 
-      {/* KEY CONTACTS */}
-      {Object.values(contacts).some(v => v) && (
-        <SECTION icon="📞" title="Key Contacts">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-            {contacts.chairman_email && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Chairman Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{contacts.chairman_email}</div></CARD>}
-            {contacts.secretary_email && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Secretary Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{contacts.secretary_email}</div></CARD>}
-            {contacts.phone && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Main Phone</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.phone}</div></CARD>}
-            {contacts.address && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Address</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.address}</div></CARD>}
-            {contacts.accountant && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Accountant</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.accountant}</div></CARD>}
-            {contacts.lawyer && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Lawyer</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.lawyer}</div></CARD>}
-          </div>
-        </SECTION>
-      )}
+      {/* KEY CONTACTS — built from single sources; no duplicate storage */}
+      {(() => {
+        const chairman = profiles.find(p => p.title?.toLowerCase().includes('chair'));
+        const secretary = profiles.find(p => p.title?.toLowerCase().includes('secretary'));
+        const hasAny = maraePhone || maraeEmail || maraeLocation || chairman || secretary || contacts.accountant || contacts.lawyer;
+        if (!hasAny) return null;
+        return (
+          <SECTION icon="📞" title="Key Contacts">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+              {maraePhone    && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Main Phone</div><div style={{ fontSize: 13, fontWeight: 600 }}>{maraePhone}</div></CARD>}
+              {maraeEmail    && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>General Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{maraeEmail}</div></CARD>}
+              {maraeLocation && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Location</div><div style={{ fontSize: 13, fontWeight: 600 }}>{maraeLocation}</div></CARD>}
+              {chairman      && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Chairman</div><div style={{ fontSize: 13, fontWeight: 600 }}>{chairman.full_name}</div>{chairman.email && <div style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--text2)' }}>{chairman.email}</div>}</CARD>}
+              {secretary     && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Secretary</div><div style={{ fontSize: 13, fontWeight: 600 }}>{secretary.full_name}</div>{secretary.email && <div style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--text2)' }}>{secretary.email}</div>}</CARD>}
+              {contacts.accountant && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Accountant</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.accountant}</div></CARD>}
+              {contacts.lawyer     && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Lawyer</div><div style={{ fontSize: 13, fontWeight: 600 }}>{contacts.lawyer}</div></CARD>}
+            </div>
+          </SECTION>
+        );
+      })()}
 
       {/* OUR TOOLS */}
       <SECTION icon="🛠️" title="Our Digital Tools — Right Tool, Right Job">

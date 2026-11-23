@@ -890,26 +890,11 @@ export default function MaraeSettings({ profile, isAdmin }) {
           </button>
         </div>
 
-        {/* KEY CONTACTS */}
+        {/* PROFESSIONAL ADVISORS — accountant & lawyer only; phone/address/emails live in main Settings */}
         <div style={{ marginBottom: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>Key Contacts & Details</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Professional Advisors</div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10 }}>Marae phone, address and email are set in the main Settings section above.</p>
           <div className="grid-2" style={{ gap: 10 }}>
-            <div className="form-group">
-              <label className="form-label">Chairman Email</label>
-              <input className="form-input" type="email" value={profileContacts.chairman_email || ''} onChange={e => setProfileContacts(c => ({ ...c, chairman_email: e.target.value }))} placeholder="chairman@tereremarae.org.nz" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Secretary Email</label>
-              <input className="form-input" type="email" value={profileContacts.secretary_email || ''} onChange={e => setProfileContacts(c => ({ ...c, secretary_email: e.target.value }))} placeholder="secretary@tereremarae.org.nz" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Main Phone</label>
-              <input className="form-input" value={profileContacts.phone || ''} onChange={e => setProfileContacts(c => ({ ...c, phone: e.target.value }))} placeholder="e.g. 09 123 4567" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Physical Address</label>
-              <input className="form-input" value={profileContacts.address || ''} onChange={e => setProfileContacts(c => ({ ...c, address: e.target.value }))} placeholder="e.g. 123 Marae Road, Opotiki 3122" />
-            </div>
             <div className="form-group">
               <label className="form-label">Accountant</label>
               <input className="form-input" value={profileContacts.accountant || ''} onChange={e => setProfileContacts(c => ({ ...c, accountant: e.target.value }))} placeholder="Name & phone or email" />
