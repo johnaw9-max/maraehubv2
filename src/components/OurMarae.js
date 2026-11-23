@@ -115,7 +115,7 @@ export default function OurMarae() {
   }, []);
 
   const upcoming = meetings.filter(m => isUpcoming(m.meeting_date)).sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
-  const past = meetings.filter(m => !isUpcoming(m.meeting_date));
+  const past = meetings.filter(m => !isUpcoming(m.meeting_date)).slice(0, 5);
 
   const docsByCategory = documents.reduce((acc, d) => {
     const cat = d.category || 'General';
@@ -259,10 +259,10 @@ export default function OurMarae() {
         )}
       </SECTION>
 
-      {/* PAST MINUTES */}
-      <SECTION icon="📋" title="Meeting Minutes">
+      {/* RECENT DECISIONS */}
+      <SECTION icon="📋" title="Recent Decisions">
         {past.length === 0 ? (
-          <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No past meeting minutes yet.</p></CARD>
+          <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No past meeting minutes yet. Full minutes are in the Minutes section.</p></CARD>
         ) : (
           past.map((m, i) => (
             <CARD key={i}>
