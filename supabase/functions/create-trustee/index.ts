@@ -35,7 +35,7 @@ serve(async (req) => {
       return json({ error: 'Admin Trustee access required' }, 403);
     }
 
-    const { fullName, email, committeeRole, permissionLevel } = await req.json();
+    const { fullName, email, committeeRole, permissionLevel, title } = await req.json();
 
     if (!fullName?.trim())        return json({ error: 'Full name is required' }, 400);
     if (!email?.includes('@'))    return json({ error: 'A valid email address is required' }, 400);
@@ -75,6 +75,7 @@ serve(async (req) => {
       full_name: fullName.trim(),
       role: 'trustee',
       trustee_role: permissionLevel === 'admin' ? 'admin' : 'standard',
+      title: title?.trim() || committeeRole?.trim() || null,
     }, { onConflict: 'id' });
 
     return json({ success: true, tempPassword, userId: created.user.id });

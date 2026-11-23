@@ -73,7 +73,7 @@ export default function OurMarae() {
   useEffect(() => {
     async function load() {
       const [{ data: prof }, { data: meet }, { data: docs }, { data: settings }] = await Promise.all([
-        supabase.from('profiles').select('full_name, role, email').neq('role', 'community').order('role'),
+        supabase.from('profiles').select('full_name, role, email, title').neq('role', 'community').order('role'),
         supabase.from('meetings').select('id, title, meeting_date, meeting_type, chairperson, secretary, attendees, apologies, minutes').order('meeting_date', { ascending: false }),
         supabase.from('documents').select('id, title, category, file_url, file_name, notes, created_at').is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('marae_settings').select('*').limit(1).single(),
@@ -122,8 +122,11 @@ export default function OurMarae() {
             const rc = ROLE_COLORS[p.role] || ROLE_COLORS.trustee;
             return (
               <CARD key={i}>
-                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{p.full_name || '—'}</div>
-                <PILL label={rc.label} bg={rc.bg} color={rc.color} />
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>{p.full_name || '—'}</div>
+                {p.title && (
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--brand)', marginBottom: 4 }}>{p.title}</div>
+                )}
+                {!p.title && <PILL label={rc.label} bg={rc.bg} color={rc.color} />}
                 {p.email && (
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6, wordBreak: 'break-all' }}>
                     {p.email}

@@ -136,7 +136,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [inviteError, setInviteError] = useState('');
 
   // Add trustee directly state
-  const EMPTY_ADD = { fullName: '', email: '', committeeRole: 'Trustee', permissionLevel: 'standard' };
+  const EMPTY_ADD = { fullName: '', email: '', title: '', permissionLevel: 'standard' };
   const [addForm, setAddForm]       = useState(EMPTY_ADD);
   const [addSaving, setAddSaving]   = useState(false);
   const [addError, setAddError]     = useState('');
@@ -477,12 +477,12 @@ export default function MaraeSettings({ profile, isAdmin }) {
   }
 
   async function createTrustee() {
-    const { fullName, email, committeeRole, permissionLevel } = addForm;
+    const { fullName, email, title, permissionLevel } = addForm;
     if (!fullName.trim())            { setAddError('Full name is required'); return; }
     if (!email.trim() || !email.includes('@')) { setAddError('Enter a valid email address'); return; }
     setAddSaving(true); setAddError(''); setAddSuccess(null);
     const { data, error } = await supabase.functions.invoke('create-trustee', {
-      body: { fullName: fullName.trim(), email: email.trim().toLowerCase(), committeeRole, permissionLevel },
+      body: { fullName: fullName.trim(), email: email.trim().toLowerCase(), title: title.trim(), permissionLevel },
     });
     setAddSaving(false);
     if (error) { setAddError(await functionErrorMessage(error, 'Failed to create account')); return; }
@@ -1412,23 +1412,21 @@ export default function MaraeSettings({ profile, isAdmin }) {
                 placeholder="e.g. heni@example.co.nz"
               />
             </div>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Committee Role</label>
-                <select className="form-input" value={addForm.committeeRole} onChange={e => setAddForm(f => ({ ...f, committeeRole: e.target.value }))}>
-                  <option>Chairperson</option>
-                  <option>Secretary</option>
-                  <option>Treasurer</option>
-                  <option>Trustee</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Permission Level</label>
-                <select className="form-input" value={addForm.permissionLevel} onChange={e => setAddForm(f => ({ ...f, permissionLevel: e.target.value }))}>
-                  <option value="standard">Standard</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
+            <div className="form-group">
+              <label className="form-label">Title / Role</label>
+              <input
+                className="form-input"
+                value={addForm.title}
+                onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="e.g. Chairman, Secretary, Treasurer, Bookings Coordinator"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Permission Level</label>
+              <select className="form-input" value={addForm.permissionLevel} onChange={e => setAddForm(f => ({ ...f, permissionLevel: e.target.value }))}>
+                <option value="standard">Standard</option>
+                <option value="admin">Admin</option>
+              </select>
             </div>
             <button
               className="btn-primary"
