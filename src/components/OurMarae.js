@@ -84,6 +84,7 @@ export default function OurMarae() {
   const [contacts, setContacts] = useState({});
   const [toolsConfig, setToolsConfig] = useState([]);
   const [subCommittees, setSubCommittees] = useState([]);
+  const [customTools, setCustomTools] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -101,6 +102,7 @@ export default function OurMarae() {
       if (settings?.contacts) setContacts(settings.contacts || {});
       if (settings?.tools_config) setToolsConfig(settings.tools_config || []);
       if (settings?.sub_committees) setSubCommittees(settings.sub_committees || []);
+      if (settings?.custom_tools) setCustomTools(settings.custom_tools || []);
       setLoading(false);
     }
     load();
@@ -199,7 +201,7 @@ export default function OurMarae() {
 
       {/* OUR TOOLS */}
       <SECTION icon="🛠️" title="Our Digital Tools — Right Tool, Right Job">
-        {toolsConfig.length === 0 ? (
+        {toolsConfig.length === 0 && customTools.length === 0 ? (
           <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No tools configured yet — Admin can set this up in Settings → Marae Profile.</p></CARD>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
@@ -215,6 +217,14 @@ export default function OurMarae() {
                 </CARD>
               );
             })}
+            {customTools.filter(ct => ct.name).map((ct, i) => (
+              <CARD key={`custom-${i}`} style={{ borderTop: '4px solid #64748b' }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>🔧</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#334155', marginBottom: 2 }}>{ct.name}</div>
+                {ct.job && <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{ct.job}</div>}
+                {ct.who && <div style={{ fontSize: 12, color: 'var(--text2)' }}>Managed by: <strong>{ct.who}</strong></div>}
+              </CARD>
+            ))}
           </div>
         )}
       </SECTION>

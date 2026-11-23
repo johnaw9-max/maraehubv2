@@ -74,6 +74,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [profileContacts, setProfileContacts] = useState({ chairman_email: '', secretary_email: '', phone: '', address: '', accountant: '', lawyer: '' });
   const [toolsConfig, setToolsConfig] = useState([]);           // array of tool keys
   const [subCommittees, setSubCommittees] = useState([]);       // [{name, lead, members}]
+  const [customTools, setCustomTools] = useState([]);           // [{name, job, who}]
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
@@ -309,6 +310,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       setProfileContacts(data.contacts || { chairman_email: '', secretary_email: '', phone: '', address: '', accountant: '', lawyer: '' });
       setToolsConfig(data.tools_config || []);
       setSubCommittees(data.sub_committees || []);
+      setCustomTools(data.custom_tools || []);
     }
     setLoading(false);
   }
@@ -320,6 +322,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       contacts: profileContacts,
       tools_config: toolsConfig,
       sub_committees: subCommittees,
+      custom_tools: customTools,
       updated_at: new Date().toISOString(),
     }).eq('id', settingsId);
     setProfileSaving(false); setProfileSuccess(true);
@@ -932,6 +935,39 @@ export default function MaraeSettings({ profile, isAdmin }) {
                 </label>
               );
             })}
+          </div>
+
+          {/* OTHER / CUSTOM TOOLS */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--text2)' }}>Other tools not in the list above:</div>
+            {customTools.map((ct, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input
+                  className="form-input"
+                  value={ct.name}
+                  onChange={e => setCustomTools(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                  placeholder="Tool name (e.g. Zoom)"
+                />
+                <input
+                  className="form-input"
+                  value={ct.job || ''}
+                  onChange={e => setCustomTools(arr => arr.map((x, j) => j === i ? { ...x, job: e.target.value } : x))}
+                  placeholder="What it's used for"
+                />
+                <input
+                  className="form-input"
+                  value={ct.who || ''}
+                  onChange={e => setCustomTools(arr => arr.map((x, j) => j === i ? { ...x, who: e.target.value } : x))}
+                  placeholder="Managed by (e.g. Secretary)"
+                />
+                <button onClick={() => setCustomTools(arr => arr.filter((_, j) => j !== i))}
+                  style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+              </div>
+            ))}
+            <button onClick={() => setCustomTools(arr => [...arr, { name: '', job: '', who: '' }])}
+              style={{ marginTop: 4, fontSize: 13, padding: '6px 14px', borderRadius: 6, border: '1px dashed var(--brand)', background: 'transparent', color: 'var(--brand)', cursor: 'pointer' }}>
+              + Add Another Tool
+            </button>
           </div>
         </div>
 
