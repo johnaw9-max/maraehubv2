@@ -97,7 +97,8 @@ export default function OurMarae({ isAdmin, onNavigate }) {
         supabase.from('documents').select('id, title, category, file_url, file_name, notes, created_at').is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('marae_settings').select('*').limit(1).single(),
       ]);
-      setProfiles(prof || []);
+      // System accounts (e.g. support-admin@maraehub.local) are not people; keep them off the team list and chart.
+      setProfiles((prof || []).filter(p => !/@maraehub\.local$/i.test(p.email || '')));
       setMeetings(meet || []);
       setDocuments(docs || []);
       if (settings?.marae_name) setMaraeName(settings.marae_name);
@@ -206,7 +207,8 @@ export default function OurMarae({ isAdmin, onNavigate }) {
         );
       })()}
 
-      {/* OUR TOOLS */}
+      {/* OUR TOOLS — hidden from non-admins until the marae has set some up */}
+      {(isAdmin || toolsConfig.length > 0 || customTools.length > 0) && (
       <SECTION icon="🛠️" title="Our Digital Tools — Right Tool, Right Job">
         {toolsConfig.length === 0 && customTools.length === 0 ? (
           <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No tools configured yet — Admin can set this up in Settings → Marae Profile.</p></CARD>
@@ -235,6 +237,7 @@ export default function OurMarae({ isAdmin, onNavigate }) {
           </div>
         )}
       </SECTION>
+      )}
 
       {/* UPCOMING MEETINGS */}
       <SECTION icon="📅" title="Upcoming Meetings">
