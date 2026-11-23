@@ -1540,7 +1540,8 @@ create table if not exists profiles (
   notification_prefs jsonb not null default '{"goals": true, "grants": true, "actions": true, "bookings": true, "compliance": true}'::jsonb,
   trustee_role text default 'standard'::text,
   is_fire_warden boolean not null default false,
-  is_system_account boolean not null default false
+  is_system_account boolean not null default false,
+  title text
 );
 
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);

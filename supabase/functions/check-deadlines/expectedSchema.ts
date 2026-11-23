@@ -579,7 +579,8 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "notification_prefs",
     "trustee_role",
     "is_fire_warden",
-    "is_system_account"
+    "is_system_account",
+    "title"
   ],
   "projects": [
     "id",
