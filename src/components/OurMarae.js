@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { openStorageFile } from '../lib/storageLinks';
 import OrgChart from './OrgChart';
 
 const TEAL = 'var(--brand)';
@@ -78,6 +79,13 @@ export default function OurMarae({ isAdmin }) {
   const [meetings, setMeetings] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Open through a fresh signed link, the same way the Documents tab does. Old records hold a full
+  // public address and newer ones hold only a path; the helper handles both. A plain link would fail.
+  async function openDocument(ref) {
+    const r = await openStorageFile(supabase, 'documents', ref);
+    if (!r.ok) alert(r.message);
+  }
   const [expandedMeeting, setExpandedMeeting] = useState(null);
   const [maraeName, setMaraeName] = useState('Our Marae');
   const [entities, setEntities] = useState([]);
@@ -137,7 +145,7 @@ export default function OurMarae({ isAdmin }) {
       <div style={{ marginBottom: 28, padding: '20px 24px', background: TEAL, borderRadius: 12, color: '#fff' }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>🏛️ {maraeName}</h1>
         <p style={{ margin: '6px 0 0', opacity: 0.85, fontSize: 14 }}>
-          Your trustee reference page — team, tools, meetings, documents and processes.
+          Your trustee reference page — team, tools, meetings and documents.
         </p>
         {isAdmin && (
           <p style={{ margin: '8px 0 0', opacity: 0.7, fontSize: 12 }}>
@@ -261,7 +269,7 @@ export default function OurMarae({ isAdmin }) {
       </SECTION>
 
       {/* RECENT DECISIONS */}
-      <SECTION icon="📋" title="Recent Decisions">
+      <SECTION icon="📋" title="Recent Meetings">
         {past.length === 0 ? (
           <CARD><p style={{ margin: 0, color: 'var(--text2)', fontSize: 14 }}>No past meeting minutes yet. Full minutes are in the Minutes section.</p></CARD>
         ) : (
@@ -328,10 +336,10 @@ export default function OurMarae({ isAdmin }) {
                     {d.notes && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>{d.notes}</div>}
                   </div>
                   {d.file_url && (
-                    <a href={d.file_url} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: 13, color: TEAL, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                    <button type="button" onClick={() => openDocument(d.file_url)}
+                      style={{ fontSize: 13, color: TEAL, fontWeight: 600, background: 'none', border: 'none', padding: 0, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       📄 Open
-                    </a>
+                    </button>
                   )}
                 </CARD>
               ))}
