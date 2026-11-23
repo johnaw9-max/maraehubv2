@@ -28,14 +28,16 @@ import HelpMenu from '../components/HelpMenu';
 import WorkflowEngine from '../components/WorkflowEngine';
 import WhatsNew from '../components/WhatsNew';
 import OnboardingFlow from '../components/OnboardingFlow';
+import OurMarae from '../components/OurMarae';
 
 const NAV_GROUPS = [
   {
     label: 'Governance', icon: '🛡️',
     tabs: [
-      { key: 'board',   label: 'Board View' },
-      { key: 'minutes', label: 'Minutes' },
-      { key: 'goals',   label: 'Goals' },
+      { key: 'board',     label: 'Board View' },
+      { key: 'minutes',   label: 'Minutes' },
+      { key: 'goals',     label: 'Goals' },
+      { key: 'our_marae', label: 'Our Marae' },
     ],
   },
   {
@@ -591,6 +593,9 @@ export default function TrusteeDashboard({ profile, onLogout }) {
         {activeTab === 'workflows' && <WorkflowEngine pendingWorkflow={pendingWorkflow} onPendingConsumed={() => setPendingWorkflow(null)} />}
 
         {activeTab === 'settings' && <MaraeSettings profile={profile} isAdmin={isAdmin} />}
+
+        {/* ── OUR MARAE ──────────────────────────────────────────────────── */}
+        {activeTab === 'our_marae' && <OurMarae />}
       </div>
       </div>
 
