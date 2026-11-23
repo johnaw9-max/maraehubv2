@@ -34,10 +34,10 @@ const NAV_GROUPS = [
   {
     label: 'Governance', icon: '🛡️',
     tabs: [
+      { key: 'our_marae', label: 'Our Marae' },
       { key: 'board',     label: 'Board View' },
       { key: 'minutes',   label: 'Minutes' },
       { key: 'goals',     label: 'Goals' },
-      { key: 'our_marae', label: 'Our Marae' },
     ],
   },
   {
@@ -144,7 +144,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   // update or a trip to another tab). Only pages they can actually see count, so
   // a standard trustee can never be restored onto Finance.
   const [activeTab, setActiveTab] = useState(
-    () => readSavedTab(profile?.id, visibleNavGroups.flatMap(g => g.tabs.map(t => t.key))) || 'board'
+    () => readSavedTab(profile?.id, visibleNavGroups.flatMap(g => g.tabs.map(t => t.key))) || 'our_marae'
   );
   useEffect(() => { saveTab(profile?.id, activeTab); }, [profile?.id, activeTab]);
   const [pendingWorkflow, setPendingWorkflow] = useState(null);
