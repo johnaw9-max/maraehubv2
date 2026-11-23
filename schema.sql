@@ -1325,7 +1325,14 @@ create table if not exists marae_settings (
   gst_registered boolean not null default false,
   latitude numeric,
   longitude numeric,
-  ai_drafting_enabled boolean not null default false
+  ai_drafting_enabled boolean not null default false,
+  entities jsonb default '[]'::jsonb,
+  contacts jsonb default '{}'::jsonb,
+  tools_config jsonb default '[]'::jsonb,
+  marae_address text,
+  marae_phone text,
+  sub_committees jsonb default '[]'::jsonb,
+  custom_tools jsonb default '[]'::jsonb
 );
 
 alter table marae_settings add constraint marae_settings_pkey PRIMARY KEY (id);

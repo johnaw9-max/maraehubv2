@@ -501,7 +501,14 @@ export const EXPECTED_SCHEMA: Record<string, string[]> = {
     "gst_registered",
     "latitude",
     "longitude",
-    "ai_drafting_enabled"
+    "ai_drafting_enabled",
+    "entities",
+    "contacts",
+    "tools_config",
+    "marae_address",
+    "marae_phone",
+    "sub_committees",
+    "custom_tools"
   ],
   "meeting_actions": [
     "id",
