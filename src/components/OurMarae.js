@@ -339,32 +339,6 @@ export default function OurMarae() {
         )}
       </SECTION>
 
-      {/* PROCESSES & PASSWORDS */}
-      <SECTION icon="🔐" title="Processes & Passwords">
-        <CARD style={{ borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>⚠️ Password Security</div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--text1)' }}>
-            Passwords for marae accounts are <strong>never stored in MaraeHub</strong> for security reasons.
-            All login details and account passwords are kept in the marae's secure password document —
-            contact the <strong>Secretary</strong> for access.
-          </p>
-        </CARD>
-        <CARD style={{ borderLeft: '4px solid var(--brand)' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>📋 Process Guides</div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--text1)' }}>
-            Step-by-step guides for how we do things — booking process, meeting process, compliance checks —
-            are stored in <strong>SharePoint</strong> under the <em>Processes</em> folder.
-            Contact the <strong>Secretary</strong> if you need access or can't find a guide.
-          </p>
-        </CARD>
-        <CARD style={{ borderLeft: '4px solid #6b42a8' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>💬 Need Help?</div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--text1)' }}>
-            If you're unsure which tool to use or where to find something — message the <strong>Secretary</strong> on Teams.
-            The golden rule: <strong>Book it → Marae Online · Comply with it → MaraeHub · Minute it → Board Pro · Talk about it → Teams.</strong>
-          </p>
-        </CARD>
-      </SECTION>
 
     </div>
   );
