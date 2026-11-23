@@ -634,7 +634,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   if (loading) return <div className="loading">Loading settings...</div>;
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div style={{ maxWidth: 860 }}>
       {/* Sub-tab navigation */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
         {SETTINGS_TABS.map(t => (
