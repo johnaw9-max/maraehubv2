@@ -1169,8 +1169,8 @@ export default function MaraeSettings({ profile, isAdmin }) {
         </div>
       )}
 
-      {/* ── AUTOMATION LEVEL ── */}
-      {isAdmin && (
+      {/* ── CHANGE PASSWORD ── (automation level removed — not yet built) */}
+      {false && (
         <div className="panel" style={{ marginTop: 20 }}>
           <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 16, fontWeight: 600, marginBottom: 4, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
             Automation Level
