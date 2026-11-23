@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import OrgChart from './OrgChart';
 
 const TEAL = 'var(--brand)';
 
@@ -82,6 +83,7 @@ export default function OurMarae() {
   const [entities, setEntities] = useState([]);
   const [contacts, setContacts] = useState({});
   const [toolsConfig, setToolsConfig] = useState([]);
+  const [subCommittees, setSubCommittees] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -98,6 +100,7 @@ export default function OurMarae() {
       if (settings?.entities) setEntities(settings.entities || []);
       if (settings?.contacts) setContacts(settings.contacts || {});
       if (settings?.tools_config) setToolsConfig(settings.tools_config || []);
+      if (settings?.sub_committees) setSubCommittees(settings.sub_committees || []);
       setLoading(false);
     }
     load();
@@ -129,6 +132,16 @@ export default function OurMarae() {
           Your trustee reference page — team, tools, meetings, documents and processes.
         </p>
       </div>
+
+      {/* ORG CHART */}
+      <SECTION icon="🗂️" title="Organisational Structure">
+        <OrgChart
+          maraeName={maraeName}
+          entities={entities}
+          subCommittees={subCommittees}
+          trustees={profiles}
+        />
+      </SECTION>
 
       {/* OUR TEAM */}
       <SECTION icon="👥" title="Our Team">

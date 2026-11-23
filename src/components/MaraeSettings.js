@@ -73,6 +73,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
   const [profileEntities, setProfileEntities] = useState([]);  // [{name, type, reg_number, ird_number, charities_number}]
   const [profileContacts, setProfileContacts] = useState({ chairman_email: '', secretary_email: '', phone: '', address: '', accountant: '', lawyer: '' });
   const [toolsConfig, setToolsConfig] = useState([]);           // array of tool keys
+  const [subCommittees, setSubCommittees] = useState([]);       // [{name, lead, members}]
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
@@ -307,6 +308,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       setProfileEntities(data.entities || []);
       setProfileContacts(data.contacts || { chairman_email: '', secretary_email: '', phone: '', address: '', accountant: '', lawyer: '' });
       setToolsConfig(data.tools_config || []);
+      setSubCommittees(data.sub_committees || []);
     }
     setLoading(false);
   }
@@ -317,6 +319,7 @@ export default function MaraeSettings({ profile, isAdmin }) {
       entities: profileEntities,
       contacts: profileContacts,
       tools_config: toolsConfig,
+      sub_committees: subCommittees,
       updated_at: new Date().toISOString(),
     }).eq('id', settingsId);
     setProfileSaving(false); setProfileSuccess(true);
@@ -930,6 +933,34 @@ export default function MaraeSettings({ profile, isAdmin }) {
               );
             })}
           </div>
+        </div>
+
+        {/* SUB-COMMITTEES */}
+        <div style={{ marginBottom: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Sub-Committees</div>
+          <p style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12 }}>Add any sub-committees or working groups — these appear on the org chart.</p>
+          {subCommittees.map((sc, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <input
+                className="form-input"
+                value={sc.name}
+                onChange={e => setSubCommittees(arr => arr.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                placeholder="e.g. Finance & Audit Committee"
+              />
+              <input
+                className="form-input"
+                value={sc.lead || ''}
+                onChange={e => setSubCommittees(arr => arr.map((x, j) => j === i ? { ...x, lead: e.target.value } : x))}
+                placeholder="Lead / Convenor (optional)"
+              />
+              <button onClick={() => setSubCommittees(arr => arr.filter((_, j) => j !== i))}
+                style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+            </div>
+          ))}
+          <button onClick={() => setSubCommittees(arr => [...arr, { name: '', lead: '' }])}
+            style={{ marginTop: 4, fontSize: 13, padding: '6px 14px', borderRadius: 6, border: '1px dashed var(--brand)', background: 'transparent', color: 'var(--brand)', cursor: 'pointer' }}>
+            + Add Sub-Committee
+          </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
