@@ -1,66 +1,70 @@
 // OrgChart.js — Marae organisational structure chart
-// Reads from marae_settings: marae_name, entities, sub_committees
-// Reads trustees from profiles
-// Renders as SVG — no external library needed
+// Renders from whatever data exists — no phantom rows when arrays are empty
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 
-const TEAL     = 'var(--brand, #1a4a3a)';
-const TEAL_HEX = '#1a4a3a';
 const COLS = {
-  marae:    { fill: '#1a4a3a', text: '#fff',    stroke: '#0f2e22' },
-  entity:   { fill: '#2d6a52', text: '#fff',    stroke: '#1a4a3a' },
-  trustee:  { fill: '#e8f4ef', text: '#1a4a3a', stroke: '#1a4a3a' },
-  chair:    { fill: '#1a4a3a', text: '#fff',    stroke: '#0f2e22' },
-  subcom:   { fill: '#f0ecf8', text: '#6b42a8', stroke: '#6b42a8' },
-  invest:   { fill: '#fdf0dc', text: '#7a4f00', stroke: '#d4860a' },
+  marae:   { fill: '#1a4a3a', text: '#fff', stroke: '#0f2e22' },
+  entity:  { fill: '#2d6a52', text: '#fff', stroke: '#1a4a3a' },
+  chair:   { fill: '#1a4a3a', text: '#fff', stroke: '#0f2e22' },
+  trustee: { fill: '#e8f4ef', text: '#1a4a3a', stroke: '#1a4a3a' },
+  subcom:  { fill: '#f0ecf8', text: '#6b42a8', stroke: '#6b42a8' },
 };
 
 const BOX_W = 160;
-const BOX_H = 52;
-const PAD   = 20;
-const GAP_X = 24;
-const GAP_Y = 60;
+const BOX_H = 56;
+const GAP_X = 20;
+const ROW_GAP = 56;
+const PAD = 24;
 
-function wrap(text, maxChars = 20) {
-  if (!text) return [''];
-  const words = text.split(' ');
+function wrap(text = '', maxChars = 18) {
+  const words = String(text).split(' ');
   const lines = [];
   let line = '';
   for (const w of words) {
-    if ((line + ' ' + w).trim().length > maxChars) {
-      if (line) lines.push(line);
+    const candidate = line ? `${line} ${w}` : w;
+    if (candidate.length > maxChars && line) {
+      lines.push(line);
       line = w;
     } else {
-      line = (line + ' ' + w).trim();
+      line = candidate;
     }
   }
   if (line) lines.push(line);
-  return lines.slice(0, 3);
+  return lines.slice(0, 2);
 }
 
-function Box({ x, y, label, sublabel, style, onClick, highlighted }) {
-  const lines = wrap(label, 18);
-  const h = BOX_H + (lines.length > 1 ? (lines.length - 1) * 14 : 0);
+function boxH(label) {
+  const lines = wrap(label);
+  return BOX_H + (lines.length > 1 ? 12 : 0);
+}
+
+function SvgBox({ x, y, w = BOX_W, label, sublabel, col, onClick, active }) {
+  const lines = wrap(label);
+  const h = BOX_H + (lines.length > 1 ? 12 : 0);
   return (
     <g onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
-      <rect
-        x={x} y={y} width={BOX_W} height={h} rx={8}
-        fill={style.fill} stroke={style.stroke} strokeWidth={highlighted ? 3 : 1.5}
-        style={{ filter: highlighted ? 'drop-shadow(0 2px 6px rgba(0,0,0,0.18))' : 'none' }}
+      <rect x={x} y={y} width={w} height={h} rx={8}
+        fill={col.fill} stroke={col.stroke}
+        strokeWidth={active ? 2.5 : 1.5}
+        style={{ filter: active ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.2))' : 'none' }}
       />
       {lines.map((l, i) => (
-        <text key={i} x={x + BOX_W / 2} y={y + 20 + i * 14}
-          textAnchor="middle" fill={style.text}
-          fontSize={i === 0 ? 11 : 10} fontWeight={i === 0 ? 700 : 400}
-          fontFamily="system-ui, sans-serif">
+        <text key={i}
+          x={x + w / 2} y={y + 18 + i * 14}
+          textAnchor="middle"
+          fill={col.text}
+          fontSize={i === 0 ? 11 : 10}
+          fontWeight={i === 0 ? 700 : 400}
+          fontFamily="system-ui,-apple-system,sans-serif">
           {l}
         </text>
       ))}
       {sublabel && (
-        <text x={x + BOX_W / 2} y={y + h - 10}
-          textAnchor="middle" fill={style.text} fontSize={9} opacity={0.75}
-          fontFamily="system-ui, sans-serif">
+        <text x={x + w / 2} y={y + h - 9}
+          textAnchor="middle" fill={col.text}
+          fontSize={9} opacity={0.72}
+          fontFamily="system-ui,-apple-system,sans-serif">
           {sublabel}
         </text>
       )}
@@ -68,160 +72,153 @@ function Box({ x, y, label, sublabel, style, onClick, highlighted }) {
   );
 }
 
-function Line({ x1, y1, x2, y2 }) {
-  return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#b0c8bc" strokeWidth={1.5} strokeDasharray="4 2" />;
-}
-
-function ElbowDown({ fromX, fromY, fromH, toX, toY }) {
-  const midY = fromY + fromH + GAP_Y / 2;
+function Connector({ x1, y1, x2, y2 }) {
+  if (x1 === x2) {
+    return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#b0c8bc" strokeWidth={1.5} />;
+  }
+  const my = (y1 + y2) / 2;
   return (
-    <path
-      d={`M${fromX},${fromY + fromH} L${fromX},${midY} L${toX},${midY} L${toX},${toY}`}
-      fill="none" stroke="#b0c8bc" strokeWidth={1.5}
-    />
+    <path d={`M${x1},${y1} L${x1},${my} L${x2},${my} L${x2},${y2}`}
+      fill="none" stroke="#b0c8bc" strokeWidth={1.5} />
   );
 }
 
-export default function OrgChart({ maraeName, entities, subCommittees, trustees }) {
-  const [hovered, setHovered] = useState(null);
+function rowLayout(items, cx) {
+  const n = items.length;
+  if (n === 0) return [];
+  const totalW = n * BOX_W + (n - 1) * GAP_X;
+  const startX = cx - totalW / 2;
+  return items.map((item, i) => ({ ...item, x: startX + i * (BOX_W + GAP_X) }));
+}
 
-  // ── Layout ──────────────────────────────────────────────────────────────
-  // Row 0: Marae name (centred)
-  // Row 1: Entities (spread across)
-  // Row 2: Chairman box (centred under marae)
-  // Row 3: Trustees (spread)
-  // Row 4: Sub-committees (spread)
+export default function OrgChart({ maraeName, entities = [], subCommittees = [], trustees = [] }) {
+  const [active, setActive] = useState(null);
+  const toggle = key => setActive(a => a === key ? null : key);
 
   const chairman = trustees.find(t =>
-    t.title?.toLowerCase().includes('chair') || t.title?.toLowerCase().includes('chairman')
+    t.title?.toLowerCase().includes('chair')
   );
   const otherTrustees = trustees.filter(t => t !== chairman);
-  const allTrustees = chairman ? [chairman, ...otherTrustees] : trustees;
+  const allTrustees = chairman ? [chairman, ...otherTrustees] : [...trustees];
 
-  // Calculate widths
-  const entCount  = Math.max(entities.length, 1);
-  const tCount    = Math.max(allTrustees.length, 1);
-  const scCount   = Math.max(subCommittees.length, 1);
+  // Build rows — only include a row if it has content
+  const hasEntities   = entities.length > 0;
+  const hasTrustees   = allTrustees.length > 0;
+  const hasSubcoms    = subCommittees.length > 0;
 
-  const entRowW   = entCount  * BOX_W + (entCount  - 1) * GAP_X;
-  const tRowW     = tCount    * BOX_W + (tCount    - 1) * GAP_X;
-  const scRowW    = scCount   * BOX_W + (scCount   - 1) * GAP_X;
+  // Calculate canvas width from widest row
+  const widestCount = Math.max(
+    1,
+    hasEntities  ? entities.length  : 0,
+    hasTrustees  ? allTrustees.length : 0,
+    hasSubcoms   ? subCommittees.length : 0,
+  );
+  const minW = BOX_W + PAD * 2;
+  const totalW = Math.max(minW, widestCount * BOX_W + (widestCount - 1) * GAP_X + PAD * 2);
+  const cx = totalW / 2;
 
-  const totalW    = Math.max(entRowW, tRowW, scRowW, BOX_W) + PAD * 2;
-  const cx        = totalW / 2;
+  // Y rows
+  let y = PAD;
+  const maraeY = y;
+  const maraeH = boxH(maraeName || 'Our Marae');
+  y += maraeH + ROW_GAP;
 
-  // Row Y positions
-  const y0 = PAD;                                      // Marae name
-  const y1 = y0 + BOX_H + GAP_Y;                      // Entities
-  const y2 = y1 + BOX_H + GAP_Y;                      // Chairman
-  const y3 = y2 + BOX_H + GAP_Y;                      // All trustees
-  const y4 = y3 + BOX_H + GAP_Y;                      // Sub-committees
-  const totalH = (subCommittees.length > 0 ? y4 + BOX_H : y3 + BOX_H) + PAD;
+  const entY = hasEntities ? y : null;
+  if (hasEntities) y += BOX_H + ROW_GAP;
 
-  // X positions for each row (centred)
-  function rowXs(count, rowW) {
-    const startX = cx - rowW / 2;
-    return Array.from({ length: count }, (_, i) => startX + i * (BOX_W + GAP_X));
-  }
+  const trusteeY = hasTrustees ? y : null;
+  if (hasTrustees) y += BOX_H + ROW_GAP;
 
-  const entXs = rowXs(entCount, entRowW);
-  const tXs   = rowXs(tCount,   tRowW);
-  const scXs  = rowXs(scCount,  scRowW);
+  const subcomY = hasSubcoms ? y : null;
+  if (hasSubcoms) y += BOX_H + ROW_GAP;
+
+  const totalH = y - ROW_GAP + PAD;
+
   const maraeX = cx - BOX_W / 2;
+  const entItems  = hasEntities  ? rowLayout(entities,       cx) : [];
+  const tItems    = hasTrustees  ? rowLayout(allTrustees,    cx) : [];
+  const scItems   = hasSubcoms   ? rowLayout(subCommittees,  cx) : [];
 
   return (
     <div style={{ overflowX: 'auto', width: '100%' }}>
-      <svg
-        width={totalW}
-        height={totalH}
+      <svg width={totalW} height={totalH}
         viewBox={`0 0 ${totalW} ${totalH}`}
-        style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}
-      >
-        {/* Marae → Entities lines */}
-        {entities.map((_, i) => (
-          <ElbowDown key={i}
-            fromX={maraeX + BOX_W / 2} fromY={y0} fromH={BOX_H}
-            toX={entXs[i] + BOX_W / 2} toY={y1}
-          />
+        style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}>
+
+        {/* Marae → Entities */}
+        {hasEntities && entItems.map((e, i) => (
+          <Connector key={i}
+            x1={maraeX + BOX_W / 2} y1={maraeY + maraeH}
+            x2={e.x + BOX_W / 2}   y2={entY} />
         ))}
 
-        {/* Marae → Chairman line */}
-        <line x1={maraeX + BOX_W / 2} y1={y0 + BOX_H} x2={cx} y2={y2} stroke="#b0c8bc" strokeWidth={1.5} />
-
-        {/* Chairman → Trustees lines */}
-        {allTrustees.map((_, i) => (
-          <ElbowDown key={i}
-            fromX={cx} fromY={y2} fromH={BOX_H}
-            toX={tXs[i] + BOX_W / 2} toY={y3}
-          />
+        {/* Marae → Trustees (when no entities) */}
+        {!hasEntities && hasTrustees && tItems.map((t, i) => (
+          <Connector key={i}
+            x1={maraeX + BOX_W / 2} y1={maraeY + maraeH}
+            x2={t.x + BOX_W / 2}   y2={trusteeY} />
         ))}
 
-        {/* Trustees → Sub-committees lines */}
-        {subCommittees.map((_, i) => (
-          <line key={i}
-            x1={cx} y1={y3 + BOX_H}
-            x2={scXs[i] + BOX_W / 2} y2={y4}
-            stroke="#b0c8bc" strokeWidth={1.5} strokeDasharray="4 2"
-          />
+        {/* Entities → Trustees */}
+        {hasEntities && hasTrustees && tItems.map((t, i) => (
+          <Connector key={i}
+            x1={cx} y1={entY + BOX_H}
+            x2={t.x + BOX_W / 2} y2={trusteeY} />
         ))}
 
-        {/* ── Boxes ── */}
+        {/* Trustees → Sub-committees */}
+        {hasTrustees && hasSubcoms && scItems.map((sc, i) => (
+          <Connector key={i}
+            x1={cx} y1={trusteeY + BOX_H}
+            x2={sc.x + BOX_W / 2} y2={subcomY} />
+        ))}
 
-        {/* Marae */}
-        <Box x={maraeX} y={y0} label={maraeName || 'Our Marae'} style={COLS.marae} highlighted={hovered === 'marae'}
-          onClick={() => setHovered(h => h === 'marae' ? null : 'marae')} />
+        {/* ── Marae box ── */}
+        <SvgBox x={maraeX} y={maraeY} label={maraeName || 'Our Marae'} col={COLS.marae}
+          active={active === 'marae'} onClick={() => toggle('marae')} />
 
-        {/* Entities */}
-        {entities.length === 0 && (
-          <Box x={maraeX} y={y1} label="Add entities in Settings" style={{ fill: '#f5f5f5', text: '#aaa', stroke: '#ddd' }} />
-        )}
-        {entities.map((ent, i) => (
-          <Box key={i} x={entXs[i]} y={y1}
+        {/* ── Entity boxes ── */}
+        {entItems.map((ent, i) => (
+          <SvgBox key={i} x={ent.x} y={entY}
             label={ent.name || 'Entity'}
             sublabel={ent.reg_number ? `Reg: ${ent.reg_number}` : undefined}
-            style={COLS.entity}
-            highlighted={hovered === `ent${i}`}
-            onClick={() => setHovered(h => h === `ent${i}` ? null : `ent${i}`)}
-          />
+            col={COLS.entity}
+            active={active === `ent${i}`}
+            onClick={() => toggle(`ent${i}`)} />
         ))}
 
-        {/* Chairman */}
-        <Box x={cx - BOX_W / 2} y={y2}
-          label={chairman ? chairman.full_name : 'Chairman'}
-          sublabel={chairman?.title || 'Chairman'}
-          style={COLS.chair}
-          highlighted={hovered === 'chair'}
-          onClick={() => setHovered(h => h === 'chair' ? null : 'chair')}
-        />
-
-        {/* Trustees */}
-        {allTrustees.length === 0 && (
-          <Box x={maraeX} y={y3} label="No trustees yet" style={{ fill: '#f5f5f5', text: '#aaa', stroke: '#ddd' }} />
-        )}
-        {allTrustees.map((t, i) => (
-          <Box key={i} x={tXs[i]} y={y3}
+        {/* ── Trustee boxes ── */}
+        {tItems.map((t, i) => (
+          <SvgBox key={i} x={t.x} y={trusteeY}
             label={t.full_name || '—'}
             sublabel={t.title || 'Trustee'}
-            style={t === chairman ? COLS.chair : COLS.trustee}
-            highlighted={hovered === `t${i}`}
-            onClick={() => setHovered(h => h === `t${i}` ? null : `t${i}`)}
-          />
+            col={t === chairman ? COLS.chair : COLS.trustee}
+            active={active === `t${i}`}
+            onClick={() => toggle(`t${i}`)} />
         ))}
 
-        {/* Sub-committees */}
-        {subCommittees.map((sc, i) => (
-          <Box key={i} x={scXs[i]} y={y4}
+        {/* ── Sub-committee boxes ── */}
+        {scItems.map((sc, i) => (
+          <SvgBox key={i} x={sc.x} y={subcomY}
             label={sc.name || 'Sub-committee'}
             sublabel={sc.lead ? `Lead: ${sc.lead}` : undefined}
-            style={COLS.subcom}
-            highlighted={hovered === `sc${i}`}
-            onClick={() => setHovered(h => h === `sc${i}` ? null : `sc${i}`)}
-          />
+            col={COLS.subcom}
+            active={active === `sc${i}`}
+            onClick={() => toggle(`sc${i}`)} />
         ))}
+
+        {/* Empty state — marae name box only */}
+        {!hasEntities && !hasTrustees && (
+          <text x={cx} y={trusteeY || maraeY + maraeH + 40}
+            textAnchor="middle" fill="#aaa" fontSize={13}
+            fontFamily="system-ui,-apple-system,sans-serif">
+            Add trustees and entities in Settings → Marae Profile
+          </text>
+        )}
       </svg>
 
-      <div style={{ textAlign: 'center', marginTop: 8, fontSize: 11, color: 'var(--text3)' }}>
-        Click any box for details · Configure in Settings → Marae Profile
+      <div style={{ textAlign: 'center', marginTop: 6, fontSize: 11, color: 'var(--text3)' }}>
+        Click any box · Configure in Settings → Marae Profile
       </div>
     </div>
   );
