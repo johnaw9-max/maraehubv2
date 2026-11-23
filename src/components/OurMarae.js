@@ -206,7 +206,7 @@ export default function OurMarae({ isAdmin }) {
           <SECTION icon="📞" title="Key Contacts">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
               {maraePhone    && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Main Phone</div><div style={{ fontSize: 13, fontWeight: 600 }}>{maraePhone}</div></CARD>}
-              {maraeEmail    && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>General Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{maraeEmail}</div></CARD>}
+              {maraeEmail && maraeEmail !== chairman?.email && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>General Email</div><div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{maraeEmail}</div></CARD>}
               {maraeLocation && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Location</div><div style={{ fontSize: 13, fontWeight: 600 }}>{maraeLocation}</div></CARD>}
               {chairman      && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Chairman</div><div style={{ fontSize: 13, fontWeight: 600 }}>{chairman.full_name}</div>{chairman.email && <div style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--text2)' }}>{chairman.email}</div>}</CARD>}
               {secretary     && <CARD><div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Secretary</div><div style={{ fontSize: 13, fontWeight: 600 }}>{secretary.full_name}</div>{secretary.email && <div style={{ fontSize: 12, wordBreak: 'break-all', color: 'var(--text2)' }}>{secretary.email}</div>}</CARD>}
