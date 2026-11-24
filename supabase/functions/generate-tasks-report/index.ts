@@ -4,6 +4,9 @@ import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.121.0';
 
 const ALLOWED_ORIGINS = [Deno.env.get('FRONTEND_URL') ?? '', 'http://localhost:3000'].filter(Boolean);
 
+// Largest amount of text one AI request may send (characters).
+const MAX_INPUT_CHARS = 60000;
+
 function corsHeaders(req: Request) {
   const origin = req.headers.get('origin') ?? '';
   const allowOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : (Deno.env.get('FRONTEND_URL') ?? '');
@@ -41,6 +44,7 @@ serve(async (req) => {
 
   const supabaseUrl  = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey      = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  const serviceKey   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 
   try {
@@ -75,6 +79,18 @@ serve(async (req) => {
       return json({ error: 'AI features are not turned on for this marae. An administrator can turn them on in Marae Settings.' }, 403);
     }
 
+    // D-09 (opt-in): AI features run only when this marae's admin has turned them on.
+    // Enforced here, where the data would leave, not just in the app. A missing
+    // column or any read error counts as off.
+    const { data: aiSetting, error: aiSettingError } = await callerClient
+      .from('marae_settings')
+      .select('ai_drafting_enabled')
+      .limit(1)
+      .maybeSingle();
+    if (aiSettingError || aiSetting?.ai_drafting_enabled !== true) {
+      return json({ error: 'AI features are not turned on for this marae. An administrator can turn them on in Marae Settings.' }, 403);
+    }
+
     const body = await req.json().catch(() => ({}));
     const { maraeName, context } = body;
     if (typeof maraeName !== 'string' || !maraeName.trim()) {
@@ -82,6 +98,11 @@ serve(async (req) => {
     }
     if (typeof context !== 'string' || !context.trim()) {
       return json({ error: 'context is required' }, 400);
+    }
+
+    // Size limit on what can be sent to the AI (spec v0.2 section 8, risk R2/R6).
+    if (context.length > MAX_INPUT_CHARS) {
+      return json({ error: 'That is too much information for one request. Please use a shorter section.' }, 413);
     }
 
     const anthropic = new Anthropic({ apiKey: anthropicKey });
@@ -104,6 +125,24 @@ serve(async (req) => {
     const textBlock = response.content.find((b) => b.type === 'text');
     const report = textBlock?.type === 'text' ? textBlock.text : '';
 
+
+    // AI usage record: sizes and counts only, never notes or AI text (spec v0.2 section 8, risk R6).
+    // A failure to record never blocks the trustee's request.
+    try {
+      const adminForLog = createClient(supabaseUrl, serviceKey);
+      const { error: logError } = await adminForLog.from('ai_usage_log').insert({
+        user_id: user.id,
+        feature: 'generate-tasks-report',
+        input_chars: context.length,
+        input_tokens: response.usage?.input_tokens ?? null,
+        output_tokens: response.usage?.output_tokens ?? null,
+        status: 'ok',
+      });
+      if (logError) console.error('[generate-tasks-report] usage log insert failed:', logError.message);
+    } catch (_e) {
+      console.error('[generate-tasks-report] usage log insert failed');
+    }
+
     return json({ report });
 
   } catch (err) {
@@ -121,7 +160,8 @@ serve(async (req) => {
       console.error('[generate-tasks-report] Anthropic auth/billing error, status:', anthropicErr.status);
       return json({ error: 'ai_auth_or_billing' }, anthropicErr.status);
     }
-    console.error('[generate-tasks-report] unexpected error:', (err as Error).message);
-    return json({ error: (err as Error).message }, 500);
+    // Log the error status only; the error text could echo request content.
+    console.error('[generate-tasks-report] unexpected error, status:', anthropicErr?.status ?? 'none');
+    return json({ error: 'Something went wrong. Please try again.' }, 500);
   }
 });
