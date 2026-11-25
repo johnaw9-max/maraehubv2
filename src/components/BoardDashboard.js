@@ -2093,7 +2093,12 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
             {compAiError ? (
               <div style={{ background: '#faeae7', border: '1px solid #f0b8b0', borderRadius: 8, padding: '14px 16px', color: 'var(--danger)', fontSize: 14 }}>{compAiError}</div>
             ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(compAiReport)}</div>
+              <>
+                <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, lineHeight: 1.6, color: 'var(--text2)' }}>
+                  <strong>Draft for trustees.</strong> This report only uses your marae's own records and the sources listed beside each item. Where it says "no source found", that is MaraeHub's suggestion only. Open the source link to check it yourself. The decision is yours.
+                </div>
+                <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(compAiReport)}</div>
+              </>
             )}
           </div>
         </div>
