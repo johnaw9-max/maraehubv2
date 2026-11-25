@@ -6,6 +6,7 @@ import { getComplianceStatus, getWeightedCompliancePct, getItemComplianceStatus 
 import { noRecordChecks, describeNoRecord } from '../lib/complianceEvidence';
 import { copyReminderText } from '../lib/recordsExport';
 import { getRiskStatus } from '../lib/riskStatus';
+import { CHECK_VIEW_COLUMNS, buildCheckBlock } from '../lib/complianceCheck';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
 import { renderReportText } from '../lib/renderReportText';
@@ -1327,6 +1328,21 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       return `- ${categoryLabel(cat)}: ${items.length} item${items.length !== 1 ? 's' : ''} — ${status.overdue.length} overdue, ${status.dueSoon.length} due soon, ${status.neverAssessed.length} never assessed, ${status.compliant.length} compliant`;
     }).join('\n');
 
+    // The Check: item statuses come from the database view (plain SQL, not AI). On a
+    // project where the view does not exist yet the query errors, checkRows stays null
+    // and the report keeps its earlier wording, so nothing breaks for that marae.
+    let checkRows = null;
+    try {
+      const { data: viewRows, error: viewError } = await supabase
+        .from('compliance_item_status')
+        .select(`${CHECK_VIEW_COLUMNS}, entity_id`);
+      if (!viewError && Array.isArray(viewRows)) {
+        checkRows = reportEntityFilter === 'all'
+          ? viewRows
+          : viewRows.filter(r => r.entity_id === reportEntityFilter || r.entity_id === null);
+      }
+    } catch (e) { checkRows = null; }
+
     const { highOpen: reportHighOpenRisks, riskPct } = getRiskStatus(reportRisks);
 
     const documentedHazardTypes = [...new Set(
@@ -1342,8 +1358,12 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       `DATE: ${new Date().toLocaleDateString('en-NZ')}`,
       `ENTITY SCOPE: ${entityName}`,
       ``,
-      `COMPLIANCE ITEMS (${reportCompliance.length} total, ${overallCompliance.compliancePct === null ? 'no items ever assessed' : `${overallCompliance.compliancePct}% of assessed items compliant`}):`,
-      categoryBreakdown,
+      ...(checkRows
+        ? [buildCheckBlock(checkRows)]
+        : [
+            `COMPLIANCE ITEMS (${reportCompliance.length} total, ${overallCompliance.compliancePct === null ? 'no items ever assessed' : `${overallCompliance.compliancePct}% of assessed items compliant`}):`,
+            categoryBreakdown,
+          ]),
       ``,
       `RISK REGISTER (${reportRisks.length} total${reportRisks.length ? `, ${riskPct}% clear of high-rated risk` : ''}):`,
       reportRisks.length

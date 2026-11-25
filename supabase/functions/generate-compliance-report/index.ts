@@ -53,6 +53,8 @@ Some hazard-guidance data below may be shared boilerplate from a regional civil-
 
 If a compliance category or the risk register has zero items recorded, state that plainly as a fact in its own right — do not treat it as "no data, skip this section" and do not soften it into "everything looks fine." An empty register is itself the safety-relevant finding. If the data available for a section is thin, say so honestly rather than overstating confidence.
 
+If the data contains a block headed CHECK RESULT, those numbers and the OVERDUE ITEMS list were worked out by the app from the marae's own records. Use them exactly as given: never recalculate, re-count, round or contradict them, and never invent a different overdue count. "Not yet assessed" means no check date or no evidence has been recorded yet; it is not a failure and must not be described as one. Items recorded as not applying to the marae are not gaps. An item marked "legal requirement if it applies" with applicability not yet answered should be described as needing the trustees to answer whether it applies. Do not say "No new compliance issues" or similar; describe only what the Check result shows.
+
 Use plain English — no legal jargon, no assumed compliance expertise.`;
 
 serve(async (req) => {
