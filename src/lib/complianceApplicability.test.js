@@ -134,3 +134,16 @@ describe('items without a question of their own', () => {
     expect(applicabilityQuestion({ ...base, name: names[1] })).toMatch(/hāngī/);
   });
 });
+
+describe('written evacuation procedure has its own question', () => {
+  test('is not grouped under the relevant building question', () => {
+    const open = { framework_class: 'conditional_legal', applies: 'not_answered' };
+    const g = groupOpenQuestions([
+      { ...open, id: 'p', name: 'Written evacuation procedure', applicability_test: 'Is a building open to the public, such as a hall, wharekai or wharenui that people outside the whānau can use (Schedule 2 of the Fire Safety, Evacuation Procedures and Evacuation Schemes Regulations 2018)?' },
+      { ...open, id: 'r', name: 'Emergency exits', applicability_test: 'Is the building a relevant building under the Fire and Emergency Act 2017 and the 2018 Regulations (Schedule 2)?' },
+    ]);
+    expect(g.length).toBe(2);
+    expect(g.find(x => x.items[0].id === 'p').plainQuestion).toMatch(/open to the public/);
+    expect(g.find(x => x.items[0].id === 'p').help).toMatch(/does not name marae/);
+  });
+});
