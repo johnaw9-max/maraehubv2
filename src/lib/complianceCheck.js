@@ -113,3 +113,48 @@ export function buildSourceInfo(itemRows, sourceRows) {
   for (const r of itemRows || []) if (r && r.id) keysById[r.id] = Array.isArray(r.source_keys) ? r.source_keys : [];
   return { keysById, byKey: indexSources(sourceRows) };
 }
+
+// Source list shown under the report, built by the app (never by AI), so every item
+// with a source always shows it, whatever the AI chose to write about.
+// Returns { withSource: [...], noSource: [...] } for in-scope items.
+export function buildSourceList(rows, sourceInfo) {
+  const withSource = [];
+  const noSource = [];
+  (Array.isArray(rows) ? rows : [])
+    .filter(r => r.status !== 'not_applicable')
+    .forEach(r => {
+      const keys = ((sourceInfo && sourceInfo.keysById) || {})[r.id] || [];
+      const found = keys.map(k => ((sourceInfo && sourceInfo.byKey) || {})[k]).filter(Boolean);
+      const entry = {
+        name: r.name,
+        category: (r.category || 'other').replace(/_/g, ' '),
+        classLabel: CLASS_LABEL[r.framework_class] || 'not yet matched to the Framework',
+        sources: found.map(f => ({
+          name: f.name,
+          url: safeUrl(f.url),
+          checkedOn: f.checked_on || '',
+          partly: !isFullyChecked(f),
+        })),
+      };
+      (found.length ? withSource : noSource).push(entry);
+    });
+  const byName = (a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name);
+  withSource.sort(byName);
+  noSource.sort(byName);
+  return { withSource, noSource };
+}
+
+// Plain-text version of the same list, for the Copy button.
+export function sourceListText(list) {
+  if (!list) return '';
+  const out = ['', 'SOURCES BEHIND THIS REPORT (added by MaraeHub, not written by AI)'];
+  list.withSource.forEach(e => {
+    out.push(`- ${e.name} (${e.category}; ${e.classLabel}): ` + e.sources.map(s =>
+      `${s.name}${s.partly ? ' (only partly checked)' : ''}${s.checkedOn ? `, checked by MaraeHub ${s.checkedOn}` : ''}${s.url ? `, ${s.url}` : ''}`).join('; '));
+  });
+  if (list.noSource.length) {
+    out.push('No source found (MaraeHub suggestion only):');
+    list.noSource.forEach(e => out.push(`- ${e.name} (${e.category}; ${e.classLabel})`));
+  }
+  return out.join('\n');
+}

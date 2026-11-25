@@ -84,3 +84,24 @@ describe('every in-scope item is listed with its source', () => {
     expect(t).not.toMatch(/Item B/);
   });
 });
+
+describe('source list built by the app', () => {
+  const { buildSourceInfo, buildSourceList, sourceListText } = require('./complianceCheck');
+  const rows = [
+    { id: 'a', name: 'Fire scheme', category: 'health_safety', framework_class: 'conditional_legal', status: 'not_yet_assessed' },
+    { id: 'b', name: 'Hire terms', category: 'other', framework_class: 'good_practice', status: 'not_yet_assessed' },
+    { id: 'c', name: 'Not ours', category: 'other', framework_class: 'good_practice', status: 'not_applicable' },
+  ];
+  const info = buildSourceInfo([{ id: 'a', source_keys: ['K'] }, { id: 'b', source_keys: [] }], [{ key: 'K', name: 'Act 2017', status: 'Verified', url: 'https://x.govt.nz', checked_on: '2026-11-22' }]);
+  test('splits in-scope items into sourced and not, never lists not-applicable', () => {
+    const l = buildSourceList(rows, info);
+    expect(l.withSource.map(e => e.name)).toEqual(['Fire scheme']);
+    expect(l.withSource[0].sources[0]).toMatchObject({ name: 'Act 2017', url: 'https://x.govt.nz', checkedOn: '2026-11-22', partly: false });
+    expect(l.noSource.map(e => e.name)).toEqual(['Hire terms']);
+  });
+  test('copy text carries the same lines', () => {
+    const t = sourceListText(buildSourceList(rows, info));
+    expect(t).toMatch(/Fire scheme .*Act 2017, checked by MaraeHub 2026-11-22, https:\/\/x\.govt\.nz/);
+    expect(t).toMatch(/No source found[\s\S]*Hire terms/);
+  });
+});
