@@ -108,3 +108,29 @@ describe('water question', () => {
     expect(g[0].noLabel).toBe('No, it does not apply');
   });
 });
+
+describe('items without a question of their own', () => {
+  const base = { framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: null };
+  test('trustee list joins the reservation question and asbestos joins the employees question', () => {
+    const g = groupOpenQuestions([
+      { ...base, id: 'a', name: 'Current list of trustees with appointment and term end dates' },
+      { ...base, id: 'b', name: 'Asbestos checked in any building built before 2000, with a management plan if it is present' },
+      { ...base, id: 'c', name: 'Annual meeting', applicability_test: 'Is the marae land set apart as a Māori reservation under Te Ture Whenua Māori Act 1993, with trustees appointed by the Māori Land Court?' },
+    ]);
+    const res = g.find(x => /Māori reservation/.test(x.plainQuestion));
+    expect(res.items.map(i => i.id).sort()).toEqual(['a', 'c']);
+    expect(g.find(x => /pay anyone/.test(x.plainQuestion)).items.map(i => i.id)).toEqual(['b']);
+  });
+  test('the four event items get everyday questions and their own button labels', () => {
+    const names = [
+      'Certificates of Compliance kept for any new or altered electrical work',
+      'Fire season checked before lighting any outdoor fire (hāngī, bonfire, barbecue)',
+      'Raffles and housie kept within the Department of Internal Affairs limits',
+      'Special licence arranged for any event where alcohol is sold, or an entry fee or koha is charged',
+    ];
+    const g = groupOpenQuestions(names.map((name, i) => ({ ...base, id: 'e' + i, name })));
+    expect(g.length).toBe(4);
+    g.forEach(x => { expect(x.plainQuestion).not.toMatch(/The source says/); expect(x.why.length).toBeGreaterThan(20); expect(x.help.length).toBeGreaterThan(20); expect(x.noReason.length).toBeGreaterThan(5); });
+    expect(applicabilityQuestion({ ...base, name: names[1] })).toMatch(/hāngī/);
+  });
+});
