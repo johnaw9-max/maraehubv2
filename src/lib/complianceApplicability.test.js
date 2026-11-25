@@ -34,3 +34,20 @@ describe('how to find out', () => {
     expect(applicabilityHelp({})).toBe('');
   });
 });
+
+import { groupOpenQuestions } from './complianceApplicability';
+describe('group open questions', () => {
+  const mk = (id, q, extra = {}) => ({ id, framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: q, ...extra });
+  test('one group per question, biggest first, answered and question-less items left out', () => {
+    const g = groupOpenQuestions([
+      mk('a', 'Is the marae on the Charities Register?'),
+      mk('b', 'Does the marae employ anyone on an employment agreement?'),
+      mk('c', 'Does the marae employ anyone on an employment agreement?'),
+      mk('d', 'Does the marae employ anyone on an employment agreement?', { applies: 'yes' }),
+      mk('e', ''),
+    ]);
+    expect(g.map(x => x.items.length)).toEqual([2, 1]);
+    expect(g[0].question).toMatch(/employ anyone/);
+    expect(g[0].help).not.toBe('');
+  });
+});
