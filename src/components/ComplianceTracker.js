@@ -325,6 +325,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   const [expenses, setExpenses] = useState([]);
 
   // Completion history (when each item was actually done, with proof)
+  const [doneConfirm, setDoneConfirm] = useState(null); // { itemName, tasksClosed }
   const [historyItem, setHistoryItem] = useState(null);
   // false once we find this marae's database has no history table yet (update not applied):
   // then the History features hide themselves instead of showing errors.
@@ -503,7 +504,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (!error) {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
       await recordItemCompletion(item, todayStr);
-      await closeLinkedTask(item.id);
+      const tasksClosed = await closeLinkedTask(item.id);
+      if (tasksClosed > 0) {
+        setDoneConfirm({ itemName: item.name, tasksClosed });
+        setTimeout(() => setDoneConfirm(null), 8000);
+      }
       if (item.linked_service_reminder_id) {
         await syncLinkedServiceReminder(item.linked_service_reminder_id);
       }
@@ -1165,6 +1170,41 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
 
   return (
     <div>
+
+      {/* ── DONE CONFIRMATION BANNER ─────────────────────────────────────── */}
+      {doneConfirm && (
+        <div style={{
+          background: '#e8f4ef', border: '1px solid #a8d8c0', borderLeft: '4px solid #1a7a4a',
+          borderRadius: 8, padding: '10px 16px', marginBottom: 12,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 16 }}>✅</span>
+          <div style={{ flex: 1, fontSize: 14, color: '#1a4a3a' }}>
+            <strong>{doneConfirm.tasksClosed} linked task{doneConfirm.tasksClosed !== 1 ? 's' : ''} auto-closed</strong>
+            {' '}on the Task Board.
+          </div>
+          <button
+            onClick={() => {
+              setDoneConfirm(null);
+              window.dispatchEvent(new CustomEvent('marae:navigate', { detail: { tab: 'tasks' } }));
+            }}
+            style={{
+              fontSize: 13, fontWeight: 700, color: '#1a7a4a',
+              background: 'none', border: '1px solid #1a7a4a',
+              borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          >
+            View in Tasks →
+          </button>
+          <button
+            onClick={() => setDoneConfirm(null)}
+            style={{ fontSize: 16, color: '#1a4a3a', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── EMERGENCY PREPAREDNESS ALERT ─────────────────────────────────── */}
       {epItems.length > 0 && epAlert > 0 && (

@@ -315,18 +315,20 @@ export async function onTaskCompleted(task) {
 // marked done from its own screen instead of from the Task Board. Matches
 // the same real behavior already proven in the other direction (ClickUp
 // 86d44k63x).
+// Returns the number of tasks that were closed (0 if none found).
 export async function closeLinkedTask(sourceId) {
-  if (!sourceId) return;
+  if (!sourceId) return 0;
   const { data: openTasks } = await supabase
     .from('tasks')
     .select('id')
     .like('description', `%[source_id:${sourceId}]%`)
     .in('status', ['open', 'in-progress']);
-  if (!openTasks || openTasks.length === 0) return;
+  if (!openTasks || openTasks.length === 0) return 0;
   await supabase
     .from('tasks')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
     .in('id', openTasks.map(t => t.id));
+  return openTasks.length;
 }
 
 // Map a task title prefix to a source label and icon for Board View grouping.
