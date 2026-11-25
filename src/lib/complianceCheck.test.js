@@ -69,3 +69,18 @@ describe('source lines in the check block', () => {
     expect(buildCheckBlock(rows)).not.toMatch(/SOURCE/);
   });
 });
+
+describe('every in-scope item is listed with its source', () => {
+  const { buildCheckBlock, buildSourceInfo } = require('./complianceCheck');
+  test('not-yet-assessed items show their source; not-applicable items are left out', () => {
+    const rows = [
+      { id: 'a', name: 'Item A', category: 'water', framework_class: 'conditional_legal', status: 'not_yet_assessed', overdue: false },
+      { id: 'b', name: 'Item B', category: 'other', framework_class: 'good_practice', status: 'not_applicable', overdue: false },
+    ];
+    const info = buildSourceInfo([{ id: 'a', source_keys: ['K'] }], [{ key: 'K', name: 'Some Act 2000', status: 'Verified', url: 'https://x.govt.nz/a', checked_on: '2026-11-22' }]);
+    const t = buildCheckBlock(rows, info);
+    expect(t).toMatch(/ITEMS IN SCOPE AND THEIR SOURCES \(1\)/);
+    expect(t).toMatch(/Item A \(water; legal requirement if it applies; not yet assessed\) \| SOURCE: Some Act 2000, checked by MaraeHub 2026-11-22, https:\/\/x\.govt\.nz\/a/);
+    expect(t).not.toMatch(/Item B/);
+  });
+});
