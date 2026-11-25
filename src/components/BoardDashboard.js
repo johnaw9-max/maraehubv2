@@ -6,7 +6,7 @@ import { getComplianceStatus, getWeightedCompliancePct, getItemComplianceStatus 
 import { noRecordChecks, describeNoRecord } from '../lib/complianceEvidence';
 import { copyReminderText } from '../lib/recordsExport';
 import { getRiskStatus } from '../lib/riskStatus';
-import { CHECK_VIEW_COLUMNS, buildCheckBlock, buildSourceInfo } from '../lib/complianceCheck';
+import { CHECK_VIEW_COLUMNS, buildCheckBlock, buildSourceInfo, buildSourceList, sourceListText } from '../lib/complianceCheck';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
 import { renderReportText } from '../lib/renderReportText';
@@ -286,6 +286,7 @@ export default function BoardDashboard({ onNavigate, onStartWorkflow, isAdmin })
   const [compAiReport, setCompAiReport]   = useState('');
   const [compAiError, setCompAiError]     = useState('');
   const [showCompReport, setShowCompReport] = useState(false);
+  const [compSourceList, setCompSourceList] = useState(null);
   const [tasksAiLoading, setTasksAiLoading] = useState(false);
   const [tasksAiReport, setTasksAiReport]   = useState('');
   const [tasksAiError, setTasksAiError]     = useState('');
@@ -1402,12 +1403,13 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
     }
     if (data?.error) { setCompAiError(data.error); return; }
 
+    setCompSourceList(checkRows && sourceInfo ? buildSourceList(checkRows, sourceInfo) : null);
     setCompAiReport(data?.report || '');
     setShowCompReport(true);
   }
 
   function copyComplianceReport() {
-    navigator.clipboard.writeText(compAiReport).then(() => {
+    navigator.clipboard.writeText(compAiReport + sourceListText(compSourceList)).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -2083,7 +2085,7 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   </button>
                 )}
                 <button
-                  onClick={() => { setShowCompReport(false); setCompAiError(''); setCompAiReport(''); }}
+                  onClick={() => { setShowCompReport(false); setCompAiError(''); setCompAiReport(''); setCompSourceList(null); }}
                   style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', fontSize: 14, cursor: 'pointer', color: 'var(--text2)', fontWeight: 600 }}
                 >
                   ✕
@@ -2098,6 +2100,31 @@ ${reportAssets.length === 0 ? '<p style="font-size:13px;color:#666">No physical 
                   <strong>Draft for trustees.</strong> This report only uses your marae's own records and the sources listed beside each item. Where it says "no source found", that is MaraeHub's suggestion only. Open the source link to check it yourself. The decision is yours.
                 </div>
                 <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text1)' }}>{renderReportText(compAiReport)}</div>
+                {compSourceList && (
+                  <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 16, fontSize: 13, lineHeight: 1.6, color: 'var(--text1)' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Sources behind this report</div>
+                    <div style={{ color: 'var(--text2)', marginBottom: 10 }}>Added by MaraeHub from its checked source list, not written by AI. Open a link to check it yourself.</div>
+                    {compSourceList.withSource.map((e, i) => (
+                      <div key={`s${i}`} style={{ marginBottom: 8 }}>
+                        <strong>{e.name}</strong> <span style={{ color: 'var(--text2)' }}>({e.category}; {e.classLabel})</span>
+                        {e.sources.map((s, j) => (
+                          <div key={j} style={{ marginLeft: 12, color: 'var(--text2)' }}>
+                            {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a> : s.name}
+                            {s.partly ? ' (only partly checked)' : ''}{s.checkedOn ? `, checked by MaraeHub ${s.checkedOn}` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                    {compSourceList.noSource.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <strong>No source found (MaraeHub suggestion only)</strong>
+                        {compSourceList.noSource.map((e, i) => (
+                          <div key={`n${i}`} style={{ marginLeft: 12, color: 'var(--text2)' }}>{e.name} <span>({e.category}; {e.classLabel})</span></div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
