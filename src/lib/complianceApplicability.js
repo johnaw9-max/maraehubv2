@@ -47,3 +47,17 @@ export function applicabilityHelp(item) {
   const hit = HOW_TO_FIND_OUT.find(([re]) => re.test(q));
   return hit ? hit[1] : '';
 }
+
+// Open questions grouped by their question text, so one answer covers every item that depends on it.
+// Only items that carry a question of their own are grouped; others keep their per-item answer.
+export function groupOpenQuestions(items) {
+  const groups = new Map();
+  for (const it of Array.isArray(items) ? items : []) {
+    if (!needsApplicabilityAnswer(it)) continue;
+    const q = String(it.applicability_test || '').trim();
+    if (!q) continue;
+    if (!groups.has(q)) groups.set(q, { question: q, help: applicabilityHelp(it), items: [] });
+    groups.get(q).items.push(it);
+  }
+  return [...groups.values()].sort((a, b) => b.items.length - a.items.length || a.question.localeCompare(b.question));
+}

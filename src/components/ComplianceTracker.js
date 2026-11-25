@@ -16,7 +16,7 @@ import ComplianceHistoryModal from './ComplianceHistoryModal';
 import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 import ItemSources from './ItemSources';
 import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
-import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp } from '../lib/complianceApplicability';
+import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, groupOpenQuestions } from '../lib/complianceApplicability';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -316,6 +316,9 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
   // "Not applicable, with a reason": an item the marae records as not applying to it. Kept, never deleted.
   const [showNotApplicable, setShowNotApplicable] = useState(false);
   const [naTarget, setNaTarget] = useState(null);
+  const [qaNoFor, setQaNoFor] = useState(null);   // question text being answered 'no' (asks for a reason)
+  const [qaReason, setQaReason] = useState('');
+  const [qaSaving, setQaSaving] = useState(false);
   const [naReason, setNaReason] = useState('');
   const [naSaving, setNaSaving] = useState(false);
   const [naError, setNaError] = useState('');
@@ -481,6 +484,37 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (error) return;
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
     logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { applies: 'yes', question: applicabilityQuestion(item) } });
+  }
+
+  // One answer for every item that depends on the same question.
+  async function handleGroupYes(group) {
+    setQaSaving(true);
+    const updates = { applies: 'yes', updated_at: new Date().toISOString() };
+    const ids = group.items.map(i => i.id);
+    const { error } = await supabase.from('compliance_items').update(updates).in('id', ids);
+    setQaSaving(false);
+    if (error) return;
+    setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, ...updates } : i));
+    group.items.forEach(item => logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { applies: 'yes', question: group.question, answered_for: 'all items with this question' } }));
+  }
+
+  async function handleGroupNo(group) {
+    const reason = qaReason.trim();
+    if (reason.length < 5) return;
+    setQaSaving(true);
+    const updates = {
+      not_applicable_reason: reason,
+      not_applicable_by: me?.full_name || null,
+      not_applicable_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const ids = group.items.map(i => i.id);
+    const { error } = await supabase.from('compliance_items').update(updates).in('id', ids);
+    setQaSaving(false);
+    if (error) return;
+    setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, ...updates } : i));
+    group.items.forEach(item => logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { not_applicable: true, reason, question: group.question, answered_for: 'all items with this question' } }));
+    setQaNoFor(null); setQaReason('');
   }
 
   // Put an item back: it does apply after all.
@@ -1282,6 +1316,40 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       {section === 'items' && (
         <>
           {/* Stage tabs: only shown when items have been staged */}
+          {(() => {
+            const groups = groupOpenQuestions(items);
+            if (groups.length === 0) return null;
+            return (
+              <div data-testid="question-panel" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Questions for your marae ({groups.length})</div>
+                <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>One answer covers every item that depends on it. If you do not know yet, leave it. The report will say it is not yet answered.</div>
+                {groups.map(g => (
+                  <div key={g.question} data-testid="question-group" style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{g.question}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 4px' }}>Covers {g.items.length} item{g.items.length !== 1 ? 's' : ''}: {g.items.slice(0, 3).map(i => i.name).join('; ')}{g.items.length > 3 ? '; and more' : ''}</div>
+                    {g.help && <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}><strong>How to find out:</strong> {g.help}</div>}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button type="button" className="btn btn-primary" data-testid="group-yes" disabled={qaSaving} onClick={() => handleGroupYes(g)}>Yes, this applies to us</button>
+                      <button type="button" className="btn" data-testid="group-no" disabled={qaSaving} onClick={() => { setQaNoFor(g.question); setQaReason(''); }}>No, it does not apply</button>
+                    </div>
+                    {qaNoFor === g.question && (
+                      <div style={{ marginTop: 8 }}>
+                        <input
+                          data-testid="group-no-reason"
+                          value={qaReason}
+                          onChange={e => setQaReason(e.target.value)}
+                          placeholder="Reason, in a few words (for the next trustee)"
+                          style={{ width: '100%', maxWidth: 420, padding: '6px 8px', fontSize: 13 }}
+                        />{' '}
+                        <button type="button" className="btn btn-primary" data-testid="group-no-save" disabled={qaSaving || qaReason.trim().length < 5} onClick={() => handleGroupNo(g)}>Save</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {hasStages && (
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
