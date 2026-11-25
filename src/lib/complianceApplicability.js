@@ -4,7 +4,10 @@
 
 // True when the trustees still have to answer whether the item applies.
 export function needsApplicabilityAnswer(item) {
+  // The 'applies' column must exist on this marae's database (an item read from a project without it has no
+  // 'applies' key); otherwise the Yes button could not save, so it is not shown.
   return !!item
+    && 'applies' in item
     && item.framework_class === 'conditional_legal'
     && (item.applies === 'not_answered' || item.applies == null)
     && !item.not_applicable_at;
