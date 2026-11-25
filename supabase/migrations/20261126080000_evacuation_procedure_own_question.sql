@@ -16,3 +16,16 @@ update compliance_items set
   legal_basis_detail = 'A marae that employs people is a business or undertaking (PCBU) and has primary duties to keep workers and others safe (Health and Safety at Work Act 2015, s 36). A marae with no employees is a volunteer association and has no duty under the Act (WorkSafe, Sept 2024). What to do: confirm with WorkSafe what the duty means for your marae and record what you decide. Partly checked: the wording of s 36 is still to be re-read.'
 where name = 'As an employer: duty to keep workers and others safe confirmed with WorkSafe'
   and legal_basis_detail not like '%What to do:%';
+
+-- Part 1 (regs 5 to 7) applies to every Schedule 2 building, so exits and routes belong with the same "open to the public" question.
+update compliance_items set
+  applicability_test = 'Is a building open to the public, such as a hall, wharekai or wharenui that people outside the whānau can use (Schedule 2 of the Fire Safety, Evacuation Procedures and Evacuation Schemes Regulations 2018)?',
+  legal_basis_detail = 'The owner and every tenant of a building the public is admitted to (including halls and other places of assembly) must keep the means of escape clear of obstacles and exit doors unlocked and free of blockages (Fire and Emergency New Zealand (Fire Safety, Evacuation Procedures, and Evacuation Schemes) Regulations 2018, reg 5; Schedule 2 and reg 5 read 26 Nov 2026). Flammable liquids must not be stored in or near the means of escape (reg 6). What to do: walk each exit route, check doors open from inside, nothing is stored in passages, and exit signs are clear. Whether a building used only by whānau counts as open to the public is still to be confirmed with Fire and Emergency New Zealand.'
+where name = 'Emergency exits — checked clear, signed and operational'
+  and applicability_test like 'Is the building a relevant building%';
+
+update compliance_items set
+  applicability_test = 'Is a building open to the public, such as a hall, wharekai or wharenui that people outside the whānau can use (Schedule 2 of the Fire Safety, Evacuation Procedures and Evacuation Schemes Regulations 2018)?',
+  legal_basis_detail = 'The owner of a building the public is admitted to must make information about the evacuation procedure readily available to occupants, including the routes to the places of safety, how the fire alarm is signalled, firefighting equipment, help for anyone who needs it, and how to call Fire and Emergency New Zealand, and must put up clear signs summarising it (Fire and Emergency New Zealand (Fire Safety, Evacuation Procedures, and Evacuation Schemes) Regulations 2018, reg 7(3) and (4); read 26 Nov 2026). What to do: mark the routes, display the evacuation notice at each exit, and make sure the committee knows the routes. Whether a building used only by whānau counts as open to the public is still to be confirmed with Fire and Emergency New Zealand.'
+where name = 'Evacuation routes — identified and communicated to committee'
+  and applicability_test like 'Is the building a relevant building%';
