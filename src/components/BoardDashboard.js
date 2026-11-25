@@ -61,7 +61,7 @@ const PERIOD_LABEL = { month: 'This Month', quarter: 'This Quarter', year: 'This
 // and EmergencyPlanManager.js's HAZARD_ORDER — used only to compute AI
 // Compliance Report's (14yhc7knp9n, Report #2) hazard-guidance coverage
 // count, so kept local rather than exported/shared across files.
-const TOTAL_HAZARD_TYPES = 11;
+const TOTAL_HAZARD_TYPES = 12; // 12 since Heat / Hot weather was added (26 Nov 2026)
 
 const NAV_LABELS = {
   minutes:    'View Minutes →',
@@ -1386,7 +1386,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       `EMERGENCY HAZARD GUIDANCE COVERAGE (${documentedHazardTypes.length} of ${TOTAL_HAZARD_TYPES} defined hazard types have any guidance recorded):`,
       `- Documented: ${documentedHazardTypes.length ? documentedHazardTypes.join(', ') : 'None'}`,
       `- Not yet documented: ${(TOTAL_HAZARD_TYPES - documentedHazardTypes.length)} type${(TOTAL_HAZARD_TYPES - documentedHazardTypes.length) !== 1 ? 's' : ''}${undocumentedHazardTypes.length ? ` (of those with no row yet or empty guidance, seen: ${undocumentedHazardTypes.join(', ')})` : ''}`,
-      `Note: where guidance exists, its content is a shared regional civil-defence template, not written specifically for this marae — this report deliberately does not include that text, only whether it exists.`,
+      `Note: where guidance exists, its content is shared template guidance (regional civil-defence or Health NZ material), not written specifically for this marae — this report deliberately does not include that text, only whether it exists.`,
     ].join('\n');
 
     const { data, error } = await supabase.functions.invoke('generate-compliance-report', {

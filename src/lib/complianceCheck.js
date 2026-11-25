@@ -90,6 +90,16 @@ export function buildCheckBlock(rows, sourceInfo) {
     lines.push(`OVERDUE ITEMS: none.`);
   }
   if (sourceInfo) {
+    // Every in-scope item with its class, status and source, so the report can name the
+    // source for any item it mentions (not only overdue ones).
+    const inScopeRows = (Array.isArray(rows) ? rows : []).filter(r => r.status !== 'not_applicable');
+    if (inScopeRows.length) {
+      lines.push(`ITEMS IN SCOPE AND THEIR SOURCES (${inScopeRows.length}):`);
+      inScopeRows.forEach(r => {
+        const cls = CLASS_LABEL[r.framework_class] || 'not yet matched to the Framework';
+        lines.push(`- ${r.name} (${(r.category || 'other').replace(/_/g, ' ')}; ${cls}; ${String(r.status || '').replace(/_/g, ' ')})${sourceText(r.id, sourceInfo)}`);
+      });
+    }
     const all = (Array.isArray(rows) ? rows : []).filter(r => r.status !== 'not_applicable');
     const noSource = all.filter(r => !((sourceInfo.keysById || {})[r.id] || []).some(k => (sourceInfo.byKey || {})[k])).length;
     lines.push(`SOURCES: ${all.length - noSource} of ${all.length} items in scope have a recorded source; ${noSource} have no source found.`);
