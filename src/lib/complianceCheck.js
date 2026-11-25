@@ -12,6 +12,8 @@
 //   compliant        has a check date AND evidence, and is not overdue
 // "Not yet assessed" is never counted as a failure.
 //
+import { indexSources, safeUrl, isFullyChecked } from './itemSources';
+
 // The view exists only on projects where the migration has been applied. When
 // it is missing the caller gets rows = null and falls back to the old report.
 
@@ -44,8 +46,25 @@ export function summariseCheck(rows) {
   };
 }
 
+// Source line for one item, built only from the source register rows the item points to.
+// Nothing is added that the register row does not say. No source recorded is stated plainly.
+function sourceText(itemId, sourceInfo) {
+  if (!sourceInfo) return '';
+  const keys = (sourceInfo.keysById || {})[itemId];
+  const rowsFound = (Array.isArray(keys) ? keys : []).map(k => (sourceInfo.byKey || {})[k]).filter(Boolean);
+  if (rowsFound.length === 0) return ' | SOURCE: no source found (MaraeHub suggestion only)';
+  const parts = rowsFound.map(r => {
+    const link = safeUrl(r.url);
+    const checked = r.checked_on ? `, checked by MaraeHub ${r.checked_on}` : '';
+    const state = isFullyChecked(r) ? '' : ', only partly checked';
+    return `${r.name}${state}${checked}${link ? `, ${link}` : ''}`;
+  });
+  return ` | SOURCE: ${parts.join('; ')}`;
+}
+
 // Text block for the AI Compliance Report context.
-export function buildCheckBlock(rows) {
+// sourceInfo (optional) = { keysById: {itemId: [keys]}, byKey: {key: legal_sources row} }
+export function buildCheckBlock(rows, sourceInfo) {
   const s = summariseCheck(rows);
   const lines = [
     `CHECK RESULT (worked out by the app from the marae's own records, not by AI; do not recalculate or change these numbers):`,
@@ -65,10 +84,22 @@ export function buildCheckBlock(rows) {
     lines.push(`OVERDUE ITEMS (${overdueRows.length}), oldest first:`);
     overdueRows.forEach(r => {
       const cls = CLASS_LABEL[r.framework_class] || 'not yet matched to the Framework';
-      lines.push(`- ${r.name} (${(r.category || 'other').replace(/_/g, ' ')}; ${cls}; due ${r.due_date})`);
+      lines.push(`- ${r.name} (${(r.category || 'other').replace(/_/g, ' ')}; ${cls}; due ${r.due_date})${sourceText(r.id, sourceInfo)}`);
     });
   } else {
     lines.push(`OVERDUE ITEMS: none.`);
   }
+  if (sourceInfo) {
+    const all = (Array.isArray(rows) ? rows : []).filter(r => r.status !== 'not_applicable');
+    const noSource = all.filter(r => !((sourceInfo.keysById || {})[r.id] || []).some(k => (sourceInfo.byKey || {})[k])).length;
+    lines.push(`SOURCES: ${all.length - noSource} of ${all.length} items in scope have a recorded source; ${noSource} have no source found.`);
+  }
   return lines.join('\n');
+}
+
+// Build sourceInfo from the compliance_items rows (id, source_keys) and legal_sources rows.
+export function buildSourceInfo(itemRows, sourceRows) {
+  const keysById = {};
+  for (const r of itemRows || []) if (r && r.id) keysById[r.id] = Array.isArray(r.source_keys) ? r.source_keys : [];
+  return { keysById, byKey: indexSources(sourceRows) };
 }

@@ -6,7 +6,7 @@ import { getComplianceStatus, getWeightedCompliancePct, getItemComplianceStatus 
 import { noRecordChecks, describeNoRecord } from '../lib/complianceEvidence';
 import { copyReminderText } from '../lib/recordsExport';
 import { getRiskStatus } from '../lib/riskStatus';
-import { CHECK_VIEW_COLUMNS, buildCheckBlock } from '../lib/complianceCheck';
+import { CHECK_VIEW_COLUMNS, buildCheckBlock, buildSourceInfo } from '../lib/complianceCheck';
 import { buildFocusItems } from '../lib/focusItems';
 import { normalizeItems, aggregateByAssignee } from '../lib/trusteeWorkload';
 import { renderReportText } from '../lib/renderReportText';
@@ -1343,6 +1343,19 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       }
     } catch (e) { checkRows = null; }
 
+    // Sources behind each item (names, links, check dates) from the source register.
+    // If this read fails the report still runs, with no source lines.
+    let sourceInfo = null;
+    if (checkRows) {
+      try {
+        const [{ data: srcItems, error: e1 }, { data: srcRows, error: e2 }] = await Promise.all([
+          supabase.from('compliance_items').select('id, source_keys'),
+          supabase.from('legal_sources').select('key, name, status, url, checked_on'),
+        ]);
+        if (!e1 && !e2) sourceInfo = buildSourceInfo(srcItems, srcRows);
+      } catch (e) { sourceInfo = null; }
+    }
+
     const { highOpen: reportHighOpenRisks, riskPct } = getRiskStatus(reportRisks);
 
     const documentedHazardTypes = [...new Set(
@@ -1359,7 +1372,7 @@ const overdueActions = d.actions.filter(a => a.due_date && new Date(a.due_date +
       `ENTITY SCOPE: ${entityName}`,
       ``,
       ...(checkRows
-        ? [buildCheckBlock(checkRows)]
+        ? [buildCheckBlock(checkRows, sourceInfo)]
         : [
             `COMPLIANCE ITEMS (${reportCompliance.length} total, ${overallCompliance.compliancePct === null ? 'no items ever assessed' : `${overallCompliance.compliancePct}% of assessed items compliant`}):`,
             categoryBreakdown,

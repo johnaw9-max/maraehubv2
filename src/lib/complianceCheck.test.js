@@ -44,3 +44,28 @@ test('block lists overdue items oldest first and says not-assessed is not a fail
 test('block says none when nothing is overdue', () => {
   expect(buildCheckBlock([row({ status: 'compliant' })])).toContain('OVERDUE ITEMS: none.');
 });
+
+describe('source lines in the check block', () => {
+  const { buildCheckBlock, buildSourceInfo } = require('./complianceCheck');
+  const rows = [
+    { id: 'a', name: 'Fire evacuation scheme', category: 'health_safety', framework_class: 'legal_requirement', status: 'action_required', overdue: true, due_date: '2026-01-01' },
+    { id: 'b', name: 'Review hire terms', category: 'other', framework_class: 'good_practice', status: 'action_required', overdue: true, due_date: '2026-02-01' },
+  ];
+  const info = buildSourceInfo(
+    [{ id: 'a', source_keys: ['FENZ'] }, { id: 'b', source_keys: [] }],
+    [{ key: 'FENZ', name: 'Fire and Emergency NZ Act 2017', status: 'Verified', url: 'https://example.govt.nz/act', checked_on: '2026-11-20' }]
+  );
+  test('item with a source shows its name, date and link', () => {
+    const t = buildCheckBlock(rows, info);
+    expect(t).toMatch(/Fire evacuation scheme.*SOURCE: Fire and Emergency NZ Act 2017, checked by MaraeHub 2026-11-20, https:\/\/example\.govt\.nz\/act/);
+  });
+  test('item without a source says no source found', () => {
+    expect(buildCheckBlock(rows, info)).toMatch(/Review hire terms.*no source found/);
+    expect(buildCheckBlock(rows, info)).toMatch(/SOURCES: 1 of 2 items in scope have a recorded source; 1 have no source found/);
+  });
+  test('unsafe links are left out and nothing changes when no source info is given', () => {
+    const bad = buildSourceInfo([{ id: 'a', source_keys: ['X'] }], [{ key: 'X', name: 'N', status: 'Verified', url: 'javascript:alert(1)' }]);
+    expect(buildCheckBlock(rows, bad)).not.toMatch(/javascript:/);
+    expect(buildCheckBlock(rows)).not.toMatch(/SOURCE/);
+  });
+});
