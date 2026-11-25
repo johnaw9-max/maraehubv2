@@ -34,7 +34,7 @@ const HOW_TO_FIND_OUT = [
   [/relevant building under the Fire and Emergency/i,
     'A relevant building is one where 100 or more people can gather, 10 or more work, or 6 or more can stay (other than 3 or fewer households). It is also one that stores hazardous substances above set amounts, or is an early childhood centre, a place of care or lawful detention. Whether "can gather" means capacity or actual use is still to be verified.'],
   [/supply drinking water to others/i,
-    'Taumata Arowai says everyone who supplies drinking water to more than 25 people has a legal responsibility to ensure it is safe to drink. Confirm with Taumata Arowai.'],
+    'Look at where your drinking water comes from: the town (council) supply, or your own tank, bore, roof or stream. Taumata Arowai says everyone who supplies drinking water to more than 25 people, for example from a bore or rainwater tank, has a legal responsibility to ensure it is safe to drink. If you use both, answer Yes. Confirm with Taumata Arowai.'],
   [/specified system, such as a fire alarm, on a compliance schedule/i,
     'A building needs a compliance schedule if it contains a specified system, such as sprinklers, an emergency warning system for fire, emergency lighting or a lift. Hand-held fire extinguishers are not listed.'],
   [/on the Charities Register/i,
@@ -53,7 +53,9 @@ const PLAIN = [
   [/relevant building under the Fire and Emergency/i,
     { question: 'Is any building a "relevant building"? Usually that means 100 or more people can gather, 10 or more work there, or 6 or more can stay.', why: 'A relevant building must have an approved fire evacuation scheme.' }],
   [/supply drinking water to others/i,
-    { question: 'Do you supply drinking water to other people, such as manuhiri?', why: 'Water suppliers have legal duties to keep it safe. Confirm with Taumata Arowai.' }],
+    { question: 'Does your marae get its drinking water from its own tank, bore, roof or stream, rather than the town (council) supply? If you use both, answer Yes.',
+      why: 'These duties fall on whoever owns or runs the supply (Taumata Arowai). With a town supply that is normally the council, so these items may not apply to you. With your own supply they may. Confirm with Taumata Arowai.',
+      yesLabel: 'Yes, our own tank, bore, roof or stream', noLabel: 'No, the town (council) supply', noReason: 'Our water comes from the town (council) supply' }],
   [/specified system, such as a fire alarm, on a compliance schedule/i,
     { question: 'Does any building have a fire alarm, sprinklers, emergency lighting or a lift?', why: 'A building with one of these needs a compliance schedule and a yearly Building Warrant of Fitness.' }],
   [/on the Charities Register/i,
@@ -84,7 +86,7 @@ export function groupOpenQuestions(items) {
     if (!needsApplicabilityAnswer(it)) continue;
     const q = String(it.applicability_test || '').trim();
     if (!q) continue;
-    if (!groups.has(q)) { const pl = applicabilityPlain(it); groups.set(q, { question: q, plainQuestion: pl ? pl.question : q, why: pl ? pl.why : '', help: applicabilityHelp(it), items: [] }); }
+    if (!groups.has(q)) { const pl = applicabilityPlain(it); groups.set(q, { question: q, plainQuestion: pl ? pl.question : q, why: pl ? pl.why : '', yesLabel: (pl && pl.yesLabel) || 'Yes, this applies to us', noLabel: (pl && pl.noLabel) || 'No, it does not apply', noReason: (pl && pl.noReason) || '', help: applicabilityHelp(it), items: [] }); }
     groups.get(q).items.push(it);
   }
   return [...groups.values()].sort((a, b) => b.items.length - a.items.length || a.question.localeCompare(b.question));

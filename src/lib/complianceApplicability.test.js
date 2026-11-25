@@ -89,3 +89,22 @@ describe('next steps', () => {
     expect(r.top.map(x => x.name)).toEqual(['A start', 'Yes item']);
   });
 });
+
+
+describe('water question', () => {
+  const q = 'Does the marae supply drinking water to others, making it a supplier under the Water Services Act 2021 (confirm with Taumata Arowai)?';
+  test('asks where the water comes from, with its own button labels and a prefilled reason', () => {
+    const g = groupOpenQuestions([{ id: 'a', framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: q }]);
+    expect(g[0].plainQuestion).toMatch(/tank, bore, roof or stream/);
+    expect(g[0].plainQuestion).toMatch(/town \(council\) supply/);
+    expect(g[0].yesLabel).toMatch(/own tank/);
+    expect(g[0].noLabel).toMatch(/town/);
+    expect(g[0].noReason.length).toBeGreaterThan(5);
+    expect(applicabilityHelp({ applicability_test: q })).toMatch(/more than 25 people/);
+  });
+  test('other questions keep the default labels', () => {
+    const g = groupOpenQuestions([{ id: 'a', framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: 'Is the marae on the Charities Register?' }]);
+    expect(g[0].yesLabel).toBe('Yes, this applies to us');
+    expect(g[0].noLabel).toBe('No, it does not apply');
+  });
+});

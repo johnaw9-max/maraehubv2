@@ -1330,8 +1330,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                     <div style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 4px' }}>Covers {g.items.length} item{g.items.length !== 1 ? 's' : ''}: {g.items.slice(0, 3).map(i => i.name).join('; ')}{g.items.length > 3 ? '; and more' : ''}</div>
                     {g.help && <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}><strong>How to find out:</strong> {g.help}</div>}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button type="button" className="btn btn-primary" data-testid="group-yes" disabled={qaSaving} onClick={() => handleGroupYes(g)}>Yes, this applies to us</button>
-                      <button type="button" className="btn" data-testid="group-no" disabled={qaSaving} onClick={() => { setQaNoFor(g.question); setQaReason(''); }}>No, it does not apply</button>
+                      <button type="button" className="btn btn-primary" data-testid="group-yes" disabled={qaSaving} onClick={() => handleGroupYes(g)}>{g.yesLabel}</button>
+                      <button type="button" className="btn" data-testid="group-no" disabled={qaSaving} onClick={() => { setQaNoFor(g.question); setQaReason(g.noReason || ''); }}>{g.noLabel}</button>
                     </div>
                     {qaNoFor === g.question && (
                       <div style={{ marginTop: 8 }}>
