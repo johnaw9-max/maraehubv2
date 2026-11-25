@@ -89,3 +89,16 @@ export function groupOpenQuestions(items) {
   }
   return [...groups.values()].sort((a, b) => b.items.length - a.items.length || a.question.localeCompare(b.question));
 }
+
+// What the trustees should check next: items that apply (or always apply) and have never been checked.
+// Items still waiting for an applicability answer are left out, because we do not yet know they apply.
+// Order: Start here (stage 1), then Next, then Later, then by name.
+export function nextSteps(items, limit = 3) {
+  const eligible = (Array.isArray(items) ? items : []).filter(it =>
+    !it.not_applicable_at
+    && it.applies !== 'no'
+    && !needsApplicabilityAnswer(it)
+    && !it.last_checked_date);
+  eligible.sort((a, b) => (a.stage || 9) - (b.stage || 9) || String(a.name).localeCompare(String(b.name)));
+  return { total: eligible.length, top: eligible.slice(0, limit) };
+}

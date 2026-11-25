@@ -16,7 +16,7 @@ import ComplianceHistoryModal from './ComplianceHistoryModal';
 import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 import ItemSources from './ItemSources';
 import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
-import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, groupOpenQuestions } from '../lib/complianceApplicability';
+import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, groupOpenQuestions, nextSteps } from '../lib/complianceApplicability';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -1347,6 +1347,26 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                     )}
                   </div>
                 ))}
+              </div>
+            );
+          })()}
+
+          {(() => {
+            if (!items.some(i => 'applies' in i)) return null;
+            const ns = nextSteps(items);
+            if (ns.total === 0) return null;
+            return (
+              <div data-testid="next-steps" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>What to do next ({ns.total} item{ns.total !== 1 ? 's' : ''} to check)</div>
+                <div style={{ fontSize: 13, color: 'var(--text2)', margin: '2px 0 6px' }}>These apply to your marae and have not been checked yet. Open one, do the check, then click ✓ Done and add evidence.</div>
+                {ns.top.map(i => (
+                  <div key={i.id} style={{ fontSize: 14 }}>• {i.name}{STAGES[i.stage] ? <span style={{ color: 'var(--text2)' }}> ({STAGES[i.stage].label})</span> : null}</div>
+                ))}
+                {ns.top.some(i => i.stage === 1) && (
+                  <button type="button" data-testid="show-start-here" onClick={() => setStageFilter(1)} style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, color: 'var(--brand)', textDecoration: 'underline', fontFamily: 'DM Sans, sans-serif' }}>
+                    Show the Start here items
+                  </button>
+                )}
               </div>
             );
           })()}

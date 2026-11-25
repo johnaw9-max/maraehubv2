@@ -72,3 +72,20 @@ describe('plain wording', () => {
     expect(applicabilityPlain({ applicability_test: 'Something else?' })).toBeNull();
   });
 });
+
+import { nextSteps } from './complianceApplicability';
+describe('next steps', () => {
+  const it = (name, extra = {}) => ({ name, framework_class: 'good_practice', applies: 'not_answered', ...extra });
+  test('skips checked, not-applicable and still-unanswered items; Start here first', () => {
+    const r = nextSteps([
+      it('B later', { stage: 3 }),
+      it('A start', { stage: 1 }),
+      it('Checked', { stage: 1, last_checked_date: '2026-11-01' }),
+      it('Not ours', { stage: 1, not_applicable_at: '2026-11-02' }),
+      it('Waiting', { stage: 1, framework_class: 'conditional_legal', applies: 'not_answered' }),
+      it('Yes item', { stage: 2, framework_class: 'conditional_legal', applies: 'yes' }),
+    ], 2);
+    expect(r.total).toBe(3);
+    expect(r.top.map(x => x.name)).toEqual(['A start', 'Yes item']);
+  });
+});
