@@ -51,3 +51,24 @@ describe('group open questions', () => {
     expect(g[0].help).not.toBe('');
   });
 });
+
+import { applicabilityPlain } from './complianceApplicability';
+describe('plain wording', () => {
+  test('every known question has plain wording with a why; the item question uses it; groups carry it', () => {
+    const qs = [
+      'Is the marae land set apart as a Māori reservation under Te Ture Whenua Māori Act 1993, with trustees appointed by the Māori Land Court?',
+      'Does the marae employ anyone on an employment agreement?',
+      'Is the building a relevant building under the Fire and Emergency Act 2017 and the 2018 Regulations (Schedule 2)?',
+      'Does the marae supply drinking water to others, making it a supplier under the Water Services Act 2021 (confirm with Taumata Arowai)?',
+      'Does a building have a specified system, such as a fire alarm, on a compliance schedule?',
+      'Is the marae on the Charities Register?',
+      'Is the marae a trust to which the Trusts Act 2019 applies?',
+    ];
+    qs.forEach(q => { const p = applicabilityPlain({ applicability_test: q }); expect(p.question.length).toBeGreaterThan(10); expect(p.why.length).toBeGreaterThan(10); });
+    expect(applicabilityQuestion({ applicability_test: qs[5] })).toBe('Is the marae a registered charity?');
+    const g = groupOpenQuestions([{ id: 'a', framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: qs[1] }]);
+    expect(g[0].plainQuestion).toMatch(/pay anyone/);
+    expect(g[0].question).toBe(qs[1]);
+    expect(applicabilityPlain({ applicability_test: 'Something else?' })).toBeNull();
+  });
+});
