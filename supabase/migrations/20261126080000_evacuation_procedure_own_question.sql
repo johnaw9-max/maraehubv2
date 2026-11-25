@@ -13,9 +13,9 @@ where name = 'Trustees know the terms of the trust and their five mandatory duti
   and legal_basis_detail not like '%Checked on the Act text%';
 
 update compliance_items set
-  legal_basis_detail = 'A marae that employs people is a business or undertaking (PCBU) and has primary duties to keep workers and others safe (Health and Safety at Work Act 2015, s 36). A marae with no employees is a volunteer association and has no duty under the Act (WorkSafe, Sept 2024). What to do: confirm with WorkSafe what the duty means for your marae and record what you decide. Partly checked: the wording of s 36 is still to be re-read.'
+  legal_basis_detail = 'A marae that employs people is a business or undertaking (PCBU). Its main duty (Health and Safety at Work Act 2015, s 36) is to make sure, so far as is reasonably practicable, that its workers are safe at work and that other people are not put at risk by the work it does. That includes a work environment without risks, safe equipment and buildings, safe ways of working, proper welfare facilities for workers, the information, training and supervision needed, and monitoring workers'' health and the conditions at the workplace. A marae with no employees is a volunteer association and has no duty under the Act (WorkSafe, Sept 2024). What to do: confirm with WorkSafe what the duty means for your marae and record what you decide. Checked on the Act text (s 36 read in full, version as at 5 April 2025).'
 where name = 'As an employer: duty to keep workers and others safe confirmed with WorkSafe'
-  and legal_basis_detail not like '%What to do:%';
+  and legal_basis_detail not like '%Checked on the Act text%';
 
 -- Part 1 (regs 5 to 7) applies to every Schedule 2 building, so exits and routes belong with the same "open to the public" question.
 update compliance_items set
