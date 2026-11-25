@@ -100,7 +100,7 @@ describe('water question', () => {
     expect(g[0].yesLabel).toMatch(/own tank/);
     expect(g[0].noLabel).toMatch(/town/);
     expect(g[0].noReason.length).toBeGreaterThan(5);
-    expect(applicabilityHelp({ applicability_test: q })).toMatch(/more than 25 people/);
+    expect(applicabilityHelp({ applicability_test: q })).toMatch(/marae and community halls/);
   });
   test('other questions keep the default labels', () => {
     const g = groupOpenQuestions([{ id: 'a', framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: 'Is the marae on the Charities Register?' }]);
