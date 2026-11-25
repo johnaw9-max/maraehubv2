@@ -10,7 +10,7 @@ import BuildingPlans from './BuildingPlans';
 
 // Fixed page order from the real official document (Waikato District
 // Council / CDEM template) -- not alphabetical.
-const HAZARD_ORDER = ['Landslide', 'Flood', 'Earthquake', 'Fire', 'Storm', 'Tsunami', 'Volcano', 'Pandemic', 'Man-Made Hazard', 'Water Contamination', 'Drought / Water Shortage'];
+const HAZARD_ORDER = ['Landslide', 'Flood', 'Earthquake', 'Fire', 'Storm', 'Tsunami', 'Volcano', 'Pandemic', 'Man-Made Hazard', 'Water Contamination', 'Drought / Water Shortage', 'Heat / Hot weather'];
 
 const CONTACT_LISTS = [
   { key: 'marae_contact',     label: 'Marae Contacts',     hint: 'The key contacts for our marae.' },
