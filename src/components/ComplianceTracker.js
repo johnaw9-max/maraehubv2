@@ -1325,7 +1325,8 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                 <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>One answer covers every item that depends on it. If you do not know yet, leave it. The report will say it is not yet answered.</div>
                 {groups.map(g => (
                   <div key={g.question} data-testid="question-group" style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{g.question}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700 }}>{g.plainQuestion || g.question}</div>
+                    {g.why && <div style={{ fontSize: 13, margin: '2px 0' }}><strong>Why we ask:</strong> {g.why}</div>}
                     <div style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0 4px' }}>Covers {g.items.length} item{g.items.length !== 1 ? 's' : ''}: {g.items.slice(0, 3).map(i => i.name).join('; ')}{g.items.length > 3 ? '; and more' : ''}</div>
                     {g.help && <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 6 }}><strong>How to find out:</strong> {g.help}</div>}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

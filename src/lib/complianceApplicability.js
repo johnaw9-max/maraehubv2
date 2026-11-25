@@ -15,6 +15,8 @@ export function needsApplicabilityAnswer(item) {
 
 // The question to show the trustee. Falls back to the condition written in the legal basis.
 export function applicabilityQuestion(item) {
+  const plain = applicabilityPlain(item);
+  if (plain) return plain.question;
   const q = String((item && item.applicability_test) || '').trim();
   if (q) return q;
   const basis = String((item && item.legal_basis) || '').trim();
@@ -41,6 +43,32 @@ const HOW_TO_FIND_OUT = [
     'Check the marae governing document to see whether the marae is held by a trust.'],
 ];
 
+// Everyday wording for each question, with one line on why it is asked. The legal wording stays on the item and in the
+// audit log; trustees see this. Matched on the same question text as the help lines above. No match, no plain wording.
+const PLAIN = [
+  [/Māori reservation under Te Ture Whenua/i,
+    { question: 'Is your marae land a Māori reservation?', why: 'Special rules for reservation trustees apply only if it is.' }],
+  [/employ anyone on an employment agreement/i,
+    { question: 'Do you pay anyone to work for the marae, on an employment agreement?', why: 'Employer health and safety duties apply only if you do. A volunteer-only marae does not have them.' }],
+  [/relevant building under the Fire and Emergency/i,
+    { question: 'Is any building a "relevant building"? Usually that means 100 or more people can gather, 10 or more work there, or 6 or more can stay.', why: 'A relevant building must have an approved fire evacuation scheme.' }],
+  [/supply drinking water to others/i,
+    { question: 'Do you supply drinking water to other people, such as manuhiri?', why: 'Water suppliers have legal duties to keep it safe. Confirm with Taumata Arowai.' }],
+  [/specified system, such as a fire alarm, on a compliance schedule/i,
+    { question: 'Does any building have a fire alarm, sprinklers, emergency lighting or a lift?', why: 'A building with one of these needs a compliance schedule and a yearly Building Warrant of Fitness.' }],
+  [/on the Charities Register/i,
+    { question: 'Is the marae a registered charity?', why: 'Registered charities must file a yearly return and report changes to Charities Services.' }],
+  [/Trusts Act 2019 applies/i,
+    { question: 'Is the marae held by a trust?', why: 'The Trusts Act sets duties for the trustees of a trust.' }],
+];
+
+export function applicabilityPlain(item) {
+  const q = String((item && item.applicability_test) || '');
+  if (!q) return null;
+  const hit = PLAIN.find(([re]) => re.test(q));
+  return hit ? hit[1] : null;
+}
+
 export function applicabilityHelp(item) {
   const q = String((item && item.applicability_test) || '');
   if (!q) return '';
@@ -56,7 +84,7 @@ export function groupOpenQuestions(items) {
     if (!needsApplicabilityAnswer(it)) continue;
     const q = String(it.applicability_test || '').trim();
     if (!q) continue;
-    if (!groups.has(q)) groups.set(q, { question: q, help: applicabilityHelp(it), items: [] });
+    if (!groups.has(q)) { const pl = applicabilityPlain(it); groups.set(q, { question: q, plainQuestion: pl ? pl.question : q, why: pl ? pl.why : '', help: applicabilityHelp(it), items: [] }); }
     groups.get(q).items.push(it);
   }
   return [...groups.values()].sort((a, b) => b.items.length - a.items.length || a.question.localeCompare(b.question));
