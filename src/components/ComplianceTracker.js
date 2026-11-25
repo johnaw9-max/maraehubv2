@@ -16,6 +16,7 @@ import ComplianceHistoryModal from './ComplianceHistoryModal';
 import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 import ItemSources from './ItemSources';
 import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
+import { needsApplicabilityAnswer, applicabilityQuestion } from '../lib/complianceApplicability';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -469,6 +470,16 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     setItems(prev => prev.map(i => i.id === naTarget.id ? { ...i, ...updates } : i));
     logAudit({ entityId: naTarget.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: naTarget.id, resourceName: naTarget.name, metadata: { not_applicable: true, reason } });
     setNaTarget(null); setNaReason('');
+  }
+
+  // The trustee answers "yes, this applies to us". Says who and when through the audit log. "No" is the
+  // existing "This does not apply to us" path, which needs a reason.
+  async function handleAppliesYes(item) {
+    const updates = { applies: 'yes', updated_at: new Date().toISOString() };
+    const { error } = await supabase.from('compliance_items').update(updates).eq('id', item.id);
+    if (error) return;
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
+    logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { applies: 'yes', question: applicabilityQuestion(item) } });
   }
 
   // Put an item back: it does apply after all.
@@ -1341,6 +1352,19 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                   {neverAssessedItems.map(item => (
                     <div key={item.id}>
                       {(itemsViewMode === 'compact' ? renderCompactItemRow : renderItemRow)(item)}
+                      {needsApplicabilityAnswer(item) && (
+                        <div data-testid="applicability-question" style={{ fontSize: 13, color: 'var(--text2)', padding: '4px 2px' }}>
+                          {applicabilityQuestion(item)}{' '}
+                          <button
+                            type="button"
+                            data-testid="mark-applies"
+                            onClick={() => handleAppliesYes(item)}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, color: 'var(--brand)', textDecoration: 'underline', fontFamily: 'DM Sans, sans-serif' }}
+                          >
+                            Yes, this applies to us
+                          </button>
+                        </div>
+                      )}
                       <button
                         type="button"
                         data-testid="mark-not-applicable"
