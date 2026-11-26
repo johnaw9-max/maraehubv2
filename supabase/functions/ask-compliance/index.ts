@@ -17,19 +17,22 @@ function corsHeaders(req: Request) {
   };
 }
 
-const SYSTEM_PROMPT = `You answer questions from marae trustees in Aotearoa New Zealand about their compliance items. Use plain English and short sentences. Start with the answer.
+const SYSTEM_PROMPT = `You help marae trustees understand their compliance items. Write for a busy trustee: plain words, short sentences, no jargon.
 
-Write plain text only. Do not use asterisks, hashes, bullet symbols or any other markdown. Use short paragraphs.
+Answer ONLY from the RECORDS below. Do not use any other knowledge of the law. Never mention the words RECORDS or DATA.
 
-Answer ONLY from the RECORDS below, which list the marae's compliance items, how each is labelled (legal duty if it applies, good practice, or marae decision), what it says, and its SOURCE. Do not use any other knowledge of the law. Never use the word "DATA" or "RECORDS" in your answer; say "MaraeHub's records" if you need to refer to them.
+Format, plain text only (no asterisks, no markdown, no bullets, no lists):
+First line: a direct answer in one sentence.
+Then "What to do:" followed by one or two short sentences taken from the records.
+Then, only if the records say who to ask, "Ask:" followed by who to ask.
 
-Talk only about the items that answer the question. Do not list other items.
+Never write section numbers, regulation numbers, web links, dates or the names of Acts. The app shows the sources underneath.
+Mention at most three items, and only items that answer the question. Refer to each by a short everyday name.
+If the records do not answer the question, write only: "No source available in MaraeHub for this." and say who to ask, otherwise a lawyer.
+Never say the marae complies or does not comply, and never decide whether something applies to it. The trustees decide.
+Keep it under 70 words.
 
-If the records do not answer the question, say "No source available in MaraeHub for this." and say who to ask, naming the agency or source shown in the records where there is one, otherwise a lawyer. Never guess.
-
-For each item you mention, give its label exactly as the records show it, then its source as: Source: name, link, checked date (copy name, link and date exactly as given; never add a law, section number, link or date that is not in the records). Where the records say "no source found", write "No source recorded in MaraeHub."
-
-Never say the marae complies or does not comply, and never decide whether something applies to the marae. Say what the source says and that the trustees decide. If the question is not about the marae's compliance items, say you can only answer from them. Keep the answer under 120 words and end with one line: "Draft for the trustees to decide."`;
+Last line, exactly: ITEMS: followed by the exact names of the items you used, copied exactly as written after "ITEM:" in the records, separated by " | ". If you used none, write ITEMS: none`;
 
 serve(async (req) => {
   const cors = corsHeaders(req);
@@ -75,7 +78,17 @@ serve(async (req) => {
       messages: [{ role: 'user', content: `QUESTION: ${question.trim()}\n\nRECORDS:\n${context}` }],
     });
     const textBlock = response.content.find((b) => b.type === 'text');
-    const answer = textBlock?.type === 'text' ? textBlock.text : '';
+    const raw = textBlock?.type === 'text' ? textBlock.text : '';
+    // Split the model's last "ITEMS:" line off: the app uses it to show the sources, never the model.
+    const lines = raw.trim().split('\n');
+    let items: string[] = [];
+    const last = lines[lines.length - 1] ?? '';
+    if (/^ITEMS:/i.test(last.trim())) {
+      lines.pop();
+      const list = last.trim().replace(/^ITEMS:\s*/i, '');
+      items = list.toLowerCase() === 'none' ? [] : list.split(' | ').map((x) => x.trim()).filter(Boolean).slice(0, 3);
+    }
+    const answer = lines.join('\n').trim();
 
     // Usage record: sizes and counts only, never the question or the answer. A failure never blocks the trustee.
     try {
@@ -93,7 +106,7 @@ serve(async (req) => {
       console.error('[ask-compliance] usage log insert failed');
     }
 
-    return json({ answer });
+    return json({ answer, items });
   } catch (err) {
     const anthropicErr = err as { status?: number; message?: string };
     if (anthropicErr?.status === 401 || anthropicErr?.status === 403 ||

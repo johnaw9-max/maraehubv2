@@ -181,3 +181,23 @@ export function buildAskContext(items, sourcesByKey) {
   }
   return lines.join('\n');
 }
+
+// Sources shown under an Ask answer, built by the app from the items the answer used (never by AI).
+// names = exact item names the answer used; items = compliance_items rows; sourcesByKey = legal_sources indexed by key.
+export function buildAskSources(names, items, sourcesByKey) {
+  const list = Array.isArray(items) ? items : [];
+  const out = [];
+  for (const n of Array.isArray(names) ? names : []) {
+    const item = list.find(r => r && r.name === n);
+    if (!item) continue;
+    const keys = Array.isArray(item.source_keys) ? item.source_keys : [];
+    const found = keys.map(k => (sourcesByKey || {})[k]).filter(Boolean);
+    out.push({
+      name: item.name,
+      classLabel: CLASS_LABEL[item.framework_class] || 'not yet matched to the Framework',
+      sources: found.map(f => ({ name: f.name, url: safeUrl(f.url), checkedOn: f.checked_on || '', partly: !isFullyChecked(f) })),
+    });
+  }
+  return out;
+}
+

@@ -2,14 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAiDrafting } from '../lib/useAiDrafting';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
-import { buildAskContext } from '../lib/complianceCheck';
+import { buildAskContext, buildAskSources } from '../lib/complianceCheck';
 
 // "Ask" box: a trustee asks a question and gets an answer drawn only from the marae's own
 // compliance items and their recorded sources. The answer is a draft; trustees decide.
+function niceDate(iso) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function AskCompliance({ items, sourcesByKey }) {
   const [ai, setAi] = useState({ id: null, enabled: false });
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
+  const [sources, setSources] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +31,7 @@ export default function AskCompliance({ items, sourcesByKey }) {
     if (!q || loading) return;
     if (q.length > 500) { setError('Please keep the question under 500 characters.'); return; }
     if (!(await requestConsent())) return;
-    setLoading(true); setError(''); setAnswer('');
+    setLoading(true); setError(''); setAnswer(''); setSources([]);
     const context = buildAskContext(items, sourcesByKey);
     const { data, error: err } = await supabase.functions.invoke('ask-compliance', { body: { question: q, context } });
     setLoading(false);
@@ -35,6 +42,7 @@ export default function AskCompliance({ items, sourcesByKey }) {
     }
     if (data?.error) { setError(data.error); return; }
     setAnswer(data?.answer || '');
+    setSources(buildAskSources(data?.items, items, sourcesByKey));
   }
 
   return (
@@ -58,6 +66,25 @@ export default function AskCompliance({ items, sourcesByKey }) {
       </div>
       {error && <div role="alert" style={{ marginTop: 10, fontSize: 13, color: 'var(--danger, #b00020)' }}>{error}</div>}
       {answer && <div data-testid="ask-answer" style={{ marginTop: 10, fontSize: 14, whiteSpace: 'pre-wrap' }}>{answer}</div>}
+      {answer && sources.length > 0 && (
+        <div data-testid="ask-sources" style={{ marginTop: 10, fontSize: 13, color: 'var(--text2)' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Where this comes from</div>
+          {sources.map(s => (
+            <div key={s.name} style={{ marginBottom: 6 }}>
+              <div>{s.name} ({s.classLabel})</div>
+              {s.sources.length === 0
+                ? <div>No source recorded in MaraeHub.</div>
+                : s.sources.map(src => (
+                    <div key={src.name}>
+                      {src.url ? <a href={src.url} target="_blank" rel="noopener noreferrer">{src.name}</a> : src.name}
+                      {src.checkedOn ? `, checked ${niceDate(src.checkedOn)}` : ''}{src.partly ? ', only partly checked' : ''}
+                    </div>
+                  ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {answer && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)' }}>Draft for the trustees to decide.</div>}
     </div>
   );
 }
