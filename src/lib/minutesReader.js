@@ -106,6 +106,14 @@ const NAME_FIELD = { task: 'description', decision: 'description', risk: 'risk_d
 export async function saveSuggestion(item, meeting) {
   const payload = buildPayload(item.kind, item, meeting);
   if (!payload) return { ok: false, message: 'Unknown item type' };
+
+  // Saving the same line twice from the same hui would only make a duplicate.
+  const nameField = NAME_FIELD[item.kind];
+  const meetingField = payload.source_meeting_id ? 'source_meeting_id' : 'meeting_id';
+  const { data: existing } = await supabase.from(TABLE[item.kind]).select('id')
+    .eq(nameField, payload[nameField]).eq(meetingField, meeting.id).limit(1);
+  if (existing && existing.length > 0) return { ok: false, message: 'Already saved from these minutes' };
+
   const { data, error } = await supabase.from(TABLE[item.kind]).insert(payload).select();
   if (error) return { ok: false, message: error.message };
   if (!data || data.length === 0) return { ok: false, message: 'You may not have permission to add this' };

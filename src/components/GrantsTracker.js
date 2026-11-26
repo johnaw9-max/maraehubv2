@@ -12,6 +12,7 @@ import { getUrgencyStatus, compareByUrgency } from '../lib/urgencyStatus';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
+import SourceHuiLink from './SourceHuiLink';
 import ViewToggle from './ViewToggle';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 
@@ -617,6 +618,7 @@ export default function GrantsTracker() {
                       {g.notes}
                     </div>
                   )}
+                  {g.source_meeting_id && <div style={{ marginBottom: 12 }}><SourceHuiLink meetingId={g.source_meeting_id} /></div>}
                   {matchGrantToGoals(g, goals).map(({ goal, reasons }) => (
                     <div key={goal.id} style={{ fontSize: 12, color: 'var(--text2)', background: 'var(--surface2)', borderRadius: 6, padding: '8px 10px', marginBottom: 8 }}>
                       <span style={{ fontWeight: 600 }}>🎯 Possible match: {goal.name}</span>
