@@ -38,3 +38,17 @@ update compliance_items set
   source_keys = array['CA05','CSGOV'],
   legal_basis_detail = 'Applies only if the marae is a registered charity. A registered charity must review its governance procedures at least every 3 years. The review must consider whether the procedures are fit for purpose, help the charity achieve its charitable purpose, and help it comply with the Charities Act (Charities Act 2005, s 42G). The review is self-directed and can be as simple as a trustee discussion; Charities Services gives a checklist. What to do: hold the review (a trustee discussion using the Charities Services checklist is enough), keep a note of it, and confirm the date in your annual return or update details. If the review changed your rules, send Charities Services a copy of the amended rules. Checked on the Act text (s 42G read in full, version as at 6 June 2026) and Charities Services guidance (updated September 2026).'
 where name = 'Governance procedures reviewed in the last 3 years' and framework_class = 'good_practice';
+
+-- Volunteer induction, conflicts register, succession: real wording from Framework 1.3, 2.2 and the 22 Nov governance review update (CSGOV).
+update compliance_items set
+  legal_basis = 'Good practice: WorkSafe guidance for volunteers (September 2024)',
+  legal_basis_detail = 'Good practice, not a legal requirement for a volunteer-only marae. WorkSafe recommends that volunteer associations still follow good work practices (WorkSafe, guidance for volunteers, September 2024). What to do: give every new volunteer an induction, and keep an incident and near-miss register so the trustees can see what went wrong or nearly did.'
+where name = 'Volunteer safety induction done; incident and near-miss register kept';
+update compliance_items set
+  legal_basis = 'Good practice: Charities Services governance review checklist (June 2026)',
+  source_keys = array['CSGOV'],
+  legal_basis_detail = 'Good practice. The Charities Services governance review checklist asks that conflicts of interest are declared at the start of meetings, recorded and managed, and that anyone with a conflict steps out of the decision. It does not require a register. What to do: make conflicts a standing item at the start of each meeting, and record each one declared and what was done about it.'
+where name = 'Conflicts of interest register kept and on the meeting agenda';
+update compliance_items set
+  legal_basis_detail = 'A marae decision, not a legal requirement. Agree a plan for replacing trustees and key volunteers, including how rangatahi and whānau are brought in, and record the plan in the minutes.'
+where name = 'Succession plan for trustees and key volunteers agreed';
