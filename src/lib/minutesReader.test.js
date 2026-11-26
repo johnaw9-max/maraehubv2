@@ -32,6 +32,12 @@ describe('buildPayload', () => {
     expect(p.notes).toContain('Hui A');
     expect(p.notes).toContain('estimate');
   });
+  it('risk, asset and grant point back to the hui', () => {
+    const risk = buildPayload('risk', { description: 'Leak', category: 'Governance', likelihood: 'Low', consequence: 'Low' }, meeting);
+    const asset = buildPayload('asset', { name: 'Chiller', category: 'Equipment' }, meeting);
+    const grant = buildPayload('grant', { name: 'F', funder: 'F', category: 'Community' }, meeting);
+    [risk, asset, grant].forEach(p => expect(p.source_meeting_id).toBe('m1'));
+  });
   it('every kind that has a notes field keeps the hui and the exact quote', () => {
     const q = 'The roof leaks in the wharekai';
     const risk = buildPayload('risk', { description: 'Leak', category: 'Governance', likelihood: 'Low', consequence: 'Low', quote: q }, meeting);
@@ -78,6 +84,7 @@ describe('saveSuggestion', () => {
     expect(supabase.from).toHaveBeenCalledWith('meeting_actions');
     expect(ensureTask).toHaveBeenCalledTimes(1);
     expect(ensureTask.mock.calls[0][0].description).toContain('Rota to get quotes');
+    expect(ensureTask.mock.calls[0][0].description).toContain('[source_meeting:m1]');
     expect(ensureTask.mock.calls[0][0].description).toContain('[source_id:a1]');
   });
   it('saves a risk without creating a task', async () => {

@@ -29,6 +29,7 @@ import WorkflowEngine from '../components/WorkflowEngine';
 import WhatsNew from '../components/WhatsNew';
 import OnboardingFlow from '../components/OnboardingFlow';
 import OurMarae from '../components/OurMarae';
+import { OpenHuiContext } from '../lib/OpenHuiContext';
 
 const NAV_GROUPS = [
   {
@@ -153,6 +154,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   // Board View -> Minutes deep link: which hui to open straight away
   const [minutesFocusId, setMinutesFocusId] = useState(null);
   const goToTab = (tab, opts) => { if (tab === 'minutes') setMinutesFocusId(opts?.meetingId || null); setActiveTab(tab); };
+  const openHui = (meetingId) => goToTab('minutes', { meetingId });
   const [huiModeMeetingId, setHuiModeMeetingId] = useState(null);
 
   function handleStartWorkflow(suggestion) {
@@ -481,6 +483,7 @@ export default function TrusteeDashboard({ profile, onLogout }) {
   }
 
   return (
+    <OpenHuiContext.Provider value={openHui}>
     <div>
       <Header profile={profile} onLogout={onLogout} />
 
@@ -604,5 +607,6 @@ export default function TrusteeDashboard({ profile, onLogout }) {
       <HelpMenu role="trustee" />
       <WhatsNew />
     </div>
+    </OpenHuiContext.Provider>
   );
 }

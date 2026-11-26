@@ -69,6 +69,7 @@ export function buildPayload(kind, item, meeting) {
         entity_id: null,
         asset_id: null,
         compliance_item_id: null,
+        source_meeting_id: meeting.id,
       };
     case 'asset':
       return {
@@ -80,6 +81,7 @@ export function buildPayload(kind, item, meeting) {
         value: null, purchase_cost: null, lifespan_years: null, replacement_cost: null,
         purchase_date: null, inventory_category: null, quantity: null, last_stocktake: null,
         entity_id: null, linked_document_id: null,
+        source_meeting_id: meeting.id,
       };
     case 'grant':
       return {
@@ -90,6 +92,7 @@ export function buildPayload(kind, item, meeting) {
         status: 'researching',
         deadline: item.deadline || null,
         notes: `${fromHui(meeting, item.quote)}${item.notes ? ' ' + item.notes.trim() : ''}`,
+        source_meeting_id: meeting.id,
       };
     default:
       return null;
@@ -112,7 +115,7 @@ export async function saveSuggestion(item, meeting) {
   if (item.kind === 'task') {
     await ensureTask({
       title: `ACTION: ${payload.description.slice(0, 80)}`,
-      description: `Meeting action assigned. Hui: ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}. Due: ${payload.due_date || 'no due date'}.${item.quote ? ' From the minutes: \u201C' + item.quote + '\u201D.' : ''} [source_id:${saved.id}]`,
+      description: `Meeting action assigned. Hui: ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}. Due: ${payload.due_date || 'no due date'}.${item.quote ? ' From the minutes: \u201C' + item.quote + '\u201D.' : ''} [source_id:${saved.id}] [source_meeting:${meeting.id}]`,
       assigned_to: payload.assigned_to,
       due_date: payload.due_date,
       priority: 'Medium',
