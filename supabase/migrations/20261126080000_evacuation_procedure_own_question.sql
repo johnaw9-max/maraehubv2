@@ -52,3 +52,11 @@ where name = 'Conflicts of interest register kept and on the meeting agenda';
 update compliance_items set
   legal_basis_detail = 'A marae decision, not a legal requirement. Agree a plan for replacing trustees and key volunteers, including how rangatahi and whānau are brought in, and record the plan in the minutes.'
 where name = 'Succession plan for trustees and key volunteers agreed';
+
+-- "What to do:" lines for fire alarms, evacuation scheme and fire warden arrangements (Framework 4.1, regs 25, 29, 32, 33; Building Act ss 105, 108).
+update compliance_items set legal_basis_detail = legal_basis_detail || ' What to do: ask the council whether each building has a compliance schedule. If it does, have the fire alarm inspected and tested each year by the independent qualified person, as part of the Building Warrant of Fitness (see that item).'
+where name = 'Fire alarms — tested and detection confirmed working' and legal_basis_detail not like '%What to do:%';
+update compliance_items set legal_basis_detail = legal_basis_detail || ' What to do: for a relevant building, have the evacuation scheme approved by Fire and Emergency New Zealand, hold a trial evacuation at least every 6 months (or run an approved training programme instead), and tell Fire and Emergency New Zealand the result within 10 working days (reg 32).'
+where name = 'Evacuation scheme — reviewed and trial evacuation completed' and legal_basis_detail not like '%What to do:%';
+update compliance_items set legal_basis_detail = 'Named people who know what to do in a fire, as part of a workable evacuation scheme. What to do: name the people who will lead an evacuation and make sure they know the routes and how the alarm sounds. If you use the training programme option, occupants must be trained and assessed at least every 6 months (Evacuation Schemes Regulations 2018, reg 33).'
+where name = 'Fire warden arrangements — trained and refreshed' and legal_basis_detail not like '%What to do:%';
