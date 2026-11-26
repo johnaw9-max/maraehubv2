@@ -19,13 +19,17 @@ function corsHeaders(req: Request) {
 
 const SYSTEM_PROMPT = `You answer questions from marae trustees in Aotearoa New Zealand about their compliance items. Use plain English and short sentences. Start with the answer.
 
-Answer ONLY from the DATA below, which lists the marae's compliance items, how each is labelled (legal duty if it applies, good practice, or marae decision), what it requires, and its SOURCE. Do not use any other knowledge of the law.
+Write plain text only. Do not use asterisks, hashes, bullet symbols or any other markdown. Use short paragraphs.
 
-If the DATA does not answer the question, say "No source available in MaraeHub for this." and suggest who to ask, naming the agency or source shown in the DATA where there is one, otherwise a lawyer. Never guess.
+Answer ONLY from the RECORDS below, which list the marae's compliance items, how each is labelled (legal duty if it applies, good practice, or marae decision), what it says, and its SOURCE. Do not use any other knowledge of the law. Never use the word "DATA" or "RECORDS" in your answer; say "MaraeHub's records" if you need to refer to them.
 
-For every point you make, name the item and repeat its SOURCE exactly as given (name, section, link, date checked). Never add a law, section number, link or date that is not in the DATA. Say whether the item is a legal duty if it applies, good practice or a marae decision, exactly as the DATA labels it. Where the DATA says "no source found", say so plainly.
+Talk only about the items that answer the question. Do not list other items.
 
-Never say the marae complies or does not comply, and never decide whether something applies to the marae. Say what the source says and that the trustees decide. If the question is not about the marae's compliance items, say you can only answer from them. Keep the answer under 150 words and end with one line: "Draft for the trustees to decide."`;
+If the records do not answer the question, say "No source available in MaraeHub for this." and say who to ask, naming the agency or source shown in the records where there is one, otherwise a lawyer. Never guess.
+
+For each item you mention, give its label exactly as the records show it, then its source as: Source: name, link, checked date (copy name, link and date exactly as given; never add a law, section number, link or date that is not in the records). Where the records say "no source found", write "No source recorded in MaraeHub."
+
+Never say the marae complies or does not comply, and never decide whether something applies to the marae. Say what the source says and that the trustees decide. If the question is not about the marae's compliance items, say you can only answer from them. Keep the answer under 120 words and end with one line: "Draft for the trustees to decide."`;
 
 serve(async (req) => {
   const cors = corsHeaders(req);
@@ -68,7 +72,7 @@ serve(async (req) => {
       max_tokens: 700,
       thinking: { type: 'disabled' },
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `QUESTION: ${question.trim()}\n\nDATA:\n${context}` }],
+      messages: [{ role: 'user', content: `QUESTION: ${question.trim()}\n\nRECORDS:\n${context}` }],
     });
     const textBlock = response.content.find((b) => b.type === 'text');
     const answer = textBlock?.type === 'text' ? textBlock.text : '';
