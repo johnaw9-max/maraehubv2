@@ -423,7 +423,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       supabase.from('service_reminders').select('id, type, due_date, assets(name)').order('type'),
       supabase.from('documents').select('id, title, category').is('deleted_at', null).order('title'),
       supabase.from('finance_expenses').select('id, description, amount, date').order('date', { ascending: false }),
-      supabase.from('legal_sources').select('key, name, provisions_read, version_and_date_read, status, url, notes'),
+      supabase.from('legal_sources').select('key, name, provisions_read, version_and_date_read, status, url, notes, checked_on'),
     ]);
     const allItems = itemsRes.data || [];
     setSourcesByKey(indexSources(srcRes && !srcRes.error ? srcRes.data : []));
