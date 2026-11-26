@@ -10,6 +10,7 @@ import { sendNotification, getEmailByName, meetingActionBody } from '../lib/noti
 import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { isResolutionOpen } from '../lib/resolutionStatus';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
+import MinutesReader from './MinutesReader';
 import { holdUpdates } from '../lib/updateGuard';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
@@ -381,6 +382,7 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
   const [maraeName, setMaraeName] = useState('');
   const [maraeEntityId, setMaraeEntityId] = useState(null);
   const [aiDraftingEnabled, setAiDraftingEnabled] = useState(false);
+  const [isAdminTrustee, setIsAdminTrustee] = useState(false);
   const [localMinutes, setLocalMinutes] = useState(meeting.minutes || '');
   const [minutesSaving, setMinutesSaving] = useState(false);
   const [minutesMessage, setMinutesMessage] = useState(null); // { type: 'success'|'error', text } | null
@@ -413,6 +415,15 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
         setMaraeEntityId(data?.id || null);
         setAiDraftingEnabled(!!data?.ai_drafting_enabled);
       });
+  }, []);
+
+  useEffect(() => {
+    // Only administrators may save what the minutes reader suggests.
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('profiles').select('trustee_role').eq('id', user.id).maybeSingle()
+        .then(({ data }) => setIsAdminTrustee(data?.trustee_role === 'admin'));
+    });
   }, []);
 
   const { ConsentModal, requestConsent } = useAiDrafting(maraeEntityId, aiDraftingEnabled);
@@ -852,6 +863,18 @@ function MeetingDetail({ meeting, onBack, onEdit, onDelete, documents, onStartHu
               </div>
             )}
           </div>
+
+          {/* Minutes reader: switched on per app with REACT_APP_MINUTES_READER=on (test app first) */}
+          {process.env.REACT_APP_MINUTES_READER === 'on' && localMinutes && localMinutes.trim() && (
+            <MinutesReader
+              meeting={meeting}
+              minutes={localMinutes}
+              maraeName={maraeName}
+              requestConsent={requestConsent}
+              canSave={isAdminTrustee}
+              onSaved={fetchDetail}
+            />
+          )}
 
           {/* ── SECTION 1: MEETING MINUTES ── */}
           <div style={{ marginBottom: 32 }}>

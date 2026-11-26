@@ -7,18 +7,12 @@ import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
 import ViewToggle from './ViewToggle';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
+import { calcRating } from '../lib/riskRating';
 
 const CATEGORIES   = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
 const LIKELIHOODS  = ['Low', 'Medium', 'High'];
 const CONSEQUENCES = ['Low', 'Medium', 'High'];
 const STATUSES     = ['Open', 'Being Managed', 'Closed'];
-
-function calcRating(likelihood, consequence) {
-  if (!likelihood || !consequence) return 'Low';
-  if (likelihood === 'High' || consequence === 'High') return 'High';
-  if (likelihood === 'Low'  && consequence === 'Low')  return 'Low';
-  return 'Medium';
-}
 
 const RATING_PILL = {
   High:   { bg: '#faeae7', color: '#a63020', border: '1px solid #f0b8b0' },
