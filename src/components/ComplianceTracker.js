@@ -17,7 +17,7 @@ import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 import ItemSources from './ItemSources';
 import AskCompliance from './AskCompliance';
 import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
-import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, groupOpenQuestions, nextSteps } from '../lib/complianceApplicability';
+import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, applicabilityPlain, groupOpenQuestions, nextSteps } from '../lib/complianceApplicability';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -1494,6 +1494,11 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                           >
                             Yes, this applies to us
                           </button>
+                          {applicabilityPlain(item) && applicabilityPlain(item).why && (
+                            <div data-testid="applicability-why" style={{ marginTop: 4, fontSize: 12, lineHeight: 1.5 }}>
+                              <strong>Why we ask:</strong> {applicabilityPlain(item).why}
+                            </div>
+                          )}
                           {applicabilityHelp(item) && (
                             <div data-testid="applicability-help" style={{ marginTop: 4, fontSize: 12, lineHeight: 1.5 }}>
                               <strong>How to find out:</strong> {applicabilityHelp(item)}
