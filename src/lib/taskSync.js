@@ -331,6 +331,31 @@ export async function closeLinkedTask(sourceId) {
   return openTasks.length;
 }
 
+// A trustee says an item applies to the marae: leave one clear task so the next step is not lost.
+// The item has no due date yet, so reminders cannot start until the trustee sets one. Not made when a due date already exists.
+export async function ensureSetupTask(item) {
+  if (!item || !item.id || item.due_date) return;
+  await ensureTask({
+    title: `SET UP: ${item.name}`,
+    description: `You said this applies to the marae. Set a due date and attach the evidence, so MaraeHub can remind you. [source_id:${item.id}] [source_type:compliance]`,
+    assigned_to: item.responsible_name || null,
+    due_date: null,
+    priority: 'Medium',
+  });
+}
+
+// A trustee says an item does not apply: cancel its open tasks so nobody chases it.
+export async function cancelTasksForSource(sourceIds) {
+  const ids = (sourceIds || []).filter(Boolean);
+  for (const id of ids) {
+    await supabase
+      .from('tasks')
+      .update({ status: 'cancelled' })
+      .like('description', `%[source_id:${id}]%`)
+      .in('status', ['open', 'in-progress']);
+  }
+}
+
 // Map a task title prefix to a source label and icon for Board View grouping.
 // UPCOMING must be listed before OVERDUE so its prefix is matched first.
 //
@@ -343,6 +368,7 @@ export async function closeLinkedTask(sourceId) {
 export const TASK_SOURCES = [
   { prefix: 'UPCOMING: ', label: 'Upcoming',        icon: '🟡', tab: 'tasks',      action: 'reference'  },
   { prefix: 'OVERDUE: ',  label: 'Compliance',       icon: '✅', tab: 'compliance', action: 'actionable' },
+  { prefix: 'SET UP: ',   label: 'Compliance set-up', icon: '🧭', tab: 'compliance', action: 'reference'  },
   { prefix: 'PROJECT: ',  label: 'Projects',          icon: '📋', tab: 'projects',   action: 'actionable' },
   { prefix: 'SERVICE: ',  label: 'Asset Services',    icon: '🔧', tab: 'assets',     action: 'actionable' },
   { prefix: 'ACTION: ',   label: 'Meeting Actions',   icon: '📝', tab: 'minutes',    action: 'actionable' },
