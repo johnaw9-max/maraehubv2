@@ -441,7 +441,7 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
         </div>
       ) : (
         <div className="panel" style={{ padding: 0, overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', fontSize: 14 }}>
             <thead>
               <tr style={{ background: 'var(--surface2)', borderBottom: '2px solid var(--border)' }}>
                 {['Risk', 'Category', 'Likelihood', 'Consequence', 'Rating', 'Owner', 'Review Date', 'Status', ''].map(h => (
@@ -457,7 +457,7 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
                 const assetName = r.asset_id ? assets.find(a => a.id === r.asset_id)?.name : null;
                 return (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface2)' }}>
-                    <td style={{ padding: '12px 14px', maxWidth: 260 }}>
+                    <td style={{ padding: '12px 14px', width: '40%', minWidth: 340 }}>
                       <div style={{ fontWeight: 500, color: 'var(--text1)', lineHeight: 1.4 }}>
                         {r.risk_rating === 'High' && r.status !== 'Closed' && <span style={{ marginRight: 5 }}>⚠️</span>}
                         {r.risk_description}
