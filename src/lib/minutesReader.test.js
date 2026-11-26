@@ -32,6 +32,17 @@ describe('buildPayload', () => {
     expect(p.notes).toContain('Hui A');
     expect(p.notes).toContain('estimate');
   });
+  it('every kind that has a notes field keeps the hui and the exact quote', () => {
+    const q = 'The roof leaks in the wharekai';
+    const risk = buildPayload('risk', { description: 'Leak', category: 'Governance', likelihood: 'Low', consequence: 'Low', quote: q }, meeting);
+    const asset = buildPayload('asset', { name: 'Chiller', category: 'Equipment', quote: q }, meeting);
+    const grant = buildPayload('grant', { name: 'F', funder: 'F', category: 'Community', quote: q }, meeting);
+    const decision = buildPayload('decision', { description: 'Agreed', quote: q }, meeting);
+    [risk, asset, grant, decision].forEach(p => {
+      expect(p.notes).toContain('Hui A (2026-02-24)');
+      expect(p.notes).toContain(q);
+    });
+  });
   it('asset says the condition was not stated', () => {
     const p = buildPayload('asset', { name: 'Chiller', category: 'Equipment', notes: 'needs service' }, meeting);
     expect(p.condition).toBe('good');
@@ -62,10 +73,11 @@ describe('saveSuggestion', () => {
 
   it('saves a job as a meeting action and puts it on the Task Board', async () => {
     mockInsert({ data: [{ id: 'a1' }], error: null });
-    const r = await saveSuggestion({ kind: 'task', description: 'Get quotes', assigned_to: 'Rota', due_date: null }, meeting);
+    const r = await saveSuggestion({ kind: 'task', description: 'Get quotes', assigned_to: 'Rota', due_date: null, quote: 'Rota to get quotes' }, meeting);
     expect(r.ok).toBe(true);
     expect(supabase.from).toHaveBeenCalledWith('meeting_actions');
     expect(ensureTask).toHaveBeenCalledTimes(1);
+    expect(ensureTask.mock.calls[0][0].description).toContain('Rota to get quotes');
     expect(ensureTask.mock.calls[0][0].description).toContain('[source_id:a1]');
   });
   it('saves a risk without creating a task', async () => {

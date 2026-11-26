@@ -26,8 +26,10 @@ export function groupByKind(suggestions) {
   return KIND_ORDER.filter(k => groups[k]).map(k => ({ kind: k, items: groups[k] }));
 }
 
-function fromHui(meeting) {
-  return `From the minutes of ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}.`;
+// The source note kept with every item: which hui, and the exact line it came from.
+export function fromHui(meeting, quote) {
+  const hui = `From the minutes of ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}`;
+  return quote ? `${hui}: \u201C${quote}\u201D.` : `${hui}.`;
 }
 
 // Pure: the row each kind is saved as. No database calls, so it can be tested.
@@ -49,7 +51,7 @@ export function buildPayload(kind, item, meeting) {
         description: item.description.trim(),
         date_passed: meeting.meeting_date || null,
         status: 'Active',
-        notes: 'Added from the minutes.',
+        notes: fromHui(meeting, item.quote),
         linked_document_id: null,
       };
     case 'risk':
@@ -63,7 +65,7 @@ export function buildPayload(kind, item, meeting) {
         owner: item.owner ? item.owner.trim() : null,
         review_date: null,
         status: 'Open',
-        notes: `${fromHui(meeting)} Likelihood and consequence are an estimate. Please check them.`,
+        notes: `${fromHui(meeting, item.quote)} Likelihood and consequence are an estimate. Please check them.`,
         entity_id: null,
         asset_id: null,
         compliance_item_id: null,
@@ -74,7 +76,7 @@ export function buildPayload(kind, item, meeting) {
         category: item.category,
         location: '',
         condition: 'good',
-        notes: `${fromHui(meeting)}${item.notes ? ' ' + item.notes.trim() : ''} Condition not stated: please check.`,
+        notes: `${fromHui(meeting, item.quote)}${item.notes ? ' ' + item.notes.trim() : ''} Condition not stated: please check.`,
         value: null, purchase_cost: null, lifespan_years: null, replacement_cost: null,
         purchase_date: null, inventory_category: null, quantity: null, last_stocktake: null,
         entity_id: null, linked_document_id: null,
@@ -87,7 +89,7 @@ export function buildPayload(kind, item, meeting) {
         category: item.category,
         status: 'researching',
         deadline: item.deadline || null,
-        notes: `${fromHui(meeting)}${item.notes ? ' ' + item.notes.trim() : ''}`,
+        notes: `${fromHui(meeting, item.quote)}${item.notes ? ' ' + item.notes.trim() : ''}`,
       };
     default:
       return null;
@@ -110,7 +112,7 @@ export async function saveSuggestion(item, meeting) {
   if (item.kind === 'task') {
     await ensureTask({
       title: `ACTION: ${payload.description.slice(0, 80)}`,
-      description: `Meeting action assigned. Hui: ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}. Due: ${payload.due_date || 'no due date'}. [source_id:${saved.id}]`,
+      description: `Meeting action assigned. Hui: ${meeting.title}${meeting.meeting_date ? ' (' + meeting.meeting_date + ')' : ''}. Due: ${payload.due_date || 'no due date'}.${item.quote ? ' From the minutes: \u201C' + item.quote + '\u201D.' : ''} [source_id:${saved.id}]`,
       assigned_to: payload.assigned_to,
       due_date: payload.due_date,
       priority: 'Medium',
