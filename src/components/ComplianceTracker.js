@@ -5,7 +5,7 @@ import { logAudit } from '../lib/audit';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
 import FormError from './FormError';
-import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync';
+import { ensureTask, ensureUpcomingTask, closeLinkedTask, ensureSetupTask, cancelTasksForSource } from '../lib/taskSync';
 import { getItemComplianceStatus, isNotApplicable } from '../lib/complianceStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
@@ -474,6 +474,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (error) { setNaError('Could not save. Please try again.'); return; }
     setItems(prev => prev.map(i => i.id === naTarget.id ? { ...i, ...updates } : i));
     logAudit({ entityId: naTarget.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: naTarget.id, resourceName: naTarget.name, metadata: { not_applicable: true, reason } });
+    await cancelTasksForSource([naTarget.id]);
     setNaTarget(null); setNaReason('');
   }
 
@@ -485,6 +486,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (error) return;
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, ...updates } : i));
     logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { applies: 'yes', question: applicabilityQuestion(item) } });
+    await ensureSetupTask(item);
   }
 
   // One answer for every item that depends on the same question.
@@ -497,6 +499,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (error) return;
     setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, ...updates } : i));
     group.items.forEach(item => logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { applies: 'yes', question: group.question, answered_for: 'all items with this question' } }));
+    for (const item of group.items) await ensureSetupTask(item);
   }
 
   async function handleGroupNo(group) {
@@ -515,6 +518,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     if (error) return;
     setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, ...updates } : i));
     group.items.forEach(item => logAudit({ entityId: item.entity_id, action: 'update', resourceType: 'compliance_item', resourceId: item.id, resourceName: item.name, metadata: { not_applicable: true, reason, question: group.question, answered_for: 'all items with this question' } }));
+    await cancelTasksForSource(ids);
     setQaNoFor(null); setQaReason('');
   }
 
@@ -594,7 +598,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayStr = new Date().toISOString().split('T')[0];
     const overdueItems = currentItems.filter(
-      i => i.due_date && new Date(i.due_date + 'T12:00:00') < today
+      i => i.due_date && !i.not_applicable_at && new Date(i.due_date + 'T12:00:00') < today
     );
     for (const i of overdueItems) {
       await ensureTask({
@@ -612,6 +616,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
     const in30 = new Date(today); in30.setDate(in30.getDate() + 30);
     const upcomingItems = currentItems.filter(i =>
       i.due_date &&
+      !i.not_applicable_at &&
       new Date(i.due_date + 'T12:00:00') >= today &&
       new Date(i.due_date + 'T12:00:00') <= in30
     );
