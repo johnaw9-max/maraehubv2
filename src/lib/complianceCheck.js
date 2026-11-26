@@ -188,7 +188,10 @@ export function buildAskSources(names, items, sourcesByKey) {
   const list = Array.isArray(items) ? items : [];
   const out = [];
   for (const n of Array.isArray(names) ? names : []) {
-    const item = list.find(r => r && r.name === n);
+    const norm = x => String(x || '').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/g, ' ').trim();
+    const want = norm(n);
+    const item = list.find(r => r && norm(r.name) === want)
+      || (want.length >= 15 ? list.find(r => { const have = norm(r && r.name); return have.startsWith(want) || want.startsWith(have); }) : undefined);
     if (!item) continue;
     const keys = Array.isArray(item.source_keys) ? item.source_keys : [];
     const found = keys.map(k => (sourcesByKey || {})[k]).filter(Boolean);
