@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import useProfiles from '../lib/useProfiles';
 import StatusPill from './StatusPill';
-import { onTaskCompleted, taskSource } from '../lib/taskSync';
+import { onTaskCompleted, taskSource, parseSourceId } from '../lib/taskSync';
+import SourceHuiLink, { parseSourceMeeting } from './SourceHuiLink';
 import { compareByUrgency } from '../lib/urgencyStatus';
 import { useSortPreference } from '../lib/useSortPreference';
 import SortSelect from './SortSelect';
@@ -91,6 +92,16 @@ function isCompletedToday(task) {
 
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
 
+// A task that came from a hui: either it names the hui directly (minutes reader), or it is
+// a hui action ("ACTION: ...") whose action row knows its hui.
+function huiActionId(task) {
+  if (parseSourceMeeting(task.description)) return null;
+  return (task.title || '').startsWith('ACTION: ') ? parseSourceId(task.description) : null;
+}
+function hasHuiSource(task) {
+  return !!(parseSourceMeeting(task.description) || huiActionId(task));
+}
+
 function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, commentCount, onOpenComments }) {
   const overdue = isOverdue(task);
   const dateStr = fmtDate(task.due_date);
@@ -130,6 +141,7 @@ function TaskCard({ task, colIndex, onMove, onEdit, onDelete, onChangeStatus, co
       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text1)', marginBottom: 6, lineHeight: 1.4 }}>
         {displayTitle}
       </div>
+      {hasHuiSource(task) && <div style={{ marginBottom: 6 }}><SourceHuiLink meetingId={parseSourceMeeting(task.description)} actionId={huiActionId(task)} /></div>}
 
       {task.assigned_to && (
         <div style={{ fontSize: 14, color: 'var(--text3)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -438,6 +450,7 @@ function TaskListRow({ task, onEdit, onDelete, onChangeStatus, onOpenComments })
         opacity: isComplete ? 0.6 : 1,
       }}
       meta={[
+        hasHuiSource(task) && <SourceHuiLink key="hui" meetingId={parseSourceMeeting(task.description)} actionId={huiActionId(task)} />,
         initials && (
           <span key="initials" title={task.assigned_to} style={{
             width: 24, height: 24, borderRadius: '50%', background: 'var(--surface2)',

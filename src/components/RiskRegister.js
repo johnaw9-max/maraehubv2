@@ -8,6 +8,7 @@ import SortSelect from './SortSelect';
 import ViewToggle from './ViewToggle';
 import ListRow, { LIST_ROW_RESPONSIVE_CSS } from './ListRow';
 import { calcRating } from '../lib/riskRating';
+import SourceHuiLink from './SourceHuiLink';
 
 const CATEGORIES   = ['Health & Safety', 'Financial', 'Governance', 'Environmental', 'Reputational'];
 const LIKELIHOODS  = ['Low', 'Medium', 'High'];
@@ -457,6 +458,7 @@ export default function RiskRegister({ pendingRisk, onPendingConsumed, onStartWo
                         {r.risk_description}
                       </div>
                       {r.controls && <div style={{ fontSize: 14, color: 'var(--text3)', marginTop: 3 }}>Controls: {r.controls}</div>}
+                      {r.source_meeting_id && <div style={{ marginTop: 3 }}><SourceHuiLink meetingId={r.source_meeting_id} /></div>}
                       {entityName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>{entityName}</span></div>}
                       {assetName && <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}><span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>🔧 {assetName}</span></div>}
                       {r.risk_rating === 'High' &&
