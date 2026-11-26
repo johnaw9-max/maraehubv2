@@ -105,3 +105,20 @@ describe('source list built by the app', () => {
     expect(t).toMatch(/No source found[\s\S]*Hire terms/);
   });
 });
+
+describe('buildAskContext', () => {
+  const { buildAskContext } = require('./complianceCheck');
+  test('labels, detail and source come only from the rows', () => {
+    const out = buildAskContext(
+      [{ id: 'a', name: 'Fire alarms', framework_class: 'conditional_legal', applies: 'yes', legal_basis_detail: 'Detail here', source_keys: ['k1'] },
+       { id: 'b', name: 'Newsletter', framework_class: 'good_practice', source_keys: [] }],
+      { k1: { key: 'k1', name: 'FENZ Regs', url: 'https://www.legislation.govt.nz/x', checked_on: '2026-11-26', status: 'verified' } });
+    expect(out).toMatch(/ITEM: Fire alarms \| LABEL: legal requirement if it applies \| trustees answered: applies/);
+    expect(out).toMatch(/FENZ Regs/);
+    expect(out).toMatch(/ITEM: Newsletter \| LABEL: good practice .*no source found/);
+  });
+  test('stays under the size limit', () => {
+    const many = Array.from({ length: 3000 }, (_, i) => ({ id: 'i' + i, name: 'Item ' + i, legal_basis_detail: 'x'.repeat(400), source_keys: [] }));
+    expect(buildAskContext(many, {}).length).toBeLessThanOrEqual(60000);
+  });
+});
