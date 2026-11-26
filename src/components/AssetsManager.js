@@ -5,6 +5,7 @@ import { ensureTask, ensureUpcomingTask, closeLinkedTask } from '../lib/taskSync
 import { matchWorkflowTemplate } from '../lib/workflowEngine';
 import useProfiles from '../lib/useProfiles';
 import { isAssetInPoorCondition } from '../lib/assetCondition';
+import SourceHuiLink from './SourceHuiLink';
 
 const CATEGORIES = ['Building', 'Equipment', 'Vehicle', 'Technology', 'Grounds', 'Inventory', 'Other'];
 const INVENTORY_CATEGORIES = ['Linen', 'Crockery', 'Kitchen', 'Other'];
@@ -712,6 +713,7 @@ export default function AssetsManager({ onStartWorkflow }) {
                         </div>
                       )}
                       {a.notes && <div style={{ fontSize: 14, color: 'var(--text2)', fontStyle: 'italic', marginBottom: 12 }}>{a.notes}</div>}
+                      {a.source_meeting_id && <div style={{ marginBottom: 12 }}><SourceHuiLink meetingId={a.source_meeting_id} /></div>}
                       {a.linked_document_id && (() => {
                         const linkedDoc = documents.find(d => d.id === a.linked_document_id);
                         return linkedDoc ? (

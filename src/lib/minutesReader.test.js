@@ -69,10 +69,12 @@ describe('buildPayload', () => {
 });
 
 describe('saveSuggestion', () => {
-  function mockInsert(result) {
+  function mockInsert(result, existing = []) {
     const select = jest.fn().mockResolvedValue(result);
     const insert = jest.fn().mockReturnValue({ select });
-    supabase.from.mockReturnValue({ insert });
+    // the "already saved?" lookup: select('id').eq().eq().limit()
+    const chain = { eq: jest.fn(() => chain), limit: jest.fn().mockResolvedValue({ data: existing }) };
+    supabase.from.mockReturnValue({ insert, select: jest.fn(() => chain) });
     return insert;
   }
   beforeEach(() => { jest.clearAllMocks(); });
@@ -98,6 +100,13 @@ describe('saveSuggestion', () => {
     mockInsert({ data: null, error: { message: 'nope' } });
     const r = await saveSuggestion({ kind: 'task', description: 'x' }, meeting);
     expect(r).toEqual({ ok: false, message: 'nope' });
+    expect(ensureTask).not.toHaveBeenCalled();
+  });
+  it('does not save the same line twice from the same hui', async () => {
+    const insert = mockInsert({ data: [{ id: 'x' }], error: null }, [{ id: 'old' }]);
+    const r = await saveSuggestion({ kind: 'asset', name: 'Commercial chiller', category: 'Equipment' }, meeting);
+    expect(r).toEqual({ ok: false, message: 'Already saved from these minutes' });
+    expect(insert).not.toHaveBeenCalled();
     expect(ensureTask).not.toHaveBeenCalled();
   });
   it('treats an empty result as no permission', async () => {
