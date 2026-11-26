@@ -168,3 +168,11 @@ describe('what a trustee reads under each question', () => {
     [g.plainQuestion, g.why, g.help].forEach(s => expect(s).not.toMatch(BANNED));
   });
 });
+
+describe('why we ask is available for every shared question', () => {
+  const { applicabilityPlain } = require('./complianceApplicability');
+  test('employment question has a why line for the contractor review', () => {
+    const item = { name: 'Contractor Health & Safety Management Review', applicability_test: 'Does the marae employ anyone on an employment agreement?' };
+    expect(applicabilityPlain(item).why).toMatch(/Employer health and safety duties apply only if you do/);
+  });
+});
