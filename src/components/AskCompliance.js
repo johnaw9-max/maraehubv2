@@ -66,24 +66,34 @@ export default function AskCompliance({ items, sourcesByKey }) {
       </div>
       {error && <div role="alert" style={{ marginTop: 10, fontSize: 13, color: 'var(--danger, #b00020)' }}>{error}</div>}
       {answer && <div data-testid="ask-answer" style={{ marginTop: 10, fontSize: 14, whiteSpace: 'pre-wrap' }}>{answer}</div>}
-      {answer && sources.length > 0 && (
-        <div data-testid="ask-sources" style={{ marginTop: 10, fontSize: 13, color: 'var(--text2)' }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Where this comes from</div>
-          {sources.map(s => (
-            <div key={s.name} style={{ marginBottom: 6 }}>
-              <div>{s.name} ({s.classLabel})</div>
-              {s.sources.length === 0
-                ? <div>No source recorded in MaraeHub.</div>
-                : s.sources.map(src => (
-                    <div key={src.name}>
-                      {src.url ? <a href={src.url} target="_blank" rel="noopener noreferrer">{src.name}</a> : src.name}
-                      {src.checkedOn ? `, checked ${niceDate(src.checkedOn)}` : ''}{src.partly ? ', only partly checked' : ''}
-                    </div>
-                  ))}
-            </div>
-          ))}
-        </div>
-      )}
+      {answer && (() => {
+        const labels = [...new Set(sources.map(x => x.classLabel))];
+        const seen = new Map();
+        sources.forEach(x => x.sources.forEach(src => { if (!seen.has(src.name)) seen.set(src.name, src); }));
+        const list = [...seen.values()];
+        const dates = [...new Set(list.map(x => x.checkedOn).filter(Boolean))];
+        const oneDate = dates.length === 1 ? niceDate(dates[0]) : '';
+        return (
+          <div data-testid="ask-sources" style={{ marginTop: 10, fontSize: 13, color: 'var(--text2)' }}>
+            {list.length === 0 ? (
+              <span>No source recorded in MaraeHub for this answer.</span>
+            ) : (
+              <span>
+                {labels.length > 0 && <span style={{ textTransform: 'capitalize' }}>{labels.join(' / ')}. </span>}
+                Sources:{' '}
+                {list.map((src, i) => (
+                  <span key={src.name}>
+                    {i > 0 ? ' · ' : ''}
+                    {src.url ? <a href={src.url} target="_blank" rel="noopener noreferrer">{src.name}</a> : src.name}
+                    {!oneDate && src.checkedOn ? ` (checked ${niceDate(src.checkedOn)})` : ''}
+                  </span>
+                ))}
+                {oneDate ? `. Checked ${oneDate}.` : ''}
+              </span>
+            )}
+          </div>
+        );
+      })()}
       {answer && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text2)' }}>Draft for the trustees to decide.</div>}
     </div>
   );

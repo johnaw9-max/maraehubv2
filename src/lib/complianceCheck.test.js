@@ -135,3 +135,13 @@ describe('buildAskSources', () => {
   });
   test('no names gives nothing', () => { expect(buildAskSources([], items, src)).toEqual([]); expect(buildAskSources(undefined, items, src)).toEqual([]); });
 });
+
+describe('buildAskSources name matching', () => {
+  const { buildAskSources } = require('./complianceCheck');
+  const items = [{ id: 'a', name: 'Evacuation scheme — reviewed and trial evacuation completed', framework_class: 'conditional_legal', source_keys: [] }];
+  test('matches despite dash, case or spacing differences', () => {
+    expect(buildAskSources(['evacuation scheme - reviewed and trial evacuation completed'], items, {}).length).toBe(1);
+    expect(buildAskSources(['Evacuation scheme  reviewed and trial evacuation completed '], items, {}).length).toBe(1);
+  });
+  test('does not match unrelated names', () => { expect(buildAskSources(['Fire alarms'], items, {}).length).toBe(0); });
+});
