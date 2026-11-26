@@ -29,3 +29,12 @@ update compliance_items set
   legal_basis_detail = 'The owner of a building the public is admitted to must make information about the evacuation procedure readily available to occupants, including the routes to the places of safety, how the fire alarm is signalled, firefighting equipment, help for anyone who needs it, and how to call Fire and Emergency New Zealand, and must put up clear signs summarising it (Fire and Emergency New Zealand (Fire Safety, Evacuation Procedures, and Evacuation Schemes) Regulations 2018, reg 7(3) and (4); read 26 Nov 2026). What to do: mark the routes, display the evacuation notice at each exit, and make sure the committee knows the routes. Whether a building used only by whānau counts as open to the public is still to be confirmed with Fire and Emergency New Zealand.'
 where name = 'Evacuation routes — identified and communicated to committee'
   and applicability_test like 'Is the building a relevant building%';
+
+-- Governance review: Charities Act 2005 s 42G (read in full 22 Nov 2026) makes the 3-yearly review a legal duty for a registered charity.
+update compliance_items set
+  framework_class = 'conditional_legal',
+  legal_basis = 'Charities Act 2005, s 42G, if the marae is a registered charity',
+  applicability_test = 'Is the marae on the Charities Register?',
+  source_keys = array['CA05','CSGOV'],
+  legal_basis_detail = 'Applies only if the marae is a registered charity. A registered charity must review its governance procedures at least every 3 years. The review must consider whether the procedures are fit for purpose, help the charity achieve its charitable purpose, and help it comply with the Charities Act (Charities Act 2005, s 42G). The review is self-directed and can be as simple as a trustee discussion; Charities Services gives a checklist. What to do: hold the review (a trustee discussion using the Charities Services checklist is enough), keep a note of it, and confirm the date in your annual return or update details. If the review changed your rules, send Charities Services a copy of the amended rules. Checked on the Act text (s 42G read in full, version as at 6 June 2026) and Charities Services guidance (updated September 2026).'
+where name = 'Governance procedures reviewed in the last 3 years' and framework_class = 'good_practice';
