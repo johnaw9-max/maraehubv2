@@ -15,6 +15,7 @@ import { recordCompletion } from '../lib/complianceCompletions';
 import ComplianceHistoryModal from './ComplianceHistoryModal';
 import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 import ItemSources from './ItemSources';
+import AskCompliance from './AskCompliance';
 import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
 import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, groupOpenQuestions, nextSteps } from '../lib/complianceApplicability';
 
@@ -1315,6 +1316,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       {/* ── COMPLIANCE ITEMS SECTION ─────────────────────────────────────── */}
       {section === 'items' && (
         <>
+          <AskCompliance items={items} sourcesByKey={sourcesByKey} />
           {/* Stage tabs: only shown when items have been staged */}
           {(() => {
             const groups = groupOpenQuestions(items);

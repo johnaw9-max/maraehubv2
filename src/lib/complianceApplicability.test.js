@@ -100,7 +100,7 @@ describe('water question', () => {
     expect(g[0].yesLabel).toMatch(/own tank/);
     expect(g[0].noLabel).toMatch(/town/);
     expect(g[0].noReason.length).toBeGreaterThan(5);
-    expect(applicabilityHelp({ applicability_test: q })).toMatch(/more than 25 people/);
+    expect(applicabilityHelp({ applicability_test: q })).toMatch(/marae and community halls/);
   });
   test('other questions keep the default labels', () => {
     const g = groupOpenQuestions([{ id: 'a', framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: 'Is the marae on the Charities Register?' }]);
@@ -132,5 +132,39 @@ describe('items without a question of their own', () => {
     expect(g.length).toBe(4);
     g.forEach(x => { expect(x.plainQuestion).not.toMatch(/The source says/); expect(x.why.length).toBeGreaterThan(20); expect(x.help.length).toBeGreaterThan(20); expect(x.noReason.length).toBeGreaterThan(5); });
     expect(applicabilityQuestion({ ...base, name: names[1] })).toMatch(/hāngī/);
+  });
+});
+
+describe('written evacuation procedure has its own question', () => {
+  test('is not grouped under the relevant building question', () => {
+    const open = { framework_class: 'conditional_legal', applies: 'not_answered' };
+    const g = groupOpenQuestions([
+      { ...open, id: 'p', name: 'Written evacuation procedure', applicability_test: 'Is a building open to the public, such as a hall, wharekai or wharenui that people outside the whānau can use (Schedule 2 of the Fire Safety, Evacuation Procedures and Evacuation Schemes Regulations 2018)?' },
+      { ...open, id: 'r', name: 'Emergency exits', applicability_test: 'Is the building a relevant building under the Fire and Emergency Act 2017 and the 2018 Regulations (Schedule 2)?' },
+    ]);
+    expect(g.length).toBe(2);
+    expect(g.find(x => x.items[0].id === 'p').plainQuestion).toMatch(/open to the public/);
+    expect(g.find(x => x.items[0].id === 'p').help).toMatch(/does not name marae/);
+  });
+});
+
+describe('what a trustee reads under each question', () => {
+  // Guard: no internal working notes and no points the Framework still marks "to verify".
+  const BANNED = /still to be verified|not yet verified|to verify|partly (checked|confirmed)|TBD|Contractors do not count/i;
+  const tests = [
+    'Is the marae land set apart as a Māori reservation under Te Ture Whenua Māori Act 1993, with trustees appointed by the Māori Land Court?',
+    'Does the marae employ anyone on an employment agreement?',
+    'Is the building a relevant building under the Fire and Emergency Act 2017 and the 2018 Regulations (Schedule 2)?',
+    'Does the marae supply drinking water to others, making it a supplier under the Water Services Act 2021 (confirm with Taumata Arowai)?',
+    'Does a building have a specified system, such as a fire alarm, on a compliance schedule?',
+    'Is the marae on the Charities Register?',
+    'Is the marae a trust to which the Trusts Act 2019 applies?',
+    'Is a building open to the public, such as a hall, wharekai or wharenui that people outside the whānau can use (Schedule 2 of the Fire Safety, Evacuation Procedures and Evacuation Schemes Regulations 2018)?',
+    'EVENT: electrical work', 'EVENT: outdoor fire', 'EVENT: raffle or housie', 'EVENT: alcohol at an event',
+  ];
+  test.each(tests)('no internal notes in the explanation for: %s', (t) => {
+    const g = groupOpenQuestions([{ id: 'x', name: 'x', framework_class: 'conditional_legal', applies: 'not_answered', applicability_test: t }])[0];
+    expect(g.plainQuestion).not.toMatch(/The source says/);
+    [g.plainQuestion, g.why, g.help].forEach(s => expect(s).not.toMatch(BANNED));
   });
 });

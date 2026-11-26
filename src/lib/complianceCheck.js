@@ -158,3 +158,26 @@ export function sourceListText(list) {
   }
   return out.join('\n');
 }
+
+// Context for the "Ask" job: every item with its label, what it says and its source, built only from the marae's own rows.
+// items = compliance_items rows; sourcesByKey = legal_sources indexed by key. Nothing is added that the rows do not say.
+export const ASK_MAX_CHARS = 55000;
+export function buildAskContext(items, sourcesByKey) {
+  const list = Array.isArray(items) ? items : [];
+  const sourceInfo = { keysById: {}, byKey: sourcesByKey || {} };
+  for (const r of list) if (r && r.id) sourceInfo.keysById[r.id] = Array.isArray(r.source_keys) ? r.source_keys : [];
+  const lines = [];
+  let used = 0;
+  for (const r of list) {
+    if (!r || !r.name) continue;
+    const label = CLASS_LABEL[r.framework_class] || 'not yet matched to the Framework';
+    const answered = r.applies === 'yes' ? 'trustees answered: applies' : r.applies === 'no' ? 'trustees answered: does not apply' : 'applicability not yet answered';
+    const detail = String(r.legal_basis_detail || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+    const basis = String(r.legal_basis || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+    const line = `ITEM: ${r.name} | LABEL: ${label} | ${answered}${basis ? ` | BASIS: ${basis}` : ''}${detail ? ` | WHAT IT SAYS: ${detail}` : ''}${sourceText(r.id, sourceInfo)}`;
+    if (used + line.length > ASK_MAX_CHARS) break;
+    lines.push(line);
+    used += line.length + 1;
+  }
+  return lines.join('\n');
+}
