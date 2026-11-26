@@ -122,3 +122,16 @@ describe('buildAskContext', () => {
     expect(buildAskContext(many, {}).length).toBeLessThanOrEqual(60000);
   });
 });
+
+describe('buildAskSources', () => {
+  const { buildAskSources } = require('./complianceCheck');
+  const items = [{ id: 'a', name: 'Fire alarms', framework_class: 'conditional_legal', source_keys: ['k1'] }, { id: 'b', name: 'Generator', framework_class: 'good_practice', source_keys: [] }];
+  const src = { k1: { key: 'k1', name: 'FENZ Regs', url: 'https://www.legislation.govt.nz/x', checked_on: '2026-11-26', status: 'Verified – primary source' } };
+  test('built from the app records, never from the answer', () => {
+    const out = buildAskSources(['Fire alarms', 'Generator', 'Made up item'], items, src);
+    expect(out.map(o => o.name)).toEqual(['Fire alarms', 'Generator']);
+    expect(out[0].sources[0]).toMatchObject({ name: 'FENZ Regs', checkedOn: '2026-11-26' });
+    expect(out[1].sources).toEqual([]);
+  });
+  test('no names gives nothing', () => { expect(buildAskSources([], items, src)).toEqual([]); expect(buildAskSources(undefined, items, src)).toEqual([]); });
+});
