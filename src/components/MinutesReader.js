@@ -36,7 +36,7 @@ export default function MinutesReader({ meeting, minutes, maraeName, requestCons
     if (!consented) return;
     setLoading(true); setError(''); setSuggestions(null); setTicked({}); setDone({}); setFailed({});
     const { data, error: err } = await supabase.functions.invoke('extract-from-minutes', {
-      body: { maraeName, minutes },
+      body: { maraeName, minutes, meetingDate: meeting.meeting_date || null },
     });
     setLoading(false);
     if (err) {

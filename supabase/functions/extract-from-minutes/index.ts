@@ -39,6 +39,8 @@ Suggest only these kinds:
 Critical rules:
 - Every suggestion MUST have a "quote": the exact words copied from the minutes that support it, at most 250 characters, copied character for character. Do not paraphrase the quote.
 - Use only what the minutes say. Never invent names, dates, amounts, or details. If something is not stated, use null.
+- The user message tells you the date of the hui. When the minutes give a date with no year (for example "30 August"), use the next such date on or after the hui date. If you cannot tell, use null. Never use a year earlier than the hui.
+- Restate only what the minutes say. Do not add consequences, causes, or reasons the minutes do not state, even if they seem obvious.
 - Do not suggest compliance duties, legal requirements, or verified anything. Do not suggest money entries, bank balances, or changes to who has access. Leave those out.
 - Do not suggest the same thing twice. If the minutes are thin, suggest less. An empty list is a good answer.
 - Do not include whānau, tangi, or personal sensitive details in descriptions beyond what a task or risk needs.
@@ -54,8 +56,18 @@ const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.
 const pick = (v: unknown, list: string[], fallback: string) => (typeof v === 'string' && list.includes(v) ? v : fallback);
 const isoDate = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v)) ? v : null);
 
+// A date for a new job or a grant deadline cannot be before the hui it came from, and is not
+// plausibly more than two years after it. Anything else is dropped rather than guessed.
+const sensibleDate = (d: string | null, meetingDate: string | null) => {
+  if (!d || !meetingDate) return d;
+  const t = Date.parse(d);
+  const m = Date.parse(meetingDate);
+  if (isNaN(t) || isNaN(m)) return d;
+  return t >= m && t <= m + 2 * 365 * 86400000 ? d : null;
+};
+
 // Keeps only well-formed suggestions whose quote really appears in the minutes.
-export function cleanSuggestions(raw: unknown, minutes: string) {
+export function cleanSuggestions(raw: unknown, minutes: string, meetingDate: string | null = null) {
   if (!Array.isArray(raw)) return [];
   const source = norm(minutes);
   const out: Record<string, unknown>[] = [];
@@ -70,7 +82,7 @@ export function cleanSuggestions(raw: unknown, minutes: string) {
     switch (item.kind) {
       case 'task': {
         const description = str(item.description, 300);
-        if (description) clean = { kind: 'task', description, assigned_to: str(item.assigned_to, 80), due_date: isoDate(item.due_date) };
+        if (description) clean = { kind: 'task', description, assigned_to: str(item.assigned_to, 80), due_date: sensibleDate(isoDate(item.due_date), meetingDate) };
         break;
       }
       case 'risk': {
@@ -95,7 +107,7 @@ export function cleanSuggestions(raw: unknown, minutes: string) {
           kind: 'grant', funder, name: str(item.name, 120) ?? funder,
           amount: typeof item.amount === 'number' && isFinite(item.amount) && item.amount >= 0 ? item.amount : null,
           category: pick(item.category, GRANT_CATEGORIES, 'Community'),
-          deadline: isoDate(item.deadline), notes: str(item.notes, 300),
+          deadline: sensibleDate(isoDate(item.deadline), meetingDate), notes: str(item.notes, 300),
         };
         break;
       }
@@ -144,6 +156,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const { maraeName, minutes } = body;
+    const meetingDate = isoDate(body.meetingDate);
     if (typeof maraeName !== 'string' || !maraeName.trim()) return json({ error: 'maraeName is required' }, 400);
     if (typeof minutes !== 'string' || !minutes.trim()) return json({ error: 'minutes is required' }, 400);
     if (minutes.length > MAX_INPUT_CHARS) {
@@ -180,7 +193,7 @@ serve(async (req) => {
       max_tokens: 6000,
       thinking: { type: 'disabled' },
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `Marae: ${maraeName}\n\nApproved minutes:\n${minutes}` }],
+      messages: [{ role: 'user', content: `Marae: ${maraeName}\n${meetingDate ? 'This hui was held on ' + meetingDate + '.\n' : ''}\nApproved minutes:\n${minutes}` }],
     });
 
     const textBlock = response.content.find((b) => b.type === 'text');
@@ -197,7 +210,7 @@ serve(async (req) => {
       return json({ error: 'The AI response could not be read. Please try again.' }, 500);
     }
 
-    const suggestions = cleanSuggestions(parsed?.suggestions, minutes);
+    const suggestions = cleanSuggestions(parsed?.suggestions, minutes, meetingDate);
     await log('ok', response.usage);
     return json({ suggestions });
 
