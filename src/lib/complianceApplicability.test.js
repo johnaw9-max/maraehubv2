@@ -176,3 +176,16 @@ describe('why we ask is available for every shared question', () => {
     expect(applicabilityPlain(item).why).toMatch(/Employer health and safety duties apply only if you do/);
   });
 });
+
+describe('isEveryBuildingSafetyItem', () => {
+  const { isEveryBuildingSafetyItem } = require('./complianceApplicability');
+  it('flags the safety items the Framework treats as good practice for every building', () => {
+    expect(isEveryBuildingSafetyItem({ name: 'Fire extinguishers — inspected and serviced' })).toBe(true);
+    expect(isEveryBuildingSafetyItem({ name: 'First aid kit — stocked and in date' })).toBe(true);
+    expect(isEveryBuildingSafetyItem({ name: 'Emergency exits — checked clear, signed and operational' })).toBe(true);
+  });
+  it('does not flag other items', () => {
+    expect(isEveryBuildingSafetyItem({ name: 'Generator — tested, fuelled, serviced' })).toBe(false);
+    expect(isEveryBuildingSafetyItem(null)).toBe(false);
+  });
+});
