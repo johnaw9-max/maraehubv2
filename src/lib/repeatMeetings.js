@@ -55,3 +55,26 @@ export function buildRepeatDates(startDate, freq, count) {
   for (let i = 0; i < total; i++) dates.push(nthDate(startDate, freq, i));
   return dates;
 }
+
+// Move a YYYY-MM-DD date by a number of days (used to keep the length of a multi-day event the same on each repeat).
+export function addDays(ds, days) {
+  const p = parse(ds);
+  if (!p) return null;
+  return fmt(new Date(Date.UTC(p.y, p.mo, p.d + days)));
+}
+export function daysBetween(fromDs, toDs) {
+  const a = parse(fromDs), b = parse(toDs);
+  if (!a || !b) return 0;
+  return Math.round((Date.UTC(b.y, b.mo, b.d) - Date.UTC(a.y, a.mo, a.d)) / 86400000);
+}
+
+// Rows for a calendar event, repeated if asked. Each repeat keeps the same length. Capped like meetings.
+export function buildEventRows({ title, note, date, endDate, repeat, count }) {
+  const span = endDate ? Math.max(0, daysBetween(date, endDate)) : 0;
+  return buildRepeatDates(date, repeat, count).map(d => ({
+    title: String(title || '').trim(),
+    note: String(note || '').trim() || null,
+    event_date: d,
+    end_date: span > 0 ? addDays(d, span) : null,
+  }));
+}

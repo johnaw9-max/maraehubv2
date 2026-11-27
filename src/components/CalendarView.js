@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadUnavailable } from '../lib/unavailableDates';
+import { REPEAT_OPTIONS, MAX_REPEATS, clampCount, buildEventRows } from '../lib/repeatMeetings';
+
+// Add Event is switched on per app with REACT_APP_CALENDAR_EVENTS=on (needs the calendar_events table).
+const EVENTS_ON = process.env.REACT_APP_CALENDAR_EVENTS === 'on';
+const EMPTY_EVENT = { title: '', event_date: '', end_date: '', note: '', repeat: 'none', repeat_count: 4 };
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -14,6 +19,7 @@ const EVENT_TYPES = {
   task:     { label: 'Task Due',           icon: '✅', dot: '#6b42a8', bg: '#f0ecf8', text: '#6b42a8', border: '#c8b8e8' },
   grant:    { label: 'Grant Deadline',     icon: '💰', dot: '#2d6e57', bg: '#e8f4ef', text: '#2d6e57', border: '#a8d8c0' },
   meeting:  { label: 'Meeting',            icon: '🏛️', dot: '#1a6a5a', bg: '#e0f0ec', text: '#1a6a5a', border: '#90c8bc' },
+  event:    { label: 'Event',              icon: '🗓️', dot: '#b5541c', bg: '#fdeee3', text: '#8a3d10', border: '#f0c3a3' },
 };
 
 const TAB_FOR_EVENT = {
@@ -35,6 +41,9 @@ export default function CalendarView({ isTrustee }) {
   const [tasks, setTasks]                 = useState([]);
   const [grants, setGrants]               = useState([]);
   const [meetings, setMeetings]           = useState([]);
+  const [calEvents, setCalEvents]         = useState([]);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [eventForm, setEventForm]         = useState(EMPTY_EVENT);
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [form, setForm]   = useState(EMPTY_BLOCK);
   const [saving, setSaving] = useState(false);
@@ -78,6 +87,11 @@ export default function CalendarView({ isTrustee }) {
       setTasks(taskRes.data || []);
       setGrants(grantRes.data || []);
       setMeetings(meetRes.data || []);
+      if (EVENTS_ON) {
+        const evRes = await supabase.from('calendar_events').select('*').order('event_date');
+        if (evRes.error) console.error('[CalendarView] calendar_events:', evRes.error);
+        setCalEvents(evRes.data || []);
+      }
       setMaraeName(settingsRes.data?.marae_name || '');
       setMaraeEmail(settingsRes.data?.email || '');
       setMaraePhone(settingsRes.data?.phone || '');
@@ -149,6 +163,10 @@ export default function CalendarView({ isTrustee }) {
       if (normaliseDate(m.meeting_date) === ds)
         evs.push({ type: 'meeting', name: m.title });
     });
+    calEvents.forEach(e => {
+      if (ds >= e.event_date && ds <= (e.end_date || e.event_date))
+        evs.push({ type: 'event', name: e.note ? `${e.title} — ${e.note}` : e.title, id: e.id });
+    });
     return evs;
   }
 
@@ -176,6 +194,31 @@ export default function CalendarView({ isTrustee }) {
   }
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  function setEventField(k, v) { setEventForm(f => ({ ...f, [k]: v })); }
+
+  async function handleSaveEvent() {
+    if (!eventForm.title.trim()) { setError('Please give the event a title'); return; }
+    if (!eventForm.event_date) { setError('Please choose a date'); return; }
+    if (eventForm.end_date && eventForm.end_date < eventForm.event_date) { setError('The end date cannot be before the start date'); return; }
+    setSaving(true); setError('');
+    const rows = buildEventRows({
+      title: eventForm.title, note: eventForm.note, date: eventForm.event_date, endDate: eventForm.end_date,
+      repeat: eventForm.repeat, count: clampCount(eventForm.repeat_count),
+    }).filter((r, i) => i === 0 || !calEvents.some(e => e.title === r.title && e.event_date === r.event_date));
+    const { error: err } = await supabase.from('calendar_events').insert(rows);
+    if (err) { setError(err.message); setSaving(false); return; }
+    setEventForm(EMPTY_EVENT);
+    setShowEventForm(false);
+    setSaving(false);
+    fetchData();
+  }
+
+  async function handleRemoveEvent(id) {
+    if (!window.confirm('Remove this event? Other dates of a repeating event stay.')) return;
+    await supabase.from('calendar_events').delete().eq('id', id);
+    fetchData();
+  }
 
   function copyToFacebook(id, text) {
     const finish = () => { setCopiedId(id); setTimeout(() => setCopiedId(null), 2000); };
@@ -226,14 +269,69 @@ export default function CalendarView({ isTrustee }) {
           </p>
         </div>
         {isTrustee && (
-          <button
-            style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-            onClick={() => { setShowBlockForm(true); setError(''); setForm(EMPTY_BLOCK); }}
-          >
-            Block Dates
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {EVENTS_ON && (
+              <button
+                data-testid="add-event"
+                style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+                onClick={() => { setShowEventForm(true); setShowBlockForm(false); setError(''); setEventForm(EMPTY_EVENT); }}
+              >
+                + Add Event
+              </button>
+            )}
+            <button
+              style={{ background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+              onClick={() => { setShowBlockForm(true); setShowEventForm(false); setError(''); setForm(EMPTY_BLOCK); }}
+            >
+              Block Dates
+            </button>
+          </div>
         )}
       </div>
+
+      {/* ── ADD EVENT FORM ─────────────────────────────────────────────────── */}
+      {EVENTS_ON && isTrustee && showEventForm && (
+        <div className="panel" style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 16, fontFamily: 'Playfair Display, serif', fontWeight: 600, marginBottom: 16 }}>Add Event</div>
+          {error && <div className="alert alert-error">{error}</div>}
+          <div className="form-group">
+            <label className="form-label">Title *</label>
+            <input className="form-input" value={eventForm.title} onChange={e => setEventField('title', e.target.value)} placeholder="e.g. Working bee, Kapa haka practice" />
+          </div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Date *</label>
+              <input type="date" className="form-input" value={eventForm.event_date} onChange={e => setEventField('event_date', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Last day (if more than one day)</label>
+              <input type="date" className="form-input" value={eventForm.end_date} onChange={e => setEventField('end_date', e.target.value)} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Note</label>
+            <input className="form-input" value={eventForm.note} onChange={e => setEventField('note', e.target.value)} placeholder="e.g. Bring gloves. Kai provided." />
+          </div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Repeat</label>
+              <select className="form-input" value={eventForm.repeat} onChange={e => setEventField('repeat', e.target.value)}>
+                {REPEAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            {eventForm.repeat !== 'none' && (
+              <div className="form-group">
+                <label className="form-label">How many in total (up to {MAX_REPEATS})</label>
+                <input type="number" min={2} max={MAX_REPEATS} className="form-input" value={eventForm.repeat_count} onChange={e => setEventField('repeat_count', e.target.value)} />
+              </div>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={() => setShowEventForm(false)}>Cancel</button>
+            <button className="btn-primary" onClick={handleSaveEvent} disabled={saving}>{saving ? 'Saving...' : 'Add Event'}</button>
+          </div>
+        </div>
+      )}
 
       {/* ── BLOCK DATES FORM ───────────────────────────────────────────────── */}
       {isTrustee && showBlockForm && (
@@ -427,6 +525,15 @@ export default function CalendarView({ isTrustee }) {
                   <div style={{ fontSize: 14, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
                   <div style={{ fontSize: 14, color: 'var(--text2)' }}>{ev.name}</div>
                 </div>
+                {ev.type === 'event' && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveEvent(ev.id)}
+                    style={{ fontSize: 14, color: 'var(--danger)', background: 'none', border: '1px solid #f0b8b0', borderRadius: 6, padding: '4px 11px', cursor: 'pointer' }}
+                  >
+                    Remove
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => copyToFacebook(cpId, buildEventFbText(ev.name, selected))}
