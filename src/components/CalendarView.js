@@ -6,6 +6,7 @@ import { REPEAT_OPTIONS, MAX_REPEATS, clampCount, buildEventRows, addDays, daysB
 // Add Event is switched on per app with REACT_APP_CALENDAR_EVENTS=on (needs the calendar_events table).
 const EVENTS_ON = process.env.REACT_APP_CALENDAR_EVENTS === 'on';
 const MONTH_BOOKINGS_ON = process.env.REACT_APP_MONTH_BOOKINGS === 'on';
+// Month list under the calendar: on for all apps.
 const EMPTY_EVENT = { title: '', event_date: '', end_date: '', note: '', repeat: 'none', repeat_count: 4 };
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
