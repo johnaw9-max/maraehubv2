@@ -11,9 +11,9 @@ const COLS = {
   subcom:  { fill: '#f0ecf8', text: '#6b42a8', stroke: '#6b42a8' },
 };
 
-const BOX_W = 160;
-const BOX_H = 56;
-const GAP_X = 20;
+const BOX_W = 168;
+const BOX_H = 92;
+const GAP_X = 16;
 const ROW_GAP = 56;
 const PAD = 24;
 
@@ -34,14 +34,15 @@ function wrap(text = '', maxChars = 18) {
   return lines.slice(0, 2);
 }
 
-function boxH(label) {
-  const lines = wrap(label);
-  return BOX_H + (lines.length > 1 ? 12 : 0);
+function boxH() {
+  return BOX_H;
 }
 
 function SvgBox({ x, y, w = BOX_W, label, sublabel, col, onClick, active }) {
-  const lines = wrap(label);
-  const h = BOX_H + (lines.length > 1 ? 12 : 0);
+  const lines = wrap(label, 16);
+  const subLines = sublabel ? wrap(sublabel, 24) : [];
+  const h = BOX_H;
+  const subStart = y + 22 + lines.length * 18 + 4;
   return (
     <g onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <rect x={x} y={y} width={w} height={h} rx={8}
@@ -51,23 +52,23 @@ function SvgBox({ x, y, w = BOX_W, label, sublabel, col, onClick, active }) {
       />
       {lines.map((l, i) => (
         <text key={i}
-          x={x + w / 2} y={y + 18 + i * 14}
+          x={x + w / 2} y={y + 22 + i * 18}
           textAnchor="middle"
           fill={col.text}
-          fontSize={i === 0 ? 11 : 10}
-          fontWeight={i === 0 ? 700 : 400}
+          fontSize={14}
+          fontWeight={700}
           fontFamily="system-ui,-apple-system,sans-serif">
           {l}
         </text>
       ))}
-      {sublabel && (
-        <text x={x + w / 2} y={y + h - 9}
+      {subLines.map((l, i) => (
+        <text key={`s${i}`} x={x + w / 2} y={subStart + 11 + i * 15}
           textAnchor="middle" fill={col.text}
-          fontSize={9} opacity={0.72}
+          fontSize={12} opacity={0.85}
           fontFamily="system-ui,-apple-system,sans-serif">
-          {sublabel}
+          {l}
         </text>
-      )}
+      ))}
     </g>
   );
 }
@@ -143,7 +144,7 @@ export default function OrgChart({ maraeName, entities = [], subCommittees = [],
     <div style={{ overflowX: 'auto', width: '100%' }}>
       <svg width={totalW} height={totalH}
         viewBox={`0 0 ${totalW} ${totalH}`}
-        style={{ display: 'block', margin: '0 auto', maxWidth: '100%' }}>
+        style={{ display: 'block', margin: '0 auto', maxWidth: '100%', minWidth: Math.round(totalW * 0.8), height: 'auto' }}>
 
         {/* Marae → Entities */}
         {hasEntities && entItems.map((e, i) => (
@@ -210,14 +211,14 @@ export default function OrgChart({ maraeName, entities = [], subCommittees = [],
         {/* Empty state — marae name box only */}
         {!hasEntities && !hasTrustees && (
           <text x={cx} y={trusteeY || maraeY + maraeH + 40}
-            textAnchor="middle" fill="#aaa" fontSize={13}
+            textAnchor="middle" fill="#aaa" fontSize={14}
             fontFamily="system-ui,-apple-system,sans-serif">
             Add trustees and entities in Settings → Marae Profile
           </text>
         )}
       </svg>
 
-      <div style={{ textAlign: 'center', marginTop: 6, fontSize: 11, color: 'var(--text3)' }}>
+      <div style={{ textAlign: 'center', marginTop: 6, fontSize: 13, color: 'var(--text3)' }}>
         Click any box · Configure in Settings → Marae Profile
       </div>
     </div>
