@@ -43,6 +43,7 @@ export default function CalendarView({ isTrustee }) {
   const [grants, setGrants]               = useState([]);
   const [meetings, setMeetings]           = useState([]);
   const [calEvents, setCalEvents]         = useState([]);
+  const [showMonthList, setShowMonthList] = useState(true);
   const [showEventForm, setShowEventForm] = useState(false);
   const [eventForm, setEventForm]         = useState(EMPTY_EVENT);
   const [editEventId, setEditEventId]    = useState(null);
@@ -540,13 +541,18 @@ export default function CalendarView({ isTrustee }) {
         rows.sort((x, y) => x.from.localeCompare(y.from));
         return (
           <div className="panel" style={{ marginBottom: 16 }}>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 10, color: 'var(--text1)' }}>
-              Everything in {MONTHS[month]} {year}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: showMonthList ? 10 : 0 }}>
+              <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, color: 'var(--text1)' }}>
+                Everything in {MONTHS[month]} {year}
+              </div>
+              <button onClick={() => setShowMonthList(v => !v)} style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: 'var(--text2)' }}>
+                {showMonthList ? 'Hide list' : 'Show list'}
+              </button>
             </div>
-            {rows.length === 0 && (
+            {showMonthList && rows.length === 0 && (
               <div style={{ fontSize: 14, color: 'var(--text3)' }}>Nothing this month</div>
             )}
-            {rows.map((r, i) => (
+            {showMonthList && rows.map((r, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 14 }}>
                 <span style={{ color: 'var(--text1)' }}>
                   <span style={{ marginRight: 8 }}>{r.icon}</span>
