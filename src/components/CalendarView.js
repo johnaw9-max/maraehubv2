@@ -531,7 +531,7 @@ export default function CalendarView({ isTrustee }) {
         const seen = new Set();
         for (let d = 1; d <= daysInMonth; d++) {
           const ds = dateStr(year, month, d);
-          getTrusteeEvents(ds).forEach(e => {
+          getTrusteeEvents(ds).filter(e => e.type === 'meeting' || e.type === 'event').forEach(e => {
             if (e.id) { if (seen.has(e.id)) return; seen.add(e.id); }
             const t = EVENT_TYPES[e.type];
             const to = e.raw ? (e.raw.end_date || e.raw.event_date) : ds;
@@ -543,14 +543,14 @@ export default function CalendarView({ isTrustee }) {
           <div className="panel" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: showMonthList ? 10 : 0 }}>
               <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, color: 'var(--text1)' }}>
-                Everything in {MONTHS[month]} {year}
+                Scheduled in {MONTHS[month]} {year}
               </div>
               <button onClick={() => setShowMonthList(v => !v)} style={{ fontSize: 14, background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 11px', cursor: 'pointer', color: 'var(--text2)' }}>
                 {showMonthList ? 'Hide list' : 'Show list'}
               </button>
             </div>
             {showMonthList && rows.length === 0 && (
-              <div style={{ fontSize: 14, color: 'var(--text3)' }}>Nothing this month</div>
+              <div style={{ fontSize: 14, color: 'var(--text3)' }}>Nothing scheduled this month</div>
             )}
             {showMonthList && rows.map((r, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 14 }}>
