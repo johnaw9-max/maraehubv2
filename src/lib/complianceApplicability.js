@@ -143,3 +143,16 @@ export function nextSteps(items, limit = 3) {
   eligible.sort((a, b) => (a.stage || 9) - (b.stage || 9) || String(a.name).localeCompare(String(b.name)));
   return { total: eligible.length, top: eligible.slice(0, limit) };
 }
+
+
+// Safety items the Framework (Area 4.1 and 2.1) treats as good practice for every marae with a building,
+// whatever its size or whether it employs anyone. The trustee can still say one does not apply (for example,
+// the marae has no building), but is first asked to stop and think.
+const EVERY_BUILDING_SAFETY = [
+  'Fire extinguishers \u2014 inspected and serviced',
+  'First aid kit \u2014 stocked and in date',
+  'Emergency exits \u2014 checked clear, signed and operational',
+];
+export function isEveryBuildingSafetyItem(item) {
+  return !!item && EVERY_BUILDING_SAFETY.includes(String(item.name || '').trim());
+}

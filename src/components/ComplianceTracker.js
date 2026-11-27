@@ -17,7 +17,7 @@ import MaintenanceHistoryBoard from './MaintenanceHistoryBoard';
 import ItemSources from './ItemSources';
 import AskCompliance from './AskCompliance';
 import { indexSources, sourceTag, hasSources } from '../lib/itemSources';
-import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, applicabilityPlain, groupOpenQuestions, nextSteps } from '../lib/complianceApplicability';
+import { needsApplicabilityAnswer, applicabilityQuestion, applicabilityHelp, applicabilityPlain, groupOpenQuestions, nextSteps, isEveryBuildingSafetyItem } from '../lib/complianceApplicability';
 
 const SEVERITY_OPTIONS = ['minor', 'moderate', 'serious', 'critical'];
 
@@ -1517,7 +1517,7 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
                         onClick={() => { setNaTarget(item); setNaReason(''); setNaError(''); }}
                         style={{ background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer', fontSize: 13, color: 'var(--text2)', textDecoration: 'underline', fontFamily: 'DM Sans, sans-serif' }}
                       >
-                        This does not apply to us
+                        Mark as not applicable to us…
                       </button>
                     </div>
                   ))}
@@ -1568,8 +1568,13 @@ export default function ComplianceTracker({ onStartWorkflow, onCreateRisk }) {
       {naTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}>
           <div className="card" style={{ maxWidth: 460, width: '100%', padding: 20 }}>
-            <h3 style={{ marginTop: 0 }}>This does not apply to us</h3>
+            <h3 style={{ marginTop: 0 }}>Mark as not applicable to us</h3>
             <div style={{ fontSize: 14, marginBottom: 10 }}>{naTarget.name}</div>
+            {isEveryBuildingSafetyItem(naTarget) && (
+              <div data-testid="safety-warning" style={{ fontSize: 13, lineHeight: 1.5, background: 'var(--surface2)', borderLeft: '4px solid var(--danger, #b3261e)', borderRadius: 6, padding: '8px 10px', marginBottom: 10 }}>
+                <strong>This is a safety item.</strong> Most marae with a building need it, whether or not they employ anyone. Only mark it not applicable if the marae has no building or the item truly cannot apply.
+              </div>
+            )}
             <label style={{ fontSize: 13, fontWeight: 600 }}>Why not? (a few words)</label>
             <textarea
               data-testid="not-applicable-reason"
