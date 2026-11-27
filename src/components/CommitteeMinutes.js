@@ -11,6 +11,7 @@ import { ensureTask, closeLinkedTask } from '../lib/taskSync';
 import { isResolutionOpen } from '../lib/resolutionStatus';
 import { functionErrorMessage } from '../lib/functionErrorMessage';
 import MinutesReader from './MinutesReader';
+import { REPEAT_OPTIONS, MAX_REPEATS, clampCount, buildRepeatDates } from '../lib/repeatMeetings';
 import { holdUpdates } from '../lib/updateGuard';
 
 const MEETING_TYPES = ['Trustee Meeting', 'AGM', 'Special Meeting', 'Committee Meeting', 'Working Group Meeting'];
@@ -53,6 +54,7 @@ const EMPTY_MEETING = {
   title: '', meeting_type: 'Trustee Meeting', meeting_date: '',
   chairperson: '', secretary: '', attendees: '', apologies: '',
   minutes: '', created_by: '', entity_id: '',
+  repeat: 'none', repeat_count: 4,
 };
 
 const EMPTY_RESOLUTION = {
@@ -116,6 +118,8 @@ function SummaryTile({ icon, iconBg, value, label, valueColor, sub }) {
 
 // ─── MEETING FORM ────────────────────────────────────────────────────────────
 
+const REPEAT_ON = process.env.REACT_APP_REPEAT_MEETINGS === 'on';
+
 function MeetingForm({ initial, onSave, onCancel, saving, error }) {
   const profiles = useProfiles();
   const entities = useEntities();
@@ -178,6 +182,26 @@ function MeetingForm({ initial, onSave, onCancel, saving, error }) {
           <input className="form-input" value={form.created_by} onChange={e => setField('created_by', e.target.value)} placeholder="e.g. Jane Tūhoe" />
         </div>
       </div>
+
+      {REPEAT_ON && !initial?.id && (
+        <div className="grid-2" data-testid="repeat-meeting">
+          <div className="form-group">
+            <label className="form-label">Repeat</label>
+            <select className="form-input" value={form.repeat} onChange={e => setField('repeat', e.target.value)}>
+              {REPEAT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          {form.repeat !== 'none' && (
+            <div className="form-group">
+              <label className="form-label">How many meetings in total (up to {MAX_REPEATS})</label>
+              <input type="number" min={2} max={MAX_REPEATS} className="form-input" value={form.repeat_count} onChange={e => setField('repeat_count', e.target.value)} />
+              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+                Each date is added as its own meeting. Minutes, attendees and attachments go on the first one only. You can run this again when the dates run out.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid-2">
         <div className="form-group">
@@ -1201,7 +1225,17 @@ export default function CommitteeMinutes({ onStartHuiMode, focusMeetingId, onFoc
       // refresh selectedMeeting if we're coming back to detail
       setSelectedMeeting({ ...editMeeting, ...payload });
     } else {
-      const { error } = await supabase.from('meetings').insert(payload);
+      let rows = [payload];
+      if (REPEAT_ON && form.repeat && form.repeat !== 'none') {
+        const dates = buildRepeatDates(form.meeting_date, form.repeat, clampCount(form.repeat_count));
+        // The first meeting is the one just entered. The rest are empty dates: no minutes, attendees, apologies or attachment.
+        // A date that already has a meeting of the same title and type is skipped, so nothing is doubled.
+        const taken = new Set(meetings.map(m => `${m.title}|${m.meeting_type}|${String(m.meeting_date).slice(0, 10)}`));
+        rows = dates.map((d, i) => i === 0 ? payload : {
+          ...payload, meeting_date: d, minutes: null, attendees: null, apologies: null, attachment_url: null, attachment_name: null,
+        }).filter((r, i) => i === 0 || !taken.has(`${r.title}|${r.meeting_type}|${r.meeting_date}`));
+      }
+      const { error } = await supabase.from('meetings').insert(rows);
       if (error) { setError(error.message); setSaving(false); return; }
     }
 
