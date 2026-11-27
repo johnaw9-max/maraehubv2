@@ -5,6 +5,7 @@ import { REPEAT_OPTIONS, MAX_REPEATS, clampCount, buildEventRows, addDays, daysB
 
 // Add Event is switched on per app with REACT_APP_CALENDAR_EVENTS=on (needs the calendar_events table).
 const EVENTS_ON = process.env.REACT_APP_CALENDAR_EVENTS === 'on';
+const MONTH_BOOKINGS_ON = process.env.REACT_APP_MONTH_BOOKINGS === 'on';
 const EMPTY_EVENT = { title: '', event_date: '', end_date: '', note: '', repeat: 'none', repeat_count: 4 };
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -516,6 +517,33 @@ export default function CalendarView({ isTrustee }) {
           })}
         </div>
       </div>
+
+      {MONTH_BOOKINGS_ON && (() => {
+        const first = dateStr(year, month, 1);
+        const last  = dateStr(year, month, daysInMonth);
+        const list  = bookings
+          .filter(b => b.start_date <= last && b.end_date >= first)
+          .sort((a, b) => a.start_date.localeCompare(b.start_date));
+        const short = d => new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+        return (
+          <div className="panel" style={{ marginBottom: 16 }}>
+            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 10, color: 'var(--text1)' }}>
+              Bookings in {MONTHS[month]} {year}
+            </div>
+            {list.length === 0 && (
+              <div style={{ fontSize: 14, color: 'var(--text3)' }}>No bookings this month</div>
+            )}
+            {list.map((b, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 14 }}>
+                <span style={{ color: 'var(--text1)', fontWeight: 600 }}>{b.occasion || 'Booking'}</span>
+                <span style={{ color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+                  {b.start_date === b.end_date ? short(b.start_date) : `${short(b.start_date)} – ${short(b.end_date)}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ── SELECTED DAY PANEL ─────────────────────────────────────────────── */}
       {selected && (
