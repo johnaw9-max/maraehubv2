@@ -44,6 +44,7 @@ export default function CalendarView({ isTrustee }) {
   const [calEvents, setCalEvents]         = useState([]);
   const [showEventForm, setShowEventForm] = useState(false);
   const [eventForm, setEventForm]         = useState(EMPTY_EVENT);
+  const [editEventId, setEditEventId]    = useState(null);
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [form, setForm]   = useState(EMPTY_BLOCK);
   const [saving, setSaving] = useState(false);
@@ -165,7 +166,7 @@ export default function CalendarView({ isTrustee }) {
     });
     calEvents.forEach(e => {
       if (ds >= e.event_date && ds <= (e.end_date || e.event_date))
-        evs.push({ type: 'event', name: e.note ? `${e.title} — ${e.note}` : e.title, id: e.id });
+        evs.push({ type: 'event', name: e.note ? `${e.title} — ${e.note}` : e.title, id: e.id, raw: e });
     });
     return evs;
   }
@@ -202,6 +203,19 @@ export default function CalendarView({ isTrustee }) {
     if (!eventForm.event_date) { setError('Please choose a date'); return; }
     if (eventForm.end_date && eventForm.end_date < eventForm.event_date) { setError('The end date cannot be before the start date'); return; }
     setSaving(true); setError('');
+    if (editEventId) {
+      // Edit changes this one date only. Other dates of a repeating event are separate and stay as they are.
+      const { error: upErr } = await supabase.from('calendar_events').update({
+        title: eventForm.title.trim(),
+        event_date: eventForm.event_date,
+        end_date: eventForm.end_date || null,
+        note: eventForm.note.trim() || null,
+      }).eq('id', editEventId);
+      if (upErr) { setError(upErr.message); setSaving(false); return; }
+      setEditEventId(null); setEventForm(EMPTY_EVENT); setShowEventForm(false); setSaving(false);
+      fetchData();
+      return;
+    }
     const rows = buildEventRows({
       title: eventForm.title, note: eventForm.note, date: eventForm.event_date, endDate: eventForm.end_date,
       repeat: eventForm.repeat, count: clampCount(eventForm.repeat_count),
@@ -212,6 +226,13 @@ export default function CalendarView({ isTrustee }) {
     setShowEventForm(false);
     setSaving(false);
     fetchData();
+  }
+
+  function handleEditEvent(e) {
+    setEditEventId(e.id);
+    setEventForm({ title: e.title || '', event_date: e.event_date || '', end_date: e.end_date || '', note: e.note || '', repeat: 'none', repeat_count: 4 });
+    setShowEventForm(true); setShowBlockForm(false); setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function handleRemoveEvent(id) {
@@ -274,7 +295,7 @@ export default function CalendarView({ isTrustee }) {
               <button
                 data-testid="add-event"
                 style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                onClick={() => { setShowEventForm(true); setShowBlockForm(false); setError(''); setEventForm(EMPTY_EVENT); }}
+                onClick={() => { setEditEventId(null); setShowEventForm(true); setShowBlockForm(false); setError(''); setEventForm(EMPTY_EVENT); }}
               >
                 + Add Event
               </button>
@@ -292,7 +313,7 @@ export default function CalendarView({ isTrustee }) {
       {/* ── ADD EVENT FORM ─────────────────────────────────────────────────── */}
       {EVENTS_ON && isTrustee && showEventForm && (
         <div className="panel" style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 16, fontFamily: 'Playfair Display, serif', fontWeight: 600, marginBottom: 16 }}>Add Event</div>
+          <div style={{ fontSize: 16, fontFamily: 'Playfair Display, serif', fontWeight: 600, marginBottom: 16 }}>{editEventId ? 'Edit Event' : 'Add Event'}</div>
           {error && <div className="alert alert-error">{error}</div>}
           <div className="form-group">
             <label className="form-label">Title *</label>
@@ -312,6 +333,7 @@ export default function CalendarView({ isTrustee }) {
             <label className="form-label">Note</label>
             <input className="form-input" value={eventForm.note} onChange={e => setEventField('note', e.target.value)} placeholder="e.g. Bring gloves. Kai provided." />
           </div>
+          {!editEventId && (
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">Repeat</label>
@@ -326,9 +348,13 @@ export default function CalendarView({ isTrustee }) {
               </div>
             )}
           </div>
+          )}
+          {editEventId && (
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>This changes this one date only. Other dates of a repeating event stay as they are.</div>
+          )}
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={() => setShowEventForm(false)}>Cancel</button>
-            <button className="btn-primary" onClick={handleSaveEvent} disabled={saving}>{saving ? 'Saving...' : 'Add Event'}</button>
+            <button className="btn-secondary" onClick={() => { setShowEventForm(false); setEditEventId(null); }}>Cancel</button>
+            <button className="btn-primary" onClick={handleSaveEvent} disabled={saving}>{saving ? 'Saving...' : editEventId ? 'Save Changes' : 'Add Event'}</button>
           </div>
         </div>
       )}
@@ -525,6 +551,16 @@ export default function CalendarView({ isTrustee }) {
                   <div style={{ fontSize: 14, fontWeight: 600, color: et.text, marginBottom: 2 }}>{et.label}</div>
                   <div style={{ fontSize: 14, color: 'var(--text2)' }}>{ev.name}</div>
                 </div>
+                {ev.type === 'event' && (
+                  <button
+                    type="button"
+                    data-testid="edit-event"
+                    onClick={() => handleEditEvent(ev.raw)}
+                    style={{ fontSize: 14, fontWeight: 700, color: et.text, background: 'none', border: `1px solid ${et.border}`, borderRadius: 6, padding: '4px 11px', cursor: 'pointer' }}
+                  >
+                    Edit
+                  </button>
+                )}
                 {ev.type === 'event' && (
                   <button
                     type="button"
