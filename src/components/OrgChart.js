@@ -13,7 +13,7 @@ const COLS = {
 
 const BOX_W = 168;
 const BOX_H = 92;
-const GAP_X = 16;
+const GAP_X = 24;
 const ROW_GAP = 56;
 const PAD = 24;
 
@@ -92,6 +92,15 @@ function rowLayout(items, cx) {
   return items.map((item, i) => ({ ...item, x: startX + i * (BOX_W + GAP_X) }));
 }
 
+const MAX_PER_ROW = 4;       // keeps the chart narrow enough to fit the page at a readable size
+const ROW_GAP_SMALL = 36;    // gap between rows of the same group
+
+function rowsOf(items) {
+  const rows = [];
+  for (let i = 0; i < items.length; i += MAX_PER_ROW) rows.push(items.slice(i, i + MAX_PER_ROW));
+  return rows;
+}
+
 export default function OrgChart({ maraeName, entities = [], subCommittees = [], trustees = [] }) {
   const [active, setActive] = useState(null);
   const toggle = key => setActive(a => a === key ? null : key);
@@ -102,17 +111,15 @@ export default function OrgChart({ maraeName, entities = [], subCommittees = [],
   const otherTrustees = trustees.filter(t => t !== chairman);
   const allTrustees = chairman ? [chairman, ...otherTrustees] : [...trustees];
 
-  // Build rows — only include a row if it has content
   const hasEntities   = entities.length > 0;
   const hasTrustees   = allTrustees.length > 0;
   const hasSubcoms    = subCommittees.length > 0;
 
-  // Calculate canvas width from widest row
   const widestCount = Math.max(
     1,
     hasEntities  ? entities.length  : 0,
-    hasTrustees  ? allTrustees.length : 0,
-    hasSubcoms   ? subCommittees.length : 0,
+    hasTrustees  ? Math.min(allTrustees.length, MAX_PER_ROW) : 0,
+    hasSubcoms   ? Math.min(subCommittees.length, MAX_PER_ROW) : 0,
   );
   const minW = BOX_W + PAD * 2;
   const totalW = Math.max(minW, widestCount * BOX_W + (widestCount - 1) * GAP_X + PAD * 2);
@@ -127,18 +134,25 @@ export default function OrgChart({ maraeName, entities = [], subCommittees = [],
   const entY = hasEntities ? y : null;
   if (hasEntities) y += BOX_H + ROW_GAP;
 
-  const trusteeY = hasTrustees ? y : null;
-  if (hasTrustees) y += BOX_H + ROW_GAP;
+  // Trustees may need several rows. Each row is laid out centred.
+  const tRows = hasTrustees ? rowsOf(allTrustees).map((row, r) => {
+    const rowY = y;
+    y += BOX_H + (r === rowsOf(allTrustees).length - 1 ? ROW_GAP : ROW_GAP_SMALL);
+    return { y: rowY, items: rowLayout(row, cx), first: r * MAX_PER_ROW };
+  }) : [];
+  const trusteeY = hasTrustees ? tRows[0].y : null;
+  const lastTrusteeY = hasTrustees ? tRows[tRows.length - 1].y : null;
 
-  const subcomY = hasSubcoms ? y : null;
-  if (hasSubcoms) y += BOX_H + ROW_GAP;
+  const scRows = hasSubcoms ? rowsOf(subCommittees).map((row, r, all) => {
+    const rowY = y;
+    y += BOX_H + (r === all.length - 1 ? ROW_GAP : ROW_GAP_SMALL);
+    return { y: rowY, items: rowLayout(row, cx), first: r * MAX_PER_ROW };
+  }) : [];
 
   const totalH = y - ROW_GAP + PAD;
 
   const maraeX = cx - BOX_W / 2;
-  const entItems  = hasEntities  ? rowLayout(entities,       cx) : [];
-  const tItems    = hasTrustees  ? rowLayout(allTrustees,    cx) : [];
-  const scItems   = hasSubcoms   ? rowLayout(subCommittees,  cx) : [];
+  const entItems  = hasEntities  ? rowLayout(entities, cx) : [];
 
   return (
     <div style={{ overflowX: 'auto', width: '100%' }}>
@@ -153,26 +167,38 @@ export default function OrgChart({ maraeName, entities = [], subCommittees = [],
             x2={e.x + BOX_W / 2}   y2={entY} />
         ))}
 
-        {/* Marae → Trustees (when no entities) */}
-        {!hasEntities && hasTrustees && tItems.map((t, i) => (
+        {/* Marae → first row of trustees (when no entities) */}
+        {!hasEntities && hasTrustees && tRows[0].items.map((t, i) => (
           <Connector key={i}
             x1={maraeX + BOX_W / 2} y1={maraeY + maraeH}
             x2={t.x + BOX_W / 2}   y2={trusteeY} />
         ))}
 
-        {/* Entities → Trustees */}
-        {hasEntities && hasTrustees && tItems.map((t, i) => (
+        {/* Entities → first row of trustees */}
+        {hasEntities && hasTrustees && tRows[0].items.map((t, i) => (
           <Connector key={i}
             x1={cx} y1={entY + BOX_H}
             x2={t.x + BOX_W / 2} y2={trusteeY} />
         ))}
 
-        {/* Trustees → Sub-committees */}
-        {hasTrustees && hasSubcoms && scItems.map((sc, i) => (
+        {/* Each further row of trustees hangs from the row above (line leaves the bottom edge of the row above) */}
+        {tRows.slice(1).map((row, r) => row.items.map((t, i) => (
+          <Connector key={`${r}-${i}`}
+            x1={cx} y1={tRows[r].y + BOX_H}
+            x2={t.x + BOX_W / 2} y2={row.y} />
+        )))}
+
+        {/* Trustees → first row of sub-committees */}
+        {hasTrustees && hasSubcoms && scRows[0].items.map((sc, i) => (
           <Connector key={i}
-            x1={cx} y1={trusteeY + BOX_H}
-            x2={sc.x + BOX_W / 2} y2={subcomY} />
+            x1={cx} y1={lastTrusteeY + BOX_H}
+            x2={sc.x + BOX_W / 2} y2={scRows[0].y} />
         ))}
+        {scRows.slice(1).map((row, r) => row.items.map((sc, i) => (
+          <Connector key={`${r}-${i}`}
+            x1={cx} y1={scRows[r].y + BOX_H}
+            x2={sc.x + BOX_W / 2} y2={row.y} />
+        )))}
 
         {/* ── Marae box ── */}
         <SvgBox x={maraeX} y={maraeY} label={maraeName || 'Our Marae'} col={COLS.marae}
@@ -189,28 +215,34 @@ export default function OrgChart({ maraeName, entities = [], subCommittees = [],
         ))}
 
         {/* ── Trustee boxes ── */}
-        {tItems.map((t, i) => (
-          <SvgBox key={i} x={t.x} y={trusteeY}
-            label={t.full_name || '—'}
-            sublabel={t.title || 'Trustee'}
-            col={t === chairman ? COLS.chair : COLS.trustee}
-            active={active === `t${i}`}
-            onClick={() => toggle(`t${i}`)} />
-        ))}
+        {tRows.map(row => row.items.map((t, i) => {
+          const n = row.first + i;
+          return (
+            <SvgBox key={n} x={t.x} y={row.y}
+              label={t.full_name || '—'}
+              sublabel={t.title || 'Trustee'}
+              col={COLS.trustee}
+              active={active === `t${n}`}
+              onClick={() => toggle(`t${n}`)} />
+          );
+        }))}
 
         {/* ── Sub-committee boxes ── */}
-        {scItems.map((sc, i) => (
-          <SvgBox key={i} x={sc.x} y={subcomY}
-            label={sc.name || 'Sub-committee'}
-            sublabel={sc.lead ? `Lead: ${sc.lead}` : undefined}
-            col={COLS.subcom}
-            active={active === `sc${i}`}
-            onClick={() => toggle(`sc${i}`)} />
-        ))}
+        {scRows.map(row => row.items.map((sc, i) => {
+          const n = row.first + i;
+          return (
+            <SvgBox key={n} x={sc.x} y={row.y}
+              label={sc.name || 'Sub-committee'}
+              sublabel={sc.lead ? `Lead: ${sc.lead}` : undefined}
+              col={COLS.subcom}
+              active={active === `sc${n}`}
+              onClick={() => toggle(`sc${n}`)} />
+          );
+        }))}
 
         {/* Empty state — marae name box only */}
         {!hasEntities && !hasTrustees && (
-          <text x={cx} y={trusteeY || maraeY + maraeH + 40}
+          <text x={cx} y={maraeY + maraeH + 40}
             textAnchor="middle" fill="#aaa" fontSize={14}
             fontFamily="system-ui,-apple-system,sans-serif">
             Add trustees and entities in Settings → Marae Profile
