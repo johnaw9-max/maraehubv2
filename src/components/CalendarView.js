@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadUnavailable } from '../lib/unavailableDates';
-import { REPEAT_OPTIONS, MAX_REPEATS, clampCount, buildEventRows } from '../lib/repeatMeetings';
+import { REPEAT_OPTIONS, MAX_REPEATS, clampCount, buildEventRows, addDays, daysBetween } from '../lib/repeatMeetings';
 
 // Add Event is switched on per app with REACT_APP_CALENDAR_EVENTS=on (needs the calendar_events table).
 const EVENTS_ON = process.env.REACT_APP_CALENDAR_EVENTS === 'on';
@@ -45,6 +45,9 @@ export default function CalendarView({ isTrustee }) {
   const [showEventForm, setShowEventForm] = useState(false);
   const [eventForm, setEventForm]         = useState(EMPTY_EVENT);
   const [editEventId, setEditEventId]    = useState(null);
+  const [editSeriesId, setEditSeriesId]  = useState(null);
+  const [editScope, setEditScope]        = useState('one');
+  const [editOrigDate, setEditOrigDate]  = useState('');
   const [showBlockForm, setShowBlockForm] = useState(false);
   const [form, setForm]   = useState(EMPTY_BLOCK);
   const [saving, setSaving] = useState(false);
@@ -203,6 +206,25 @@ export default function CalendarView({ isTrustee }) {
     if (!eventForm.event_date) { setError('Please choose a date'); return; }
     if (eventForm.end_date && eventForm.end_date < eventForm.event_date) { setError('The end date cannot be before the start date'); return; }
     setSaving(true); setError('');
+    if (editEventId && editScope === 'all' && editSeriesId) {
+      // Every date in the series gets the new title, note and length. If the date was changed, every date moves by the same number of days.
+      const delta = daysBetween(editOrigDate, eventForm.event_date);
+      const span = eventForm.end_date ? Math.max(0, daysBetween(eventForm.event_date, eventForm.end_date)) : 0;
+      const results = await Promise.all(calEvents.filter(e => e.series_id === editSeriesId).map(e => {
+        const start = addDays(e.event_date, delta);
+        return supabase.from('calendar_events').update({
+          title: eventForm.title.trim(),
+          note: eventForm.note.trim() || null,
+          event_date: start,
+          end_date: span > 0 ? addDays(start, span) : null,
+        }).eq('id', e.id);
+      }));
+      const failed = results.find(r => r.error);
+      if (failed) { setError(failed.error.message); setSaving(false); fetchData(); return; }
+      setEditEventId(null); setEditSeriesId(null); setEditScope('one'); setEventForm(EMPTY_EVENT); setShowEventForm(false); setSaving(false);
+      fetchData();
+      return;
+    }
     if (editEventId) {
       // Edit changes this one date only. Other dates of a repeating event are separate and stay as they are.
       const { error: upErr } = await supabase.from('calendar_events').update({
@@ -212,7 +234,7 @@ export default function CalendarView({ isTrustee }) {
         note: eventForm.note.trim() || null,
       }).eq('id', editEventId);
       if (upErr) { setError(upErr.message); setSaving(false); return; }
-      setEditEventId(null); setEventForm(EMPTY_EVENT); setShowEventForm(false); setSaving(false);
+      setEditEventId(null); setEditSeriesId(null); setEditScope('one'); setEventForm(EMPTY_EVENT); setShowEventForm(false); setSaving(false);
       fetchData();
       return;
     }
@@ -220,7 +242,9 @@ export default function CalendarView({ isTrustee }) {
       title: eventForm.title, note: eventForm.note, date: eventForm.event_date, endDate: eventForm.end_date,
       repeat: eventForm.repeat, count: clampCount(eventForm.repeat_count),
     }).filter((r, i) => i === 0 || !calEvents.some(e => e.title === r.title && e.event_date === r.event_date));
-    const { error: err } = await supabase.from('calendar_events').insert(rows);
+    // Dates made together share a series id, so they can be edited together later.
+    const seriesId = rows.length > 1 && window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : null;
+    const { error: err } = await supabase.from('calendar_events').insert(seriesId ? rows.map(r => ({ ...r, series_id: seriesId })) : rows);
     if (err) { setError(err.message); setSaving(false); return; }
     setEventForm(EMPTY_EVENT);
     setShowEventForm(false);
@@ -230,6 +254,9 @@ export default function CalendarView({ isTrustee }) {
 
   function handleEditEvent(e) {
     setEditEventId(e.id);
+    setEditSeriesId(e.series_id || null);
+    setEditScope('one');
+    setEditOrigDate(e.event_date || '');
     setEventForm({ title: e.title || '', event_date: e.event_date || '', end_date: e.end_date || '', note: e.note || '', repeat: 'none', repeat_count: 4 });
     setShowEventForm(true); setShowBlockForm(false); setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -295,7 +322,7 @@ export default function CalendarView({ isTrustee }) {
               <button
                 data-testid="add-event"
                 style={{ background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}
-                onClick={() => { setEditEventId(null); setShowEventForm(true); setShowBlockForm(false); setError(''); setEventForm(EMPTY_EVENT); }}
+                onClick={() => { setEditEventId(null); setEditSeriesId(null); setEditScope('one'); setShowEventForm(true); setShowBlockForm(false); setError(''); setEventForm(EMPTY_EVENT); }}
               >
                 + Add Event
               </button>
@@ -349,11 +376,27 @@ export default function CalendarView({ isTrustee }) {
             )}
           </div>
           )}
-          {editEventId && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>This changes this one date only. Other dates of a repeating event stay as they are.</div>
+          {editEventId && editSeriesId && calEvents.filter(e => e.series_id === editSeriesId).length > 1 && (
+            <div className="form-group" data-testid="edit-scope">
+              <label className="form-label">Change</label>
+              <label style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>
+                <input type="radio" name="edit-scope" checked={editScope === 'one'} onChange={() => setEditScope('one')} /> This date only
+              </label>
+              <label style={{ display: 'block', fontSize: 14 }}>
+                <input type="radio" name="edit-scope" checked={editScope === 'all'} onChange={() => setEditScope('all')} /> All {calEvents.filter(e => e.series_id === editSeriesId).length} dates in this series
+              </label>
+              {editScope === 'all' && (
+                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 6 }}>
+                  The title, note and length change on every date. If you change the date, every date moves by the same number of days.
+                </div>
+              )}
+            </div>
+          )}
+          {editEventId && !(editSeriesId && calEvents.filter(e => e.series_id === editSeriesId).length > 1) && (
+            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 10 }}>This event is not part of a repeating series, so only this date changes.</div>
           )}
           <div className="modal-actions">
-            <button className="btn-secondary" onClick={() => { setShowEventForm(false); setEditEventId(null); }}>Cancel</button>
+            <button className="btn-secondary" onClick={() => { setShowEventForm(false); setEditEventId(null); setEditSeriesId(null); setEditScope('one'); }}>Cancel</button>
             <button className="btn-primary" onClick={handleSaveEvent} disabled={saving}>{saving ? 'Saving...' : editEventId ? 'Save Changes' : 'Add Event'}</button>
           </div>
         </div>
