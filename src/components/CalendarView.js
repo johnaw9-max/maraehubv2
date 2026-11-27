@@ -521,23 +521,40 @@ export default function CalendarView({ isTrustee }) {
       {MONTH_BOOKINGS_ON && (() => {
         const first = dateStr(year, month, 1);
         const last  = dateStr(year, month, daysInMonth);
-        const list  = bookings
-          .filter(b => b.start_date <= last && b.end_date >= first)
-          .sort((a, b) => a.start_date.localeCompare(b.start_date));
-        const short = d => new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+        const short = d => new Date(d + 'T12:00:00').toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+        const rows = [];
+        bookings.filter(b => b.start_date <= last && b.end_date >= first).forEach(b =>
+          rows.push({ from: b.start_date, to: b.end_date, icon: '📅', label: 'Booking', name: b.occasion || 'Booking' }));
+        blocked.filter(b => b.from_date <= last && b.to_date >= first).forEach(b =>
+          rows.push({ from: b.from_date, to: b.to_date, icon: '🚫', label: 'Blocked', name: b.reason || 'Blocked' }));
+        const seen = new Set();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const ds = dateStr(year, month, d);
+          getTrusteeEvents(ds).forEach(e => {
+            if (e.id) { if (seen.has(e.id)) return; seen.add(e.id); }
+            const t = EVENT_TYPES[e.type];
+            const to = e.raw ? (e.raw.end_date || e.raw.event_date) : ds;
+            rows.push({ from: ds, to, icon: t.icon, label: t.label, name: e.name });
+          });
+        }
+        rows.sort((x, y) => x.from.localeCompare(y.from));
         return (
           <div className="panel" style={{ marginBottom: 16 }}>
             <div style={{ fontFamily: 'Playfair Display, serif', fontSize: 15, fontWeight: 600, marginBottom: 10, color: 'var(--text1)' }}>
-              Bookings in {MONTHS[month]} {year}
+              Everything in {MONTHS[month]} {year}
             </div>
-            {list.length === 0 && (
-              <div style={{ fontSize: 14, color: 'var(--text3)' }}>No bookings this month</div>
+            {rows.length === 0 && (
+              <div style={{ fontSize: 14, color: 'var(--text3)' }}>Nothing this month</div>
             )}
-            {list.map((b, i) => (
+            {rows.map((r, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderTop: i ? '1px solid var(--border)' : 'none', fontSize: 14 }}>
-                <span style={{ color: 'var(--text1)', fontWeight: 600 }}>{b.occasion || 'Booking'}</span>
+                <span style={{ color: 'var(--text1)' }}>
+                  <span style={{ marginRight: 8 }}>{r.icon}</span>
+                  <span style={{ fontWeight: 600 }}>{r.name}</span>
+                  <span style={{ color: 'var(--text3)', marginLeft: 8 }}>{r.label}</span>
+                </span>
                 <span style={{ color: 'var(--text2)', whiteSpace: 'nowrap' }}>
-                  {b.start_date === b.end_date ? short(b.start_date) : `${short(b.start_date)} – ${short(b.end_date)}`}
+                  {r.from === r.to ? short(r.from) : `${short(r.from)} – ${short(r.to)}`}
                 </span>
               </div>
             ))}
