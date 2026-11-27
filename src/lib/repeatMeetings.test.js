@@ -27,3 +27,20 @@ describe('repeat meetings', () => {
     expect(buildRepeatDates('', 'weekly', 5)).toEqual([]);
   });
 });
+
+describe('calendar event rows', () => {
+  const { addDays, daysBetween, buildEventRows } = require('./repeatMeetings');
+  it('moves and measures dates', () => {
+    expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
+    expect(daysBetween('2026-12-01', '2026-12-03')).toBe(2);
+  });
+  it('one event with a note and an end date', () => {
+    expect(buildEventRows({ title: ' Working bee ', note: '', date: '2026-12-05', endDate: '2026-12-06', repeat: 'none', count: 9 }))
+      .toEqual([{ title: 'Working bee', note: null, event_date: '2026-12-05', end_date: '2026-12-06' }]);
+  });
+  it('repeats keep the same length and stop at the cap', () => {
+    const rows = buildEventRows({ title: 'Kapa haka', date: '2026-12-01', endDate: '2026-12-02', repeat: 'weekly', count: 100 });
+    expect(rows).toHaveLength(12);
+    expect(rows[1]).toMatchObject({ event_date: '2026-12-08', end_date: '2026-12-09' });
+  });
+});
