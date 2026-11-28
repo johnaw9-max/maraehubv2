@@ -10,7 +10,7 @@ import { getGettingStartedStatus } from '../lib/gettingStarted';
 // zero logic changes -- see NAV_GROUPS in TrusteeDashboard.js for the
 // real source of truth this renders.
 
-const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
+const FOUNDER_EMAILS = process.env.REACT_APP_HIDE_FOUNDER === 'on' ? [] : ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
 export default function NavSidebar({ profile, activeTab, setActiveTab, groups, isAdmin, onNavigate }) {
   const [gsStatus, setGsStatus] = useState(null);
