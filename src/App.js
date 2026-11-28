@@ -24,7 +24,7 @@ function LoadingScreen({ label = 'Loading MaraeHub...' }) {
   );
 }
 
-const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
+const FOUNDER_EMAILS = process.env.REACT_APP_HIDE_FOUNDER === 'on' ? [] : ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
 export default function App() {
   const [session, setSession] = useState(null);

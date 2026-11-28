@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadMaraeDisplay } from '../lib/maraeDisplay';
 
-const FOUNDER_EMAILS = ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
+const FOUNDER_EMAILS = process.env.REACT_APP_HIDE_FOUNDER === 'on' ? [] : ['johnaw9@gmail.com', 'waj@maraehub.co.nz'];
 
 export default function Header({ profile, onLogout, activeTab, setActiveTab, tabs, groups }) {
   const [maraeName, setMaraeName] = useState('Te Marae o Tainui');
